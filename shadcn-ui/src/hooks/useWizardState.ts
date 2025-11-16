@@ -1,0 +1,56 @@
+import { useState, useEffect } from 'react';
+
+export interface WizardData {
+  reqId: string;
+  title: string;
+  description: string;
+  techPresetId: string;
+  selectedActivityCodes: string[];
+  aiSuggestedActivityCodes: string[];
+  selectedDriverValues: Record<string, string>;
+  selectedRiskCodes: string[];
+}
+
+const STORAGE_KEY = 'estimation_wizard_data';
+
+export function useWizardState() {
+  const [data, setData] = useState<WizardData>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return getInitialData();
+      }
+    }
+    return getInitialData();
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }, [data]);
+
+  const updateData = (updates: Partial<WizardData>) => {
+    setData((prev) => ({ ...prev, ...updates }));
+  };
+
+  const resetData = () => {
+    setData(getInitialData());
+    localStorage.removeItem(STORAGE_KEY);
+  };
+
+  return { data, updateData, resetData };
+}
+
+function getInitialData(): WizardData {
+  return {
+    reqId: '',
+    title: '',
+    description: '',
+    techPresetId: '',
+    selectedActivityCodes: [],
+    aiSuggestedActivityCodes: [],
+    selectedDriverValues: {},
+    selectedRiskCodes: [],
+  };
+}
