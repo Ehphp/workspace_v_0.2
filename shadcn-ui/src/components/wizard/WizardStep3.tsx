@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
-import { suggestActivities } from '@/lib/openai';
-import type { Activity, TechnologyPreset, Driver, Risk } from '@/types/database';
+import { MOCK_ACTIVITIES, MOCK_TECHNOLOGY_PRESETS, MOCK_DRIVERS, MOCK_RISKS, getMockAISuggestions } from '@/lib/mockData';
+import type { Activity, TechnologyPreset } from '@/types/database';
 import type { WizardData } from '@/hooks/useWizardState';
 
 interface WizardStep3Props {
@@ -20,31 +20,63 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiUsed, setAiUsed] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
-    // Load preset
-    const { data: presetData } = await supabase
-      .from('technology_presets')
-      .select('*')
-      .eq('id', data.techPresetId)
-      .single();
-
-    if (presetData) {
-      setPreset(presetData);
-
-      // Load activities for this tech category
-      const { data: activitiesData } = await supabase
-        .from('activities')
+    try {
+      // Load preset
+      const { data: presetData, error: presetError } = await supabase
+        .from('technology_presets')
         .select('*')
-        .or(`tech_category.eq.${presetData.tech_category},tech_category.eq.MULTI`)
-        .eq('active', true)
-        .order('group');
+        .eq('id', data.techPresetId)
+        .single();
 
-      setActivities(activitiesData || []);
+      let currentPreset: TechnologyPreset | null = null;
+
+      if (presetError || !presetData) {
+        // Fallback to mock preset
+        currentPreset = MOCK_TECHNOLOGY_PRESETS.find(p => p.id === data.techPresetId) || MOCK_TECHNOLOGY_PRESETS[0];
+        setIsDemoMode(true);
+      } else {
+        currentPreset = presetData;
+        setIsDemoMode(false);
+      }
+
+      setPreset(currentPreset);
+
+      if (currentPreset) {
+        // Load activities for this tech category
+        const { data: activitiesData, error: activitiesError } = await supabase
+          .from('activities')
+          .select('*')
+          .or(`tech_category.eq.${currentPreset.tech_category},tech_category.eq.MULTI`)
+          .eq('active', true)
+          .order('group');
+
+        if (activitiesError || !activitiesData || activitiesData.length === 0) {
+          // Fallback to mock activities
+          const mockActivities = MOCK_ACTIVITIES.filter(
+            a => a.tech_category === currentPreset!.tech_category || a.tech_category === 'MULTI'
+          );
+          setActivities(mockActivities);
+          setIsDemoMode(true);
+        } else {
+          setActivities(activitiesData);
+        }
+      }
+    } catch (error) {
+      // Use mock data on error
+      const currentPreset = MOCK_TECHNOLOGY_PRESETS.find(p => p.id === data.techPresetId) || MOCK_TECHNOLOGY_PRESETS[0];
+      setPreset(currentPreset);
+      const mockActivities = MOCK_ACTIVITIES.filter(
+        a => a.tech_category === currentPreset.tech_category || a.tech_category === 'MULTI'
+      );
+      setActivities(mockActivities);
+      setIsDemoMode(true);
     }
 
     setLoading(false);
@@ -55,30 +87,61 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
 
     setAiLoading(true);
     try {
-      // Load all required data for AI
-      const { data: driversData } = await supabase.from('drivers').select('*');
-      const { data: risksData } = await supabase.from('risks').select('*');
+      // Check if OpenAI is configured
+      const hasOpenAI = import.meta.env.VITE_OPENAI_API_KEY && 
+                        import.meta.env.VITE_OPENAI_API_KEY !== 'sk-placeholder-replace-with-your-openai-key';
 
-      const suggestion = await suggestActivities({
-        description: data.description,
-        preset,
-        activities,
-        drivers: driversData || [],
-        risks: risksData || [],
-      });
+      let suggestedCodes: string[];
 
-      // Update wizard data with AI suggestions
-      onUpdate({
-        selectedActivityCodes: suggestion.activityCodes,
-        aiSuggestedActivityCodes: suggestion.activityCodes,
-        selectedDriverValues: suggestion.suggestedDrivers || preset.default_driver_values,
-        selectedRiskCodes: suggestion.suggestedRisks || preset.default_risks,
-      });
+      if (hasOpenAI && !isDemoMode) {
+        // Try to use real AI
+        try {
+          const { suggestActivities } = await import('@/lib/openai');
+          const { data: driversData } = await supabase.from('drivers').select('*');
+          const { data: risksData } = await supabase.from('risks').select('*');
+
+          const suggestion = await suggestActivities({
+            description: data.description,
+            preset,
+            activities,
+            drivers: driversData || MOCK_DRIVERS,
+            risks: risksData || MOCK_RISKS,
+          });
+
+          suggestedCodes = suggestion.activityCodes;
+
+          // Update wizard data with AI suggestions
+          onUpdate({
+            selectedActivityCodes: suggestedCodes,
+            aiSuggestedActivityCodes: suggestedCodes,
+            selectedDriverValues: suggestion.suggestedDrivers || preset.default_driver_values,
+            selectedRiskCodes: suggestion.suggestedRisks || preset.default_risks,
+          });
+        } catch (error) {
+          console.error('AI suggestion failed, using smart mock:', error);
+          suggestedCodes = getMockAISuggestions(data.description, preset);
+          onUpdate({
+            selectedActivityCodes: suggestedCodes,
+            aiSuggestedActivityCodes: suggestedCodes,
+            selectedDriverValues: preset.default_driver_values,
+            selectedRiskCodes: preset.default_risks,
+          });
+        }
+      } else {
+        // Use smart mock suggestions
+        suggestedCodes = getMockAISuggestions(data.description, preset);
+        onUpdate({
+          selectedActivityCodes: suggestedCodes,
+          aiSuggestedActivityCodes: suggestedCodes,
+          selectedDriverValues: preset.default_driver_values,
+          selectedRiskCodes: preset.default_risks,
+        });
+      }
 
       setAiUsed(true);
     } catch (error) {
       console.error('AI suggestion error:', error);
-      // Fallback to preset defaults
+      // Ultimate fallback to preset defaults
       onUpdate({
         selectedActivityCodes: preset.default_activity_codes,
         aiSuggestedActivityCodes: preset.default_activity_codes,
@@ -116,7 +179,14 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold mb-2">Select Activities</h2>
+        <div className="flex items-center gap-2 mb-2">
+          <h2 className="text-2xl font-bold">Select Activities</h2>
+          {isDemoMode && (
+            <Badge variant="secondary" className="text-xs">
+              Demo Mode
+            </Badge>
+          )}
+        </div>
         <p className="text-muted-foreground">
           Let AI suggest activities or select them manually.
         </p>
@@ -125,11 +195,12 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
       {!aiUsed && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm mb-3">
-            Click below to have AI analyze your requirement and suggest relevant activities based on
-            the description and technology preset.
+            {isDemoMode 
+              ? '🎯 Click below to get smart suggestions based on keywords in your description (Demo Mode - no AI required)'
+              : '🤖 Click below to have AI analyze your requirement and suggest relevant activities'}
           </p>
           <Button onClick={handleAISuggest} disabled={aiLoading}>
-            {aiLoading ? 'AI is analyzing...' : '🤖 Get AI Suggestions'}
+            {aiLoading ? 'Analyzing...' : isDemoMode ? '🎯 Get Smart Suggestions' : '🤖 Get AI Suggestions'}
           </Button>
         </div>
       )}
@@ -162,7 +233,7 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
                           </span>
                           {isAiSuggested && (
                             <Badge variant="secondary" className="text-xs">
-                              AI
+                              {isDemoMode ? '🎯' : 'AI'}
                             </Badge>
                           )}
                         </div>

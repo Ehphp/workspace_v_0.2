@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
+import { MOCK_ACTIVITIES, MOCK_DRIVERS, MOCK_RISKS } from '@/lib/mockData';
 import { calculateEstimation } from '@/lib/estimationEngine';
 import type { Activity, Driver, Risk } from '@/types/database';
 import type { WizardData } from '@/hooks/useWizardState';
@@ -21,73 +23,136 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [risks, setRisks] = useState<Risk[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   useEffect(() => {
     calculateResult();
   }, []);
 
   const calculateResult = async () => {
-    // Load all data
-    const [activitiesResult, driversResult, risksResult] = await Promise.all([
-      supabase.from('activities').select('*'),
-      supabase.from('drivers').select('*'),
-      supabase.from('risks').select('*'),
-    ]);
+    try {
+      // Load all data
+      const [activitiesResult, driversResult, risksResult] = await Promise.all([
+        supabase.from('activities').select('*'),
+        supabase.from('drivers').select('*'),
+        supabase.from('risks').select('*'),
+      ]);
 
-    const allActivities = activitiesResult.data || [];
-    const allDrivers = driversResult.data || [];
-    const allRisks = risksResult.data || [];
+      let allActivities: Activity[];
+      let allDrivers: Driver[];
+      let allRisks: Risk[];
 
-    setActivities(allActivities);
-    setDrivers(allDrivers);
-    setRisks(allRisks);
+      if (activitiesResult.error || !activitiesResult.data || activitiesResult.data.length === 0 ||
+          driversResult.error || !driversResult.data || driversResult.data.length === 0 ||
+          risksResult.error || !risksResult.data || risksResult.data.length === 0) {
+        // Use mock data
+        allActivities = MOCK_ACTIVITIES;
+        allDrivers = MOCK_DRIVERS;
+        allRisks = MOCK_RISKS;
+        setIsDemoMode(true);
+      } else {
+        allActivities = activitiesResult.data;
+        allDrivers = driversResult.data;
+        allRisks = risksResult.data;
+        setIsDemoMode(false);
+      }
 
-    // Prepare input for estimation engine
-    const selectedActivities = data.selectedActivityCodes.map((code) => {
-      const activity = allActivities.find((a) => a.code === code);
-      return {
-        code,
-        baseDays: activity?.base_days || 0,
-        isAiSuggested: data.aiSuggestedActivityCodes.includes(code),
-      };
-    });
+      setActivities(allActivities);
+      setDrivers(allDrivers);
+      setRisks(allRisks);
 
-    const selectedDrivers = Object.entries(data.selectedDriverValues).map(([code, value]) => {
-      const driver = allDrivers.find((d) => d.code === code);
-      const option = driver?.options.find((o) => o.value === value);
-      return {
-        code,
-        value,
-        multiplier: option?.multiplier || 1.0,
-      };
-    });
+      // Prepare input for estimation engine
+      const selectedActivities = data.selectedActivityCodes.map((code) => {
+        const activity = allActivities.find((a) => a.code === code);
+        return {
+          code,
+          baseDays: activity?.base_days || 0,
+          isAiSuggested: data.aiSuggestedActivityCodes.includes(code),
+        };
+      });
 
-    const selectedRisks = data.selectedRiskCodes.map((code) => {
-      const risk = allRisks.find((r) => r.code === code);
-      return {
-        code,
-        weight: risk?.weight || 0,
-      };
-    });
+      const selectedDrivers = Object.entries(data.selectedDriverValues).map(([code, value]) => {
+        const driver = allDrivers.find((d) => d.code === code);
+        const option = driver?.options.find((o) => o.value === value);
+        return {
+          code,
+          value,
+          multiplier: option?.multiplier || 1.0,
+        };
+      });
 
-    const estimationResult = calculateEstimation({
-      activities: selectedActivities,
-      drivers: selectedDrivers,
-      risks: selectedRisks,
-    });
+      const selectedRisks = data.selectedRiskCodes.map((code) => {
+        const risk = allRisks.find((r) => r.code === code);
+        return {
+          code,
+          weight: risk?.weight || 0,
+        };
+      });
 
-    setResult(estimationResult);
+      const estimationResult = calculateEstimation({
+        activities: selectedActivities,
+        drivers: selectedDrivers,
+        risks: selectedRisks,
+      });
+
+      setResult(estimationResult);
+    } catch (error) {
+      // Fallback to mock data
+      const allActivities = MOCK_ACTIVITIES;
+      const allDrivers = MOCK_DRIVERS;
+      const allRisks = MOCK_RISKS;
+
+      setActivities(allActivities);
+      setDrivers(allDrivers);
+      setRisks(allRisks);
+      setIsDemoMode(true);
+
+      // Calculate with mock data
+      const selectedActivities = data.selectedActivityCodes.map((code) => {
+        const activity = allActivities.find((a) => a.code === code);
+        return {
+          code,
+          baseDays: activity?.base_days || 0,
+          isAiSuggested: data.aiSuggestedActivityCodes.includes(code),
+        };
+      });
+
+      const selectedDrivers = Object.entries(data.selectedDriverValues).map(([code, value]) => {
+        const driver = allDrivers.find((d) => d.code === code);
+        const option = driver?.options.find((o) => o.value === value);
+        return {
+          code,
+          value,
+          multiplier: option?.multiplier || 1.0,
+        };
+      });
+
+      const selectedRisks = data.selectedRiskCodes.map((code) => {
+        const risk = allRisks.find((r) => r.code === code);
+        return {
+          code,
+          weight: risk?.weight || 0,
+        };
+      });
+
+      const estimationResult = calculateEstimation({
+        activities: selectedActivities,
+        drivers: selectedDrivers,
+        risks: selectedRisks,
+      });
+
+      setResult(estimationResult);
+    }
+
     setLoading(false);
   };
 
   const handleDownloadPDF = () => {
-    // TODO: Implement PDF export
-    alert('PDF export coming soon!');
+    alert('PDF export coming soon in Phase 2!');
   };
 
   const handleDownloadCSV = () => {
-    // TODO: Implement CSV export
-    alert('CSV export coming soon!');
+    alert('CSV export coming soon in Phase 2!');
   };
 
   if (loading || !result) {
@@ -101,7 +166,14 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold mb-2">Estimation Results</h2>
+        <div className="flex items-center gap-2 mb-2">
+          <h2 className="text-2xl font-bold">Estimation Results</h2>
+          {isDemoMode && (
+            <Badge variant="secondary" className="text-xs">
+              Demo Mode
+            </Badge>
+          )}
+        </div>
         <p className="text-muted-foreground">
           Here's the calculated effort for your requirement.
         </p>
@@ -161,7 +233,7 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
                     <div key={code} className="flex justify-between">
                       <span>
                         {activity?.name || code}
-                        {isAi && <span className="text-blue-600 ml-2">🤖</span>}
+                        {isAi && <span className="text-blue-600 ml-2">{isDemoMode ? '🎯' : '🤖'}</span>}
                       </span>
                       <span className="text-muted-foreground">{activity?.base_days} days</span>
                     </div>
@@ -216,6 +288,17 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
             📊 Download CSV
           </Button>
         </div>
+
+        {isDemoMode && (
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800 mb-2">
+              <strong>Want to save this estimation?</strong>
+            </p>
+            <p className="text-sm text-blue-700 mb-3">
+              Configure Supabase in your .env file to enable authentication and save estimations to your account.
+            </p>
+          </div>
+        )}
 
         <Button onClick={() => navigate('/register')} className="w-full" size="lg">
           Create Account to Save This Estimation

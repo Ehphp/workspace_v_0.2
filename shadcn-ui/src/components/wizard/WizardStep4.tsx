@@ -3,7 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
+import { MOCK_DRIVERS, MOCK_RISKS } from '@/lib/mockData';
 import type { Driver, Risk } from '@/types/database';
 import type { WizardData } from '@/hooks/useWizardState';
 
@@ -18,19 +20,37 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [risks, setRisks] = useState<Risk[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
-    const [driversResult, risksResult] = await Promise.all([
-      supabase.from('drivers').select('*').order('code'),
-      supabase.from('risks').select('*').order('code'),
-    ]);
+    try {
+      const [driversResult, risksResult] = await Promise.all([
+        supabase.from('drivers').select('*').order('code'),
+        supabase.from('risks').select('*').order('code'),
+      ]);
 
-    setDrivers(driversResult.data || []);
-    setRisks(risksResult.data || []);
+      if (driversResult.error || !driversResult.data || driversResult.data.length === 0 ||
+          risksResult.error || !risksResult.data || risksResult.data.length === 0) {
+        // Fallback to mock data
+        setDrivers(MOCK_DRIVERS);
+        setRisks(MOCK_RISKS);
+        setIsDemoMode(true);
+      } else {
+        setDrivers(driversResult.data);
+        setRisks(risksResult.data);
+        setIsDemoMode(false);
+      }
+    } catch (error) {
+      // Use mock data on error
+      setDrivers(MOCK_DRIVERS);
+      setRisks(MOCK_RISKS);
+      setIsDemoMode(true);
+    }
+
     setLoading(false);
   };
 
@@ -78,7 +98,14 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold mb-2">Drivers & Risks</h2>
+        <div className="flex items-center gap-2 mb-2">
+          <h2 className="text-2xl font-bold">Drivers & Risks</h2>
+          {isDemoMode && (
+            <Badge variant="secondary" className="text-xs">
+              Demo Mode
+            </Badge>
+          )}
+        </div>
         <p className="text-muted-foreground">
           Configure estimation drivers and select relevant risks.
         </p>
