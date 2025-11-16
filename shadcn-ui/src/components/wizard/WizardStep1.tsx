@@ -14,56 +14,58 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
   const canProceed = data.reqId && data.title && data.description;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <h2 className="text-2xl font-bold mb-2">Requirement Information</h2>
-        <p className="text-muted-foreground">
-          Start by providing basic information about the requirement you want to estimate.
+        <h2 className="text-lg font-semibold mb-1 text-slate-900">Requirement Information</h2>
+        <p className="text-sm text-slate-600">
+          Provide basic information about the requirement you want to estimate.
         </p>
       </div>
 
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="reqId">Requirement ID</Label>
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="reqId" className="text-sm font-medium">Requirement ID</Label>
           <Input
             id="reqId"
             placeholder="e.g., HR-API-001"
             value={data.reqId}
             onChange={(e) => onUpdate({ reqId: e.target.value })}
+            className="h-9"
           />
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-slate-500">
             A unique identifier for this requirement
           </p>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="title">Title</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="title" className="text-sm font-medium">Title</Label>
           <Input
             id="title"
             placeholder="e.g., Email notification for candidate acceptance"
             value={data.title}
             onChange={(e) => onUpdate({ title: e.target.value })}
+            className="h-9"
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="description" className="text-sm font-medium">Description</Label>
           <Textarea
             id="description"
             placeholder="Describe the functional and technical requirements..."
             value={data.description}
             onChange={(e) => onUpdate({ description: e.target.value })}
-            rows={6}
+            rows={4}
+            className="resize-none"
           />
-          <p className="text-sm text-muted-foreground">
-            Provide enough context for AI to suggest relevant activities. Include what needs to be
-            done, inputs/outputs, and any technical constraints.
+          <p className="text-xs text-slate-500">
+            Provide context for AI to suggest relevant activities including what needs to be done, inputs/outputs, and technical constraints.
           </p>
         </div>
       </div>
 
-      <div className="flex justify-end">
-        <Button onClick={onNext} disabled={!canProceed}>
+      <div className="flex justify-end pt-2">
+        <Button onClick={onNext} disabled={!canProceed} size="sm">
           Next: Select Technology
         </Button>
       </div>

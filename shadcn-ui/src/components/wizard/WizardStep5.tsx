@@ -31,7 +31,6 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
 
   const calculateResult = async () => {
     try {
-      // Load all data
       const [activitiesResult, driversResult, risksResult] = await Promise.all([
         supabase.from('activities').select('*'),
         supabase.from('drivers').select('*'),
@@ -45,7 +44,6 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
       if (activitiesResult.error || !activitiesResult.data || activitiesResult.data.length === 0 ||
           driversResult.error || !driversResult.data || driversResult.data.length === 0 ||
           risksResult.error || !risksResult.data || risksResult.data.length === 0) {
-        // Use mock data
         allActivities = MOCK_ACTIVITIES;
         allDrivers = MOCK_DRIVERS;
         allRisks = MOCK_RISKS;
@@ -61,7 +59,6 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
       setDrivers(allDrivers);
       setRisks(allRisks);
 
-      // Prepare input for estimation engine
       const selectedActivities = data.selectedActivityCodes.map((code) => {
         const activity = allActivities.find((a) => a.code === code);
         return {
@@ -97,7 +94,6 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
 
       setResult(estimationResult);
     } catch (error) {
-      // Fallback to mock data
       const allActivities = MOCK_ACTIVITIES;
       const allDrivers = MOCK_DRIVERS;
       const allRisks = MOCK_RISKS;
@@ -107,7 +103,6 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
       setRisks(allRisks);
       setIsDemoMode(true);
 
-      // Calculate with mock data
       const selectedActivities = data.selectedActivityCodes.map((code) => {
         const activity = allActivities.find((a) => a.code === code);
         return {
@@ -157,85 +152,85 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
 
   if (loading || !result) {
     return (
-      <div className="text-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+      <div className="text-center py-6">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <div className="flex items-center gap-2 mb-2">
-          <h2 className="text-2xl font-bold">Estimation Results</h2>
+        <div className="flex items-center gap-2 mb-1">
+          <h2 className="text-lg font-semibold text-slate-900">Estimation Results</h2>
           {isDemoMode && (
-            <Badge variant="secondary" className="text-xs">
-              Demo Mode
+            <Badge variant="secondary" className="text-xs h-5">
+              Demo
             </Badge>
           )}
         </div>
-        <p className="text-muted-foreground">
-          Here's the calculated effort for your requirement.
+        <p className="text-sm text-slate-600">
+          Calculated effort estimation for your requirement.
         </p>
       </div>
 
-      {/* Summary Card */}
-      <Card className="border-2 border-primary">
-        <CardHeader>
-          <CardTitle className="text-center text-3xl">
-            {result.totalDays.toFixed(2)} Days
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Base Days:</span>
-              <span className="font-medium">{result.baseDays.toFixed(2)}</span>
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Summary Card */}
+        <Card className="border-primary border-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-center text-2xl font-semibold">
+              {result.totalDays.toFixed(2)} Days
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-600">Base Days:</span>
+                <span className="font-medium">{result.baseDays.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Driver Multiplier:</span>
+                <span className="font-medium">{result.driverMultiplier.toFixed(3)}x</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Subtotal:</span>
+                <span className="font-medium">{result.subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Risk Score:</span>
+                <span className="font-medium">{result.riskScore}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Contingency ({result.contingencyPercent}%):</span>
+                <span className="font-medium">{result.contingencyDays.toFixed(2)}</span>
+              </div>
+              <div className="border-t border-slate-200 pt-1.5 mt-1.5 flex justify-between text-sm font-semibold">
+                <span>Total Days:</span>
+                <span>{result.totalDays.toFixed(2)}</span>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Driver Multiplier:</span>
-              <span className="font-medium">{result.driverMultiplier.toFixed(3)}x</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Subtotal:</span>
-              <span className="font-medium">{result.subtotal.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Risk Score:</span>
-              <span className="font-medium">{result.riskScore}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Contingency ({result.contingencyPercent}%):</span>
-              <span className="font-medium">{result.contingencyDays.toFixed(2)}</span>
-            </div>
-            <div className="border-t pt-2 mt-2 flex justify-between text-base font-bold">
-              <span>Total Days:</span>
-              <span>{result.totalDays.toFixed(2)}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Breakdown</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+        {/* Breakdown */}
+        <Card className="border-slate-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold">Breakdown</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-3 max-h-[280px] overflow-y-auto">
             <div>
-              <h4 className="font-semibold mb-2">Selected Activities ({data.selectedActivityCodes.length})</h4>
-              <div className="space-y-1 text-sm">
+              <h4 className="font-medium text-xs mb-1.5 text-slate-900">Activities ({data.selectedActivityCodes.length})</h4>
+              <div className="space-y-1 text-xs">
                 {data.selectedActivityCodes.map((code) => {
                   const activity = activities.find((a) => a.code === code);
                   const isAi = data.aiSuggestedActivityCodes.includes(code);
                   return (
                     <div key={code} className="flex justify-between">
-                      <span>
+                      <span className="text-slate-700">
                         {activity?.name || code}
-                        {isAi && <span className="text-blue-600 ml-2">{isDemoMode ? '🎯' : '🤖'}</span>}
+                        {isAi && <span className="text-blue-600 ml-1">{isDemoMode ? '🎯' : '🤖'}</span>}
                       </span>
-                      <span className="text-muted-foreground">{activity?.base_days} days</span>
+                      <span className="text-slate-500">{activity?.base_days}d</span>
                     </div>
                   );
                 })}
@@ -243,15 +238,15 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
             </div>
 
             <div>
-              <h4 className="font-semibold mb-2">Drivers</h4>
-              <div className="space-y-1 text-sm">
+              <h4 className="font-medium text-xs mb-1.5 text-slate-900">Drivers</h4>
+              <div className="space-y-1 text-xs">
                 {Object.entries(data.selectedDriverValues).map(([code, value]) => {
                   const driver = drivers.find((d) => d.code === code);
                   const option = driver?.options.find((o) => o.value === value);
                   return (
                     <div key={code} className="flex justify-between">
-                      <span>{driver?.name || code}</span>
-                      <span className="text-muted-foreground">
+                      <span className="text-slate-700">{driver?.name || code}</span>
+                      <span className="text-slate-500">
                         {option?.label} ({option?.multiplier.toFixed(2)}x)
                       </span>
                     </div>
@@ -261,55 +256,50 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
             </div>
 
             <div>
-              <h4 className="font-semibold mb-2">Risks ({data.selectedRiskCodes.length})</h4>
-              <div className="space-y-1 text-sm">
+              <h4 className="font-medium text-xs mb-1.5 text-slate-900">Risks ({data.selectedRiskCodes.length})</h4>
+              <div className="space-y-1 text-xs">
                 {data.selectedRiskCodes.map((code) => {
                   const risk = risks.find((r) => r.code === code);
                   return (
                     <div key={code} className="flex justify-between">
-                      <span>{risk?.name || code}</span>
-                      <span className="text-muted-foreground">weight: {risk?.weight}</span>
+                      <span className="text-slate-700">{risk?.name || code}</span>
+                      <span className="text-slate-500">w: {risk?.weight}</span>
                     </div>
                   );
                 })}
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Actions */}
-      <div className="space-y-3">
-        <div className="flex gap-2">
-          <Button onClick={handleDownloadPDF} variant="outline" className="flex-1">
-            📄 Download PDF
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-2">
+          <Button onClick={handleDownloadPDF} variant="outline" size="sm">
+            📄 PDF
           </Button>
-          <Button onClick={handleDownloadCSV} variant="outline" className="flex-1">
-            📊 Download CSV
+          <Button onClick={handleDownloadCSV} variant="outline" size="sm">
+            📊 CSV
           </Button>
         </div>
 
         {isDemoMode && (
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800 mb-2">
-              <strong>Want to save this estimation?</strong>
-            </p>
-            <p className="text-sm text-blue-700 mb-3">
-              Configure Supabase in your .env file to enable authentication and save estimations to your account.
-            </p>
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+            <strong>Save this estimation:</strong> Configure Supabase to enable authentication and save to your account.
           </div>
         )}
 
-        <Button onClick={() => navigate('/register')} className="w-full" size="lg">
-          Create Account to Save This Estimation
+        <Button onClick={() => navigate('/register')} className="w-full" size="sm">
+          Create Account to Save
         </Button>
 
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onBack} className="flex-1">
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" onClick={onBack} size="sm">
             Back
           </Button>
-          <Button variant="outline" onClick={onReset} className="flex-1">
-            Start New Estimation
+          <Button variant="outline" onClick={onReset} size="sm">
+            New Estimation
           </Button>
         </div>
       </div>

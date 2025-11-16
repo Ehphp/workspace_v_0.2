@@ -28,7 +28,6 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
 
   const loadData = async () => {
     try {
-      // Load preset
       const { data: presetData, error: presetError } = await supabase
         .from('technology_presets')
         .select('*')
@@ -38,7 +37,6 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
       let currentPreset: TechnologyPreset | null = null;
 
       if (presetError || !presetData) {
-        // Fallback to mock preset
         currentPreset = MOCK_TECHNOLOGY_PRESETS.find(p => p.id === data.techPresetId) || MOCK_TECHNOLOGY_PRESETS[0];
         setIsDemoMode(true);
       } else {
@@ -49,7 +47,6 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
       setPreset(currentPreset);
 
       if (currentPreset) {
-        // Load activities for this tech category
         const { data: activitiesData, error: activitiesError } = await supabase
           .from('activities')
           .select('*')
@@ -58,7 +55,6 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
           .order('group');
 
         if (activitiesError || !activitiesData || activitiesData.length === 0) {
-          // Fallback to mock activities
           const mockActivities = MOCK_ACTIVITIES.filter(
             a => a.tech_category === currentPreset!.tech_category || a.tech_category === 'MULTI'
           );
@@ -69,7 +65,6 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
         }
       }
     } catch (error) {
-      // Use mock data on error
       const currentPreset = MOCK_TECHNOLOGY_PRESETS.find(p => p.id === data.techPresetId) || MOCK_TECHNOLOGY_PRESETS[0];
       setPreset(currentPreset);
       const mockActivities = MOCK_ACTIVITIES.filter(
@@ -87,14 +82,12 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
 
     setAiLoading(true);
     try {
-      // Check if OpenAI is configured
       const hasOpenAI = import.meta.env.VITE_OPENAI_API_KEY && 
                         import.meta.env.VITE_OPENAI_API_KEY !== 'sk-placeholder-replace-with-your-openai-key';
 
       let suggestedCodes: string[];
 
       if (hasOpenAI && !isDemoMode) {
-        // Try to use real AI
         try {
           const { suggestActivities } = await import('@/lib/openai');
           const { data: driversData } = await supabase.from('drivers').select('*');
@@ -110,7 +103,6 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
 
           suggestedCodes = suggestion.activityCodes;
 
-          // Update wizard data with AI suggestions
           onUpdate({
             selectedActivityCodes: suggestedCodes,
             aiSuggestedActivityCodes: suggestedCodes,
@@ -118,7 +110,6 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
             selectedRiskCodes: suggestion.suggestedRisks || preset.default_risks,
           });
         } catch (error) {
-          console.error('AI suggestion failed, using smart mock:', error);
           suggestedCodes = getMockAISuggestions(data.description, preset);
           onUpdate({
             selectedActivityCodes: suggestedCodes,
@@ -128,7 +119,6 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
           });
         }
       } else {
-        // Use smart mock suggestions
         suggestedCodes = getMockAISuggestions(data.description, preset);
         onUpdate({
           selectedActivityCodes: suggestedCodes,
@@ -140,8 +130,6 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
 
       setAiUsed(true);
     } catch (error) {
-      console.error('AI suggestion error:', error);
-      // Ultimate fallback to preset defaults
       onUpdate({
         selectedActivityCodes: preset.default_activity_codes,
         aiSuggestedActivityCodes: preset.default_activity_codes,
@@ -170,46 +158,46 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
 
   if (loading) {
     return (
-      <div className="text-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+      <div className="text-center py-6">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <div className="flex items-center gap-2 mb-2">
-          <h2 className="text-2xl font-bold">Select Activities</h2>
+        <div className="flex items-center gap-2 mb-1">
+          <h2 className="text-lg font-semibold text-slate-900">Select Activities</h2>
           {isDemoMode && (
-            <Badge variant="secondary" className="text-xs">
-              Demo Mode
+            <Badge variant="secondary" className="text-xs h-5">
+              Demo
             </Badge>
           )}
         </div>
-        <p className="text-muted-foreground">
+        <p className="text-sm text-slate-600">
           Let AI suggest activities or select them manually.
         </p>
       </div>
 
       {!aiUsed && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm mb-3">
+        <div className="bg-blue-50 border border-blue-200 rounded p-3">
+          <p className="text-xs mb-2 text-slate-700">
             {isDemoMode 
-              ? '🎯 Click below to get smart suggestions based on keywords in your description (Demo Mode - no AI required)'
-              : '🤖 Click below to have AI analyze your requirement and suggest relevant activities'}
+              ? '🎯 Get smart suggestions based on keywords in your description (Demo Mode)'
+              : '🤖 Have AI analyze your requirement and suggest relevant activities'}
           </p>
-          <Button onClick={handleAISuggest} disabled={aiLoading}>
+          <Button onClick={handleAISuggest} disabled={aiLoading} size="sm">
             {aiLoading ? 'Analyzing...' : isDemoMode ? '🎯 Get Smart Suggestions' : '🤖 Get AI Suggestions'}
           </Button>
         </div>
       )}
 
-      <div className="space-y-6">
+      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
         {Object.entries(groupedActivities).map(([group, groupActivities]) => (
           <div key={group}>
-            <h3 className="font-semibold text-lg mb-3">{group}</h3>
-            <div className="space-y-2">
+            <h3 className="font-medium text-sm mb-2 text-slate-900">{group}</h3>
+            <div className="space-y-1.5">
               {groupActivities.map((activity) => {
                 const isSelected = data.selectedActivityCodes.includes(activity.code);
                 const isAiSuggested = data.aiSuggestedActivityCodes.includes(activity.code);
@@ -217,27 +205,28 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
                 return (
                   <div
                     key={activity.code}
-                    className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-accent"
+                    className="flex items-start space-x-2.5 p-2 border border-slate-200 rounded hover:bg-slate-50"
                   >
                     <Checkbox
                       id={activity.code}
                       checked={isSelected}
                       onCheckedChange={() => toggleActivity(activity.code)}
+                      className="mt-0.5"
                     />
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <label htmlFor={activity.code} className="cursor-pointer">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{activity.name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            ({activity.base_days} days)
+                          <span className="font-medium text-sm text-slate-900">{activity.name}</span>
+                          <span className="text-xs text-slate-500">
+                            ({activity.base_days}d)
                           </span>
                           {isAiSuggested && (
-                            <Badge variant="secondary" className="text-xs">
+                            <Badge variant="secondary" className="text-xs h-4 px-1">
                               {isDemoMode ? '🎯' : 'AI'}
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-xs text-slate-600 mt-0.5">
                           {activity.description}
                         </p>
                       </label>
@@ -250,11 +239,11 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
         ))}
       </div>
 
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={onBack}>
+      <div className="flex justify-between pt-2">
+        <Button variant="outline" onClick={onBack} size="sm">
           Back
         </Button>
-        <Button onClick={onNext} disabled={data.selectedActivityCodes.length === 0}>
+        <Button onClick={onNext} disabled={data.selectedActivityCodes.length === 0} size="sm">
           Next: Drivers & Risks
         </Button>
       </div>

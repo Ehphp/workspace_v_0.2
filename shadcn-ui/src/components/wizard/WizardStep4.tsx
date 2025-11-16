@@ -35,7 +35,6 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
 
       if (driversResult.error || !driversResult.data || driversResult.data.length === 0 ||
           risksResult.error || !risksResult.data || risksResult.data.length === 0) {
-        // Fallback to mock data
         setDrivers(MOCK_DRIVERS);
         setRisks(MOCK_RISKS);
         setIsDemoMode(true);
@@ -45,7 +44,6 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
         setIsDemoMode(false);
       }
     } catch (error) {
-      // Use mock data on error
       setDrivers(MOCK_DRIVERS);
       setRisks(MOCK_RISKS);
       setIsDemoMode(true);
@@ -89,112 +87,115 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
 
   if (loading) {
     return (
-      <div className="text-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+      <div className="text-center py-6">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <div className="flex items-center gap-2 mb-2">
-          <h2 className="text-2xl font-bold">Drivers & Risks</h2>
+        <div className="flex items-center gap-2 mb-1">
+          <h2 className="text-lg font-semibold text-slate-900">Drivers & Risks</h2>
           {isDemoMode && (
-            <Badge variant="secondary" className="text-xs">
-              Demo Mode
+            <Badge variant="secondary" className="text-xs h-5">
+              Demo
             </Badge>
           )}
         </div>
-        <p className="text-muted-foreground">
+        <p className="text-sm text-slate-600">
           Configure estimation drivers and select relevant risks.
         </p>
       </div>
 
-      {/* Drivers Section */}
-      <div className="space-y-4">
-        <h3 className="font-semibold text-lg">Drivers (Multipliers)</h3>
-        {drivers.map((driver) => {
-          const selectedValue = data.selectedDriverValues[driver.code];
-          const selectedOption = driver.options.find((opt) => opt.value === selectedValue);
-
-          return (
-            <div key={driver.code} className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label htmlFor={driver.code}>{driver.name}</Label>
-                {selectedOption && (
-                  <span className="text-sm text-muted-foreground">
-                    {selectedOption.multiplier.toFixed(2)}x
-                  </span>
-                )}
-              </div>
-              <Select
-                value={selectedValue}
-                onValueChange={(value) => updateDriverValue(driver.code, value)}
-              >
-                <SelectTrigger id={driver.code}>
-                  <SelectValue placeholder="Select value" />
-                </SelectTrigger>
-                <SelectContent>
-                  {driver.options.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label} ({option.multiplier.toFixed(2)}x)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-muted-foreground">{driver.description}</p>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Risks Section */}
-      <div className="space-y-4">
-        <h3 className="font-semibold text-lg">Risks</h3>
-        <div className="space-y-2">
-          {risks.map((risk) => {
-            const isSelected = data.selectedRiskCodes.includes(risk.code);
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Drivers Section */}
+        <div className="space-y-3">
+          <h3 className="font-medium text-sm text-slate-900">Drivers (Multipliers)</h3>
+          {drivers.map((driver) => {
+            const selectedValue = data.selectedDriverValues[driver.code];
+            const selectedOption = driver.options.find((opt) => opt.value === selectedValue);
 
             return (
-              <div
-                key={risk.code}
-                className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-accent"
-              >
-                <Checkbox
-                  id={risk.code}
-                  checked={isSelected}
-                  onCheckedChange={() => toggleRisk(risk.code)}
-                />
-                <div className="flex-1">
-                  <label htmlFor={risk.code} className="cursor-pointer">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{risk.name}</span>
-                      <span className="text-sm text-muted-foreground">(weight: {risk.weight})</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">{risk.description}</p>
-                  </label>
+              <div key={driver.code} className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <Label htmlFor={driver.code} className="text-sm font-medium">{driver.name}</Label>
+                  {selectedOption && (
+                    <span className="text-xs text-slate-500">
+                      {selectedOption.multiplier.toFixed(2)}x
+                    </span>
+                  )}
                 </div>
+                <Select
+                  value={selectedValue}
+                  onValueChange={(value) => updateDriverValue(driver.code, value)}
+                >
+                  <SelectTrigger id={driver.code} className="h-9">
+                    <SelectValue placeholder="Select value" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {driver.options.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label} ({option.multiplier.toFixed(2)}x)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500">{driver.description}</p>
               </div>
             );
           })}
         </div>
 
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="font-semibold">Risk Score: {riskScore}</p>
-              <p className="text-sm text-muted-foreground">Contingency: {contingency}%</p>
+        {/* Risks Section */}
+        <div className="space-y-3">
+          <h3 className="font-medium text-sm text-slate-900">Risks</h3>
+          <div className="space-y-1.5 max-h-[300px] overflow-y-auto pr-2">
+            {risks.map((risk) => {
+              const isSelected = data.selectedRiskCodes.includes(risk.code);
+
+              return (
+                <div
+                  key={risk.code}
+                  className="flex items-start space-x-2.5 p-2 border border-slate-200 rounded hover:bg-slate-50"
+                >
+                  <Checkbox
+                    id={risk.code}
+                    checked={isSelected}
+                    onCheckedChange={() => toggleRisk(risk.code)}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <label htmlFor={risk.code} className="cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm text-slate-900">{risk.name}</span>
+                        <span className="text-xs text-slate-500">(w: {risk.weight})</span>
+                      </div>
+                      <p className="text-xs text-slate-600 mt-0.5">{risk.description}</p>
+                    </label>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 rounded p-3">
+            <div className="flex justify-between items-center text-sm">
+              <div>
+                <p className="font-medium text-slate-900">Risk Score: {riskScore}</p>
+                <p className="text-xs text-slate-600">Contingency: {contingency}%</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={onBack}>
+      <div className="flex justify-between pt-2">
+        <Button variant="outline" onClick={onBack} size="sm">
           Back
         </Button>
-        <Button onClick={onNext}>
+        <Button onClick={onNext} size="sm">
           Next: View Results
         </Button>
       </div>
