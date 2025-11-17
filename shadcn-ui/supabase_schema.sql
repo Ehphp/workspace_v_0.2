@@ -65,6 +65,7 @@ CREATE TABLE lists (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     owner VARCHAR(255),
+    tech_preset_id UUID REFERENCES technology_presets(id), -- Default technology for all requirements in this list
     status VARCHAR(20) DEFAULT 'DRAFT', -- DRAFT, ACTIVE, ARCHIVED
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

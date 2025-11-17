@@ -1,11 +1,5 @@
-import OpenAI from 'openai';
 import type { Activity, Driver, Risk, TechnologyPreset } from '@/types/database';
 import type { AIActivitySuggestion } from '@/types/estimation';
-
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true, // Note: In production, use a backend proxy
-});
 
 interface SuggestActivitiesInput {
   description: string;
@@ -15,83 +9,76 @@ interface SuggestActivitiesInput {
   risks: Risk[];
 }
 
+/**
+ * Call the Netlify serverless function to get AI activity suggestions.
+ * This keeps the OpenAI API key secure on the server side.
+ */
 export async function suggestActivities(
   input: SuggestActivitiesInput
 ): Promise<AIActivitySuggestion> {
   const { description, preset, activities, drivers, risks } = input;
 
-  // Filter activities relevant to the preset's tech category
-  const relevantActivities = activities.filter(
-    (a) => a.tech_category === preset.tech_category || a.tech_category === 'MULTI'
-  );
-
-  const systemPrompt = `You are an expert software estimation assistant. Your role is to suggest which activities should be included in an estimation based on a requirement description.
-
-IMPORTANT: You only suggest activities. You DO NOT calculate effort or days. The calculation is done by a deterministic engine.
-
-Technology Preset: ${preset.name} (${preset.tech_category})
-Description: ${preset.description}
-
-Available activities for this technology:
-${relevantActivities.map((a) => `- ${a.code}: ${a.name} (${a.base_days} days, ${a.group})`).join('\n')}
-
-Available drivers:
-${drivers.map((d) => `- ${d.code}: ${d.name}`).join('\n')}
-
-Available risks:
-${risks.map((r) => `- ${r.code}: ${r.name} (weight: ${r.weight})`).join('\n')}
-
-Based on the requirement description, suggest:
-1. Which activity codes should be selected (array of codes)
-2. Optionally, suggested driver values (object with driver codes as keys)
-3. Optionally, suggested risk codes (array of codes)
-
-Return your response as a JSON object with this structure:
-{
-  "activityCodes": ["CODE1", "CODE2", ...],
-  "suggestedDrivers": {"COMPLEXITY": "HIGH", ...},
-  "suggestedRisks": ["R_CODE1", ...],
-  "reasoning": "Brief explanation of your suggestions"
-}`;
-
-  const userPrompt = `Requirement description:
-${description}
-
-Please suggest which activities, drivers, and risks are relevant for this requirement.`;
-
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.3,
+    // Call Netlify function instead of OpenAI directly
+    const response = await fetch('/.netlify/functions/ai-suggest', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        description,
+        preset,
+        activities,
+        drivers,
+        risks,
+      }),
     });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('No response from OpenAI');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const suggestion = JSON.parse(content) as AIActivitySuggestion;
-
-    // Validate that suggested activity codes exist
-    const validActivityCodes = relevantActivities.map((a) => a.code);
-    suggestion.activityCodes = suggestion.activityCodes.filter((code) =>
-      validActivityCodes.includes(code)
-    );
-
+    const suggestion = await response.json() as AIActivitySuggestion;
     return suggestion;
   } catch (error) {
-    console.error('Error calling OpenAI:', error);
+    console.error('Error calling AI suggestion API:', error);
+
     // Fallback to preset defaults
     return {
       activityCodes: preset.default_activity_codes,
       suggestedDrivers: preset.default_driver_values,
       suggestedRisks: preset.default_risks,
-      reasoning: 'Using preset defaults due to AI error',
+      reasoning: 'Using preset defaults due to AI service error',
     };
+  }
+}
+
+/**
+ * Generate a concise title from a requirement description using AI
+ */
+export async function generateTitleFromDescription(description: string): Promise<string> {
+  try {
+    const response = await fetch('/.netlify/functions/ai-suggest', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'generate-title',
+        description,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result.title || description.substring(0, 100);
+  } catch (error) {
+    console.error('Error generating title with AI:', error);
+    // Fallback: use first 100 chars of description
+    return description.substring(0, 100).trim() + (description.length > 100 ? '...' : '');
   }
 }

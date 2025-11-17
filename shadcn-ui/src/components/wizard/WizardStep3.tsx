@@ -82,54 +82,33 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
 
     setAiLoading(true);
     try {
-      const hasOpenAI = import.meta.env.VITE_OPENAI_API_KEY && 
-                        import.meta.env.VITE_OPENAI_API_KEY !== 'sk-placeholder-replace-with-your-openai-key';
+      // Always try AI first (Netlify function handles server-side API key)
+      const { suggestActivities } = await import('@/lib/openai');
+      const { data: driversData } = await supabase.from('drivers').select('*');
+      const { data: risksData } = await supabase.from('risks').select('*');
 
-      let suggestedCodes: string[];
+      const suggestion = await suggestActivities({
+        description: data.description,
+        preset,
+        activities,
+        drivers: driversData || MOCK_DRIVERS,
+        risks: risksData || MOCK_RISKS,
+      });
 
-      if (hasOpenAI && !isDemoMode) {
-        try {
-          const { suggestActivities } = await import('@/lib/openai');
-          const { data: driversData } = await supabase.from('drivers').select('*');
-          const { data: risksData } = await supabase.from('risks').select('*');
+      const suggestedCodes = suggestion.activityCodes;
 
-          const suggestion = await suggestActivities({
-            description: data.description,
-            preset,
-            activities,
-            drivers: driversData || MOCK_DRIVERS,
-            risks: risksData || MOCK_RISKS,
-          });
-
-          suggestedCodes = suggestion.activityCodes;
-
-          onUpdate({
-            selectedActivityCodes: suggestedCodes,
-            aiSuggestedActivityCodes: suggestedCodes,
-            selectedDriverValues: suggestion.suggestedDrivers || preset.default_driver_values,
-            selectedRiskCodes: suggestion.suggestedRisks || preset.default_risks,
-          });
-        } catch (error) {
-          suggestedCodes = getMockAISuggestions(data.description, preset);
-          onUpdate({
-            selectedActivityCodes: suggestedCodes,
-            aiSuggestedActivityCodes: suggestedCodes,
-            selectedDriverValues: preset.default_driver_values,
-            selectedRiskCodes: preset.default_risks,
-          });
-        }
-      } else {
-        suggestedCodes = getMockAISuggestions(data.description, preset);
-        onUpdate({
-          selectedActivityCodes: suggestedCodes,
-          aiSuggestedActivityCodes: suggestedCodes,
-          selectedDriverValues: preset.default_driver_values,
-          selectedRiskCodes: preset.default_risks,
-        });
-      }
+      onUpdate({
+        selectedActivityCodes: suggestedCodes,
+        aiSuggestedActivityCodes: suggestedCodes,
+        selectedDriverValues: suggestion.suggestedDrivers || preset.default_driver_values,
+        selectedRiskCodes: suggestion.suggestedRisks || preset.default_risks,
+      });
 
       setAiUsed(true);
     } catch (error) {
+      console.error('AI suggestion failed, using preset defaults:', error);
+
+      // Fallback to preset defaults on any error
       onUpdate({
         selectedActivityCodes: preset.default_activity_codes,
         aiSuggestedActivityCodes: preset.default_activity_codes,
@@ -165,39 +144,80 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <h2 className="text-lg font-semibold text-slate-900">Select Activities</h2>
-          {isDemoMode && (
-            <Badge variant="secondary" className="text-xs h-5">
-              Demo
-            </Badge>
-          )}
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold text-slate-900">Select Activities</h2>
+              {isDemoMode && (
+                <Badge variant="secondary" className="text-xs">
+                  Demo Mode
+                </Badge>
+              )}
+            </div>
+            <p className="text-sm text-slate-600 mt-1">
+              Get AI suggestions or select activities manually
+            </p>
+          </div>
         </div>
-        <p className="text-sm text-slate-600">
-          Let AI suggest activities or select them manually.
-        </p>
       </div>
 
       {!aiUsed && (
-        <div className="bg-blue-50 border border-blue-200 rounded p-3">
-          <p className="text-xs mb-2 text-slate-700">
-            {isDemoMode 
-              ? '🎯 Get smart suggestions based on keywords in your description (Demo Mode)'
-              : '🤖 Have AI analyze your requirement and suggest relevant activities'}
-          </p>
-          <Button onClick={handleAISuggest} disabled={aiLoading} size="sm">
-            {aiLoading ? 'Analyzing...' : isDemoMode ? '🎯 Get Smart Suggestions' : '🤖 Get AI Suggestions'}
-          </Button>
+        <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-slate-900 mb-1">
+                {isDemoMode ? 'Smart Keyword Analysis' : 'AI-Powered Analysis'}
+              </p>
+              <p className="text-xs text-slate-600 mb-3">
+                {isDemoMode
+                  ? 'Get smart suggestions based on keywords in your description'
+                  : 'Let AI analyze your requirement and suggest relevant activities'}
+              </p>
+              <Button
+                onClick={handleAISuggest}
+                disabled={aiLoading}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-md hover:shadow-lg transition-all duration-300"
+                size="sm"
+              >
+                {aiLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                    <span>Analyzing...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span>{isDemoMode ? 'Get Smart Suggestions' : 'Get AI Suggestions'}</span>
+                  </div>
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
-      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+      <div className="space-y-5 max-h-[420px] overflow-y-auto pr-2">
         {Object.entries(groupedActivities).map(([group, groupActivities]) => (
           <div key={group}>
-            <h3 className="font-medium text-sm mb-2 text-slate-900">{group}</h3>
-            <div className="space-y-1.5">
+            <h3 className="font-bold text-sm mb-3 text-slate-900 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500"></div>
+              {group}
+            </h3>
+            <div className="space-y-2">
               {groupActivities.map((activity) => {
                 const isSelected = data.selectedActivityCodes.includes(activity.code);
                 const isAiSuggested = data.aiSuggestedActivityCodes.includes(activity.code);
@@ -205,28 +225,32 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
                 return (
                   <div
                     key={activity.code}
-                    className="flex items-start space-x-2.5 p-2 border border-slate-200 rounded hover:bg-slate-50"
+                    className={`group flex items-start space-x-3 p-3 border-2 rounded-xl transition-all duration-300 cursor-pointer ${isSelected
+                        ? 'border-purple-300 bg-gradient-to-r from-purple-50 to-pink-50 shadow-md'
+                        : 'border-slate-200 hover:border-purple-200 hover:bg-purple-50/30'
+                      }`}
+                    onClick={() => toggleActivity(activity.code)}
                   >
                     <Checkbox
                       id={activity.code}
                       checked={isSelected}
                       onCheckedChange={() => toggleActivity(activity.code)}
-                      className="mt-0.5"
+                      className="mt-1"
                     />
                     <div className="flex-1 min-w-0">
                       <label htmlFor={activity.code} className="cursor-pointer">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm text-slate-900">{activity.name}</span>
-                          <span className="text-xs text-slate-500">
-                            ({activity.base_days}d)
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-sm text-slate-900 group-hover:text-purple-700 transition-colors">{activity.name}</span>
+                          <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                            {activity.base_days}d
                           </span>
                           {isAiSuggested && (
-                            <Badge variant="secondary" className="text-xs h-4 px-1">
-                              {isDemoMode ? '🎯' : 'AI'}
+                            <Badge className="text-xs bg-gradient-to-r from-purple-600 to-pink-600 border-0">
+                              {isDemoMode ? '🎯 Suggested' : 'AI'}
                             </Badge>
                           )}
                         </div>
-                        <p className="text-xs text-slate-600 mt-0.5">
+                        <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
                           {activity.description}
                         </p>
                       </label>
@@ -239,12 +263,22 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
         ))}
       </div>
 
-      <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={onBack} size="sm">
+      <div className="flex justify-between pt-4">
+        <Button variant="outline" onClick={onBack} className="hover:bg-slate-50">
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
           Back
         </Button>
-        <Button onClick={onNext} disabled={data.selectedActivityCodes.length === 0} size="sm">
-          Next: Drivers & Risks
+        <Button
+          onClick={onNext}
+          disabled={data.selectedActivityCodes.length === 0}
+          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <span>Next: Drivers & Risks</span>
+          <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
         </Button>
       </div>
     </div>

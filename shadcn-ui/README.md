@@ -30,7 +30,7 @@ Total Days = Subtotal × (1 + Contingency %)
 ### Prerequisites
 - Node.js 18+ and pnpm
 - Supabase account
-- OpenAI API key
+- OpenAI API key (for AI suggestions - handled securely via Netlify Functions)
 
 ### 1. Clone and Install
 
@@ -68,11 +68,15 @@ Create a `.env` file in the root directory:
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 
-# OpenAI Configuration
-VITE_OPENAI_API_KEY=sk-your-openai-key
+# OpenAI Configuration (Server-side only for Netlify Functions)
+# This key is NOT exposed to the browser
+OPENAI_API_KEY=sk-your-openai-key
 ```
 
-**Important**: Replace the placeholder values with your actual credentials.
+**Important**: 
+- Replace the placeholder values with your actual credentials
+- The `OPENAI_API_KEY` (no VITE_ prefix) is used only by Netlify Functions
+- In production, set `OPENAI_API_KEY` in your hosting provider's environment variables
 
 ### 4. Start Development Server
 
@@ -186,14 +190,37 @@ pnpm run build
 
 ## 🚧 Phase 2 Roadmap
 
-- [ ] Requirements CRUD (create, edit, delete)
-- [ ] Requirement Detail page with Estimation tab
-- [ ] Estimation history and comparison
+- [x] Requirements CRUD (create, edit, delete)
+- [x] Requirement Detail page with Estimation tab
+- [x] **Estimation history and comparison** ✨ NEW
+  - Save multiple estimation scenarios with custom names
+  - View chronological history of all estimates
+  - Compare two estimates to see differences in activities, drivers, and risks
+  - Visual timeline showing evolution of estimates over time
+  - Statistics: min, max, average, trend analysis
 - [ ] 3-column dashboard (lists, requirements, treemap)
 - [ ] Interactive treemap visualization
 - [ ] PDF/CSV export implementation
 - [ ] Filters and search
 - [ ] Bulk import requirements
+
+### ✨ Recently Completed: Estimation History
+
+The system now includes a complete **estimation history and comparison** feature:
+
+- **Multiple Scenarios**: Save different versions of estimates with custom names (e.g., "Base", "Optimistic", "With Integration")
+- **History Tab**: View all previous estimations in chronological order with full details
+- **Comparison Tool**: Select and compare two estimates side-by-side
+  - See differences in total days, activities, drivers, and risks
+  - Visual indicators for increases/decreases
+  - Color-coded badges for added/removed items
+- **Timeline Visualization**: See the evolution of estimates over time
+  - Min/max/average statistics
+  - Trend analysis with percentage change
+  - Visual bars proportional to effort
+  - Delta indicators between consecutive estimates
+
+📖 See [ESTIMATION_HISTORY.md](./ESTIMATION_HISTORY.md) for complete documentation and usage examples.
 
 ## 📝 Notes
 
@@ -221,9 +248,10 @@ pnpm run build
 - Restart dev server after adding environment variables
 
 ### "AI suggestions not working"
-- Check `VITE_OPENAI_API_KEY` in `.env`
+- Check `OPENAI_API_KEY` in `.env` (no VITE_ prefix)
+- For local dev with Netlify CLI: `netlify dev` instead of `pnpm run dev`
 - Verify OpenAI API key is valid and has credits
-- Check browser console for error messages
+- Check browser console and Netlify function logs for errors
 - System falls back to preset defaults if AI fails
 
 ### "Cannot read properties of null"

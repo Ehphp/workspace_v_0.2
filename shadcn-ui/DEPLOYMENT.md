@@ -67,9 +67,9 @@ The Requirements Estimation System Phase 1 MVP is now complete and ready for dep
    - Click "New Project"
    - Import your GitHub repository
    - Configure environment variables:
-     - `VITE_SUPABASE_URL`
-     - `VITE_SUPABASE_ANON_KEY`
-     - `VITE_OPENAI_API_KEY`
+     - `VITE_SUPABASE_URL` (your Supabase project URL)
+     - `VITE_SUPABASE_ANON_KEY` (your Supabase anon key)
+     - `OPENAI_API_KEY` (your OpenAI key - **NO VITE_ prefix**, server-side only)
    - Click "Deploy"
 
 4. **Post-Deployment**
@@ -77,14 +77,35 @@ The Requirements Estimation System Phase 1 MVP is now complete and ready for dep
    - Test authentication flow
    - Verify AI suggestions work
 
-### Option 2: Netlify
+### Option 2: Netlify (Recommended)
 
-1. **Build Settings**
-   - Build command: `pnpm run build`
-   - Publish directory: `dist`
+1. **Push to GitHub** (if not already done)
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git remote add origin your-github-repo-url
+   git push -u origin main
+   ```
 
-2. **Environment Variables**
-   - Add the same three variables as Vercel
+2. **Deploy on Netlify**
+   - Go to [netlify.com](https://netlify.com)
+   - Click "Add new site" → "Import an existing project"
+   - Connect your GitHub repository
+   - Build settings (auto-detected from netlify.toml):
+     - Build command: `pnpm run build`
+     - Publish directory: `dist`
+     - Functions directory: `netlify/functions`
+
+3. **Environment Variables** (Site settings → Environment variables)
+   - `VITE_SUPABASE_URL` = your Supabase project URL
+   - `VITE_SUPABASE_ANON_KEY` = your Supabase anon key
+   - `OPENAI_API_KEY` = your OpenAI key (**NO VITE_ prefix** - server-side only)
+
+4. **Deploy**
+   - Click "Deploy site"
+   - Wait for build to complete (~2-3 minutes)
+   - Test AI suggestions work correctly
 
 ### Option 3: Self-Hosted
 

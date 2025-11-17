@@ -123,14 +123,19 @@ If you see all the data, your database is ready! ✅
 VITE_SUPABASE_URL=https://your-project-id.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
-# OpenAI Configuration
-VITE_OPENAI_API_KEY=sk-proj-xxxxx...
+# OpenAI Configuration (only needed for local development)
+# For production (Netlify/Vercel), set OPENAI_API_KEY in deployment settings
+# OPENAI_API_KEY=sk-proj-xxxxx...
 ```
 
 **Replace:**
 - `your-project-id` with your actual Supabase project ID
 - The `VITE_SUPABASE_ANON_KEY` with your actual anon key
-- The `VITE_OPENAI_API_KEY` with your actual OpenAI key
+
+**Note on OpenAI Key:**
+- For **local development**: You can add `OPENAI_API_KEY` here (no VITE_ prefix)
+- For **production deployment**: Set `OPENAI_API_KEY` in Netlify/Vercel environment variables
+- The key is **never exposed** to the browser - it's used server-side via Netlify Functions
 
 ### Step 2: Install Dependencies
 

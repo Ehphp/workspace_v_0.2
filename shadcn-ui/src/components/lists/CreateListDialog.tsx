@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import type { TechnologyPreset } from '@/types/database';
 
 interface CreateListDialogProps {
   open: boolean;
@@ -27,8 +28,29 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [owner, setOwner] = useState('');
+  const [techPresetId, setTechPresetId] = useState<string>('__NONE__');
   const [status, setStatus] = useState<'DRAFT' | 'ACTIVE'>('DRAFT');
   const [loading, setLoading] = useState(false);
+  const [presets, setPresets] = useState<TechnologyPreset[]>([]);
+
+  useEffect(() => {
+    if (open) {
+      loadPresets();
+    }
+  }, [open]);
+
+  const loadPresets = async () => {
+    const { data, error } = await supabase
+      .from('technology_presets')
+      .select('*')
+      .order('name');
+
+    if (error) {
+      console.error('Error loading presets:', error);
+    } else {
+      setPresets(data || []);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +63,7 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
       name,
       description,
       owner: owner || user.email || '',
+      tech_preset_id: techPresetId === '__NONE__' ? null : techPresetId,
       status,
     });
 
@@ -52,6 +75,7 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
       setName('');
       setDescription('');
       setOwner('');
+      setTechPresetId('__NONE__');
       setStatus('DRAFT');
       onOpenChange(false);
       onSuccess();
@@ -102,6 +126,26 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
                 value={owner}
                 onChange={(e) => setOwner(e.target.value)}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="techPreset">Default Technology</Label>
+              <Select value={techPresetId} onValueChange={setTechPresetId}>
+                <SelectTrigger id="techPreset">
+                  <SelectValue placeholder="Select technology..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__NONE__">None (set per requirement)</SelectItem>
+                  {presets.map((preset) => (
+                    <SelectItem key={preset.id} value={preset.id}>
+                      {preset.name} ({preset.tech_category})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                All requirements in this project will inherit this technology by default
+              </p>
             </div>
 
             <div className="space-y-2">

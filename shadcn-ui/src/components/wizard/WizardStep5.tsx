@@ -42,8 +42,8 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
       let allRisks: Risk[];
 
       if (activitiesResult.error || !activitiesResult.data || activitiesResult.data.length === 0 ||
-          driversResult.error || !driversResult.data || driversResult.data.length === 0 ||
-          risksResult.error || !risksResult.data || risksResult.data.length === 0) {
+        driversResult.error || !driversResult.data || driversResult.data.length === 0 ||
+        risksResult.error || !risksResult.data || risksResult.data.length === 0) {
         allActivities = MOCK_ACTIVITIES;
         allDrivers = MOCK_DRIVERS;
         allRisks = MOCK_RISKS;
@@ -152,85 +152,114 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
 
   if (loading || !result) {
     return (
-      <div className="text-center py-6">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+      <div className="text-center py-12">
+        <div className="w-12 h-12 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto"></div>
+        <p className="text-sm text-slate-600 mt-4">Calculating estimation...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <h2 className="text-lg font-semibold text-slate-900">Estimation Results</h2>
-          {isDemoMode && (
-            <Badge variant="secondary" className="text-xs h-5">
-              Demo
-            </Badge>
-          )}
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold text-slate-900">Estimation Results</h2>
+              {isDemoMode && (
+                <Badge variant="secondary" className="text-xs">
+                  Demo Mode
+                </Badge>
+              )}
+            </div>
+            <p className="text-sm text-slate-600 mt-1">
+              Your calculated effort estimation with full transparency
+            </p>
+          </div>
         </div>
-        <p className="text-sm text-slate-600">
-          Calculated effort estimation for your requirement.
-        </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        {/* Summary Card */}
-        <Card className="border-primary border-2">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-center text-2xl font-semibold">
-              {result.totalDays.toFixed(2)} Days
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card className="border-2 border-green-300 bg-gradient-to-br from-green-50 to-emerald-50 shadow-xl">
+          <CardHeader className="pb-4 text-center">
+            <div className="inline-block mx-auto px-4 py-2 rounded-full bg-gradient-to-r from-green-600 to-emerald-600 text-white mb-3">
+              <svg className="w-5 h-5 inline mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <span className="text-sm font-semibold">Estimated Total</span>
+            </div>
+            <CardTitle className="text-5xl font-bold bg-gradient-to-r from-green-700 to-emerald-700 bg-clip-text text-transparent">
+              {result.totalDays.toFixed(2)}
             </CardTitle>
+            <p className="text-sm font-medium text-slate-600 mt-1">Working Days</p>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="space-y-1.5 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-600">Base Days:</span>
-                <span className="font-medium">{result.baseDays.toFixed(2)}</span>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between items-center p-2 rounded-lg bg-white/60">
+                <span className="text-slate-600 font-medium">Base Days:</span>
+                <span className="font-bold text-slate-900">{result.baseDays.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-600">Driver Multiplier:</span>
-                <span className="font-medium">{result.driverMultiplier.toFixed(3)}x</span>
+              <div className="flex justify-between items-center p-2 rounded-lg bg-white/60">
+                <span className="text-slate-600 font-medium">Driver Multiplier:</span>
+                <span className="font-bold text-blue-600">{result.driverMultiplier.toFixed(3)}x</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-600">Subtotal:</span>
-                <span className="font-medium">{result.subtotal.toFixed(2)}</span>
+              <div className="flex justify-between items-center p-2 rounded-lg bg-white/60">
+                <span className="text-slate-600 font-medium">Subtotal:</span>
+                <span className="font-bold text-slate-900">{result.subtotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-600">Risk Score:</span>
-                <span className="font-medium">{result.riskScore}</span>
+              <div className="flex justify-between items-center p-2 rounded-lg bg-white/60">
+                <span className="text-slate-600 font-medium">Risk Score:</span>
+                <span className="font-bold text-amber-600">{result.riskScore}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-600">Contingency ({result.contingencyPercent}%):</span>
-                <span className="font-medium">{result.contingencyDays.toFixed(2)}</span>
+              <div className="flex justify-between items-center p-2 rounded-lg bg-white/60">
+                <span className="text-slate-600 font-medium">Contingency ({result.contingencyPercent}%):</span>
+                <span className="font-bold text-slate-900">{result.contingencyDays.toFixed(2)}</span>
               </div>
-              <div className="border-t border-slate-200 pt-1.5 mt-1.5 flex justify-between text-sm font-semibold">
-                <span>Total Days:</span>
-                <span>{result.totalDays.toFixed(2)}</span>
+              <div className="border-t-2 border-green-300 pt-3 mt-3 flex justify-between items-center p-2 rounded-lg bg-gradient-to-r from-green-100 to-emerald-100">
+                <span className="font-bold text-slate-900">Final Total:</span>
+                <span className="text-2xl font-bold text-green-700">{result.totalDays.toFixed(2)}</span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Breakdown */}
-        <Card className="border-slate-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold">Breakdown</CardTitle>
+        <Card className="border-2 border-slate-200 bg-white/60 backdrop-blur-sm shadow-xl">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              Breakdown Details
+            </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0 space-y-3 max-h-[280px] overflow-y-auto">
+          <CardContent className="pt-0 space-y-4 max-h-[320px] overflow-y-auto pr-2">
             <div>
-              <h4 className="font-medium text-xs mb-1.5 text-slate-900">Activities ({data.selectedActivityCodes.length})</h4>
-              <div className="space-y-1 text-xs">
+              <h4 className="font-bold text-sm mb-2 text-slate-900 flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
+                  {data.selectedActivityCodes.length}
+                </div>
+                Activities
+              </h4>
+              <div className="space-y-2 text-xs">
                 {data.selectedActivityCodes.map((code) => {
                   const activity = activities.find((a) => a.code === code);
                   const isAi = data.aiSuggestedActivityCodes.includes(code);
                   return (
-                    <div key={code} className="flex justify-between">
-                      <span className="text-slate-700">
+                    <div key={code} className="flex justify-between items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
+                      <span className="text-slate-700 font-medium flex items-center gap-1">
                         {activity?.name || code}
-                        {isAi && <span className="text-blue-600 ml-1">{isDemoMode ? '🎯' : '🤖'}</span>}
+                        {isAi && (
+                          <span className="text-purple-600 font-semibold">
+                            {isDemoMode ? '🎯' : '🤖'}
+                          </span>
+                        )}
                       </span>
-                      <span className="text-slate-500">{activity?.base_days}d</span>
+                      <span className="text-slate-900 font-bold bg-white px-2 py-0.5 rounded">{activity?.base_days}d</span>
                     </div>
                   );
                 })}
@@ -238,15 +267,22 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
             </div>
 
             <div>
-              <h4 className="font-medium text-xs mb-1.5 text-slate-900">Drivers</h4>
-              <div className="space-y-1 text-xs">
+              <h4 className="font-bold text-sm mb-2 text-slate-900 flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                Drivers
+              </h4>
+              <div className="space-y-2 text-xs">
                 {Object.entries(data.selectedDriverValues).map(([code, value]) => {
                   const driver = drivers.find((d) => d.code === code);
                   const option = driver?.options.find((o) => o.value === value);
                   return (
-                    <div key={code} className="flex justify-between">
-                      <span className="text-slate-700">{driver?.name || code}</span>
-                      <span className="text-slate-500">
+                    <div key={code} className="flex justify-between items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
+                      <span className="text-slate-700 font-medium">{driver?.name || code}</span>
+                      <span className="text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded">
                         {option?.label} ({option?.multiplier.toFixed(2)}x)
                       </span>
                     </div>
@@ -256,14 +292,19 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
             </div>
 
             <div>
-              <h4 className="font-medium text-xs mb-1.5 text-slate-900">Risks ({data.selectedRiskCodes.length})</h4>
-              <div className="space-y-1 text-xs">
+              <h4 className="font-bold text-sm mb-2 text-slate-900 flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-gradient-to-br from-rose-500 to-red-500 flex items-center justify-center text-white text-xs font-bold">
+                  {data.selectedRiskCodes.length}
+                </div>
+                Risks
+              </h4>
+              <div className="space-y-2 text-xs">
                 {data.selectedRiskCodes.map((code) => {
                   const risk = risks.find((r) => r.code === code);
                   return (
-                    <div key={code} className="flex justify-between">
-                      <span className="text-slate-700">{risk?.name || code}</span>
-                      <span className="text-slate-500">w: {risk?.weight}</span>
+                    <div key={code} className="flex justify-between items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
+                      <span className="text-slate-700 font-medium">{risk?.name || code}</span>
+                      <span className="text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded">w: {risk?.weight}</span>
                     </div>
                   );
                 })}
@@ -273,32 +314,69 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
         </Card>
       </div>
 
-      {/* Actions */}
-      <div className="space-y-2">
-        <div className="grid grid-cols-2 gap-2">
-          <Button onClick={handleDownloadPDF} variant="outline" size="sm">
-            📄 PDF
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            onClick={handleDownloadPDF}
+            variant="outline"
+            className="border-2 border-slate-300 hover:bg-slate-50"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            Export PDF
           </Button>
-          <Button onClick={handleDownloadCSV} variant="outline" size="sm">
-            📊 CSV
+          <Button
+            onClick={handleDownloadCSV}
+            variant="outline"
+            className="border-2 border-slate-300 hover:bg-slate-50"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Export CSV
           </Button>
         </div>
 
         {isDemoMode && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
-            <strong>Save this estimation:</strong> Configure Supabase to enable authentication and save to your account.
+          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-blue-900 mb-1">Save Your Estimation</p>
+                <p className="text-xs text-blue-700">Configure Supabase to enable authentication and save estimations to your account.</p>
+              </div>
+            </div>
           </div>
         )}
 
-        <Button onClick={() => navigate('/register')} className="w-full" size="sm">
-          Create Account to Save
+        <Button
+          onClick={() => navigate('/register')}
+          className="w-full h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all duration-300"
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+          </svg>
+          <span className="font-semibold">Create Account to Save Estimation</span>
         </Button>
 
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" onClick={onBack} size="sm">
+        <div className="grid grid-cols-2 gap-3">
+          <Button variant="outline" onClick={onBack} className="border-2 hover:bg-slate-50">
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
             Back
           </Button>
-          <Button variant="outline" onClick={onReset} size="sm">
+          <Button
+            variant="outline"
+            onClick={onReset}
+            className="border-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
             New Estimation
           </Button>
         </div>

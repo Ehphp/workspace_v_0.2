@@ -7,6 +7,8 @@ import Home from './pages/Index';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Lists from './pages/Lists';
+import Requirements from './pages/Requirements';
+import RequirementDetail from './pages/RequirementDetail';
 import NotFound from './pages/NotFound';
 
 const queryClient = new QueryClient();
@@ -25,6 +27,22 @@ const App = () => (
             element={
               <AuthGuard>
                 <Lists />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/lists/:listId/requirements"
+            element={
+              <AuthGuard>
+                <Requirements />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/lists/:listId/requirements/:reqId"
+            element={
+              <AuthGuard>
+                <RequirementDetail />
               </AuthGuard>
             }
           />

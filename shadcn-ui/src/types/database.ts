@@ -54,6 +54,7 @@ export interface List {
   name: string;
   description: string;
   owner: string;
+  tech_preset_id: string | null; // Default technology for requirements in this list
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
   created_at: string;
   updated_at: string;
@@ -106,4 +107,15 @@ export interface EstimationRisk {
   id: string;
   estimation_id: string;
   risk_id: string;
+}
+
+// Extended types with joins
+export interface RequirementWithEstimation extends Requirement {
+  latest_estimation: Estimation | null;
+}
+
+export interface EstimationWithDetails extends Estimation {
+  activities?: EstimationActivity[];
+  drivers?: EstimationDriver[];
+  risks?: EstimationRisk[];
 }
