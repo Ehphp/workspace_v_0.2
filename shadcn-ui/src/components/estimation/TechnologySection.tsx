@@ -25,9 +25,9 @@ export function TechnologySection({
     const selectedPreset = presets.find((p) => p.id === selectedPresetId);
 
     return (
-        <Card className="rounded-lg shadow-sm">
-            <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold">Scenario & Driver</CardTitle>
+        <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
+            <CardHeader className="pb-3 bg-gradient-to-r from-slate-50 to-blue-50">
+                <CardTitle className="text-sm font-semibold text-slate-900">Scenario & Driver</CardTitle>
                 <CardDescription className="text-xs">
                     Select the technology stack for this requirement
                 </CardDescription>

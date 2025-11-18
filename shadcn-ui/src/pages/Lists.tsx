@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,22 +20,21 @@ import { DeleteListDialog } from '@/components/lists/DeleteListDialog';
 
 export default function Lists() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [lists, setLists] = useState<List[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [editList, setEditList] = useState<List | null>(null);
   const [deleteList, setDeleteList] = useState<List | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      loadLists();
-    }
-  }, [user, showArchived]);
-
-  const loadLists = async () => {
+  const loadLists = useCallback(async () => {
     if (!user) return;
+
+    setLoading(true);
+    setError(null);
 
     let query = supabase
       .from('lists')
@@ -42,7 +42,9 @@ export default function Lists() {
       .eq('user_id', user.id)
       .order('updated_at', { ascending: false });
 
-    if (!showArchived) {
+    if (showArchived) {
+      query = query.eq('status', 'ARCHIVED');
+    } else {
       query = query.neq('status', 'ARCHIVED');
     }
 
@@ -50,11 +52,36 @@ export default function Lists() {
 
     if (error) {
       console.error('Error loading lists:', error);
+      const errorMessage = 'Failed to load projects. Please try again.';
+      setError(errorMessage);
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
     } else {
       setLists(data || []);
     }
     setLoading(false);
-  };
+  }, [user, showArchived, toast]);
+
+  useEffect(() => {
+    // Wait for auth to finish loading before checking user
+    if (authLoading) return;
+
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    let isMounted = true;
+
+    loadLists();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, loadLists, navigate, authLoading, showArchived]);
 
   const getStatusBadge = (status: string) => {
     const variants = {
@@ -63,14 +90,18 @@ export default function Lists() {
       ARCHIVED: 'outline',
     } as const;
 
+    type StatusKey = keyof typeof variants;
+    const isValidStatus = (s: string): s is StatusKey => s in variants;
+    const validStatus = isValidStatus(status) ? status : 'DRAFT';
+
     return (
-      <Badge variant={variants[status as keyof typeof variants] || 'secondary'}>
+      <Badge variant={variants[validStatus]}>
         {status}
       </Badge>
     );
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -163,6 +194,15 @@ export default function Lists() {
                   key={list.id}
                   className="group border-slate-200/50 bg-white/60 backdrop-blur-sm hover:bg-white/80 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"
                   onClick={() => navigate(`/lists/${list.id}/requirements`)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open project ${list.name}`}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/lists/${list.id}/requirements`);
+                    }
+                  }}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start mb-2">
@@ -175,8 +215,14 @@ export default function Lists() {
                         {getStatusBadge(list.status)}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-white/80 transition-all duration-300">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:bg-white/80 transition-all duration-300"
+                              aria-label={`Options for ${list.name}`}
+                            >
                               <MoreVertical className="h-4 w-4" />
+                              <span className="sr-only">Open menu</span>
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-md border-slate-200/50 shadow-xl">

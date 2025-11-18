@@ -36,9 +36,9 @@ export function ActivitiesSection({
     };
 
     return (
-        <Card className="rounded-lg shadow-sm flex flex-col max-h-[400px]">
-            <CardHeader className="pb-2 flex-none">
-                <CardTitle className="text-sm font-semibold">Attività</CardTitle>
+        <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300 flex flex-col max-h-[400px]">
+            <CardHeader className="pb-3 flex-none bg-gradient-to-r from-slate-50 to-blue-50">
+                <CardTitle className="text-sm font-semibold text-slate-900">Attività</CardTitle>
                 <CardDescription className="text-xs">
                     Select the activities required for this requirement
                 </CardDescription>
@@ -62,7 +62,7 @@ export function ActivitiesSection({
                                         return (
                                             <div
                                                 key={activity.id}
-                                                className="flex items-start gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
+                                                className="flex items-start gap-3 p-3 rounded-lg border border-slate-200/50 hover:bg-blue-50/50 hover:border-blue-300/50 transition-all duration-200"
                                             >
                                                 <Checkbox
                                                     id={activity.id}

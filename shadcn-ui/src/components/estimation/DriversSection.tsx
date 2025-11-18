@@ -5,8 +5,8 @@ import type { Driver } from '@/types/database';
 
 interface DriversSectionProps {
     drivers: Driver[];
-    selectedDriverValues: Record<string, string>;
-    onDriverChange: (driverCode: string, value: string) => void;
+    selectedDriverValues: Record<string, string>; // driver.id -> value
+    onDriverChange: (driverId: string, value: string) => void; // Use ID instead of code
     currentMultiplier: number;
 }
 
@@ -17,11 +17,11 @@ export function DriversSection({
     currentMultiplier,
 }: DriversSectionProps) {
     return (
-        <Card className="rounded-lg shadow-sm">
-            <CardHeader className="pb-2">
+        <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
+            <CardHeader className="pb-3 bg-gradient-to-r from-slate-50 to-blue-50">
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="text-sm font-semibold">Complexity Drivers</CardTitle>
+                        <CardTitle className="text-sm font-semibold text-slate-900">Complexity Drivers</CardTitle>
                         <CardDescription className="text-xs">
                             Select factors that affect the complexity
                         </CardDescription>
@@ -37,7 +37,7 @@ export function DriversSection({
             <CardContent>
                 <div className="grid gap-2 md:grid-cols-2">
                     {drivers.map((driver) => {
-                        const selectedValue = selectedDriverValues[driver.code] || '';
+                        const selectedValue = selectedDriverValues[driver.id] || ''; // Use ID
                         const selectedOption = driver.options.find((opt) => opt.value === selectedValue);
 
                         return (
@@ -54,7 +54,7 @@ export function DriversSection({
                                 </div>
                                 <Select
                                     value={selectedValue}
-                                    onValueChange={(value) => onDriverChange(driver.code, value)}
+                                    onValueChange={(value) => onDriverChange(driver.id, value)} // Pass ID
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select..." />

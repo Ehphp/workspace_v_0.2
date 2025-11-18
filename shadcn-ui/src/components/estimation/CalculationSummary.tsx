@@ -20,9 +20,9 @@ export function CalculationSummary({
 }: CalculationSummaryProps) {
     if (!result) {
         return (
-            <Card className="rounded-lg shadow-sm">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold">Riepilogo</CardTitle>
+            <Card className="rounded-xl shadow-xl border-white/50 bg-gradient-to-br from-white/90 to-blue-50/50 backdrop-blur-lg">
+                <CardHeader className="pb-2 bg-gradient-to-r from-slate-50 to-blue-50">
+                    <CardTitle className="text-sm font-semibold text-slate-900">Riepilogo</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="text-center py-6 text-muted-foreground">
@@ -35,10 +35,10 @@ export function CalculationSummary({
     }
 
     return (
-        <Card className="rounded-lg shadow-sm">
-            <CardHeader className="pb-2">
+        <Card className="rounded-xl shadow-xl border-white/50 bg-gradient-to-br from-white/90 to-blue-50/50 backdrop-blur-lg">
+            <CardHeader className="pb-3 bg-gradient-to-r from-slate-50 to-blue-50">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-semibold">Riepilogo</CardTitle>
+                    <CardTitle className="text-sm font-semibold text-slate-900">Riepilogo</CardTitle>
                     {hasUnsavedChanges && (
                         <Badge variant="secondary" className="text-xs">Auto</Badge>
                     )}
@@ -113,7 +113,14 @@ export function CalculationSummary({
 
                 {/* Save Button */}
                 <Button
-                    onClick={onSave}
+                    onClick={() => {
+                        console.log('🖱️ Button clicked in CalculationSummary', {
+                            isSaving,
+                            hasUnsavedChanges,
+                            disabled: isSaving || !hasUnsavedChanges
+                        });
+                        onSave();
+                    }}
                     disabled={isSaving || !hasUnsavedChanges}
                     className="w-full"
                     size="lg"

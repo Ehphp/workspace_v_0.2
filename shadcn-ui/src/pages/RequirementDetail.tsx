@@ -1,19 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { useEstimationData } from '@/hooks/useEstimationData';
+import { useEstimationState } from '@/hooks/useEstimationState';
+import { useRequirement } from '@/hooks/useRequirement';
+import { useEstimationHistory } from '@/hooks/useEstimationHistory';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, FileText, Calculator, History, User, Clock } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { ArrowLeft, FileText, Calculator, History, Clock, Eye, Copy, RotateCcw, GitCompare } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Requirement, TechnologyPreset, Activity, Driver, Risk } from '@/types/database';
-import type { EstimationResult } from '@/types/estimation';
-import { calculateEstimation } from '@/lib/estimationEngine';
 import { suggestActivities } from '@/lib/openai';
 import { TechnologySection } from '@/components/estimation/TechnologySection';
 import { ActivitiesSection } from '@/components/estimation/ActivitiesSection';
@@ -27,204 +30,131 @@ export default function RequirementDetail() {
     const navigate = useNavigate();
     const { listId, reqId } = useParams<{ listId: string; reqId: string }>();
     const { user } = useAuth();
-    const [requirement, setRequirement] = useState<Requirement | null>(null);
-    const [preset, setPreset] = useState<TechnologyPreset | null>(null);
-    const [loading, setLoading] = useState(true);
 
-    // Estimation state
-    const [presets, setPresets] = useState<TechnologyPreset[]>([]);
-    const [activities, setActivities] = useState<Activity[]>([]);
-    const [drivers, setDrivers] = useState<Driver[]>([]);
-    const [risks, setRisks] = useState<Risk[]>([]);
+    // Load requirement data
+    const {
+        requirement,
+        preset,
+        loading: requirementLoading,
+        error: requirementError
+    } = useRequirement(listId, reqId, user?.id);
 
-    const [selectedPresetId, setSelectedPresetId] = useState<string>('');
-    const [selectedActivityIds, setSelectedActivityIds] = useState<string[]>([]);
-    const [aiSuggestedIds, setAiSuggestedIds] = useState<string[]>([]);
-    const [selectedDriverValues, setSelectedDriverValues] = useState<Record<string, string>>({});
-    const [selectedRiskIds, setSelectedRiskIds] = useState<string[]>([]);
+    // Load estimation master data
+    const {
+        data: { presets, activities, drivers, risks },
+        loading: dataLoading,
+        error: dataError
+    } = useEstimationData();
 
-    const [estimationResult, setEstimationResult] = useState<EstimationResult | null>(null);
+    // Load estimation history
+    const {
+        history: estimationHistory,
+        loading: historyLoading,
+        refetch: refetchHistory
+    } = useEstimationHistory(reqId);
+
+    // Manage estimation state
+    const {
+        selectedPresetId,
+        selectedActivityIds,
+        aiSuggestedIds,
+        selectedDriverValues,
+        selectedRiskIds,
+        setSelectedPresetId,
+        toggleActivity,
+        setDriverValue,
+        toggleRisk,
+        applyPreset,
+        applyAiSuggestions,
+        estimationResult,
+        isValid: isEstimationValid,
+        hasSelections,
+    } = useEstimationState({
+        activities,
+        drivers,
+        risks,
+        presets,
+    });
+
+    // Local UI state
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-
-    // History state
-    const [estimationHistory, setEstimationHistory] = useState<any[]>([]);
-    const [isLoadingHistory, setIsLoadingHistory] = useState(false);
     const [showScenarioDialog, setShowScenarioDialog] = useState(false);
     const [scenarioName, setScenarioName] = useState('Default');
+    const [selectedEstimationId, setSelectedEstimationId] = useState<string | null>(null);
+    const [expandedEstimationId, setExpandedEstimationId] = useState<string | null>(null);
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [comparisonDialogOpen, setComparisonDialogOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState<string>('info');
 
-    useEffect(() => {
-        if (user && listId && reqId) {
-            loadData();
-            loadEstimationData();
-            loadEstimationHistory();
-        }
-    }, [user, listId, reqId]);
-
-    useEffect(() => {
-        // Recalculate estimation whenever selections change
-        if (activities.length > 0 && drivers.length > 0 && risks.length > 0) {
-            calculateCurrentEstimation();
-        }
-    }, [selectedActivityIds, selectedDriverValues, selectedRiskIds, activities, drivers, risks]);
-
-    const loadData = async () => {
-        if (!user || !listId || !reqId) return;
-
-        // Load requirement
-        const { data: reqData, error: reqError } = await supabase
-            .from('requirements')
-            .select('*')
-            .eq('id', reqId)
-            .eq('list_id', listId)
-            .single();
-
-        if (reqError) {
-            console.error('Error loading requirement:', reqError);
-            navigate(`/lists/${listId}/requirements`);
-            return;
-        }
-
-        setRequirement(reqData);
-
-        // Load technology preset
-        if (reqData.tech_preset_id) {
-            const { data: presetData } = await supabase
-                .from('technology_presets')
-                .select('*')
-                .eq('id', reqData.tech_preset_id)
-                .single();
-
-            if (presetData) {
-                setPreset(presetData);
-            }
-        }
-
-        setLoading(false);
-    };
-
-    const loadEstimationData = async () => {
-        // Load all presets
-        const { data: presetsData } = await supabase
-            .from('technology_presets')
-            .select('*')
-            .order('name');
-        if (presetsData) setPresets(presetsData);
-
-        // Load all activities
-        const { data: activitiesData } = await supabase
-            .from('activities')
-            .select('*')
-            .eq('active', true)
-            .order('group, name');
-        if (activitiesData) setActivities(activitiesData);
-
-        // Load all drivers
-        const { data: driversData } = await supabase
-            .from('drivers')
-            .select('*')
-            .order('code');
-        if (driversData) setDrivers(driversData);
-
-        // Load all risks
-        const { data: risksData } = await supabase
-            .from('risks')
-            .select('*')
-            .order('weight');
-        if (risksData) setRisks(risksData);
-    };
-
-    const loadEstimationHistory = async () => {
-        if (!reqId) return;
-
-        setIsLoadingHistory(true);
-        try {
-            const { data: estimations, error } = await supabase
-                .from('estimations')
-                .select(`
-                    *,
-                    estimation_activities (activity_id, is_ai_suggested),
-                    estimation_drivers (driver_id, selected_value),
-                    estimation_risks (risk_id)
-                `)
-                .eq('requirement_id', reqId)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            setEstimationHistory(estimations || []);
-        } catch (error) {
-            console.error('Error loading estimation history:', error);
-        } finally {
-            setIsLoadingHistory(false);
-        }
-    };
-
-    const calculateCurrentEstimation = () => {
-        const selectedActivities = activities
-            .filter((a) => selectedActivityIds.includes(a.id))
-            .map((a) => ({
-                code: a.code,
-                baseDays: a.base_days,
-                isAiSuggested: aiSuggestedIds.includes(a.id),
-            }));
-
-        const selectedDrivers = Object.entries(selectedDriverValues)
-            .map(([code, value]) => {
-                const driver = drivers.find((d) => d.code === code);
-                const option = driver?.options.find((o) => o.value === value);
-                return option ? {
-                    code,
-                    value,
-                    multiplier: option.multiplier,
-                } : null;
-            })
-            .filter((d): d is NonNullable<typeof d> => d !== null);
-
-        const selectedRisks = risks
-            .filter((r) => selectedRiskIds.includes(r.id))
-            .map((r) => ({
-                code: r.code,
-                weight: r.weight,
-            }));
-
-        if (selectedActivities.length === 0) {
-            setEstimationResult(null);
-            return;
-        }
-
-        const result = calculateEstimation({
-            activities: selectedActivities,
-            drivers: selectedDrivers,
-            risks: selectedRisks,
+    // Track unsaved changes
+    const hasUnsavedChanges = useMemo(() => {
+        const result = hasSelections && estimationResult !== null;
+        console.log('🔄 hasUnsavedChanges computed:', {
+            hasSelections,
+            hasEstimationResult: estimationResult !== null,
+            result,
+            selectedActivityIds: selectedActivityIds.length,
+            selectedPresetId
         });
+        return result;
+    }, [hasSelections, estimationResult, selectedActivityIds, selectedPresetId]);
 
-        setEstimationResult(result);
-        setHasUnsavedChanges(true);
-    };
+    // Copy estimation to clipboard
+    const handleCopyEstimation = useCallback((est: typeof estimationHistory[0]) => {
+        const summary = `Estimation: ${est.scenario_name}
+Total Days: ${est.total_days.toFixed(1)}
+Base Days: ${est.base_days.toFixed(1)}
+Multiplier: ${est.driver_multiplier.toFixed(3)}x
+Risk Score: ${est.risk_score}
+Contingency: ${est.contingency_percent}%
+Activities: ${est.estimation_activities?.length || 0}
+Drivers: ${est.estimation_drivers?.length || 0}
+Risks: ${est.estimation_risks?.length || 0}`;
 
-    const handlePresetChange = (presetId: string) => {
-        setSelectedPresetId(presetId);
-        const preset = presets.find((p) => p.id === presetId);
-        if (preset) {
-            // Apply preset defaults
-            setSelectedDriverValues(preset.default_driver_values || {});
+        navigator.clipboard.writeText(summary);
+        toast.success('Estimation copied to clipboard');
+    }, []);
 
-            const defaultActivityIds = activities
-                .filter((a) => preset.default_activity_codes?.includes(a.code))
-                .map((a) => a.id);
-            setSelectedActivityIds(defaultActivityIds);
+    // Restore estimation (apply to current form)
+    const handleRestoreEstimation = useCallback((est: typeof estimationHistory[0]) => {
+        console.log('🔄 Restoring estimation:', est.scenario_name);
 
-            const defaultRiskIds = risks
-                .filter((r) => preset.default_risks?.includes(r.code))
-                .map((r) => r.id);
-            setSelectedRiskIds(defaultRiskIds);
+        // Apply activities
+        const activityIds = est.estimation_activities?.map(ea => ea.activity_id) || [];
+        console.log('📋 Activities to restore:', activityIds.length);
 
-            setAiSuggestedIds([]);
-        }
-    };
+        // Apply drivers - now using ID directly (no conversion needed)
+        const driverValues: Record<string, string> = {};
+        est.estimation_drivers?.forEach(ed => {
+            driverValues[ed.driver_id] = ed.selected_value; // ID-based, no conversion
+        });
+        console.log('🎛️ Drivers to restore:', Object.keys(driverValues).length, driverValues);
 
-    const handleAiSuggest = async () => {
+        // Apply risks
+        const riskIds = est.estimation_risks?.map(er => er.risk_id) || [];
+        console.log('⚠️ Risks to restore:', riskIds.length);
+
+        // Apply all selections using applyAiSuggestions
+        applyAiSuggestions(activityIds, driverValues, riskIds);
+
+        setScenarioName(est.scenario_name + ' (Restored)');
+
+        // Switch to Estimation tab to see restored values
+        setActiveTab('estimation');
+
+        toast.success(`Restored estimation: ${est.scenario_name}`);
+        console.log('✅ Restoration complete, switched to Estimation tab');
+    }, [applyAiSuggestions, drivers]);
+
+    // Combined loading state
+    const loading = requirementLoading || dataLoading;
+
+    const handlePresetChange = useCallback((presetId: string) => {
+        applyPreset(presetId);
+    }, [applyPreset]);
+
+    const handleAiSuggest = useCallback(async () => {
         if (!requirement?.description || !selectedPresetId) {
             toast.error('Please select a technology preset first');
             return;
@@ -233,7 +163,9 @@ export default function RequirementDetail() {
         setIsAiLoading(true);
         try {
             const selectedPreset = presets.find((p) => p.id === selectedPresetId);
-            if (!selectedPreset) return;
+            if (!selectedPreset) {
+                throw new Error('Selected preset not found');
+            }
 
             const suggestions = await suggestActivities({
                 description: requirement.description,
@@ -243,137 +175,153 @@ export default function RequirementDetail() {
                 risks,
             });
 
-            // Apply AI suggestions
+            // Map activity codes to IDs
             const suggestedActivityIds = activities
                 .filter((a) => suggestions.activityCodes.includes(a.code))
                 .map((a) => a.id);
 
-            setSelectedActivityIds(suggestedActivityIds);
-            setAiSuggestedIds(suggestedActivityIds);
-
-            if (suggestions.suggestedDrivers) {
-                setSelectedDriverValues(suggestions.suggestedDrivers);
-            }
-
-            if (suggestions.suggestedRisks) {
-                const suggestedRiskIds = risks
+            // Map risk codes to IDs
+            const suggestedRiskIds = suggestions.suggestedRisks
+                ? risks
                     .filter((r) => suggestions.suggestedRisks?.includes(r.code))
-                    .map((r) => r.id);
-                setSelectedRiskIds(suggestedRiskIds);
-            }
+                    .map((r) => r.id)
+                : undefined;
+
+            applyAiSuggestions(
+                suggestedActivityIds,
+                suggestions.suggestedDrivers,
+                suggestedRiskIds
+            );
 
             toast.success('AI suggestions applied successfully');
         } catch (error) {
             console.error('AI suggestion error:', error);
-            toast.error('Failed to get AI suggestions');
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            toast.error('Failed to get AI suggestions', {
+                description: errorMessage,
+            });
         } finally {
             setIsAiLoading(false);
         }
-    };
+    }, [requirement, selectedPresetId, presets, activities, drivers, risks, applyAiSuggestions]);
 
-    const handleActivityToggle = (activityId: string) => {
-        setSelectedActivityIds((prev) =>
-            prev.includes(activityId)
-                ? prev.filter((id) => id !== activityId)
-                : [...prev, activityId]
-        );
-    };
+    const handleSaveEstimation = useCallback(() => {
+        console.log('🔘 Save button clicked', {
+            user: !!user,
+            requirement: !!requirement,
+            estimationResult: !!estimationResult,
+            isEstimationValid,
+            hasUnsavedChanges,
+            selectedActivityIds: selectedActivityIds.length,
+        });
 
-    const handleDriverChange = (driverCode: string, value: string) => {
-        setSelectedDriverValues((prev) => ({
-            ...prev,
-            [driverCode]: value,
-        }));
-    };
+        if (!user || !requirement || !estimationResult) {
+            console.error('❌ Missing data:', { user: !!user, requirement: !!requirement, estimationResult: !!estimationResult });
+            toast.error('Cannot save estimation', {
+                description: 'Missing required data',
+            });
+            return;
+        }
 
-    const handleRiskToggle = (riskId: string) => {
-        setSelectedRiskIds((prev) =>
-            prev.includes(riskId)
-                ? prev.filter((id) => id !== riskId)
-                : [...prev, riskId]
-        );
-    };
+        if (!isEstimationValid) {
+            console.error('❌ Invalid estimation:', { isEstimationValid, selectedPresetId, activityCount: selectedActivityIds.length });
+            toast.error('Invalid estimation', {
+                description: 'Please select a preset and at least one activity',
+            });
+            return;
+        }
 
-    const handleSaveEstimation = async () => {
-        if (!user || !requirement || !estimationResult) return;
+        console.log('✅ Opening scenario dialog');
         setShowScenarioDialog(true);
-    };
+    }, [user, requirement, estimationResult, isEstimationValid, hasUnsavedChanges, selectedActivityIds, selectedPresetId]);
 
-    const confirmSaveEstimation = async () => {
+    const confirmSaveEstimation = useCallback(async () => {
         if (!user || !requirement || !estimationResult) return;
 
         setIsSaving(true);
         setShowScenarioDialog(false);
+
+        console.log('💾 Saving estimation with:', {
+            activities: selectedActivityIds.length,
+            drivers: Object.keys(selectedDriverValues).length,
+            risks: selectedRiskIds.length,
+            multiplier: estimationResult.driverMultiplier,
+            riskScore: estimationResult.riskScore,
+            contingency: estimationResult.contingencyPercent,
+        });
+
         try {
-            // Save estimation
-            const { data: estimation, error: estError } = await supabase
-                .from('estimations')
-                .insert({
-                    requirement_id: requirement.id,
-                    user_id: user.id,
-                    total_days: estimationResult.totalDays,
-                    base_days: estimationResult.baseDays,
-                    driver_multiplier: estimationResult.driverMultiplier,
-                    risk_score: estimationResult.riskScore,
-                    contingency_percent: estimationResult.contingencyPercent,
-                    scenario_name: scenarioName || 'Default',
-                })
-                .select()
-                .single();
-
-            if (estError) throw estError;
-
-            // Save activities
-            const activityRecords = selectedActivityIds.map((activityId) => ({
-                estimation_id: estimation.id,
+            // Prepare data for atomic RPC call
+            const activitiesData = selectedActivityIds.map((activityId) => ({
                 activity_id: activityId,
                 is_ai_suggested: aiSuggestedIds.includes(activityId),
-                notes: '',
+                notes: ''
             }));
 
-            if (activityRecords.length > 0) {
-                await supabase.from('estimation_activities').insert(activityRecords);
-            }
-
-            // Save drivers
-            const driverRecords = Object.entries(selectedDriverValues).map(([code, value]) => {
-                const driver = drivers.find((d) => d.code === code);
-                return {
-                    estimation_id: estimation.id,
-                    driver_id: driver?.id || '',
-                    selected_value: value,
-                };
-            }).filter((r) => r.driver_id);
-
-            if (driverRecords.length > 0) {
-                await supabase.from('estimation_drivers').insert(driverRecords);
-            }
-
-            // Save risks
-            const riskRecords = selectedRiskIds.map((riskId) => ({
-                estimation_id: estimation.id,
-                risk_id: riskId,
+            const driversData = Object.entries(selectedDriverValues).map(([driverId, value]) => ({
+                driver_id: driverId,
+                selected_value: value
             }));
 
-            if (riskRecords.length > 0) {
-                await supabase.from('estimation_risks').insert(riskRecords);
-            }
+            const risksData = selectedRiskIds.map((riskId) => ({
+                risk_id: riskId
+            }));
 
-            setHasUnsavedChanges(false);
+            // ✅ SINGLE ATOMIC RPC CALL - all-or-nothing transaction
+            const { data, error } = await supabase.rpc('save_estimation_atomic', {
+                p_requirement_id: requirement.id,
+                p_user_id: user.id,
+                p_total_days: estimationResult.totalDays,
+                p_base_days: estimationResult.baseDays,
+                p_driver_multiplier: estimationResult.driverMultiplier,
+                p_risk_score: estimationResult.riskScore,
+                p_contingency_percent: estimationResult.contingencyPercent,
+                p_scenario_name: scenarioName || 'Default',
+                p_activities: activitiesData,
+                p_drivers: driversData.length > 0 ? driversData : null,
+                p_risks: risksData.length > 0 ? risksData : null
+            });
+
+            if (error) throw error;
+            if (!data || data.length === 0) throw new Error('No data returned from save operation');
+
+            const result = data[0];
+            console.log('✅ Estimation saved atomically:', {
+                estimationId: result.estimation_id,
+                activities: result.activities_count,
+                drivers: result.drivers_count,
+                risks: result.risks_count
+            });
+
             setScenarioName('Default');
-            toast.success('Estimation saved successfully');
+            toast.success('Estimation saved successfully', {
+                description: `${result.activities_count} activities, ${result.drivers_count} drivers, ${result.risks_count} risks`
+            });
 
             // Reload history
-            await loadEstimationHistory();
+            await refetchHistory();
         } catch (error) {
             console.error('Error saving estimation:', error);
-            toast.error('Failed to save estimation');
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            toast.error('Failed to save estimation', {
+                description: errorMessage,
+            });
         } finally {
             setIsSaving(false);
         }
-    };
+    }, [
+        user,
+        requirement,
+        estimationResult,
+        scenarioName,
+        selectedActivityIds,
+        aiSuggestedIds,
+        selectedDriverValues,
+        selectedRiskIds,
+        refetchHistory,
+    ]);
 
-    const getPriorityBadge = (priority: string) => {
+    const getPriorityBadge = useCallback((priority: string) => {
         const variants = {
             HIGH: 'destructive',
             MEDIUM: 'default',
@@ -384,9 +332,9 @@ export default function RequirementDetail() {
                 {priority}
             </Badge>
         );
-    };
+    }, []);
 
-    const getStateBadge = (state: string) => {
+    const getStateBadge = useCallback((state: string) => {
         const variants = {
             PROPOSED: 'outline',
             SELECTED: 'secondary',
@@ -398,7 +346,7 @@ export default function RequirementDetail() {
                 {state}
             </Badge>
         );
-    };
+    }, []);
 
     if (loading) {
         return (
@@ -413,280 +361,621 @@ export default function RequirementDetail() {
     }
 
     return (
-        <div className="h-screen flex flex-col bg-gray-50">
+        <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+            {/* Subtle background pattern */}
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgxNDgsMTYzLDE4NCwwLjA1KSkgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40 pointer-events-none"></div>
+
             {/* Fixed Header */}
-            <header className="border-b bg-white flex-none shadow-sm">
-                <div className="container mx-auto px-4 py-2">
-                    <div className="flex items-center gap-3">
+            <header className="relative z-10 border-b border-white/20 bg-white/80 backdrop-blur-lg flex-none shadow-lg">
+                <div className="container mx-auto px-6 py-4">
+                    <div className="flex items-center gap-4">
                         <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => navigate(`/lists/${listId}/requirements`)}
+                            className="hover:bg-white/60 transition-all duration-300"
+                            aria-label="Back to requirements"
                         >
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
                         <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                                <span className="font-mono text-xs text-muted-foreground">{requirement.req_id}</span>
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="font-mono text-xs text-slate-600 font-semibold">{requirement.req_id}</span>
                                 {getPriorityBadge(requirement.priority)}
                                 {getStateBadge(requirement.state)}
                             </div>
-                            <h1 className="text-base font-semibold truncate">{requirement.title}</h1>
+                            <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent truncate">
+                                {requirement.title}
+                            </h1>
                         </div>
-                        <Button size="sm" variant="outline">Edit</Button>
+                        <Button size="sm" variant="outline" className="bg-white/80 backdrop-blur-sm shadow-sm border-slate-300 hover:bg-white hover:border-blue-400 transition-all duration-300">
+                            Edit
+                        </Button>
                     </div>
                 </div>
             </header>
 
             {/* Content Area with Tabs */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden relative z-10">
                 <div className="h-full flex flex-col">
-                    <Tabs defaultValue="info" className="h-full flex flex-col">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
                         {/* Tabs Navigation */}
-                        <TabsList className="w-full justify-start border-b bg-white h-10 rounded-none flex-none px-4">
-                            <TabsTrigger value="info" className="gap-2 text-xs">
-                                <FileText className="h-3 w-3" />
+                        <TabsList className="w-full justify-start border-b border-white/20 bg-white/60 backdrop-blur-sm h-12 rounded-none flex-none px-6 shadow-sm">
+                            <TabsTrigger
+                                value="info"
+                                className="gap-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md transition-all duration-300"
+                            >
+                                <FileText className="h-4 w-4" />
                                 Info
                             </TabsTrigger>
-                            <TabsTrigger value="estimation" className="gap-2 text-xs">
-                                <Calculator className="h-3 w-3" />
+                            <TabsTrigger
+                                value="estimation"
+                                className="gap-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md transition-all duration-300"
+                            >
+                                <Calculator className="h-4 w-4" />
                                 Estimation
                             </TabsTrigger>
-                            <TabsTrigger value="history" className="gap-2 text-xs">
-                                <History className="h-3 w-3" />
+                            <TabsTrigger
+                                value="history"
+                                className="gap-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md transition-all duration-300"
+                            >
+                                <History className="h-4 w-4" />
                                 History
                             </TabsTrigger>
                         </TabsList>
                         {/* Info Tab */}
-                        <TabsContent value="info" className="flex-1 overflow-y-auto mt-0 px-4 py-3">
-                            <div className="max-w-4xl space-y-3">
-                                <Card className="rounded-lg shadow-sm">
-                                    <CardHeader className="pb-3">
-                                        <CardTitle className="text-sm font-semibold">Description</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <p className="text-xs whitespace-pre-wrap text-gray-700">
-                                            {requirement.description || 'No description provided'}
-                                        </p>
-                                    </CardContent>
-                                </Card>
+                        <TabsContent value="info" className="flex-1 overflow-hidden mt-0">
+                            <div className="h-full relative">
+                                {/* Background pattern coerente */}
+                                <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50 -z-10"></div>
 
-                                <Card className="rounded-lg shadow-sm">
-                                    <CardHeader className="pb-3">
-                                        <CardTitle className="text-sm font-semibold">Details</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="grid grid-cols-2 gap-3 text-xs">
-                                            <div>
-                                                <span className="text-muted-foreground text-xs">Priority:</span>
-                                                <div className="mt-1">{getPriorityBadge(requirement.priority)}</div>
+                                <div className="h-full overflow-y-auto px-6 py-6">
+                                    <div className="max-w-6xl mx-auto">
+                                        {/* Layout a 2 colonne per ottimizzare lo spazio */}
+                                        <div className="grid lg:grid-cols-2 gap-4 h-full">
+                                            {/* Colonna Sinistra */}
+                                            <div className="space-y-4">
+                                                {/* Estimation Summary Card - compatta */}
+                                                {estimationHistory.length > 0 && (
+                                                    <Card className="rounded-xl shadow-lg border-white/50 bg-gradient-to-br from-blue-50 to-indigo-50 backdrop-blur-sm">
+                                                        <CardHeader className="pb-2 pt-3 px-4">
+                                                            <CardTitle className="text-sm font-semibold text-slate-900">Estimation Summary</CardTitle>
+                                                        </CardHeader>
+                                                        <CardContent className="px-4 pb-3">
+                                                            <div className="grid grid-cols-3 gap-2 text-center">
+                                                                <div className="bg-white/60 backdrop-blur-sm rounded-lg p-2">
+                                                                    <div className="text-2xl font-bold text-blue-600">
+                                                                        {estimationHistory.length}
+                                                                    </div>
+                                                                    <div className="text-[10px] text-slate-600 mt-0.5 font-medium">Total</div>
+                                                                </div>
+                                                                <div className="bg-white/60 backdrop-blur-sm rounded-lg p-2">
+                                                                    <div className="text-2xl font-bold text-indigo-600">
+                                                                        {estimationHistory[0]?.total_days.toFixed(1)}
+                                                                    </div>
+                                                                    <div className="text-[10px] text-slate-600 mt-0.5 font-medium">Latest</div>
+                                                                </div>
+                                                                <div className="bg-white/60 backdrop-blur-sm rounded-lg p-2">
+                                                                    <div className="text-2xl font-bold text-purple-600">
+                                                                        {(estimationHistory.reduce((sum, est) => sum + est.total_days, 0) / estimationHistory.length).toFixed(1)}
+                                                                    </div>
+                                                                    <div className="text-[10px] text-slate-600 mt-0.5 font-medium">Average</div>
+                                                                </div>
+                                                            </div>
+                                                        </CardContent>
+                                                    </Card>
+                                                )}
+
+                                                {/* Description Card - altezza limitata con scroll */}
+                                                <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm flex flex-col" style={{ maxHeight: estimationHistory.length > 0 ? 'calc(100vh - 320px)' : 'calc(100vh - 220px)' }}>
+                                                    <CardHeader className="pb-2 pt-3 px-4 bg-gradient-to-r from-slate-50 to-blue-50 flex-none">
+                                                        <CardTitle className="text-sm font-semibold text-slate-900">Description</CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent className="px-4 pb-3 overflow-y-auto flex-1">
+                                                        <p className="text-xs whitespace-pre-wrap text-slate-700 leading-relaxed">
+                                                            {requirement.description || 'No description provided'}
+                                                        </p>
+                                                    </CardContent>
+                                                </Card>
                                             </div>
-                                            <div>
-                                                <span className="text-muted-foreground text-xs">State:</span>
-                                                <div className="mt-1">{getStateBadge(requirement.state)}</div>
+
+                                            {/* Colonna Destra */}
+                                            <div className="space-y-4">
+                                                {/* Details Card - compatta */}
+                                                <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm">
+                                                    <CardHeader className="pb-2 pt-3 px-4 bg-gradient-to-r from-slate-50 to-blue-50">
+                                                        <CardTitle className="text-sm font-semibold text-slate-900">Details</CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent className="px-4 pb-3">
+                                                        <div className="grid grid-cols-2 gap-3 text-xs">
+                                                            <div>
+                                                                <span className="text-slate-600 font-medium">Priority:</span>
+                                                                <div className="mt-1">{getPriorityBadge(requirement.priority)}</div>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-slate-600 font-medium">State:</span>
+                                                                <div className="mt-1">{getStateBadge(requirement.state)}</div>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-slate-600 font-medium">Business Owner:</span>
+                                                                <div className="mt-1 font-semibold text-slate-900">{requirement.business_owner || 'N/A'}</div>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-slate-600 font-medium">Technology:</span>
+                                                                <div className="mt-1 font-semibold text-slate-900">{preset?.name || 'N/A'}</div>
+                                                            </div>
+                                                            {requirement.labels && requirement.labels.length > 0 && (
+                                                                <div className="col-span-2">
+                                                                    <span className="text-slate-600 font-medium">Labels:</span>
+                                                                    <div className="mt-1 flex flex-wrap gap-1">
+                                                                        {requirement.labels.map((label, idx) => (
+                                                                            <Badge key={idx} variant="outline" className="text-[10px] border-slate-300 bg-white/80 px-1.5 py-0">
+                                                                                {label}
+                                                                            </Badge>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+
+                                                {/* Timeline Card - compatta */}
+                                                <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm">
+                                                    <CardHeader className="pb-2 pt-3 px-4 bg-gradient-to-r from-slate-50 to-blue-50">
+                                                        <CardTitle className="text-sm font-semibold text-slate-900">Timeline</CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent className="px-4 pb-3">
+                                                        <div className="grid grid-cols-2 gap-3 text-xs">
+                                                            <div className="flex items-start gap-2">
+                                                                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                                                    <Clock className="h-4 w-4 text-blue-600" />
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-slate-600 font-medium">Created</span>
+                                                                    <div className="mt-0.5 font-semibold text-slate-900">
+                                                                        {new Date(requirement.created_at).toLocaleDateString()}
+                                                                    </div>
+                                                                    <div className="text-[10px] text-slate-500">
+                                                                        {new Date(requirement.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-start gap-2">
+                                                                <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                                                                    <Clock className="h-4 w-4 text-indigo-600" />
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-slate-600 font-medium">Updated</span>
+                                                                    <div className="mt-0.5 font-semibold text-slate-900">
+                                                                        {new Date(requirement.updated_at).toLocaleDateString()}
+                                                                    </div>
+                                                                    <div className="text-[10px] text-slate-500">
+                                                                        {new Date(requirement.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
                                             </div>
-                                            <div>
-                                                <span className="text-muted-foreground text-xs">Business Owner:</span>
-                                                <div className="mt-1 font-medium text-xs">{requirement.business_owner || 'N/A'}</div>
-                                            </div>
-                                            <div>
-                                                <span className="text-muted-foreground text-xs">Technology:</span>
-                                                <div className="mt-1 font-medium text-xs">{preset?.name || 'N/A'}</div>
-                                            </div>
-                                            {requirement.labels && requirement.labels.length > 0 && (
-                                                <div className="col-span-2">
-                                                    <span className="text-muted-foreground text-xs">Labels:</span>
-                                                    <div className="mt-1 flex flex-wrap gap-1">
-                                                        {requirement.labels.map((label, idx) => (
-                                                            <Badge key={idx} variant="outline" className="text-xs">{label}</Badge>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        </TabsContent>
-
-                        {/* Estimation Tab */}
-                        <TabsContent value="estimation" className="flex-1 overflow-hidden mt-0">
-                            <div className="h-full overflow-y-auto px-4 py-3">
-                                <div className="grid lg:grid-cols-[1fr_320px] gap-3 h-full">
-                                    {/* Left Column - Configuration */}
-                                    <div className="space-y-3 overflow-y-auto pr-2">
-                                        <TechnologySection
-                                            presets={presets}
-                                            selectedPresetId={selectedPresetId}
-                                            onPresetChange={handlePresetChange}
-                                            onAiRecalculate={handleAiSuggest}
-                                            isAiLoading={isAiLoading}
-                                            requirementDescription={requirement?.description || ''}
-                                        />
-
-                                        <ActivitiesSection
-                                            activities={activities}
-                                            selectedActivityIds={selectedActivityIds}
-                                            aiSuggestedIds={aiSuggestedIds}
-                                            onActivityToggle={handleActivityToggle}
-                                        />
-
-                                        <DriversSection
-                                            drivers={drivers}
-                                            selectedDriverValues={selectedDriverValues}
-                                            onDriverChange={handleDriverChange}
-                                            currentMultiplier={estimationResult?.driverMultiplier || 1.0}
-                                        />
-
-                                        <RisksSection
-                                            risks={risks}
-                                            selectedRiskIds={selectedRiskIds}
-                                            onRiskToggle={handleRiskToggle}
-                                            currentRiskScore={estimationResult?.riskScore || 0}
-                                        />
-                                    </div>
-
-                                    {/* Right Column - Summary (Sticky) */}
-                                    <div className="overflow-y-auto">
-                                        <div className="sticky top-0">
-                                            <CalculationSummary
-                                                result={estimationResult}
-                                                onSave={handleSaveEstimation}
-                                                isSaving={isSaving}
-                                                hasUnsavedChanges={hasUnsavedChanges}
-                                            />
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </TabsContent>
 
-                        {/* History Tab */}
-                        <TabsContent value="history" className="flex-1 overflow-y-auto mt-0 px-4 py-3">
-                            <div className="max-w-6xl space-y-4">
-                                {/* Estimation Timeline */}
-                                {estimationHistory.length > 0 && (
-                                    <EstimationTimeline estimations={estimationHistory} />
-                                )}
+                        {/* Estimation Tab */}
+                        <TabsContent value="estimation" className="flex-1 overflow-hidden mt-0">
+                            <div className="h-full relative">
+                                {/* Background pattern coerente con il resto del sito */}
+                                <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50 -z-10"></div>
 
-                                {/* Estimation History List */}
-                                <Card className="rounded-lg shadow-sm">
-                                    <CardHeader className="pb-3">
-                                        <CardTitle className="text-sm font-semibold">Estimation History</CardTitle>
-                                        <CardDescription className="text-xs">
-                                            View all previous estimations and scenarios for this requirement
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        {isLoadingHistory ? (
-                                            <div className="text-center py-8">
-                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                                            </div>
-                                        ) : estimationHistory.length === 0 ? (
-                                            <div className="text-center py-8 text-muted-foreground">
-                                                <History className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                                                <p className="text-xs">No estimation history yet</p>
-                                                <p className="text-xs mt-1">Save an estimation to start building history</p>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-3">
-                                                {estimationHistory.map((est) => (
-                                                    <Card key={est.id} className="border-l-4 border-l-primary">
-                                                        <CardContent className="p-4">
-                                                            <div className="flex justify-between items-start mb-3">
-                                                                <div>
-                                                                    <h4 className="font-semibold text-sm">{est.scenario_name}</h4>
-                                                                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                                                                        <span className="flex items-center gap-1">
-                                                                            <Clock className="h-3 w-3" />
-                                                                            {new Date(est.created_at).toLocaleString()}
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="text-right">
-                                                                    <div className="text-2xl font-bold text-primary">
-                                                                        {est.total_days.toFixed(1)}
-                                                                    </div>
-                                                                    <div className="text-xs text-muted-foreground">days</div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="grid grid-cols-4 gap-3 text-xs">
-                                                                <div>
-                                                                    <span className="text-muted-foreground">Base Days:</span>
-                                                                    <div className="font-semibold">{est.base_days.toFixed(1)}</div>
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-muted-foreground">Multiplier:</span>
-                                                                    <div className="font-semibold">{est.driver_multiplier.toFixed(3)}x</div>
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-muted-foreground">Risk Score:</span>
-                                                                    <div className="font-semibold">{est.risk_score}</div>
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-muted-foreground">Contingency:</span>
-                                                                    <div className="font-semibold">{est.contingency_percent}%</div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="mt-3 flex gap-2 text-xs text-muted-foreground">
-                                                                <span>{est.estimation_activities?.length || 0} activities</span>
-                                                                <span>•</span>
-                                                                <span>{est.estimation_drivers?.length || 0} drivers</span>
-                                                                <span>•</span>
-                                                                <span>{est.estimation_risks?.length || 0} risks</span>
-                                                            </div>
-                                                        </CardContent>
-                                                    </Card>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </CardContent>
-                                </Card>
+                                <div className="h-full overflow-y-auto px-6 py-6">
+                                    {/* Header Sezione */}
+                                    <div className="mb-6 px-4 py-3 rounded-xl bg-white/60 backdrop-blur-sm border border-white/50 shadow-md">
+                                        <h2 className="text-lg font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+                                            Configure Estimation
+                                        </h2>
+                                        <p className="text-xs text-slate-600 mt-1">Select technology, activities, drivers and risks to calculate the estimation</p>
+                                    </div>
 
-                                {/* Estimation Comparison */}
-                                {estimationHistory.length >= 2 && (
-                                    <EstimationComparison
-                                        estimations={estimationHistory}
-                                        activities={activities}
-                                        drivers={drivers}
-                                        risks={risks}
-                                    />
-                                )}
+                                    <div className="grid lg:grid-cols-[1fr_360px] gap-6 h-full">
+                                        {/* Left Column - Configuration */}
+                                        <div className="space-y-4 overflow-y-auto pr-2">
+                                            <TechnologySection
+                                                presets={presets}
+                                                selectedPresetId={selectedPresetId}
+                                                onPresetChange={handlePresetChange}
+                                                onAiRecalculate={handleAiSuggest}
+                                                isAiLoading={isAiLoading}
+                                                requirementDescription={requirement?.description || ''}
+                                            />
+
+                                            <ActivitiesSection
+                                                activities={activities}
+                                                selectedActivityIds={selectedActivityIds}
+                                                aiSuggestedIds={aiSuggestedIds}
+                                                onActivityToggle={toggleActivity}
+                                            />
+
+                                            <DriversSection
+                                                drivers={drivers}
+                                                selectedDriverValues={selectedDriverValues}
+                                                onDriverChange={setDriverValue}
+                                                currentMultiplier={estimationResult?.driverMultiplier || 1.0}
+                                            />
+
+                                            <RisksSection
+                                                risks={risks}
+                                                selectedRiskIds={selectedRiskIds}
+                                                onRiskToggle={toggleRisk}
+                                                currentRiskScore={estimationResult?.riskScore || 0}
+                                            />
+                                        </div>
+
+                                        {/* Right Column - Summary (Sticky) */}
+                                        <div className="overflow-y-auto">
+                                            <div className="sticky top-0">
+                                                <CalculationSummary
+                                                    result={estimationResult}
+                                                    onSave={handleSaveEstimation}
+                                                    isSaving={isSaving}
+                                                    hasUnsavedChanges={hasUnsavedChanges}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </TabsContent>
+
+                        {/* History Tab - New Compact Design */}
+                        <TabsContent value="history" className="flex-1 overflow-hidden mt-0">
+                            <div className="h-full relative">
+                                {/* Background pattern coerente */}
+                                <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50 -z-10"></div>
+
+                                <div className="h-full flex flex-col px-6 py-4">
+                                    {/* Timeline compatta - sempre visibile */}
+                                    {estimationHistory.length > 0 && (
+                                        <div className="mb-4 flex-none">
+                                            <EstimationTimeline estimations={estimationHistory} />
+                                        </div>
+                                    )}
+
+                                    {/* Compact History Cards - layout ottimizzato */}
+                                    <div className="flex-1 overflow-y-auto">
+                                        <div className="max-w-6xl mx-auto">
+                                            {historyLoading ? (
+                                                <div className="text-center py-12">
+                                                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto"></div>
+                                                </div>
+                                            ) : estimationHistory.length === 0 ? (
+                                                <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm">
+                                                    <CardContent className="text-center py-12 text-slate-600">
+                                                        <History className="h-12 w-12 mx-auto mb-4 opacity-40 text-slate-400" />
+                                                        <p className="text-sm font-medium">No estimation history yet</p>
+                                                        <p className="text-xs mt-2 text-slate-500">Save an estimation to start building history</p>
+                                                    </CardContent>
+                                                </Card>
+                                            ) : (
+                                                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+                                                    {estimationHistory.map((est) => {
+                                                        const hasActivities = (est.estimation_activities?.length || 0) > 0;
+                                                        const hasDrivers = (est.estimation_drivers?.length || 0) > 0;
+                                                        const hasRisks = (est.estimation_risks?.length || 0) > 0;
+
+                                                        return (
+                                                            <Card key={est.id} className="rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border-l-4 border-l-blue-500 bg-white/90 backdrop-blur-sm">
+                                                                <CardContent className="p-4">
+                                                                    {/* Header */}
+                                                                    <div className="mb-3">
+                                                                        <h4 className="font-bold text-sm text-slate-900 truncate mb-1">
+                                                                            {est.scenario_name}
+                                                                        </h4>
+                                                                        <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                                                                            <Clock className="h-3 w-3" />
+                                                                            {new Date(est.created_at).toLocaleDateString()} {new Date(est.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Key Metric - Total Days */}
+                                                                    <div className="text-center mb-3 py-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg">
+                                                                        <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                                                            {est.total_days.toFixed(1)}
+                                                                        </div>
+                                                                        <div className="text-[10px] text-slate-600 font-medium uppercase mt-1">days</div>
+                                                                    </div>
+
+                                                                    {/* Metrics Grid */}
+                                                                    <div className="grid grid-cols-3 gap-2 mb-3 text-[10px]">
+                                                                        <div className="text-center bg-slate-50 rounded px-2 py-1">
+                                                                            <div className="text-slate-600">Base</div>
+                                                                            <div className="font-bold text-slate-900">{est.base_days.toFixed(1)}</div>
+                                                                        </div>
+                                                                        <div className="text-center bg-purple-50 rounded px-2 py-1">
+                                                                            <div className="text-slate-600">Mult</div>
+                                                                            <div className="font-bold text-purple-700">{est.driver_multiplier.toFixed(2)}x</div>
+                                                                        </div>
+                                                                        <div className="text-center bg-orange-50 rounded px-2 py-1">
+                                                                            <div className="text-slate-600">Cont</div>
+                                                                            <div className="font-bold text-orange-700">{est.contingency_percent}%</div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Counts */}
+                                                                    <div className="flex gap-1.5 mb-3 text-[10px]">
+                                                                        <span className={`px-2 py-1 rounded-md flex-1 text-center ${hasActivities ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                                            {est.estimation_activities?.length || 0} act
+                                                                        </span>
+                                                                        <span className={`px-2 py-1 rounded-md flex-1 text-center ${hasDrivers ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                                            {est.estimation_drivers?.length || 0} drv
+                                                                        </span>
+                                                                        <span className={`px-2 py-1 rounded-md flex-1 text-center ${hasRisks ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                                            {est.estimation_risks?.length || 0} rsk
+                                                                        </span>
+                                                                    </div>
+
+                                                                    {/* Action Buttons */}
+                                                                    <div className="flex gap-1.5">
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="flex-1 text-[10px] h-7"
+                                                                            onClick={() => {
+                                                                                setSelectedEstimationId(est.id);
+                                                                                setDrawerOpen(true);
+                                                                            }}
+                                                                        >
+                                                                            <Eye className="h-3 w-3 mr-1" />
+                                                                            View
+                                                                        </Button>
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="h-7 w-7 p-0"
+                                                                            title="Copy to clipboard"
+                                                                            onClick={() => handleCopyEstimation(est)}
+                                                                        >
+                                                                            <Copy className="h-3 w-3" />
+                                                                        </Button>
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="h-7 w-7 p-0"
+                                                                            title="Restore estimation"
+                                                                            onClick={() => handleRestoreEstimation(est)}
+                                                                        >
+                                                                            <RotateCcw className="h-3 w-3" />
+                                                                        </Button>
+                                                                    </div>
+                                                                </CardContent>
+                                                            </Card>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </TabsContent>
+
+                        {/* History Tab with Compact Accordion + Drawer */}
+                        <TabsContent value="history" className="space-y-3">
+                        </TabsContent>
                     </Tabs>
+
+                    {/* Sheet Drawer for Full Estimation Details */}
+                    <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+                        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+                            {(() => {
+                                const selectedEst = estimationHistory.find(e => e.id === selectedEstimationId);
+                                if (!selectedEst) return null;
+
+                                return (
+                                    <>
+                                        <SheetHeader>
+                                            <SheetTitle className="text-xl font-bold text-slate-900">
+                                                {selectedEst.scenario_name}
+                                            </SheetTitle>
+                                            <SheetDescription className="text-xs text-slate-600">
+                                                {new Date(selectedEst.created_at).toLocaleString()}
+                                            </SheetDescription>
+                                        </SheetHeader>
+
+                                        <div className="mt-6 space-y-6">
+                                            {/* Total Days - Big Number */}
+                                            <div className="text-center py-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl">
+                                                <div className="text-6xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                                    {selectedEst.total_days.toFixed(1)}
+                                                </div>
+                                                <div className="text-sm text-slate-600 font-medium uppercase tracking-wider mt-2">
+                                                    Total Days
+                                                </div>
+                                            </div>
+
+                                            {/* Calculation Breakdown */}
+                                            <div className="space-y-3">
+                                                <h4 className="font-semibold text-sm text-slate-900">Calculation Breakdown</h4>
+                                                <div className="bg-slate-50 rounded-lg p-4 space-y-2">
+                                                    <div className="flex justify-between text-sm">
+                                                        <span className="text-slate-600">Base Days:</span>
+                                                        <span className="font-bold text-slate-900">{selectedEst.base_days.toFixed(1)}d</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-sm">
+                                                        <span className="text-slate-600">Driver Multiplier:</span>
+                                                        <span className="font-bold text-slate-900">{selectedEst.driver_multiplier.toFixed(3)}x</span>
+                                                    </div>
+                                                    <div className="border-t pt-2">
+                                                        <div className="flex justify-between text-sm font-medium">
+                                                            <span className="text-slate-700">Subtotal:</span>
+                                                            <span className="font-bold text-slate-900">
+                                                                {(selectedEst.base_days * selectedEst.driver_multiplier).toFixed(1)}d
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-orange-50 rounded-lg p-4 space-y-2">
+                                                    <div className="flex justify-between text-sm">
+                                                        <span className="text-slate-600">Risk Score:</span>
+                                                        <span className="font-bold text-orange-700">{selectedEst.risk_score}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-sm">
+                                                        <span className="text-slate-600">Contingency:</span>
+                                                        <span className="font-bold text-orange-700">{selectedEst.contingency_percent}%</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Activities List */}
+                                            {selectedEst.estimation_activities && selectedEst.estimation_activities.length > 0 && (
+                                                <div className="space-y-2">
+                                                    <h4 className="font-semibold text-sm text-slate-900 flex items-center gap-2">
+                                                        <span className="inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
+                                                        Activities ({selectedEst.estimation_activities.length})
+                                                    </h4>
+                                                    <div className="space-y-1 max-h-64 overflow-y-auto">
+                                                        {selectedEst.estimation_activities.map((estAct, idx) => {
+                                                            const activity = activities.find(a => a.id === estAct.activity_id);
+                                                            return (
+                                                                <div key={idx} className="flex items-center justify-between text-xs bg-blue-50 rounded px-3 py-2">
+                                                                    <span className="text-slate-700 flex-1">{activity?.name || 'Unknown'}</span>
+                                                                    <span className="font-mono font-semibold text-blue-700 ml-2">{activity?.base_days.toFixed(1)}d</span>
+                                                                    {estAct.is_ai_suggested && (
+                                                                        <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">AI</Badge>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Drivers List */}
+                                            {selectedEst.estimation_drivers && selectedEst.estimation_drivers.length > 0 && (
+                                                <div className="space-y-2">
+                                                    <h4 className="font-semibold text-sm text-slate-900 flex items-center gap-2">
+                                                        <span className="inline-block w-2 h-2 bg-purple-500 rounded-full"></span>
+                                                        Drivers ({selectedEst.estimation_drivers.length})
+                                                    </h4>
+                                                    <div className="space-y-1">
+                                                        {selectedEst.estimation_drivers.map((estDrv, idx) => {
+                                                            const driver = drivers.find(d => d.id === estDrv.driver_id);
+                                                            const option = driver?.options.find(o => o.value === estDrv.selected_value);
+                                                            return (
+                                                                <div key={idx} className="flex items-center justify-between text-xs bg-purple-50 rounded px-3 py-2">
+                                                                    <span className="text-slate-700 flex-1">{driver?.name || 'Unknown'}</span>
+                                                                    <span className="text-slate-600 text-[11px] mx-2">{option?.label || estDrv.selected_value}</span>
+                                                                    <span className="font-mono font-semibold text-purple-700">{option?.multiplier.toFixed(2)}x</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Risks List */}
+                                            {selectedEst.estimation_risks && selectedEst.estimation_risks.length > 0 && (
+                                                <div className="space-y-2">
+                                                    <h4 className="font-semibold text-sm text-slate-900 flex items-center gap-2">
+                                                        <span className="inline-block w-2 h-2 bg-orange-500 rounded-full"></span>
+                                                        Risks ({selectedEst.estimation_risks.length})
+                                                    </h4>
+                                                    <div className="space-y-1">
+                                                        {selectedEst.estimation_risks.map((estRisk, idx) => {
+                                                            const risk = risks.find(r => r.id === estRisk.risk_id);
+                                                            return (
+                                                                <div key={idx} className="flex items-center justify-between text-xs bg-orange-50 rounded px-3 py-2">
+                                                                    <span className="text-slate-700 flex-1">{risk?.name || 'Unknown'}</span>
+                                                                    <span className="font-mono font-semibold text-orange-700">+{risk?.weight || 0}</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Formula Display */}
+                                            <div className="bg-slate-100 rounded-lg p-4 text-xs font-mono space-y-1">
+                                                <div className="font-semibold text-sm text-slate-900 mb-2">Formula:</div>
+                                                <div className="text-slate-700">
+                                                    Subtotal = {selectedEst.base_days.toFixed(1)} × {selectedEst.driver_multiplier.toFixed(3)} = {(selectedEst.base_days * selectedEst.driver_multiplier).toFixed(1)}d
+                                                </div>
+                                                <div className="text-slate-700">
+                                                    Total = {(selectedEst.base_days * selectedEst.driver_multiplier).toFixed(1)} × (1 + {selectedEst.contingency_percent}%) = {selectedEst.total_days.toFixed(1)}d
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                );
+                            })()}
+                        </SheetContent>
+                    </Sheet>
                 </div>
             </div>
 
             {/* Scenario Name Dialog */}
             <AlertDialog open={showScenarioDialog} onOpenChange={setShowScenarioDialog}>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-white/95 backdrop-blur-lg border-white/50 shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Save Estimation</AlertDialogTitle>
-                        <AlertDialogDescription>
+                        <AlertDialogTitle className="text-xl font-bold text-slate-900">Save Estimation</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600">
                             Give this estimation a name to identify it in the history.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <div className="py-4">
-                        <Label htmlFor="scenario-name">Scenario Name</Label>
+                        <Label htmlFor="scenario-name" className="text-sm font-medium text-slate-700">Scenario Name</Label>
                         <Input
                             id="scenario-name"
                             placeholder="e.g., Base Estimate, With Integration, Optimistic"
                             value={scenarioName}
                             onChange={(e) => setScenarioName(e.target.value)}
-                            className="mt-2"
+                            className="mt-2 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
                         />
                     </div>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setScenarioName('Default')}>
+                        <AlertDialogCancel
+                            onClick={() => setScenarioName('Default')}
+                            className="border-slate-300 hover:bg-slate-100"
+                        >
                             Cancel
                         </AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmSaveEstimation} disabled={isSaving}>
+                        <AlertDialogAction
+                            onClick={confirmSaveEstimation}
+                            disabled={isSaving}
+                            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg"
+                        >
                             {isSaving ? 'Saving...' : 'Save Estimation'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Comparison Dialog - Fullscreen with scroll */}
+            <Dialog open={comparisonDialogOpen} onOpenChange={setComparisonDialogOpen}>
+                <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0">
+                    <DialogHeader className="px-6 pt-6 pb-4 border-b">
+                        <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                            <GitCompare className="h-5 w-5" />
+                            Compare Estimations
+                        </DialogTitle>
+                        <DialogDescription>
+                            Select and compare two estimations to see their differences
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-y-auto px-6 py-4">
+                        <EstimationComparison
+                            estimations={estimationHistory}
+                            activities={activities}
+                            drivers={drivers}
+                            risks={risks}
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

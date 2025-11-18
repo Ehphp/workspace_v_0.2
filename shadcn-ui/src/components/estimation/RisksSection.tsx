@@ -27,11 +27,11 @@ export function RisksSection({
     const riskLevel = getRiskLevel(currentRiskScore);
 
     return (
-        <Card className="rounded-lg shadow-sm">
-            <CardHeader className="pb-2">
+        <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
+            <CardHeader className="pb-3 bg-gradient-to-r from-slate-50 to-blue-50">
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="text-sm font-semibold">Rischi PP</CardTitle>
+                        <CardTitle className="text-sm font-semibold text-slate-900">Rischi PP</CardTitle>
                         <CardDescription className="text-xs">
                             Identify risks that may impact the estimation
                         </CardDescription>
@@ -53,7 +53,7 @@ export function RisksSection({
                         return (
                             <div
                                 key={risk.id}
-                                className="flex items-start gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
+                                className="flex items-start gap-3 p-3 rounded-lg border border-slate-200/50 hover:bg-orange-50/50 hover:border-orange-300/50 transition-all duration-200"
                             >
                                 <Checkbox
                                     id={risk.id}

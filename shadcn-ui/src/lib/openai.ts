@@ -1,5 +1,6 @@
 import type { Activity, Driver, Risk, TechnologyPreset } from '@/types/database';
 import type { AIActivitySuggestion } from '@/types/estimation';
+import { sanitizePromptInput } from '@/types/ai-validation';
 
 interface SuggestActivitiesInput {
   description: string;
@@ -19,6 +20,9 @@ export async function suggestActivities(
   const { description, preset, activities, drivers, risks } = input;
 
   try {
+    // Sanitize input to prevent injection attacks
+    const sanitizedDescription = sanitizePromptInput(description);
+
     // Call Netlify function instead of OpenAI directly
     const response = await fetch('/.netlify/functions/ai-suggest', {
       method: 'POST',
@@ -26,7 +30,7 @@ export async function suggestActivities(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        description,
+        description: sanitizedDescription,
         preset,
         activities,
         drivers,
@@ -59,6 +63,9 @@ export async function suggestActivities(
  */
 export async function generateTitleFromDescription(description: string): Promise<string> {
   try {
+    // Sanitize input
+    const sanitizedDescription = sanitizePromptInput(description);
+
     const response = await fetch('/.netlify/functions/ai-suggest', {
       method: 'POST',
       headers: {
@@ -66,7 +73,7 @@ export async function generateTitleFromDescription(description: string): Promise
       },
       body: JSON.stringify({
         action: 'generate-title',
-        description,
+        description: sanitizedDescription,
       }),
     });
 

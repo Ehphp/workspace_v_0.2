@@ -1,5 +1,6 @@
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import OpenAI from 'openai';
+import { validateAISuggestion, sanitizePromptInput } from '../../src/types/ai-validation';
 
 // Initialize OpenAI with server-side API key
 const openai = new OpenAI({
@@ -105,7 +106,8 @@ export const handler: Handler = async (
                 };
             }
 
-            console.log('Generating title for description:', description.substring(0, 100));
+            const sanitizedDescription = sanitizePromptInput(description);
+            console.log('Generating title for description:', sanitizedDescription.substring(0, 100));
 
             const completion = await openai.chat.completions.create({
                 model: 'gpt-4o-mini',
@@ -116,7 +118,7 @@ export const handler: Handler = async (
                     },
                     {
                         role: 'user',
-                        content: `Create a concise title for this requirement:\n\n${description}`,
+                        content: `Create a concise title for this requirement:\n\n${sanitizedDescription}`,
                     },
                 ],
                 temperature: 0.7,
@@ -137,14 +139,6 @@ export const handler: Handler = async (
         // Handle activity suggestions (original logic)
         const { description, preset, activities, drivers, risks } = body;
 
-        console.log('Request body parsed:');
-        console.log('- Description length:', description?.length);
-        console.log('- Preset:', preset?.name);
-        console.log('- Activities count:', activities?.length);
-        console.log('- Drivers count:', drivers?.length);
-        console.log('- Risks count:', risks?.length);
-
-        // Validate required fields
         if (!description || !preset || !activities || !drivers || !risks) {
             console.error('Validation failed - missing fields');
             return {
@@ -155,6 +149,14 @@ export const handler: Handler = async (
                 }),
             };
         }
+
+        const sanitizedDescription = sanitizePromptInput(description);
+        console.log('Request body parsed:');
+        console.log('- Description length:', sanitizedDescription?.length);
+        console.log('- Preset:', preset?.name);
+        console.log('- Activities count:', activities?.length);
+        console.log('- Drivers count:', drivers?.length);
+        console.log('- Risks count:', risks?.length);
 
         // Filter activities relevant to the preset's tech category
         const relevantActivities = activities.filter(
@@ -192,7 +194,7 @@ Return your response as a JSON object with this structure:
 }`;
 
         const userPrompt = `Requirement description:
-${description}
+${sanitizedDescription}
 
 Please suggest which activities, drivers, and risks are relevant for this requirement.`;
 
@@ -225,21 +227,31 @@ Please suggest which activities, drivers, and risks are relevant for this requir
             throw new Error('No response from OpenAI');
         }
 
-        const suggestion: AIActivitySuggestion = JSON.parse(content);
-        console.log('Parsed suggestion:', JSON.stringify(suggestion, null, 2));
+        // Parse JSON safely
+        let rawSuggestion: unknown;
+        try {
+            rawSuggestion = JSON.parse(content);
+        } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            throw new Error('Invalid JSON response from AI');
+        }
 
-        // Validate that suggested activity codes exist
-        const validActivityCodes = relevantActivities.map((a) => a.code);
-        suggestion.activityCodes = suggestion.activityCodes.filter((code) =>
-            validActivityCodes.includes(code)
+        // Validate with Zod schema and cross-validate with master data
+        const validatedSuggestion = validateAISuggestion(
+            rawSuggestion,
+            relevantActivities.map((a) => a.code),
+            drivers.map((d) => d.code),
+            risks.map((r) => r.code)
         );
+
+        console.log('✅ Validated suggestion:', JSON.stringify(validatedSuggestion, null, 2));
 
         // Return successful response
         console.log('Returning successful response');
         return {
             statusCode: 200,
             headers,
-            body: JSON.stringify(suggestion),
+            body: JSON.stringify(validatedSuggestion),
         };
     } catch (error: any) {
         console.error('=== ERROR in ai-suggest function ===');
