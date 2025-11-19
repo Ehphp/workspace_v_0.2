@@ -128,7 +128,8 @@ export function useEstimationState({
         setSelectedActivityIds(activityIds);
         setAiSuggestedIds(activityIds);
 
-        if (driverValues) {
+        // ✅ FIX: Reset drivers/risks if undefined (instead of keeping previous values)
+        if (driverValues !== undefined) {
             // Smart conversion: detect if keys are IDs or codes
             const driverValuesById: Record<string, string> = {};
             Object.entries(driverValues).forEach(([keyCodeOrId, value]) => {
@@ -147,12 +148,18 @@ export function useEstimationState({
                 }
             });
             setSelectedDriverValues(driverValuesById);
+        } else {
+            // Reset drivers if undefined
+            setSelectedDriverValues({});
         }
 
-        if (riskIds) {
+        if (riskIds !== undefined) {
             setSelectedRiskIds(riskIds);
+        } else {
+            // Reset risks if undefined
+            setSelectedRiskIds([]);
         }
-    }, []);
+    }, [drivers]);
 
     // Reset all selections
     const resetSelections = useCallback(() => {

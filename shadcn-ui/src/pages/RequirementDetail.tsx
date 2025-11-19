@@ -486,15 +486,8 @@ Risks: ${est.estimation_risks?.length || 0}`;
                 setSelectedPresetId(presetToUse);
             }
 
-            // Step 2: Apply preset defaults (activities, drivers, risks)
-            console.log('🔄 Quick Estimate: Applying preset defaults');
-            applyPresetDefaults(presetToUse);
-
-            // Wait a bit for state to update
-            await new Promise(resolve => setTimeout(resolve, 100));
-
-            // Step 3: Run AI suggestions to refine activities
-            console.log('🔄 Quick Estimate: Getting AI suggestions');
+            // Step 2: Run AI suggestions (activities only, no preset defaults)
+            console.log('🔄 Quick Estimate: Getting AI suggestions (activities only)');
             const selectedPreset = presets.find((p) => p.id === presetToUse);
 
             if (selectedPreset) {
@@ -506,30 +499,21 @@ Risks: ${est.estimation_risks?.length || 0}`;
                     risks,
                 });
 
-                // ✅ VALIDAZIONE: Blocca requisiti senza senso
+                // ⚠️ VALIDAZIONE SOFT: Avvisa ma NON blocca (come QuickEstimate homepage)
                 if (!suggestions.isValidRequirement) {
-                    setIsQuickEstimating(false);
-                    setQuickEstimateErrorData({
-                        title: 'Invalid Requirement Detected',
-                        message: 'The AI analysis determined that this requirement description is not valid or clear enough for estimation.',
-                        reasoning: suggestions.reasoning,
-                        type: 'invalid'
+                    console.warn('⚠️ Quick Estimate: AI marked requirement as potentially invalid, but continuing anyway');
+                    toast.warning('AI Warning', {
+                        description: suggestions.reasoning || 'The requirement description may be unclear, but we\'ll proceed with estimation.',
                     });
-                    setShowQuickEstimateError(true);
-                    console.log('❌ Quick Estimate aborted: Invalid requirement');
-                    return;
+                    // NON blocchiamo, continuiamo comunque
                 }
 
                 // ✅ VALIDAZIONE: Verifica che ci siano attività suggerite
                 if (!suggestions.activityCodes || suggestions.activityCodes.length === 0) {
                     setIsQuickEstimating(false);
-                    setQuickEstimateErrorData({
-                        title: 'No Activities Could Be Identified',
-                        message: 'The AI could not identify any specific development activities from the requirement description.',
-                        reasoning: suggestions.reasoning,
-                        type: 'no-activities'
+                    toast.error('No Activities Identified', {
+                        description: suggestions.reasoning || 'The AI could not identify specific development activities. Please add more technical details to the requirement description.',
                     });
-                    setShowQuickEstimateError(true);
                     console.log('⚠️ Quick Estimate aborted: No activities suggested');
                     return;
                 }
@@ -539,15 +523,15 @@ Risks: ${est.estimation_risks?.length || 0}`;
                     .filter((a) => suggestions.activityCodes.includes(a.code))
                     .map((a) => a.id);
 
-                console.log('🔄 Quick Estimate: Applying AI suggestions');
+                console.log('🔄 Quick Estimate: Applying AI suggestions (activities only, no drivers/risks)');
                 applyAiSuggestions(
                     suggestedActivityIds,
-                    undefined,
-                    undefined
+                    undefined, // NO drivers
+                    undefined  // NO risks
                 );
             }
 
-            // Step 4: Switch to Estimation tab
+            // Step 3: Switch to Estimation tab
             setActiveTab('estimation');
 
             toast.success('Quick Estimate completed!', {
@@ -564,7 +548,7 @@ Risks: ${est.estimation_risks?.length || 0}`;
         } finally {
             setIsQuickEstimating(false);
         }
-    }, [requirement, list, selectedPresetId, presets, activities, drivers, risks, applyPresetDefaults, applyAiSuggestions, setSelectedPresetId]);
+    }, [requirement, list, selectedPresetId, presets, activities, drivers, risks, applyAiSuggestions, setSelectedPresetId]);
 
     const handleAiSuggest = useCallback(async () => {
         if (!requirement?.description || !selectedPresetId) {
@@ -911,7 +895,7 @@ Risks: ${est.estimation_risks?.length || 0}`;
                                 onClick={handleQuickEstimate}
                                 disabled={isQuickEstimating || !requirement?.description}
                                 className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-md transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Quick Estimate: Auto-apply preset, template and AI suggestions"
+                                title="Quick Estimate: AI suggests activities only (no drivers/risks). Review and save when ready."
                             >
                                 {isQuickEstimating ? (
                                     <>

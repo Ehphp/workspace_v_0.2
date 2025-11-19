@@ -9,12 +9,14 @@ const openai = new OpenAI({
 
 // In-memory cache for AI responses (TTL: 5 minutes)
 const aiCache = new Map<string, { response: any; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 24 * 60 * 60 * 1000; // ✅ CHANGED: 24 hours (was 5 minutes)
+// Ensures same requirement returns same result within 24 hours
 
-// Helper to generate cache key
-function getCacheKey(description: string, presetId: string): string {
+// Helper to generate cache key with activity codes hash
+function getCacheKey(description: string, presetId: string, activityCodes: string[]): string {
     const normalizedDesc = description.trim().toLowerCase().substring(0, 200);
-    return `${presetId}:${normalizedDesc}`;
+    const activitiesHash = activityCodes.sort().join(',');
+    return `${presetId}:${normalizedDesc}:${activitiesHash}`;
 }
 
 // Helper to get cached response
@@ -227,7 +229,8 @@ export const handler: Handler = async (
         console.log('Filtered activities:', relevantActivities?.length);
 
         // Check cache first (skip in test mode)
-        const cacheKey = getCacheKey(sanitizedDescription, preset.name);
+        const relevantActivityCodes = relevantActivities.map(a => a.code);
+        const cacheKey = getCacheKey(sanitizedDescription, preset.id, relevantActivityCodes);
         if (!testMode) {
             const cached = getCachedResponse(cacheKey);
             if (cached) {
@@ -297,12 +300,12 @@ Return JSON: {"isValidRequirement": true/false, "activityCodes": ["CODE"], "reas
 
         console.log('Calling OpenAI API (optimized)...');
         console.log('Model: gpt-4o-mini');
-        console.log('Test mode:', testMode ? 'enabled (temp=0.7, no cache)' : 'disabled (temp=0.1, cached)');
+        console.log('Test mode:', testMode ? 'enabled (temp=0.7, no cache)' : 'disabled (temp=0.0, cached)');
         console.log('System prompt length:', systemPrompt.length, '(optimized)');
         console.log('User prompt length:', userPrompt.length);
 
         // Call OpenAI API with optimized parameters
-        const temperature = testMode ? 0.7 : 0.1; // Higher temp in test mode for variance
+        const temperature = testMode ? 0.7 : 0.0; // ✅ CHANGED: 0.0 for maximum determinism (was 0.1)
         const response = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
@@ -313,6 +316,8 @@ Return JSON: {"isValidRequirement": true/false, "activityCodes": ["CODE"], "reas
             temperature,
             max_tokens: 500, // Limit response size
         });
+
+        console.log('✅ Using temperature:', temperature, '(determinism level:', temperature === 0 ? 'maximum' : 'test mode', ')');
 
         console.log('OpenAI response received:');
         console.log('- Choices count:', response.choices?.length);

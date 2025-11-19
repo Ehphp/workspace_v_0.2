@@ -38,6 +38,8 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
     const [result, setResult] = useState<EstimationResult | null>(null);
     const [isDemoMode, setIsDemoMode] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [selectedActivities, setSelectedActivities] = useState<Array<{ code: string; name: string; baseDays: number }>>([]);
+    const [aiReasoning, setAiReasoning] = useState<string>('');
 
     useEffect(() => {
         if (open) {
@@ -140,12 +142,22 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
             }
 
             // Prepare selected activities with base days
-            const selectedActivities = aiSuggestion.activityCodes.map((code) => {
+            const selectedActivitiesForCalc = aiSuggestion.activityCodes.map((code) => {
                 const activity = allActivities.find((a) => a.code === code);
                 return {
                     code,
                     baseDays: activity?.base_days || 0,
                     isAiSuggested: true,
+                };
+            });
+
+            // Store activities with full details for display
+            const activitiesWithDetails = aiSuggestion.activityCodes.map((code) => {
+                const activity = allActivities.find((a) => a.code === code);
+                return {
+                    code,
+                    name: activity?.name || code,
+                    baseDays: activity?.base_days || 0,
                 };
             });
 
@@ -156,12 +168,14 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
 
             // Calculate estimation with only activities (no multipliers or risks)
             const estimationResult = calculateEstimation({
-                activities: selectedActivities,
+                activities: selectedActivitiesForCalc,
                 drivers: selectedDrivers,
                 risks: selectedRisks,
             });
 
             setResult(estimationResult);
+            setSelectedActivities(activitiesWithDetails);
+            setAiReasoning(aiSuggestion.reasoning || '');
         } catch (err) {
             console.error('Error calculating quick estimate:', err);
             setError(err instanceof Error ? err.message : 'Failed to calculate estimate');
@@ -175,6 +189,8 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
         setTechPresetId('');
         setResult(null);
         setError(null);
+        setSelectedActivities([]);
+        setAiReasoning('');
     };
 
     const handleClose = () => {
@@ -300,8 +316,8 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
 
                     {/* Result */}
                     {result !== null && (
-                        <div className="p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border-2 border-emerald-200">
-                            <div className="flex items-center gap-3 mb-4">
+                        <div className="p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border-2 border-emerald-200 space-y-4">
+                            <div className="flex items-center gap-3">
                                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
                                     <svg
                                         className="w-6 h-6 text-white"
@@ -323,49 +339,98 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                                 </div>
                             </div>
 
-                            <div className="bg-white rounded-lg p-4 space-y-3">
-                                <div className="flex justify-between items-center pb-3 border-b border-slate-200">
+                            {/* Total Days - Highlighted */}
+                            <div className="bg-white rounded-lg p-4">
+                                <div className="flex justify-between items-center">
                                     <span className="text-sm font-medium text-slate-600">Total Days</span>
                                     <span className="text-3xl font-bold text-emerald-600">
                                         {result.totalDays.toFixed(1)}
                                     </span>
                                 </div>
+                            </div>
 
+                            {/* Activities Breakdown */}
+                            <div className="bg-white rounded-lg p-4 space-y-3">
+                                <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                    AI-Selected Activities ({selectedActivities.length})
+                                </h4>
+                                <div className="space-y-2">
+                                    {selectedActivities.map((activity, idx) => (
+                                        <div key={idx} className="flex justify-between items-start text-sm py-2 border-b border-slate-100 last:border-0">
+                                            <div className="flex-1">
+                                                <Badge variant="secondary" className="text-xs mb-1">{activity.code}</Badge>
+                                                <p className="text-slate-700">{activity.name}</p>
+                                            </div>
+                                            <span className="font-semibold text-slate-900 ml-2">{activity.baseDays.toFixed(1)}d</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Calculation Details */}
+                            <div className="bg-white rounded-lg p-4 space-y-3">
+                                <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                    </svg>
+                                    Calculation Breakdown
+                                </h4>
                                 <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-600">Base Days</span>
+                                    <div className="flex justify-between py-1">
+                                        <span className="text-slate-600">Base Days (sum of activities)</span>
                                         <span className="font-semibold text-slate-900">{result.baseDays.toFixed(1)}</span>
                                     </div>
-                                    <div className="flex justify-between">
+                                    <div className="flex justify-between py-1">
                                         <span className="text-slate-600">Driver Multiplier</span>
                                         <span className="font-semibold text-slate-900">{result.driverMultiplier.toFixed(2)}x</span>
                                     </div>
-                                    <div className="flex justify-between">
+                                    <div className="flex justify-between py-1 border-t border-slate-200 pt-2">
                                         <span className="text-slate-600">Subtotal</span>
                                         <span className="font-semibold text-slate-900">{result.subtotal.toFixed(1)}</span>
                                     </div>
-                                    <div className="flex justify-between">
+                                    <div className="flex justify-between py-1">
                                         <span className="text-slate-600">Risk Score</span>
                                         <span className="font-semibold text-slate-900">{result.riskScore}</span>
                                     </div>
-                                    <div className="flex justify-between">
+                                    <div className="flex justify-between py-1">
                                         <span className="text-slate-600">Contingency</span>
-                                        <span className="font-semibold text-slate-900">{result.contingencyPercent}% ({result.contingencyDays.toFixed(1)} days)</span>
+                                        <span className="font-semibold text-slate-900">{result.contingencyPercent}% (+{result.contingencyDays.toFixed(1)} days)</span>
+                                    </div>
+                                    <div className="flex justify-between py-2 border-t-2 border-emerald-200 pt-3">
+                                        <span className="text-slate-700 font-semibold">Total Estimation</span>
+                                        <span className="font-bold text-emerald-600 text-lg">{result.totalDays.toFixed(1)} days</span>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div className="text-xs text-slate-500 pt-3 border-t border-slate-200">
-                                    <p className="flex items-center gap-1">
-                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                            <path
-                                                fillRule="evenodd"
-                                                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                                                clipRule="evenodd"
-                                            />
+                            {/* AI Reasoning (if available) */}
+                            {aiReasoning && (
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                    <h4 className="text-xs font-semibold text-blue-700 mb-1 flex items-center gap-1">
+                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z" />
                                         </svg>
-                                        Estimation based on AI-suggested activities, drivers, and risks. For detailed breakdown, use the full 5-step wizard.
-                                    </p>
+                                        AI Analysis
+                                    </h4>
+                                    <p className="text-xs text-blue-700">{aiReasoning}</p>
                                 </div>
+                            )}
+
+                            {/* Note */}
+                            <div className="text-xs text-slate-500 bg-slate-50 rounded p-3">
+                                <p className="flex items-start gap-2">
+                                    <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path
+                                            fillRule="evenodd"
+                                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                                            clipRule="evenodd"
+                                        />
+                                    </svg>
+                                    <span>Quick Estimate uses only AI-suggested activities. No drivers or risks are applied (multiplier = 1.0, risk = 0). For more control, use the detailed estimation wizard.</span>
+                                </p>
                             </div>
                         </div>
                     )}
