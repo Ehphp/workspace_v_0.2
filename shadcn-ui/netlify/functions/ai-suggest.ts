@@ -85,9 +85,8 @@ interface RequestBody {
 }
 
 interface AIActivitySuggestion {
+    isValidRequirement: boolean;
     activityCodes: string[];
-    suggestedDrivers?: Record<string, string>;
-    suggestedRisks?: string[];
     reasoning?: string;
 }
 
@@ -260,12 +259,20 @@ export const handler: Handler = async (
         }
 
         const systemPrompt = `Expert estimation assistant for ${preset.name} (${preset.tech_category}).
-Suggest activity codes, driver values (as STRINGS like "LOW", "MEDIUM", "HIGH"), and risk codes.
+
+FIRST: Evaluate if the requirement description is valid and meaningful.
+A valid requirement should:
+- Be at least a few words long
+- Describe a clear technical need or feature
+- Not be random characters, test input, or gibberish
+
+IF VALID: Suggest ONLY the relevant activity codes.
+IF INVALID: Set isValidRequirement=false and explain why in reasoning.
 
 ${compactData}
 
-IMPORTANT: Driver values must be STRINGS ("LOW", "MEDIUM", "HIGH", etc.), not numbers.
-Return JSON: {"activityCodes": ["CODE"], "suggestedDrivers": {"CODE": "VALUE_STRING"}, "suggestedRisks": ["CODE"], "reasoning": "brief"}`;
+IMPORTANT: Return ONLY activity codes. Drivers and risks will be selected manually by the user.
+Return JSON: {"isValidRequirement": true/false, "activityCodes": ["CODE"], "reasoning": "brief explanation"}`;
 
         const userPrompt = sanitizedDescription.substring(0, 1000); // Limit to 1000 chars
 

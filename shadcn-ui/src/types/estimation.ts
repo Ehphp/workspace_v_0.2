@@ -38,8 +38,7 @@ export interface EstimationResult {
 }
 
 export interface AIActivitySuggestion {
+  isValidRequirement: boolean;
   activityCodes: string[];
-  suggestedDrivers?: Record<string, string>;
-  suggestedRisks?: string[];
   reasoning?: string;
 }

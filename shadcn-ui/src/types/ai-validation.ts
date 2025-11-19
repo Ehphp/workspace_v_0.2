@@ -5,25 +5,14 @@ import { z } from 'zod';
  * Protegge da injection attacks e dati malformati
  */
 export const AIActivitySuggestionSchema = z.object({
+    isValidRequirement: z
+        .boolean()
+        .describe('Whether the requirement description is valid and makes sense'),
+
     activityCodes: z
         .array(z.string().regex(/^[A-Z0-9_]{3,50}$/, 'Invalid activity code format'))
-        .min(1, 'At least one activity is required')
         .max(50, 'Too many activities suggested'),
-
-    suggestedDrivers: z
-        .record(
-            z.string().regex(/^[A-Z_]{3,20}$/, 'Invalid driver code format'),
-            z.union([
-                z.string().regex(/^[A-Z0-9_]{2,20}$/, 'Invalid driver value format'),
-                z.number().transform(val => String(val)) // Accept numbers from GPT and convert to string
-            ])
-        )
-        .optional(),
-
-    suggestedRisks: z
-        .array(z.string().regex(/^R_[A-Z_]{3,50}$/, 'Invalid risk code format'))
-        .max(20, 'Too many risks suggested')
-        .optional(),
+    // Allow empty array when GPT can't suggest activities (e.g., description too short)
 
     reasoning: z
         .string()
@@ -50,36 +39,13 @@ export function validateAISuggestion(
         availableActivityCodes.includes(code)
     );
 
-    if (validActivityCodes.length === 0) {
-        throw new Error('No valid activity codes in AI suggestion');
-    }
+    // Allow empty array - GPT may legitimately suggest no activities
+    // for invalid/insufficient requirements
 
-    // Step 3: Validate and filter drivers
-    const validDrivers: Record<string, string> = {};
-    if (parsed.suggestedDrivers) {
-        for (const [code, value] of Object.entries(parsed.suggestedDrivers)) {
-            if (availableDriverCodes.includes(code)) {
-                validDrivers[code] = value;
-            } else {
-                console.warn(`Invalid driver code suggested by AI: ${code}`);
-            }
-        }
-    }
-
-    // Step 4: Validate and filter risks
-    const validRisks = parsed.suggestedRisks?.filter(code => {
-        const isValid = availableRiskCodes.includes(code);
-        if (!isValid) {
-            console.warn(`Invalid risk code suggested by AI: ${code}`);
-        }
-        return isValid;
-    }) || [];
-
-    // Step 5: Return validated and sanitized data
+    // Step 3: Return validated and sanitized data (only activity codes)
     return {
+        isValidRequirement: parsed.isValidRequirement,
         activityCodes: validActivityCodes,
-        suggestedDrivers: Object.keys(validDrivers).length > 0 ? validDrivers : undefined,
-        suggestedRisks: validRisks.length > 0 ? validRisks : undefined,
         reasoning: parsed.reasoning?.trim()
     };
 }

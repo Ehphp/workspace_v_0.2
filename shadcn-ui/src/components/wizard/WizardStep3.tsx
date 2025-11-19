@@ -95,13 +95,43 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
         risks: risksData || MOCK_RISKS,
       });
 
+      // Check if the requirement is valid
+      if (!suggestion.isValidRequirement) {
+        console.warn('AI determined requirement is not valid:', suggestion.reasoning);
+        // Fall back to preset defaults for invalid requirements
+        onUpdate({
+          selectedActivityCodes: preset.default_activity_codes,
+          aiSuggestedActivityCodes: preset.default_activity_codes,
+          selectedDriverValues: preset.default_driver_values,
+          selectedRiskCodes: preset.default_risks,
+        });
+        setAiUsed(true);
+        setAiLoading(false);
+        return;
+      }
+
       const suggestedCodes = suggestion.activityCodes;
+
+      // If GPT didn't suggest any activities (e.g., description too short),
+      // fall back to preset defaults
+      if (!suggestedCodes || suggestedCodes.length === 0) {
+        console.warn('AI returned no activities, using preset defaults');
+        onUpdate({
+          selectedActivityCodes: preset.default_activity_codes,
+          aiSuggestedActivityCodes: preset.default_activity_codes,
+          selectedDriverValues: preset.default_driver_values,
+          selectedRiskCodes: preset.default_risks,
+        });
+        setAiUsed(true);
+        setAiLoading(false);
+        return;
+      }
 
       onUpdate({
         selectedActivityCodes: suggestedCodes,
         aiSuggestedActivityCodes: suggestedCodes,
-        selectedDriverValues: suggestion.suggestedDrivers || preset.default_driver_values,
-        selectedRiskCodes: suggestion.suggestedRisks || preset.default_risks,
+        selectedDriverValues: preset.default_driver_values, // Use preset defaults, not AI suggestions
+        selectedRiskCodes: preset.default_risks, // Use preset defaults, not AI suggestions
       });
 
       setAiUsed(true);
@@ -226,8 +256,8 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
                   <div
                     key={activity.code}
                     className={`group flex items-start space-x-3 p-3 border-2 rounded-xl transition-all duration-300 cursor-pointer ${isSelected
-                        ? 'border-purple-300 bg-gradient-to-r from-purple-50 to-pink-50 shadow-md'
-                        : 'border-slate-200 hover:border-purple-200 hover:bg-purple-50/30'
+                      ? 'border-purple-300 bg-gradient-to-r from-purple-50 to-pink-50 shadow-md'
+                      : 'border-slate-200 hover:border-purple-200 hover:bg-purple-50/30'
                       }`}
                     onClick={() => toggleActivity(activity.code)}
                   >

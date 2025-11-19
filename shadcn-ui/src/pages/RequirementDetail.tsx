@@ -185,22 +185,34 @@ Risks: ${est.estimation_risks?.length || 0}`;
                 risks,
             });
 
+            // Check if the requirement is valid
+            if (!suggestions.isValidRequirement) {
+                toast.error('Invalid requirement', {
+                    description: suggestions.reasoning || 'The requirement description is not valid or clear enough.',
+                });
+                setIsAiLoading(false);
+                return;
+            }
+
+            // Check if GPT suggested any activities
+            if (!suggestions.activityCodes || suggestions.activityCodes.length === 0) {
+                toast.warning('No activities suggested', {
+                    description: suggestions.reasoning || 'The description may be too short or unclear. Please provide more details.',
+                });
+                setIsAiLoading(false);
+                return;
+            }
+
             // Map activity codes to IDs
             const suggestedActivityIds = activities
                 .filter((a) => suggestions.activityCodes.includes(a.code))
                 .map((a) => a.id);
 
-            // Map risk codes to IDs
-            const suggestedRiskIds = suggestions.suggestedRisks
-                ? risks
-                    .filter((r) => suggestions.suggestedRisks?.includes(r.code))
-                    .map((r) => r.id)
-                : undefined;
-
+            // NO drivers and risks - GPT suggests only activities
             applyAiSuggestions(
                 suggestedActivityIds,
-                suggestions.suggestedDrivers,
-                suggestedRiskIds
+                undefined, // no driver suggestions
+                undefined  // no risk suggestions
             );
 
             toast.success('AI suggestions applied successfully');

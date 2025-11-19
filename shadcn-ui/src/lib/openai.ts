@@ -54,9 +54,8 @@ export async function suggestActivities(
 
     // Fallback to preset defaults
     return {
+      isValidRequirement: false,
       activityCodes: preset.default_activity_codes,
-      suggestedDrivers: preset.default_driver_values,
-      suggestedRisks: preset.default_risks,
       reasoning: 'Using preset defaults due to AI service error',
     };
   }

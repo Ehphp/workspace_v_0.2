@@ -34,7 +34,7 @@ export function RisksSection({
     return (
         <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
             <CardHeader
-                className="pb-3 bg-gradient-to-r from-slate-50 to-blue-50 cursor-pointer"
+                className="pb-3 bg-gradient-to-r from-rose-50 to-rose-100 cursor-pointer"
                 onClick={onToggle}
             >
                 <div className="flex items-center justify-between">
@@ -48,9 +48,9 @@ export function RisksSection({
                             </div>
                             <div className="text-right mr-8">
                                 <div className="text-xs text-muted-foreground">Score</div>
-                                <div className="flex items-center gap-2 justify-end">
+                                <div className="flex items-center gap-2 justify-end transition-all duration-300">
                                     <div className="text-xl font-bold">{currentRiskScore}</div>
-                                    <Badge variant={riskLevel.variant}>{riskLevel.label}</Badge>
+                                    <Badge variant={riskLevel.variant} className="transition-all duration-300">{riskLevel.label}</Badge>
                                 </div>
                             </div>
                         </div>

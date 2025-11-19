@@ -18,9 +18,11 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
-import { MOCK_TECHNOLOGY_PRESETS } from '@/lib/mockData';
-import { calculateQuickEstimation } from '@/lib/estimationEngine';
-import type { TechnologyPreset } from '@/types/database';
+import { MOCK_TECHNOLOGY_PRESETS, MOCK_ACTIVITIES, MOCK_DRIVERS, MOCK_RISKS } from '@/lib/mockData';
+import { calculateEstimation } from '@/lib/estimationEngine';
+import { suggestActivities } from '@/lib/openai';
+import type { TechnologyPreset, Activity, Driver, Risk } from '@/types/database';
+import type { EstimationResult } from '@/types/estimation';
 
 interface QuickEstimateProps {
     open: boolean;
@@ -32,8 +34,10 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
     const [techPresetId, setTechPresetId] = useState('');
     const [presets, setPresets] = useState<TechnologyPreset[]>([]);
     const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<number | null>(null);
+    const [calculating, setCalculating] = useState(false);
+    const [result, setResult] = useState<EstimationResult | null>(null);
     const [isDemoMode, setIsDemoMode] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (open) {
@@ -42,6 +46,7 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
             setDescription('');
             setTechPresetId('');
             setResult(null);
+            setError(null);
         }
     }, [open]);
 
@@ -67,18 +72,109 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
         setLoading(false);
     };
 
-    const handleCalculate = () => {
+    const handleCalculate = async () => {
         if (!description.trim() || !techPresetId) return;
 
+        // Validate minimum description length
+        if (description.trim().length < 10) {
+            setError('Please provide a more detailed description (at least 10 characters).');
+            return;
+        }
+
         const selectedPreset = presets.find(p => p.id === techPresetId);
-        const estimatedDays = calculateQuickEstimation(description, selectedPreset?.name || '');
-        setResult(estimatedDays);
+        if (!selectedPreset) return;
+
+        setCalculating(true);
+        setError(null);
+
+        try {
+            // Load activities, drivers, and risks
+            const [activitiesResult, driversResult, risksResult] = await Promise.all([
+                supabase.from('activities').select('*').eq('active', true),
+                supabase.from('drivers').select('*'),
+                supabase.from('risks').select('*'),
+            ]);
+
+            let allActivities: Activity[];
+            let allDrivers: Driver[];
+            let allRisks: Risk[];
+
+            // Use mock data if database is not available
+            if (activitiesResult.error || !activitiesResult.data || activitiesResult.data.length === 0 ||
+                driversResult.error || !driversResult.data || driversResult.data.length === 0 ||
+                risksResult.error || !risksResult.data || risksResult.data.length === 0) {
+                allActivities = MOCK_ACTIVITIES;
+                allDrivers = MOCK_DRIVERS;
+                allRisks = MOCK_RISKS;
+            } else {
+                allActivities = activitiesResult.data;
+                allDrivers = driversResult.data;
+                allRisks = risksResult.data;
+            }
+
+            // Get AI suggestions
+            const aiSuggestion = await suggestActivities({
+                description,
+                preset: selectedPreset,
+                activities: allActivities,
+                drivers: allDrivers,
+                risks: allRisks,
+            });
+
+            // Check if the requirement is valid
+            if (!aiSuggestion.isValidRequirement) {
+                setError(
+                    aiSuggestion.reasoning ||
+                    'The requirement description is not valid or clear enough. Please provide a meaningful description of what needs to be developed.'
+                );
+                return;
+            }
+
+            // Check if GPT suggested any activities
+            if (!aiSuggestion.activityCodes || aiSuggestion.activityCodes.length === 0) {
+                setError(
+                    aiSuggestion.reasoning ||
+                    'The description is too short or unclear. Please provide more details about the requirement.'
+                );
+                return;
+            }
+
+            // Prepare selected activities with base days
+            const selectedActivities = aiSuggestion.activityCodes.map((code) => {
+                const activity = allActivities.find((a) => a.code === code);
+                return {
+                    code,
+                    baseDays: activity?.base_days || 0,
+                    isAiSuggested: true,
+                };
+            });
+
+            // NO drivers and risks - GPT suggests only activities
+            // Users will add drivers and risks manually if needed
+            const selectedDrivers: any[] = [];
+            const selectedRisks: any[] = [];
+
+            // Calculate estimation with only activities (no multipliers or risks)
+            const estimationResult = calculateEstimation({
+                activities: selectedActivities,
+                drivers: selectedDrivers,
+                risks: selectedRisks,
+            });
+
+            setResult(estimationResult);
+        } catch (err) {
+            console.error('Error calculating quick estimate:', err);
+            setError(err instanceof Error ? err.message : 'Failed to calculate estimate');
+        } finally {
+            setCalculating(false);
+        }
     };
 
     const handleReset = () => {
         setDescription('');
         setTechPresetId('');
         setResult(null);
+        setError(null);
     };
 
     const handleClose = () => {
@@ -186,6 +282,22 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                         </p>
                     </div>
 
+                    {/* Error */}
+                    {error && (
+                        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800 flex items-start gap-2">
+                            <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path
+                                    fillRule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                    clipRule="evenodd"
+                                />
+                            </svg>
+                            <span>
+                                <strong>Error:</strong> {error}
+                            </span>
+                        </div>
+                    )}
+
                     {/* Result */}
                     {result !== null && (
                         <div className="p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border-2 border-emerald-200">
@@ -207,18 +319,42 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                                 </div>
                                 <div>
                                     <h3 className="text-lg font-bold text-slate-900">Estimated Effort</h3>
-                                    <p className="text-sm text-slate-600">Quick calculation complete</p>
+                                    <p className="text-sm text-slate-600">AI-powered calculation complete</p>
                                 </div>
                             </div>
 
                             <div className="bg-white rounded-lg p-4 space-y-3">
-                                <div className="flex justify-between items-center">
+                                <div className="flex justify-between items-center pb-3 border-b border-slate-200">
                                     <span className="text-sm font-medium text-slate-600">Total Days</span>
                                     <span className="text-3xl font-bold text-emerald-600">
-                                        {result.toFixed(1)}
+                                        {result.totalDays.toFixed(1)}
                                     </span>
                                 </div>
-                                <div className="text-xs text-slate-500 pt-2 border-t border-slate-200">
+
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-600">Base Days</span>
+                                        <span className="font-semibold text-slate-900">{result.baseDays.toFixed(1)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-600">Driver Multiplier</span>
+                                        <span className="font-semibold text-slate-900">{result.driverMultiplier.toFixed(2)}x</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-600">Subtotal</span>
+                                        <span className="font-semibold text-slate-900">{result.subtotal.toFixed(1)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-600">Risk Score</span>
+                                        <span className="font-semibold text-slate-900">{result.riskScore}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-600">Contingency</span>
+                                        <span className="font-semibold text-slate-900">{result.contingencyPercent}% ({result.contingencyDays.toFixed(1)} days)</span>
+                                    </div>
+                                </div>
+
+                                <div className="text-xs text-slate-500 pt-3 border-t border-slate-200">
                                     <p className="flex items-center gap-1">
                                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                             <path
@@ -227,7 +363,7 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                                                 clipRule="evenodd"
                                             />
                                         </svg>
-                                        This is a simplified estimate. For detailed breakdown with activities, drivers, and risks, use the full 5-step wizard.
+                                        Estimation based on AI-suggested activities, drivers, and risks. For detailed breakdown, use the full 5-step wizard.
                                     </p>
                                 </div>
                             </div>
@@ -254,10 +390,18 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                         )}
                         <Button
                             onClick={handleCalculate}
-                            disabled={!canCalculate || loading}
+                            disabled={!canCalculate || loading || calculating}
                             className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
                         >
-                            {loading ? 'Loading...' : result !== null ? 'Recalculate' : 'Calculate'}
+                            {calculating ? (
+                                <>
+                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Calculating with AI...
+                                </>
+                            ) : loading ? 'Loading...' : result !== null ? 'Recalculate' : 'Calculate'}
                         </Button>
                     </div>
                 </div>

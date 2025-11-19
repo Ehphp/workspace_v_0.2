@@ -43,7 +43,7 @@ export function ActivitiesSection({
     return (
         <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300 flex flex-col max-h-[400px]">
             <CardHeader
-                className="pb-3 flex-none bg-gradient-to-r from-slate-50 to-blue-50 cursor-pointer"
+                className="pb-3 flex-none bg-gradient-to-r from-purple-50 to-purple-100 cursor-pointer"
                 onClick={onToggle}
             >
                 <div className="flex items-center justify-between">

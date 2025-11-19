@@ -173,42 +173,44 @@ export function BulkEstimateDialog({
 
                     const aiSuggestion = await response.json();
 
+                    // Check if the requirement is valid
+                    if (!aiSuggestion.isValidRequirement) {
+                        console.warn(`Invalid requirement for ${req.req_id}: ${aiSuggestion.reasoning || 'requirement not valid'}`);
+                        return {
+                            requirementId: req.id,
+                            success: false,
+                            error: aiSuggestion.reasoning || 'Invalid or unclear requirement description'
+                        };
+                    }
+
+                    // Check if GPT suggested any activities
+                    if (!aiSuggestion.activityCodes || aiSuggestion.activityCodes.length === 0) {
+                        console.warn(`No activities suggested for ${req.req_id}: ${aiSuggestion.reasoning || 'description unclear'}`);
+                        return {
+                            requirementId: req.id,
+                            success: false,
+                            error: aiSuggestion.reasoning || 'Description too short or unclear'
+                        };
+                    }
+
                     // Calculate estimation (using pre-loaded data)
                     const selectedActivities = activities.filter((a: Activity) =>
                         aiSuggestion.activityCodes.includes(a.code)
                     ) || [];
 
-                    const selectedDrivers = Object.entries(aiSuggestion.suggestedDrivers || {}).map(
-                        ([code, value]) => {
-                            const driver = drivers?.find((d: Driver) => d.code === code);
-                            if (!driver) return null;
-                            const option = driver.options.find((o: DriverOption) => o.value === value);
-                            return option ? { code, value, multiplier: option.multiplier } : null;
-                        }
-                    ).filter(Boolean);
-
-                    const selectedRisks = risks?.filter((r: Risk) =>
-                        aiSuggestion.suggestedRisks?.includes(r.code)
-                    ) || [];
+                    // NO drivers and risks - GPT suggests only activities
+                    const selectedDrivers: any[] = [];
+                    const selectedRisks: any[] = [];
 
                     const baseDays = selectedActivities.reduce(
                         (sum: number, a: Activity) => sum + a.base_days,
                         0
                     );
-                    const driverMultiplier = selectedDrivers.reduce(
-                        (product: number, d: { code: string; value: string; multiplier: number } | null) => d ? product * d.multiplier : product,
-                        1.0
-                    );
+                    const driverMultiplier = 1.0; // No driver multiplier
                     const subtotal = baseDays * driverMultiplier;
-                    const riskScore = selectedRisks.reduce(
-                        (sum: number, r: Risk) => sum + r.weight,
-                        0
-                    );
+                    const riskScore = 0; // No risk score
 
-                    let contingencyPercent = 0.10;
-                    if (riskScore > 30) contingencyPercent = 0.25;
-                    else if (riskScore > 20) contingencyPercent = 0.20;
-                    else if (riskScore > 10) contingencyPercent = 0.15;
+                    const contingencyPercent = 0.10; // Base contingency only
 
                     const contingencyDays = subtotal * contingencyPercent;
                     const totalDays = subtotal + contingencyDays;
@@ -224,8 +226,8 @@ export function BulkEstimateDialog({
                         contingency_percent: contingencyPercent * 100,
                         scenario_name: 'AI Generated',
                         selected_activities: aiSuggestion.activityCodes,
-                        selected_drivers: aiSuggestion.suggestedDrivers || {},
-                        selected_risks: aiSuggestion.suggestedRisks || [],
+                        selected_drivers: {}, // No drivers
+                        selected_risks: [], // No risks
                         ai_reasoning: aiSuggestion.reasoning,
                     });
 

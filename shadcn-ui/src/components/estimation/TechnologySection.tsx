@@ -34,7 +34,7 @@ export function TechnologySection({
     return (
         <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
             <CardHeader
-                className="pb-3 bg-gradient-to-r from-slate-50 to-blue-50 cursor-pointer"
+                className="pb-3 bg-gradient-to-r from-cyan-50 to-cyan-100 cursor-pointer"
                 onClick={onToggle}
             >
                 <div className="flex items-center justify-between">

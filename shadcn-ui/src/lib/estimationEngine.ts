@@ -85,7 +85,11 @@ export function formatPercent(percent: number): string {
 
 /**
  * Quick estimation for simplified workflow
- * Uses heuristic-based calculation with default assumptions:
+ * 
+ * @deprecated This function is deprecated. Use the AI-powered QuickEstimate component instead,
+ * which calls suggestActivities() and calculateEstimation() for accurate results.
+ * 
+ * This legacy function used heuristic-based calculation with default assumptions:
  * - Base complexity: 10 days for simple requirements, scaled by word count
  * - Technology multiplier: 1.0 (neutral baseline)
  * - Default driver multiplier: 1.2 (moderate complexity)
