@@ -8,6 +8,8 @@ interface SuggestActivitiesInput {
   activities: Activity[];
   drivers: Driver[];
   risks: Risk[];
+  baseUrl?: string; // Optional base URL for testing
+  testMode?: boolean; // Disable cache and increase temperature for variance testing
 }
 
 /**
@@ -17,14 +19,15 @@ interface SuggestActivitiesInput {
 export async function suggestActivities(
   input: SuggestActivitiesInput
 ): Promise<AIActivitySuggestion> {
-  const { description, preset, activities, drivers, risks } = input;
+  const { description, preset, activities, drivers, risks, baseUrl = '', testMode = false } = input;
 
   try {
     // Sanitize input to prevent injection attacks
     const sanitizedDescription = sanitizePromptInput(description);
 
     // Call Netlify function instead of OpenAI directly
-    const response = await fetch('/.netlify/functions/ai-suggest', {
+    const apiUrl = `${baseUrl}/.netlify/functions/ai-suggest`;
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -35,6 +38,7 @@ export async function suggestActivities(
         activities,
         drivers,
         risks,
+        testMode, // Pass test mode to function
       }),
     });
 

@@ -80,6 +80,8 @@ interface RequestBody {
         name: string;
         weight: number;
     }>;
+    // Test mode: disable cache and increase temperature
+    testMode?: boolean;
 }
 
 interface AIActivitySuggestion {
@@ -197,7 +199,7 @@ export const handler: Handler = async (
         }
 
         // Handle activity suggestions (original logic)
-        const { description, preset, activities, drivers, risks } = body;
+        const { description, preset, activities, drivers, risks, testMode } = body;
 
         if (!description || !preset || !activities || !drivers || !risks) {
             console.error('Validation failed - missing fields');
@@ -225,16 +227,20 @@ export const handler: Handler = async (
 
         console.log('Filtered activities:', relevantActivities?.length);
 
-        // Check cache first
+        // Check cache first (skip in test mode)
         const cacheKey = getCacheKey(sanitizedDescription, preset.name);
-        const cached = getCachedResponse(cacheKey);
-        if (cached) {
-            console.log('✅ Using cached AI suggestion');
-            return {
-                statusCode: 200,
-                headers,
-                body: JSON.stringify(cached),
-            };
+        if (!testMode) {
+            const cached = getCachedResponse(cacheKey);
+            if (cached) {
+                console.log('✅ Using cached AI suggestion');
+                return {
+                    statusCode: 200,
+                    headers,
+                    body: JSON.stringify(cached),
+                };
+            }
+        } else {
+            console.log('🧪 Test mode: cache disabled');
         }
 
         // Build COMPACT system prompt (60-70% token reduction)
@@ -265,10 +271,12 @@ Return JSON: {"activityCodes": ["CODE"], "suggestedDrivers": {"CODE": "VALUE_STR
 
         console.log('Calling OpenAI API (optimized)...');
         console.log('Model: gpt-4o-mini');
+        console.log('Test mode:', testMode ? 'enabled (temp=0.7, no cache)' : 'disabled (temp=0.1, cached)');
         console.log('System prompt length:', systemPrompt.length, '(optimized)');
         console.log('User prompt length:', userPrompt.length);
 
         // Call OpenAI API with optimized parameters
+        const temperature = testMode ? 0.7 : 0.1; // Higher temp in test mode for variance
         const response = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
@@ -276,7 +284,7 @@ Return JSON: {"activityCodes": ["CODE"], "suggestedDrivers": {"CODE": "VALUE_STR
                 { role: 'user', content: userPrompt },
             ],
             response_format: { type: 'json_object' },
-            temperature: 0.1, // More deterministic = faster
+            temperature,
             max_tokens: 500, // Limit response size
         });
 
@@ -312,9 +320,11 @@ Return JSON: {"activityCodes": ["CODE"], "suggestedDrivers": {"CODE": "VALUE_STR
 
         console.log('✅ Validated suggestion:', JSON.stringify(validatedSuggestion, null, 2));
 
-        // Cache the validated result
-        aiCache.set(cacheKey, { response: validatedSuggestion, timestamp: Date.now() });
-        console.log('💾 Cached response for future use');
+        // Cache the validated result (skip in test mode)
+        if (!testMode) {
+            aiCache.set(cacheKey, { response: validatedSuggestion, timestamp: Date.now() });
+            console.log('💾 Cached response for future use');
+        }
 
         // Return successful response
         console.log('Returning successful response');
