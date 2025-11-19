@@ -65,6 +65,7 @@ export default function RequirementDetail() {
         setDriverValue,
         toggleRisk,
         applyPreset,
+        applyPresetDefaults,
         applyAiSuggestions,
         estimationResult,
         isValid: isEstimationValid,
@@ -86,6 +87,7 @@ export default function RequirementDetail() {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [comparisonDialogOpen, setComparisonDialogOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<string>('info');
+    const [expandedSection, setExpandedSection] = useState<'technology' | 'activities' | 'drivers' | 'risks' | null>('technology');
 
     // Track unsaved changes
     const hasUnsavedChanges = useMemo(() => {
@@ -153,6 +155,14 @@ Risks: ${est.estimation_risks?.length || 0}`;
     const handlePresetChange = useCallback((presetId: string) => {
         applyPreset(presetId);
     }, [applyPreset]);
+
+    const handleApplyTemplate = useCallback(() => {
+        if (!selectedPresetId) return;
+        applyPresetDefaults(selectedPresetId);
+        toast.success('Template applied', {
+            description: 'Default activities, drivers and risks loaded from preset'
+        });
+    }, [selectedPresetId, applyPresetDefaults]);
 
     const handleAiSuggest = useCallback(async () => {
         if (!requirement?.description || !selectedPresetId) {
@@ -404,9 +414,9 @@ Risks: ${est.estimation_risks?.length || 0}`;
             </header>
 
             {/* Content Area with Tabs */}
-            <div className="flex-1 overflow-auto">
-                <div className="h-full flex flex-col">
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+            <div className="flex-1 overflow-hidden">
+                <div className="h-full overflow-auto">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="h-auto">
                         {/* Tabs Navigation */}
                         <div className="border-b border-white/20 bg-white/60 backdrop-blur-sm flex-none shadow-sm sticky top-0 z-10">
                             <div className="container mx-auto px-6">
@@ -436,7 +446,7 @@ Risks: ${est.estimation_risks?.length || 0}`;
                             </div>
                         </div>
                         {/* Info Tab */}
-                        <TabsContent value="info" className="flex-1 mt-0">
+                        <TabsContent value="info" className="mt-0">
                             <div className="container mx-auto px-6 py-12">
                                 <div className="max-w-7xl mx-auto">
                                     {/* Layout a 2 colonne per ottimizzare lo spazio */}
@@ -573,7 +583,7 @@ Risks: ${est.estimation_risks?.length || 0}`;
                         </TabsContent>
 
                         {/* Estimation Tab */}
-                        <TabsContent value="estimation" className="flex-1 mt-0">
+                        <TabsContent value="estimation" className="mt-0">
                             <div className="container mx-auto px-6 py-12">
                                 {/* Header Sezione */}
                                 <div className="mb-6 px-4 py-3 rounded-xl bg-white/60 backdrop-blur-sm border border-white/50 shadow-md">
@@ -583,16 +593,19 @@ Risks: ${est.estimation_risks?.length || 0}`;
                                     <p className="text-xs text-slate-600 mt-1">Select technology, activities, drivers and risks to calculate the estimation</p>
                                 </div>
 
-                                <div className="grid lg:grid-cols-[1fr_360px] gap-6 h-full">
+                                <div className="grid lg:grid-cols-[1fr_360px] gap-6 pb-12">
                                     {/* Left Column - Configuration */}
-                                    <div className="space-y-4 overflow-y-auto pr-2">
+                                    <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-2">
                                         <TechnologySection
                                             presets={presets}
                                             selectedPresetId={selectedPresetId}
                                             onPresetChange={handlePresetChange}
+                                            onApplyTemplate={handleApplyTemplate}
                                             onAiRecalculate={handleAiSuggest}
                                             isAiLoading={isAiLoading}
                                             requirementDescription={requirement?.description || ''}
+                                            isExpanded={expandedSection === 'technology'}
+                                            onToggle={() => setExpandedSection(expandedSection === 'technology' ? null : 'technology')}
                                         />
 
                                         <ActivitiesSection
@@ -600,6 +613,8 @@ Risks: ${est.estimation_risks?.length || 0}`;
                                             selectedActivityIds={selectedActivityIds}
                                             aiSuggestedIds={aiSuggestedIds}
                                             onActivityToggle={toggleActivity}
+                                            isExpanded={expandedSection === 'activities'}
+                                            onToggle={() => setExpandedSection(expandedSection === 'activities' ? null : 'activities')}
                                         />
 
                                         <DriversSection
@@ -607,6 +622,8 @@ Risks: ${est.estimation_risks?.length || 0}`;
                                             selectedDriverValues={selectedDriverValues}
                                             onDriverChange={setDriverValue}
                                             currentMultiplier={estimationResult?.driverMultiplier || 1.0}
+                                            isExpanded={expandedSection === 'drivers'}
+                                            onToggle={() => setExpandedSection(expandedSection === 'drivers' ? null : 'drivers')}
                                         />
 
                                         <RisksSection
@@ -614,26 +631,26 @@ Risks: ${est.estimation_risks?.length || 0}`;
                                             selectedRiskIds={selectedRiskIds}
                                             onRiskToggle={toggleRisk}
                                             currentRiskScore={estimationResult?.riskScore || 0}
+                                            isExpanded={expandedSection === 'risks'}
+                                            onToggle={() => setExpandedSection(expandedSection === 'risks' ? null : 'risks')}
                                         />
                                     </div>
 
                                     {/* Right Column - Summary (Sticky) */}
-                                    <div className="overflow-y-auto">
-                                        <div className="sticky top-0">
-                                            <CalculationSummary
-                                                result={estimationResult}
-                                                onSave={handleSaveEstimation}
-                                                isSaving={isSaving}
-                                                hasUnsavedChanges={hasUnsavedChanges}
-                                            />
-                                        </div>
+                                    <div className="lg:sticky lg:top-6 lg:self-start lg:h-fit">
+                                        <CalculationSummary
+                                            result={estimationResult}
+                                            onSave={handleSaveEstimation}
+                                            isSaving={isSaving}
+                                            hasUnsavedChanges={hasUnsavedChanges}
+                                        />
                                     </div>
                                 </div>
                             </div>
                         </TabsContent>
 
                         {/* History Tab */}
-                        <TabsContent value="history" className="flex-1 mt-0">
+                        <TabsContent value="history" className="mt-0">
                             <div className="container mx-auto px-6 py-12">
                                 <div className="max-w-7xl mx-auto">
                                     {/* Timeline compatta - sempre visibile */}

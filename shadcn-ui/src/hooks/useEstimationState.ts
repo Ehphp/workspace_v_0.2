@@ -24,6 +24,7 @@ interface UseEstimationStateReturn {
     setDriverValue: (driverId: string, value: string) => void; // Use ID instead of code
     toggleRisk: (id: string) => void;
     applyPreset: (presetId: string) => void;
+    applyPresetDefaults: (presetId: string) => void;
     applyAiSuggestions: (activityIds: string[], driverValues?: Record<string, string>, riskIds?: string[]) => void;
     resetSelections: () => void;
 
@@ -79,9 +80,13 @@ export function useEstimationState({
         );
     }, []);
 
-    // Apply preset defaults
+    // Apply preset (only changes the preset ID, no defaults)
     const applyPreset = useCallback((presetId: string) => {
         setSelectedPresetId(presetId);
+    }, []);
+
+    // Apply preset defaults (loads activities, drivers, and risks from preset template)
+    const applyPresetDefaults = useCallback((presetId: string) => {
         const preset = presets.find((p) => p.id === presetId);
 
         if (!preset) return;
@@ -110,9 +115,9 @@ export function useEstimationState({
             .map((r) => r.id);
         setSelectedRiskIds(defaultRiskIds);
 
-        // Clear AI suggestions when applying preset
+        // Clear AI suggestions when applying preset template
         setAiSuggestedIds([]);
-    }, [activities, risks, presets]);
+    }, [activities, drivers, risks, presets]);
 
     // Apply AI suggestions
     const applyAiSuggestions = useCallback((
@@ -235,6 +240,7 @@ export function useEstimationState({
         setDriverValue,
         toggleRisk,
         applyPreset,
+        applyPresetDefaults,
         applyAiSuggestions,
         resetSelections,
 
