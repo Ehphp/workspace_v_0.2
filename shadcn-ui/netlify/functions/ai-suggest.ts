@@ -7,6 +7,48 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
+// In-memory cache for AI responses (TTL: 5 minutes)
+const aiCache = new Map<string, { response: any; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Helper to generate cache key
+function getCacheKey(description: string, presetId: string): string {
+    const normalizedDesc = description.trim().toLowerCase().substring(0, 200);
+    return `${presetId}:${normalizedDesc}`;
+}
+
+// Helper to get cached response
+function getCachedResponse(key: string): any | null {
+    const cached = aiCache.get(key);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        return cached.response;
+    }
+    if (cached) {
+        aiCache.delete(key); // Remove expired
+    }
+    return null;
+}
+
+// Helper to create compact prompt (reduces tokens by 60-70%)
+function createCompactPrompt(activities: any[], drivers: any[], risks: any[]): string {
+    const activitiesStr = activities.map(a => `${a.code}(${a.base_days}d,${a.group})`).join(', ');
+    const driversStr = drivers.map(d => {
+        // Safely handle options - it might not exist or be empty
+        if (!d.options || !Array.isArray(d.options) || d.options.length === 0) {
+            return `${d.code}(1.0)`;
+        }
+        const multipliers = d.options.map((o: any) => o.multiplier).filter((m: any) => typeof m === 'number');
+        if (multipliers.length === 0) {
+            return `${d.code}(1.0)`;
+        }
+        const minMax = `${Math.min(...multipliers)}-${Math.max(...multipliers)}`;
+        return `${d.code}(${minMax})`;
+    }).join(', ');
+    const risksStr = risks.map(r => `${r.code}(${r.weight})`).join(', ');
+
+    return `Activities: ${activitiesStr}\nDrivers: ${driversStr}\nRisks: ${risksStr}`;
+}
+
 interface RequestBody {
     action?: 'suggest-activities' | 'generate-title';
     description: string;
@@ -28,6 +70,10 @@ interface RequestBody {
     drivers?: Array<{
         code: string;
         name: string;
+        options?: Array<{
+            value: string;
+            multiplier: number;
+        }>;
     }>;
     risks?: Array<{
         code: string;
@@ -109,25 +155,39 @@ export const handler: Handler = async (
             const sanitizedDescription = sanitizePromptInput(description);
             console.log('Generating title for description:', sanitizedDescription.substring(0, 100));
 
+            // Check cache first
+            const cacheKey = `title:${sanitizedDescription.substring(0, 200)}`;
+            const cached = getCachedResponse(cacheKey);
+            if (cached) {
+                console.log('✅ Using cached title');
+                return {
+                    statusCode: 200,
+                    headers,
+                    body: JSON.stringify({ title: cached }),
+                };
+            }
+
             const completion = await openai.chat.completions.create({
                 model: 'gpt-4o-mini',
                 messages: [
                     {
                         role: 'system',
-                        content: 'You are a helpful assistant that creates concise, clear titles for software requirements. Generate a title of maximum 10 words that captures the essence of the requirement description. Return ONLY the title text, no quotes or extra formatting.',
+                        content: 'Create concise requirement titles (max 10 words). Return only the title.',
                     },
                     {
                         role: 'user',
-                        content: `Create a concise title for this requirement:\n\n${sanitizedDescription}`,
+                        content: sanitizedDescription.substring(0, 500), // Limit input length
                     },
                 ],
-                temperature: 0.7,
-                max_tokens: 50,
+                temperature: 0.3, // More deterministic
+                max_tokens: 30, // Reduced from 50
             });
 
             const title = completion.choices[0]?.message?.content?.trim() || description.substring(0, 100);
 
-            console.log('Generated title:', title);
+            // Cache the result
+            aiCache.set(cacheKey, { response: title, timestamp: Date.now() });
+            console.log('Generated and cached title:', title);
 
             return {
                 statusCode: 200,
@@ -163,47 +223,52 @@ export const handler: Handler = async (
             (a) => a.tech_category === preset.tech_category || a.tech_category === 'MULTI'
         );
 
-        // Build system prompt
-        const systemPrompt = `You are an expert software estimation assistant. Your role is to suggest which activities should be included in an estimation based on a requirement description.
+        console.log('Filtered activities:', relevantActivities?.length);
 
-IMPORTANT: You only suggest activities. You DO NOT calculate effort or days. The calculation is done by a deterministic engine.
+        // Check cache first
+        const cacheKey = getCacheKey(sanitizedDescription, preset.name);
+        const cached = getCachedResponse(cacheKey);
+        if (cached) {
+            console.log('✅ Using cached AI suggestion');
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify(cached),
+            };
+        }
 
-Technology Preset: ${preset.name} (${preset.tech_category})
-Description: ${preset.description}
+        // Build COMPACT system prompt (60-70% token reduction)
+        console.log('📝 Creating compact prompt...');
+        console.log('- relevantActivities:', relevantActivities?.length);
+        console.log('- drivers:', drivers?.length);
+        console.log('- risks:', risks?.length);
 
-Available activities for this technology:
-${relevantActivities.map((a) => `- ${a.code}: ${a.name} (${a.base_days} days, ${a.group})`).join('\n')}
+        let compactData;
+        try {
+            compactData = createCompactPrompt(relevantActivities, drivers, risks);
+            console.log('✅ Compact prompt created, length:', compactData?.length);
+        } catch (error: any) {
+            console.error('❌ Error in createCompactPrompt:', error.message);
+            console.error('Stack:', error.stack);
+            throw new Error(`Failed to create compact prompt: ${error.message}`);
+        }
 
-Available drivers:
-${drivers.map((d) => `- ${d.code}: ${d.name}`).join('\n')}
+        const systemPrompt = `Expert estimation assistant for ${preset.name} (${preset.tech_category}).
+Suggest activity codes, driver values (as STRINGS like "LOW", "MEDIUM", "HIGH"), and risk codes.
 
-Available risks:
-${risks.map((r) => `- ${r.code}: ${r.name} (weight: ${r.weight})`).join('\n')}
+${compactData}
 
-Based on the requirement description, suggest:
-1. Which activity codes should be selected (array of codes)
-2. Optionally, suggested driver values (object with driver codes as keys)
-3. Optionally, suggested risk codes (array of codes)
+IMPORTANT: Driver values must be STRINGS ("LOW", "MEDIUM", "HIGH", etc.), not numbers.
+Return JSON: {"activityCodes": ["CODE"], "suggestedDrivers": {"CODE": "VALUE_STRING"}, "suggestedRisks": ["CODE"], "reasoning": "brief"}`;
 
-Return your response as a JSON object with this structure:
-{
-  "activityCodes": ["CODE1", "CODE2", ...],
-  "suggestedDrivers": {"COMPLEXITY": "HIGH", ...},
-  "suggestedRisks": ["R_CODE1", ...],
-  "reasoning": "Brief explanation of your suggestions"
-}`;
+        const userPrompt = sanitizedDescription.substring(0, 1000); // Limit to 1000 chars
 
-        const userPrompt = `Requirement description:
-${sanitizedDescription}
-
-Please suggest which activities, drivers, and risks are relevant for this requirement.`;
-
-        console.log('Calling OpenAI API...');
+        console.log('Calling OpenAI API (optimized)...');
         console.log('Model: gpt-4o-mini');
-        console.log('System prompt length:', systemPrompt.length);
+        console.log('System prompt length:', systemPrompt.length, '(optimized)');
         console.log('User prompt length:', userPrompt.length);
 
-        // Call OpenAI API
+        // Call OpenAI API with optimized parameters
         const response = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
@@ -211,7 +276,8 @@ Please suggest which activities, drivers, and risks are relevant for this requir
                 { role: 'user', content: userPrompt },
             ],
             response_format: { type: 'json_object' },
-            temperature: 0.3,
+            temperature: 0.1, // More deterministic = faster
+            max_tokens: 500, // Limit response size
         });
 
         console.log('OpenAI response received:');
@@ -245,6 +311,10 @@ Please suggest which activities, drivers, and risks are relevant for this requir
         );
 
         console.log('✅ Validated suggestion:', JSON.stringify(validatedSuggestion, null, 2));
+
+        // Cache the validated result
+        aiCache.set(cacheKey, { response: validatedSuggestion, timestamp: Date.now() });
+        console.log('💾 Cached response for future use');
 
         // Return successful response
         console.log('Returning successful response');

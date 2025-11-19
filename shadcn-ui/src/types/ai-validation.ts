@@ -13,7 +13,10 @@ export const AIActivitySuggestionSchema = z.object({
     suggestedDrivers: z
         .record(
             z.string().regex(/^[A-Z_]{3,20}$/, 'Invalid driver code format'),
-            z.string().regex(/^[A-Z_]{2,20}$/, 'Invalid driver value format')
+            z.union([
+                z.string().regex(/^[A-Z0-9_]{2,20}$/, 'Invalid driver value format'),
+                z.number().transform(val => String(val)) // Accept numbers from GPT and convert to string
+            ])
         )
         .optional(),
 

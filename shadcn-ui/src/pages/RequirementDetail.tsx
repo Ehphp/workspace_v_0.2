@@ -361,204 +361,211 @@ Risks: ${est.estimation_risks?.length || 0}`;
     }
 
     return (
-        <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+        <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
             {/* Subtle background pattern */}
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgxNDgsMTYzLDE4NCwwLjA1KSkgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40 pointer-events-none"></div>
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgxNDgsMTYzLDE4NCwwLjA1KSkgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40"></div>
 
-            {/* Fixed Header */}
-            <header className="relative z-10 border-b border-white/20 bg-white/80 backdrop-blur-lg flex-none shadow-lg">
-                <div className="container mx-auto px-6 py-4">
-                    <div className="flex items-center gap-4">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate(`/lists/${listId}/requirements`)}
-                            className="hover:bg-white/60 transition-all duration-300"
-                            aria-label="Back to requirements"
-                        >
-                            <ArrowLeft className="h-4 w-4" />
-                        </Button>
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="font-mono text-xs text-slate-600 font-semibold">{requirement.req_id}</span>
-                                {getPriorityBadge(requirement.priority)}
-                                {getStateBadge(requirement.state)}
-                            </div>
-                            <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent truncate">
-                                {requirement.title}
-                            </h1>
-                        </div>
-                        <Button size="sm" variant="outline" className="bg-white/80 backdrop-blur-sm shadow-sm border-slate-300 hover:bg-white hover:border-blue-400 transition-all duration-300">
-                            Edit
-                        </Button>
+            {/* Header with glassmorphism */}
+            <header className="relative border-b border-white/20 backdrop-blur-md bg-white/80 shadow-sm">
+                <div className="container mx-auto px-6 h-16 flex items-center gap-4">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate(`/lists/${listId}/requirements`)}
+                        className="hover:bg-white/60 transition-all duration-300 -ml-2"
+                        aria-label="Back to requirements"
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                    </Button>
+
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-5 h-5 text-white" />
                     </div>
+
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                            <span className="font-mono text-[10px] text-slate-600 font-semibold">{requirement.req_id}</span>
+                            {getPriorityBadge(requirement.priority)}
+                            {getStateBadge(requirement.state)}
+                        </div>
+                        <h1 className="text-lg font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent truncate">
+                            {requirement.title}
+                        </h1>
+                    </div>
+
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="bg-white/80 backdrop-blur-sm shadow-sm border-slate-300 hover:bg-white hover:border-blue-400 transition-all duration-300"
+                    >
+                        Edit
+                    </Button>
                 </div>
             </header>
 
             {/* Content Area with Tabs */}
-            <div className="flex-1 overflow-hidden relative z-10">
+            <div className="flex-1 overflow-auto">
                 <div className="h-full flex flex-col">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
                         {/* Tabs Navigation */}
-                        <TabsList className="w-full justify-start border-b border-white/20 bg-white/60 backdrop-blur-sm h-12 rounded-none flex-none px-6 shadow-sm">
-                            <TabsTrigger
-                                value="info"
-                                className="gap-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md transition-all duration-300"
-                            >
-                                <FileText className="h-4 w-4" />
-                                Info
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="estimation"
-                                className="gap-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md transition-all duration-300"
-                            >
-                                <Calculator className="h-4 w-4" />
-                                Estimation
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="history"
-                                className="gap-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md transition-all duration-300"
-                            >
-                                <History className="h-4 w-4" />
-                                History
-                            </TabsTrigger>
-                        </TabsList>
+                        <div className="border-b border-white/20 bg-white/60 backdrop-blur-sm flex-none shadow-sm sticky top-0 z-10">
+                            <div className="container mx-auto px-6">
+                                <TabsList className="h-12 bg-transparent justify-start gap-2">
+                                    <TabsTrigger
+                                        value="info"
+                                        className="gap-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md transition-all duration-300"
+                                    >
+                                        <FileText className="h-4 w-4" />
+                                        Info
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="estimation"
+                                        className="gap-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md transition-all duration-300"
+                                    >
+                                        <Calculator className="h-4 w-4" />
+                                        Estimation
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="history"
+                                        className="gap-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md transition-all duration-300"
+                                    >
+                                        <History className="h-4 w-4" />
+                                        History
+                                    </TabsTrigger>
+                                </TabsList>
+                            </div>
+                        </div>
                         {/* Info Tab */}
-                        <TabsContent value="info" className="flex-1 overflow-hidden mt-0">
-                            <div className="h-full relative">
-                                {/* Background pattern coerente */}
-                                <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50 -z-10"></div>
-
-                                <div className="h-full overflow-y-auto px-6 py-6">
-                                    <div className="max-w-6xl mx-auto">
-                                        {/* Layout a 2 colonne per ottimizzare lo spazio */}
-                                        <div className="grid lg:grid-cols-2 gap-4 h-full">
-                                            {/* Colonna Sinistra */}
-                                            <div className="space-y-4">
-                                                {/* Estimation Summary Card - compatta */}
-                                                {estimationHistory.length > 0 && (
-                                                    <Card className="rounded-xl shadow-lg border-white/50 bg-gradient-to-br from-blue-50 to-indigo-50 backdrop-blur-sm">
-                                                        <CardHeader className="pb-2 pt-3 px-4">
-                                                            <CardTitle className="text-sm font-semibold text-slate-900">Estimation Summary</CardTitle>
-                                                        </CardHeader>
-                                                        <CardContent className="px-4 pb-3">
-                                                            <div className="grid grid-cols-3 gap-2 text-center">
-                                                                <div className="bg-white/60 backdrop-blur-sm rounded-lg p-2">
-                                                                    <div className="text-2xl font-bold text-blue-600">
-                                                                        {estimationHistory.length}
-                                                                    </div>
-                                                                    <div className="text-[10px] text-slate-600 mt-0.5 font-medium">Total</div>
-                                                                </div>
-                                                                <div className="bg-white/60 backdrop-blur-sm rounded-lg p-2">
-                                                                    <div className="text-2xl font-bold text-indigo-600">
-                                                                        {estimationHistory[0]?.total_days.toFixed(1)}
-                                                                    </div>
-                                                                    <div className="text-[10px] text-slate-600 mt-0.5 font-medium">Latest</div>
-                                                                </div>
-                                                                <div className="bg-white/60 backdrop-blur-sm rounded-lg p-2">
-                                                                    <div className="text-2xl font-bold text-purple-600">
-                                                                        {(estimationHistory.reduce((sum, est) => sum + est.total_days, 0) / estimationHistory.length).toFixed(1)}
-                                                                    </div>
-                                                                    <div className="text-[10px] text-slate-600 mt-0.5 font-medium">Average</div>
-                                                                </div>
-                                                            </div>
-                                                        </CardContent>
-                                                    </Card>
-                                                )}
-
-                                                {/* Description Card - altezza limitata con scroll */}
-                                                <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm flex flex-col" style={{ maxHeight: estimationHistory.length > 0 ? 'calc(100vh - 320px)' : 'calc(100vh - 220px)' }}>
-                                                    <CardHeader className="pb-2 pt-3 px-4 bg-gradient-to-r from-slate-50 to-blue-50 flex-none">
-                                                        <CardTitle className="text-sm font-semibold text-slate-900">Description</CardTitle>
-                                                    </CardHeader>
-                                                    <CardContent className="px-4 pb-3 overflow-y-auto flex-1">
-                                                        <p className="text-xs whitespace-pre-wrap text-slate-700 leading-relaxed">
-                                                            {requirement.description || 'No description provided'}
-                                                        </p>
-                                                    </CardContent>
-                                                </Card>
-                                            </div>
-
-                                            {/* Colonna Destra */}
-                                            <div className="space-y-4">
-                                                {/* Details Card - compatta */}
-                                                <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm">
-                                                    <CardHeader className="pb-2 pt-3 px-4 bg-gradient-to-r from-slate-50 to-blue-50">
-                                                        <CardTitle className="text-sm font-semibold text-slate-900">Details</CardTitle>
+                        <TabsContent value="info" className="flex-1 mt-0">
+                            <div className="container mx-auto px-6 py-12">
+                                <div className="max-w-7xl mx-auto">
+                                    {/* Layout a 2 colonne per ottimizzare lo spazio */}
+                                    <div className="grid lg:grid-cols-2 gap-6">
+                                        {/* Colonna Sinistra */}
+                                        <div className="space-y-6">
+                                            {/* Estimation Summary Card - compatta */}
+                                            {estimationHistory.length > 0 && (
+                                                <Card className="rounded-xl shadow-lg border-white/50 bg-gradient-to-br from-blue-50 to-indigo-50 backdrop-blur-sm">
+                                                    <CardHeader className="pb-2 pt-3 px-4">
+                                                        <CardTitle className="text-sm font-semibold text-slate-900">Estimation Summary</CardTitle>
                                                     </CardHeader>
                                                     <CardContent className="px-4 pb-3">
-                                                        <div className="grid grid-cols-2 gap-3 text-xs">
-                                                            <div>
-                                                                <span className="text-slate-600 font-medium">Priority:</span>
-                                                                <div className="mt-1">{getPriorityBadge(requirement.priority)}</div>
-                                                            </div>
-                                                            <div>
-                                                                <span className="text-slate-600 font-medium">State:</span>
-                                                                <div className="mt-1">{getStateBadge(requirement.state)}</div>
-                                                            </div>
-                                                            <div>
-                                                                <span className="text-slate-600 font-medium">Business Owner:</span>
-                                                                <div className="mt-1 font-semibold text-slate-900">{requirement.business_owner || 'N/A'}</div>
-                                                            </div>
-                                                            <div>
-                                                                <span className="text-slate-600 font-medium">Technology:</span>
-                                                                <div className="mt-1 font-semibold text-slate-900">{preset?.name || 'N/A'}</div>
-                                                            </div>
-                                                            {requirement.labels && requirement.labels.length > 0 && (
-                                                                <div className="col-span-2">
-                                                                    <span className="text-slate-600 font-medium">Labels:</span>
-                                                                    <div className="mt-1 flex flex-wrap gap-1">
-                                                                        {requirement.labels.map((label, idx) => (
-                                                                            <Badge key={idx} variant="outline" className="text-[10px] border-slate-300 bg-white/80 px-1.5 py-0">
-                                                                                {label}
-                                                                            </Badge>
-                                                                        ))}
-                                                                    </div>
+                                                        <div className="grid grid-cols-3 gap-2 text-center">
+                                                            <div className="bg-white/60 backdrop-blur-sm rounded-lg p-2">
+                                                                <div className="text-2xl font-bold text-blue-600">
+                                                                    {estimationHistory.length}
                                                                 </div>
-                                                            )}
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-
-                                                {/* Timeline Card - compatta */}
-                                                <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm">
-                                                    <CardHeader className="pb-2 pt-3 px-4 bg-gradient-to-r from-slate-50 to-blue-50">
-                                                        <CardTitle className="text-sm font-semibold text-slate-900">Timeline</CardTitle>
-                                                    </CardHeader>
-                                                    <CardContent className="px-4 pb-3">
-                                                        <div className="grid grid-cols-2 gap-3 text-xs">
-                                                            <div className="flex items-start gap-2">
-                                                                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                                                                    <Clock className="h-4 w-4 text-blue-600" />
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-slate-600 font-medium">Created</span>
-                                                                    <div className="mt-0.5 font-semibold text-slate-900">
-                                                                        {new Date(requirement.created_at).toLocaleDateString()}
-                                                                    </div>
-                                                                    <div className="text-[10px] text-slate-500">
-                                                                        {new Date(requirement.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                                    </div>
-                                                                </div>
+                                                                <div className="text-[10px] text-slate-600 mt-0.5 font-medium">Total</div>
                                                             </div>
-                                                            <div className="flex items-start gap-2">
-                                                                <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                                                                    <Clock className="h-4 w-4 text-indigo-600" />
+                                                            <div className="bg-white/60 backdrop-blur-sm rounded-lg p-2">
+                                                                <div className="text-2xl font-bold text-indigo-600">
+                                                                    {estimationHistory[0]?.total_days.toFixed(1)}
                                                                 </div>
-                                                                <div>
-                                                                    <span className="text-slate-600 font-medium">Updated</span>
-                                                                    <div className="mt-0.5 font-semibold text-slate-900">
-                                                                        {new Date(requirement.updated_at).toLocaleDateString()}
-                                                                    </div>
-                                                                    <div className="text-[10px] text-slate-500">
-                                                                        {new Date(requirement.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                                    </div>
+                                                                <div className="text-[10px] text-slate-600 mt-0.5 font-medium">Latest</div>
+                                                            </div>
+                                                            <div className="bg-white/60 backdrop-blur-sm rounded-lg p-2">
+                                                                <div className="text-2xl font-bold text-purple-600">
+                                                                    {(estimationHistory.reduce((sum, est) => sum + est.total_days, 0) / estimationHistory.length).toFixed(1)}
                                                                 </div>
+                                                                <div className="text-[10px] text-slate-600 mt-0.5 font-medium">Average</div>
                                                             </div>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
-                                            </div>
+                                            )}
+
+                                            {/* Description Card - altezza limitata con scroll */}
+                                            <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm flex flex-col" style={{ maxHeight: estimationHistory.length > 0 ? 'calc(100vh - 320px)' : 'calc(100vh - 220px)' }}>
+                                                <CardHeader className="pb-2 pt-3 px-4 bg-gradient-to-r from-slate-50 to-blue-50 flex-none">
+                                                    <CardTitle className="text-sm font-semibold text-slate-900">Description</CardTitle>
+                                                </CardHeader>
+                                                <CardContent className="px-4 pb-3 overflow-y-auto flex-1">
+                                                    <p className="text-xs whitespace-pre-wrap text-slate-700 leading-relaxed">
+                                                        {requirement.description || 'No description provided'}
+                                                    </p>
+                                                </CardContent>
+                                            </Card>
+                                        </div>
+
+                                        {/* Colonna Destra */}
+                                        <div className="space-y-4">
+                                            {/* Details Card - compatta */}
+                                            <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm">
+                                                <CardHeader className="pb-2 pt-3 px-4 bg-gradient-to-r from-slate-50 to-blue-50">
+                                                    <CardTitle className="text-sm font-semibold text-slate-900">Details</CardTitle>
+                                                </CardHeader>
+                                                <CardContent className="px-4 pb-3">
+                                                    <div className="grid grid-cols-2 gap-3 text-xs">
+                                                        <div>
+                                                            <span className="text-slate-600 font-medium">Priority:</span>
+                                                            <div className="mt-1">{getPriorityBadge(requirement.priority)}</div>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-slate-600 font-medium">State:</span>
+                                                            <div className="mt-1">{getStateBadge(requirement.state)}</div>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-slate-600 font-medium">Business Owner:</span>
+                                                            <div className="mt-1 font-semibold text-slate-900">{requirement.business_owner || 'N/A'}</div>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-slate-600 font-medium">Technology:</span>
+                                                            <div className="mt-1 font-semibold text-slate-900">{preset?.name || 'N/A'}</div>
+                                                        </div>
+                                                        {requirement.labels && requirement.labels.length > 0 && (
+                                                            <div className="col-span-2">
+                                                                <span className="text-slate-600 font-medium">Labels:</span>
+                                                                <div className="mt-1 flex flex-wrap gap-1">
+                                                                    {requirement.labels.map((label, idx) => (
+                                                                        <Badge key={idx} variant="outline" className="text-[10px] border-slate-300 bg-white/80 px-1.5 py-0">
+                                                                            {label}
+                                                                        </Badge>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+
+                                            {/* Timeline Card - compatta */}
+                                            <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm">
+                                                <CardHeader className="pb-2 pt-3 px-4 bg-gradient-to-r from-slate-50 to-blue-50">
+                                                    <CardTitle className="text-sm font-semibold text-slate-900">Timeline</CardTitle>
+                                                </CardHeader>
+                                                <CardContent className="px-4 pb-3">
+                                                    <div className="grid grid-cols-2 gap-3 text-xs">
+                                                        <div className="flex items-start gap-2">
+                                                            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                                                <Clock className="h-4 w-4 text-blue-600" />
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-slate-600 font-medium">Created</span>
+                                                                <div className="mt-0.5 font-semibold text-slate-900">
+                                                                    {new Date(requirement.created_at).toLocaleDateString()}
+                                                                </div>
+                                                                <div className="text-[10px] text-slate-500">
+                                                                    {new Date(requirement.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-start gap-2">
+                                                            <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                                                                <Clock className="h-4 w-4 text-indigo-600" />
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-slate-600 font-medium">Updated</span>
+                                                                <div className="mt-0.5 font-semibold text-slate-900">
+                                                                    {new Date(requirement.updated_at).toLocaleDateString()}
+                                                                </div>
+                                                                <div className="text-[10px] text-slate-500">
+                                                                    {new Date(requirement.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
                                         </div>
                                     </div>
                                 </div>
@@ -566,77 +573,69 @@ Risks: ${est.estimation_risks?.length || 0}`;
                         </TabsContent>
 
                         {/* Estimation Tab */}
-                        <TabsContent value="estimation" className="flex-1 overflow-hidden mt-0">
-                            <div className="h-full relative">
-                                {/* Background pattern coerente con il resto del sito */}
-                                <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50 -z-10"></div>
+                        <TabsContent value="estimation" className="flex-1 mt-0">
+                            <div className="container mx-auto px-6 py-12">
+                                {/* Header Sezione */}
+                                <div className="mb-6 px-4 py-3 rounded-xl bg-white/60 backdrop-blur-sm border border-white/50 shadow-md">
+                                    <h2 className="text-lg font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+                                        Configure Estimation
+                                    </h2>
+                                    <p className="text-xs text-slate-600 mt-1">Select technology, activities, drivers and risks to calculate the estimation</p>
+                                </div>
 
-                                <div className="h-full overflow-y-auto px-6 py-6">
-                                    {/* Header Sezione */}
-                                    <div className="mb-6 px-4 py-3 rounded-xl bg-white/60 backdrop-blur-sm border border-white/50 shadow-md">
-                                        <h2 className="text-lg font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-                                            Configure Estimation
-                                        </h2>
-                                        <p className="text-xs text-slate-600 mt-1">Select technology, activities, drivers and risks to calculate the estimation</p>
+                                <div className="grid lg:grid-cols-[1fr_360px] gap-6 h-full">
+                                    {/* Left Column - Configuration */}
+                                    <div className="space-y-4 overflow-y-auto pr-2">
+                                        <TechnologySection
+                                            presets={presets}
+                                            selectedPresetId={selectedPresetId}
+                                            onPresetChange={handlePresetChange}
+                                            onAiRecalculate={handleAiSuggest}
+                                            isAiLoading={isAiLoading}
+                                            requirementDescription={requirement?.description || ''}
+                                        />
+
+                                        <ActivitiesSection
+                                            activities={activities}
+                                            selectedActivityIds={selectedActivityIds}
+                                            aiSuggestedIds={aiSuggestedIds}
+                                            onActivityToggle={toggleActivity}
+                                        />
+
+                                        <DriversSection
+                                            drivers={drivers}
+                                            selectedDriverValues={selectedDriverValues}
+                                            onDriverChange={setDriverValue}
+                                            currentMultiplier={estimationResult?.driverMultiplier || 1.0}
+                                        />
+
+                                        <RisksSection
+                                            risks={risks}
+                                            selectedRiskIds={selectedRiskIds}
+                                            onRiskToggle={toggleRisk}
+                                            currentRiskScore={estimationResult?.riskScore || 0}
+                                        />
                                     </div>
 
-                                    <div className="grid lg:grid-cols-[1fr_360px] gap-6 h-full">
-                                        {/* Left Column - Configuration */}
-                                        <div className="space-y-4 overflow-y-auto pr-2">
-                                            <TechnologySection
-                                                presets={presets}
-                                                selectedPresetId={selectedPresetId}
-                                                onPresetChange={handlePresetChange}
-                                                onAiRecalculate={handleAiSuggest}
-                                                isAiLoading={isAiLoading}
-                                                requirementDescription={requirement?.description || ''}
+                                    {/* Right Column - Summary (Sticky) */}
+                                    <div className="overflow-y-auto">
+                                        <div className="sticky top-0">
+                                            <CalculationSummary
+                                                result={estimationResult}
+                                                onSave={handleSaveEstimation}
+                                                isSaving={isSaving}
+                                                hasUnsavedChanges={hasUnsavedChanges}
                                             />
-
-                                            <ActivitiesSection
-                                                activities={activities}
-                                                selectedActivityIds={selectedActivityIds}
-                                                aiSuggestedIds={aiSuggestedIds}
-                                                onActivityToggle={toggleActivity}
-                                            />
-
-                                            <DriversSection
-                                                drivers={drivers}
-                                                selectedDriverValues={selectedDriverValues}
-                                                onDriverChange={setDriverValue}
-                                                currentMultiplier={estimationResult?.driverMultiplier || 1.0}
-                                            />
-
-                                            <RisksSection
-                                                risks={risks}
-                                                selectedRiskIds={selectedRiskIds}
-                                                onRiskToggle={toggleRisk}
-                                                currentRiskScore={estimationResult?.riskScore || 0}
-                                            />
-                                        </div>
-
-                                        {/* Right Column - Summary (Sticky) */}
-                                        <div className="overflow-y-auto">
-                                            <div className="sticky top-0">
-                                                <CalculationSummary
-                                                    result={estimationResult}
-                                                    onSave={handleSaveEstimation}
-                                                    isSaving={isSaving}
-                                                    hasUnsavedChanges={hasUnsavedChanges}
-                                                />
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </TabsContent>
 
-                        {/* History Tab - New Compact Design */}
-                        <TabsContent value="history" className="flex-1 overflow-hidden mt-0">
-                            <div className="h-full relative">
-                                {/* Background pattern coerente */}
-                                <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50 -z-10"></div>
-
-                                <div className="h-full flex flex-col px-6 py-4">
+                        {/* History Tab */}
+                        <TabsContent value="history" className="flex-1 mt-0">
+                            <div className="container mx-auto px-6 py-12">
+                                <div className="max-w-7xl mx-auto">
                                     {/* Timeline compatta - sempre visibile */}
                                     {estimationHistory.length > 0 && (
                                         <div className="mb-4 flex-none">
@@ -761,161 +760,157 @@ Risks: ${est.estimation_risks?.length || 0}`;
                                 </div>
                             </div>
                         </TabsContent>
-
-                        {/* History Tab with Compact Accordion + Drawer */}
-                        <TabsContent value="history" className="space-y-3">
-                        </TabsContent>
                     </Tabs>
+                </div>
+            </div>
 
-                    {/* Sheet Drawer for Full Estimation Details */}
-                    <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-                        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-                            {(() => {
-                                const selectedEst = estimationHistory.find(e => e.id === selectedEstimationId);
-                                if (!selectedEst) return null;
+            {/* Sheet Drawer for Full Estimation Details */}
+            <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+                <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+                    {(() => {
+                        const selectedEst = estimationHistory.find(e => e.id === selectedEstimationId);
+                        if (!selectedEst) return null;
 
-                                return (
-                                    <>
-                                        <SheetHeader>
-                                            <SheetTitle className="text-xl font-bold text-slate-900">
-                                                {selectedEst.scenario_name}
-                                            </SheetTitle>
-                                            <SheetDescription className="text-xs text-slate-600">
-                                                {new Date(selectedEst.created_at).toLocaleString()}
-                                            </SheetDescription>
-                                        </SheetHeader>
+                        return (
+                            <>
+                                <SheetHeader>
+                                    <SheetTitle className="text-xl font-bold text-slate-900">
+                                        {selectedEst.scenario_name}
+                                    </SheetTitle>
+                                    <SheetDescription className="text-xs text-slate-600">
+                                        {new Date(selectedEst.created_at).toLocaleString()}
+                                    </SheetDescription>
+                                </SheetHeader>
 
-                                        <div className="mt-6 space-y-6">
-                                            {/* Total Days - Big Number */}
-                                            <div className="text-center py-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl">
-                                                <div className="text-6xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                                                    {selectedEst.total_days.toFixed(1)}
-                                                </div>
-                                                <div className="text-sm text-slate-600 font-medium uppercase tracking-wider mt-2">
-                                                    Total Days
-                                                </div>
+                                <div className="mt-6 space-y-6">
+                                    {/* Total Days - Big Number */}
+                                    <div className="text-center py-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl">
+                                        <div className="text-6xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                            {selectedEst.total_days.toFixed(1)}
+                                        </div>
+                                        <div className="text-sm text-slate-600 font-medium uppercase tracking-wider mt-2">
+                                            Total Days
+                                        </div>
+                                    </div>
+
+                                    {/* Calculation Breakdown */}
+                                    <div className="space-y-3">
+                                        <h4 className="font-semibold text-sm text-slate-900">Calculation Breakdown</h4>
+                                        <div className="bg-slate-50 rounded-lg p-4 space-y-2">
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-600">Base Days:</span>
+                                                <span className="font-bold text-slate-900">{selectedEst.base_days.toFixed(1)}d</span>
                                             </div>
-
-                                            {/* Calculation Breakdown */}
-                                            <div className="space-y-3">
-                                                <h4 className="font-semibold text-sm text-slate-900">Calculation Breakdown</h4>
-                                                <div className="bg-slate-50 rounded-lg p-4 space-y-2">
-                                                    <div className="flex justify-between text-sm">
-                                                        <span className="text-slate-600">Base Days:</span>
-                                                        <span className="font-bold text-slate-900">{selectedEst.base_days.toFixed(1)}d</span>
-                                                    </div>
-                                                    <div className="flex justify-between text-sm">
-                                                        <span className="text-slate-600">Driver Multiplier:</span>
-                                                        <span className="font-bold text-slate-900">{selectedEst.driver_multiplier.toFixed(3)}x</span>
-                                                    </div>
-                                                    <div className="border-t pt-2">
-                                                        <div className="flex justify-between text-sm font-medium">
-                                                            <span className="text-slate-700">Subtotal:</span>
-                                                            <span className="font-bold text-slate-900">
-                                                                {(selectedEst.base_days * selectedEst.driver_multiplier).toFixed(1)}d
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="bg-orange-50 rounded-lg p-4 space-y-2">
-                                                    <div className="flex justify-between text-sm">
-                                                        <span className="text-slate-600">Risk Score:</span>
-                                                        <span className="font-bold text-orange-700">{selectedEst.risk_score}</span>
-                                                    </div>
-                                                    <div className="flex justify-between text-sm">
-                                                        <span className="text-slate-600">Contingency:</span>
-                                                        <span className="font-bold text-orange-700">{selectedEst.contingency_percent}%</span>
-                                                    </div>
-                                                </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-600">Driver Multiplier:</span>
+                                                <span className="font-bold text-slate-900">{selectedEst.driver_multiplier.toFixed(3)}x</span>
                                             </div>
-
-                                            {/* Activities List */}
-                                            {selectedEst.estimation_activities && selectedEst.estimation_activities.length > 0 && (
-                                                <div className="space-y-2">
-                                                    <h4 className="font-semibold text-sm text-slate-900 flex items-center gap-2">
-                                                        <span className="inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
-                                                        Activities ({selectedEst.estimation_activities.length})
-                                                    </h4>
-                                                    <div className="space-y-1 max-h-64 overflow-y-auto">
-                                                        {selectedEst.estimation_activities.map((estAct, idx) => {
-                                                            const activity = activities.find(a => a.id === estAct.activity_id);
-                                                            return (
-                                                                <div key={idx} className="flex items-center justify-between text-xs bg-blue-50 rounded px-3 py-2">
-                                                                    <span className="text-slate-700 flex-1">{activity?.name || 'Unknown'}</span>
-                                                                    <span className="font-mono font-semibold text-blue-700 ml-2">{activity?.base_days.toFixed(1)}d</span>
-                                                                    {estAct.is_ai_suggested && (
-                                                                        <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">AI</Badge>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Drivers List */}
-                                            {selectedEst.estimation_drivers && selectedEst.estimation_drivers.length > 0 && (
-                                                <div className="space-y-2">
-                                                    <h4 className="font-semibold text-sm text-slate-900 flex items-center gap-2">
-                                                        <span className="inline-block w-2 h-2 bg-purple-500 rounded-full"></span>
-                                                        Drivers ({selectedEst.estimation_drivers.length})
-                                                    </h4>
-                                                    <div className="space-y-1">
-                                                        {selectedEst.estimation_drivers.map((estDrv, idx) => {
-                                                            const driver = drivers.find(d => d.id === estDrv.driver_id);
-                                                            const option = driver?.options.find(o => o.value === estDrv.selected_value);
-                                                            return (
-                                                                <div key={idx} className="flex items-center justify-between text-xs bg-purple-50 rounded px-3 py-2">
-                                                                    <span className="text-slate-700 flex-1">{driver?.name || 'Unknown'}</span>
-                                                                    <span className="text-slate-600 text-[11px] mx-2">{option?.label || estDrv.selected_value}</span>
-                                                                    <span className="font-mono font-semibold text-purple-700">{option?.multiplier.toFixed(2)}x</span>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Risks List */}
-                                            {selectedEst.estimation_risks && selectedEst.estimation_risks.length > 0 && (
-                                                <div className="space-y-2">
-                                                    <h4 className="font-semibold text-sm text-slate-900 flex items-center gap-2">
-                                                        <span className="inline-block w-2 h-2 bg-orange-500 rounded-full"></span>
-                                                        Risks ({selectedEst.estimation_risks.length})
-                                                    </h4>
-                                                    <div className="space-y-1">
-                                                        {selectedEst.estimation_risks.map((estRisk, idx) => {
-                                                            const risk = risks.find(r => r.id === estRisk.risk_id);
-                                                            return (
-                                                                <div key={idx} className="flex items-center justify-between text-xs bg-orange-50 rounded px-3 py-2">
-                                                                    <span className="text-slate-700 flex-1">{risk?.name || 'Unknown'}</span>
-                                                                    <span className="font-mono font-semibold text-orange-700">+{risk?.weight || 0}</span>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Formula Display */}
-                                            <div className="bg-slate-100 rounded-lg p-4 text-xs font-mono space-y-1">
-                                                <div className="font-semibold text-sm text-slate-900 mb-2">Formula:</div>
-                                                <div className="text-slate-700">
-                                                    Subtotal = {selectedEst.base_days.toFixed(1)} × {selectedEst.driver_multiplier.toFixed(3)} = {(selectedEst.base_days * selectedEst.driver_multiplier).toFixed(1)}d
-                                                </div>
-                                                <div className="text-slate-700">
-                                                    Total = {(selectedEst.base_days * selectedEst.driver_multiplier).toFixed(1)} × (1 + {selectedEst.contingency_percent}%) = {selectedEst.total_days.toFixed(1)}d
+                                            <div className="border-t pt-2">
+                                                <div className="flex justify-between text-sm font-medium">
+                                                    <span className="text-slate-700">Subtotal:</span>
+                                                    <span className="font-bold text-slate-900">
+                                                        {(selectedEst.base_days * selectedEst.driver_multiplier).toFixed(1)}d
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
-                                    </>
-                                );
-                            })()}
-                        </SheetContent>
-                    </Sheet>
-                </div>
-            </div>
+
+                                        <div className="bg-orange-50 rounded-lg p-4 space-y-2">
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-600">Risk Score:</span>
+                                                <span className="font-bold text-orange-700">{selectedEst.risk_score}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-600">Contingency:</span>
+                                                <span className="font-bold text-orange-700">{selectedEst.contingency_percent}%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Activities List */}
+                                    {selectedEst.estimation_activities && selectedEst.estimation_activities.length > 0 && (
+                                        <div className="space-y-2">
+                                            <h4 className="font-semibold text-sm text-slate-900 flex items-center gap-2">
+                                                <span className="inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
+                                                Activities ({selectedEst.estimation_activities.length})
+                                            </h4>
+                                            <div className="space-y-1 max-h-64 overflow-y-auto">
+                                                {selectedEst.estimation_activities.map((estAct, idx) => {
+                                                    const activity = activities.find(a => a.id === estAct.activity_id);
+                                                    return (
+                                                        <div key={idx} className="flex items-center justify-between text-xs bg-blue-50 rounded px-3 py-2">
+                                                            <span className="text-slate-700 flex-1">{activity?.name || 'Unknown'}</span>
+                                                            <span className="font-mono font-semibold text-blue-700 ml-2">{activity?.base_days.toFixed(1)}d</span>
+                                                            {estAct.is_ai_suggested && (
+                                                                <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">AI</Badge>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Drivers List */}
+                                    {selectedEst.estimation_drivers && selectedEst.estimation_drivers.length > 0 && (
+                                        <div className="space-y-2">
+                                            <h4 className="font-semibold text-sm text-slate-900 flex items-center gap-2">
+                                                <span className="inline-block w-2 h-2 bg-purple-500 rounded-full"></span>
+                                                Drivers ({selectedEst.estimation_drivers.length})
+                                            </h4>
+                                            <div className="space-y-1">
+                                                {selectedEst.estimation_drivers.map((estDrv, idx) => {
+                                                    const driver = drivers.find(d => d.id === estDrv.driver_id);
+                                                    const option = driver?.options.find(o => o.value === estDrv.selected_value);
+                                                    return (
+                                                        <div key={idx} className="flex items-center justify-between text-xs bg-purple-50 rounded px-3 py-2">
+                                                            <span className="text-slate-700 flex-1">{driver?.name || 'Unknown'}</span>
+                                                            <span className="text-slate-600 text-[11px] mx-2">{option?.label || estDrv.selected_value}</span>
+                                                            <span className="font-mono font-semibold text-purple-700">{option?.multiplier.toFixed(2)}x</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Risks List */}
+                                    {selectedEst.estimation_risks && selectedEst.estimation_risks.length > 0 && (
+                                        <div className="space-y-2">
+                                            <h4 className="font-semibold text-sm text-slate-900 flex items-center gap-2">
+                                                <span className="inline-block w-2 h-2 bg-orange-500 rounded-full"></span>
+                                                Risks ({selectedEst.estimation_risks.length})
+                                            </h4>
+                                            <div className="space-y-1">
+                                                {selectedEst.estimation_risks.map((estRisk, idx) => {
+                                                    const risk = risks.find(r => r.id === estRisk.risk_id);
+                                                    return (
+                                                        <div key={idx} className="flex items-center justify-between text-xs bg-orange-50 rounded px-3 py-2">
+                                                            <span className="text-slate-700 flex-1">{risk?.name || 'Unknown'}</span>
+                                                            <span className="font-mono font-semibold text-orange-700">+{risk?.weight || 0}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Formula Display */}
+                                    <div className="bg-slate-100 rounded-lg p-4 text-xs font-mono space-y-1">
+                                        <div className="font-semibold text-sm text-slate-900 mb-2">Formula:</div>
+                                        <div className="text-slate-700">
+                                            Subtotal = {selectedEst.base_days.toFixed(1)} × {selectedEst.driver_multiplier.toFixed(3)} = {(selectedEst.base_days * selectedEst.driver_multiplier).toFixed(1)}d
+                                        </div>
+                                        <div className="text-slate-700">
+                                            Total = {(selectedEst.base_days * selectedEst.driver_multiplier).toFixed(1)} × (1 + {selectedEst.contingency_percent}%) = {selectedEst.total_days.toFixed(1)}d
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        );
+                    })()}
+                </SheetContent>
+            </Sheet>
 
             {/* Scenario Name Dialog */}
             <AlertDialog open={showScenarioDialog} onOpenChange={setShowScenarioDialog}>
@@ -976,6 +971,6 @@ Risks: ${est.estimation_risks?.length || 0}`;
                     </div>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     );
 }

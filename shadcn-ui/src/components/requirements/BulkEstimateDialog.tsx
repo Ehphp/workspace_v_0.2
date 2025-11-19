@@ -78,6 +78,27 @@ export function BulkEstimateDialog({
         let completed = 0;
         const results: RequirementStatus[] = [...initialStatuses];
 
+        // PRE-LOAD all data once (huge performance boost for bulk)
+        console.log('🚀 Pre-loading catalogs for bulk processing...');
+        const [activitiesRes, driversRes, risksRes] = await Promise.all([
+            supabase.from('activities').select('*').eq('active', true),
+            supabase.from('drivers').select('*'),
+            supabase.from('risks').select('*'),
+        ]);
+
+        const sharedActivities = activitiesRes.data || [];
+        const sharedDrivers = driversRes.data || [];
+        const sharedRisks = risksRes.data || [];
+
+        // Pre-load all unique presets
+        const uniquePresetIds = [...new Set(estimableRequirements.map(r => r.tech_preset_id || listTechPresetId).filter(Boolean))];
+        const presetsRes = await supabase
+            .from('technology_presets')
+            .select('*')
+            .in('id', uniquePresetIds as string[]);
+        const presetsMap = new Map((presetsRes.data || []).map(p => [p.id, p]));
+        console.log('✅ Pre-loaded data ready');
+
         // Process in batches of MAX_CONCURRENT
         for (let i = 0; i < estimableRequirements.length; i += MAX_CONCURRENT) {
             if (cancelled) break;
@@ -103,28 +124,25 @@ export function BulkEstimateDialog({
                         throw new Error('No technology preset available');
                     }
 
-                    // Load preset and catalogs
-                    const { data: preset } = await supabase
-                        .from('technology_presets')
-                        .select('*')
-                        .eq('id', techPresetId)
-                        .single();
-
+                    // Use pre-loaded preset (no DB call!)
+                    const preset = presetsMap.get(techPresetId);
                     if (!preset) {
                         throw new Error('Technology preset not found');
                     }
 
-                    const [
-                        { data: activities },
-                        { data: drivers },
-                        { data: risks },
-                    ] = await Promise.all([
-                        supabase.from('activities').select('*').eq('active', true),
-                        supabase.from('drivers').select('*'),
-                        supabase.from('risks').select('*'),
-                    ]);
+                    // Reuse pre-loaded data (no DB calls!)
+                    const activities = sharedActivities;
+                    const drivers = sharedDrivers;
+                    const risks = sharedRisks;
 
                     // Call AI suggestion API
+                    console.log('🔍 Calling AI API for:', req.req_id);
+                    console.log('  - Description length:', req.description?.length);
+                    console.log('  - Preset:', preset.name);
+                    console.log('  - Activities:', activities?.length);
+                    console.log('  - Drivers:', drivers?.length);
+                    console.log('  - Risks:', risks?.length);
+
                     const response = await fetch('/.netlify/functions/ai-suggest', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -145,14 +163,18 @@ export function BulkEstimateDialog({
                         }),
                     });
 
+                    console.log('📡 Response status:', response.status);
+
                     if (!response.ok) {
-                        throw new Error('AI suggestion failed');
+                        const errorText = await response.text();
+                        console.error('❌ AI API Error:', errorText);
+                        throw new Error(`AI suggestion failed: ${response.status} - ${errorText.substring(0, 200)}`);
                     }
 
                     const aiSuggestion = await response.json();
 
-                    // Calculate estimation
-                    const selectedActivities = activities?.filter((a: Activity) =>
+                    // Calculate estimation (using pre-loaded data)
+                    const selectedActivities = activities.filter((a: Activity) =>
                         aiSuggestion.activityCodes.includes(a.code)
                     ) || [];
 

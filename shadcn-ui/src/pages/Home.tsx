@@ -8,10 +8,12 @@ import { WizardStep2 } from '@/components/wizard/WizardStep2';
 import { WizardStep3 } from '@/components/wizard/WizardStep3';
 import { WizardStep4 } from '@/components/wizard/WizardStep4';
 import { WizardStep5 } from '@/components/wizard/WizardStep5';
+import { QuickEstimate } from '@/components/estimation/QuickEstimate';
 
 export default function Home() {
   const [currentStep, setCurrentStep] = useState(0);
   const [showWizard, setShowWizard] = useState(false);
+  const [showQuickEstimate, setShowQuickEstimate] = useState(false);
   const { data, updateData, resetData } = useWizardState();
 
   const steps = [
@@ -103,26 +105,37 @@ export default function Home() {
                   </h2>
 
                   <p className="text-lg text-slate-600 leading-relaxed">
-                    Structured, repeatable estimation for multi-tech projects with AI-assisted activity selection and deterministic calculation engine.
+                    Ottieni una stima veloce con pochi dati e passa al wizard avanzato quando ti serve il massimo controllo su attività, driver e rischi.
                   </p>
                 </div>
 
                 <div className="flex flex-wrap gap-3">
                   <Button
                     size="lg"
-                    onClick={handleStartWizard}
-                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                    onClick={() => setShowQuickEstimate(true)}
+                    className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                   >
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
-                    Start Estimation
+                    Quick Estimate
+                  </Button>
+                  <Button
+                    size="lg"
+                    onClick={handleStartWizard}
+                    variant="outline"
+                    className="border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    Advanced Wizard
                   </Button>
                   <Link to="/register">
                     <Button
                       size="lg"
-                      variant="outline"
-                      className="border-slate-300 hover:bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300"
+                      variant="ghost"
+                      className="text-slate-600 hover:text-slate-900 hover:bg-white/60"
                     >
                       Create Account
                     </Button>
@@ -159,14 +172,20 @@ export default function Home() {
               <div className="space-y-6">
                 <Card className="border-slate-200/50 bg-white/60 backdrop-blur-md shadow-xl hover:shadow-2xl transition-all duration-300">
                   <CardContent className="p-6">
-                    <div className="flex items-center gap-2 mb-6">
+                    <div className="flex items-center gap-2 mb-4">
                       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
                         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
                       </div>
-                      <h3 className="text-xl font-bold text-slate-900">5-Step Process</h3>
+                      <div>
+                        <h3 className="text-xl font-bold text-slate-900">Advanced 5-Step Wizard</h3>
+                        <p className="text-xs text-slate-500 mt-0.5">For detailed control</p>
+                      </div>
                     </div>
+                    <p className="text-sm text-slate-600 mb-5 leading-relaxed">
+                      Usa il processo completo in 5 step quando hai bisogno di configurare attività, driver e rischi nel dettaglio.
+                    </p>
 
                     <div className="space-y-3">
                       {[
@@ -250,6 +269,9 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* Quick Estimate Dialog */}
+        <QuickEstimate open={showQuickEstimate} onOpenChange={setShowQuickEstimate} />
       </div>
     );
   }

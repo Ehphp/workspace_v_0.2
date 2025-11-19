@@ -82,3 +82,46 @@ export function formatMultiplier(multiplier: number): string {
 export function formatPercent(percent: number): string {
   return `${percent.toFixed(0)}%`;
 }
+
+/**
+ * Quick estimation for simplified workflow
+ * Uses heuristic-based calculation with default assumptions:
+ * - Base complexity: 10 days for simple requirements, scaled by word count
+ * - Technology multiplier: 1.0 (neutral baseline)
+ * - Default driver multiplier: 1.2 (moderate complexity)
+ * - Default risk contingency: 15% (medium risk)
+ * 
+ * @param description - Requirement description
+ * @param technology - Technology stack name (optional)
+ * @returns Estimated days
+ */
+export function calculateQuickEstimation(description: string, technology?: string): number {
+  // Base estimation from description complexity
+  const words = description.trim().split(/\s+/).length;
+  const descriptionComplexity = Math.min(words / 50, 3); // Scale 0-3 based on word count
+  const baseDays = 10 + (descriptionComplexity * 5); // 10-25 days base
+
+  // Technology multiplier (can be expanded later)
+  let techMultiplier = 1.0;
+  if (technology) {
+    const lowerTech = technology.toLowerCase();
+    // Complex technologies
+    if (lowerTech.includes('microservices') || lowerTech.includes('kubernetes')) {
+      techMultiplier = 1.4;
+    } else if (lowerTech.includes('mobile') || lowerTech.includes('native')) {
+      techMultiplier = 1.3;
+    } else if (lowerTech.includes('full stack') || lowerTech.includes('enterprise')) {
+      techMultiplier = 1.2;
+    }
+  }
+
+  // Default assumptions
+  const defaultDriverMultiplier = 1.2; // Moderate complexity
+  const defaultContingency = 0.15; // 15% risk buffer
+
+  // Calculate total
+  const subtotal = baseDays * techMultiplier * defaultDriverMultiplier;
+  const totalDays = subtotal * (1 + defaultContingency);
+
+  return Number(totalDays.toFixed(1));
+}

@@ -217,204 +217,336 @@ export default function Requirements() {
     const notEstimatedCount = filteredRequirements.length - estimatedCount;
 
     return (
-        <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+        <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
             {/* Subtle background pattern */}
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgxNDgsMTYzLDE4NCwwLjA1KSkgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40 pointer-events-none"></div>
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgxNDgsMTYzLDE4NCwwLjA1KSkgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40"></div>
 
-            {/* Fixed Header */}
-            <header className="relative z-10 border-b border-white/20 bg-white/80 backdrop-blur-lg flex-none shadow-lg">
-                <div className="container mx-auto px-6 py-4">
-                    {/* Top Row: Navigation + Title + Summary */}
-                    <div className="flex items-center gap-4 mb-4">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate('/lists')}
-                            className="hover:bg-white/60 transition-all duration-300"
-                            aria-label="Back to projects"
-                        >
-                            <ArrowLeft className="h-4 w-4" />
-                        </Button>
+            {/* Header with glassmorphism */}
+            <header className="relative border-b border-white/20 backdrop-blur-md bg-white/80 shadow-sm">
+                <div className="container mx-auto px-6 h-16 flex items-center gap-4">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate('/lists')}
+                        className="hover:bg-white/60 transition-all duration-300 -ml-2"
+                        aria-label="Back to projects"
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                    </Button>
 
-                        <div className="flex-1 min-w-0">
-                            <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent truncate">
-                                {list?.name}
-                            </h1>
-                            {list?.description && (
-                                <p className="text-xs text-slate-600 mt-0.5 truncate">{list.description}</p>
-                            )}
-                        </div>
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-5 h-5 text-white" />
+                    </div>
 
-                        {/* Summary Card */}
-                        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/50 shadow-md backdrop-blur-sm">
-                            <div className="text-center">
-                                <div className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                                    {totalEstimation.toFixed(1)}
-                                </div>
-                                <div className="text-[10px] text-slate-600 font-medium uppercase tracking-wide">days</div>
+                    <div className="flex-1 min-w-0">
+                        <h1 className="text-lg font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent truncate">
+                            {list?.name}
+                        </h1>
+                        {list?.description && (
+                            <p className="text-xs text-slate-600 truncate">{list.description}</p>
+                        )}
+                    </div>
+
+                    {/* Summary Card */}
+                    <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/50 shadow-md backdrop-blur-sm">
+                        <div className="text-center">
+                            <div className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                {totalEstimation.toFixed(1)}
                             </div>
-                            <div className="h-8 w-px bg-blue-200/50"></div>
-                            <div className="text-left">
-                                <div className="text-xs text-slate-600 font-medium">
-                                    <span className="text-blue-600 font-semibold">{estimatedCount}</span> estimated
-                                </div>
-                                <div className="text-xs text-slate-600 font-medium">
-                                    <span className="text-slate-700 font-semibold">{notEstimatedCount}</span> pending
-                                </div>
+                            <div className="text-[9px] text-slate-600 font-medium uppercase tracking-wide">days</div>
+                        </div>
+                        <div className="h-7 w-px bg-blue-200/50"></div>
+                        <div className="text-left">
+                            <div className="text-[11px] text-slate-600 font-medium">
+                                <span className="text-blue-600 font-semibold">{estimatedCount}</span> estimated
+                            </div>
+                            <div className="text-[11px] text-slate-600 font-medium">
+                                <span className="text-slate-700 font-semibold">{notEstimatedCount}</span> pending
                             </div>
                         </div>
                     </div>
 
-                    {/* Bottom Row: Actions + Filters */}
-                    <div className="flex items-center gap-3">
-                        {/* Search */}
-                        <div className="relative flex-1 max-w-xs">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <Input
-                                placeholder="Search..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 h-10 border-slate-300 focus:border-blue-500 focus:ring-blue-500 bg-white/80 backdrop-blur-sm shadow-sm"
-                            />
-                        </div>
-
-                        {/* Filters */}
-                        <Select value={filterPriority} onValueChange={setFilterPriority}>
-                            <SelectTrigger className="w-32 h-10 border-slate-300 bg-white/80 backdrop-blur-sm shadow-sm">
-                                <SelectValue placeholder="Priority" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white/95 backdrop-blur-lg border-slate-200/50">
-                                <SelectItem value="all">All</SelectItem>
-                                <SelectItem value="HIGH">High</SelectItem>
-                                <SelectItem value="MEDIUM">Medium</SelectItem>
-                                <SelectItem value="LOW">Low</SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        <Select value={filterState} onValueChange={setFilterState}>
-                            <SelectTrigger className="w-32 h-10 border-slate-300 bg-white/80 backdrop-blur-sm shadow-sm">
-                                <SelectValue placeholder="State" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white/95 backdrop-blur-lg border-slate-200/50">
-                                <SelectItem value="all">All</SelectItem>
-                                <SelectItem value="PROPOSED">Proposed</SelectItem>
-                                <SelectItem value="SELECTED">Selected</SelectItem>
-                                <SelectItem value="SCHEDULED">Scheduled</SelectItem>
-                                <SelectItem value="DONE">Done</SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        {/* Sort */}
-                        <Select value={sortBy} onValueChange={setSortBy}>
-                            <SelectTrigger className="w-40 h-10 border-slate-300 bg-white/80 backdrop-blur-sm shadow-sm">
-                                <ArrowUpDown className="mr-2 h-3.5 w-3.5" />
-                                <SelectValue placeholder="Sort by" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white/95 backdrop-blur-lg border-slate-200/50">
-                                <SelectItem value="updated-desc">Most Recent</SelectItem>
-                                <SelectItem value="updated-asc">Oldest</SelectItem>
-                                <SelectItem value="title-asc">Title A→Z</SelectItem>
-                                <SelectItem value="title-desc">Title Z→A</SelectItem>
-                                <SelectItem value="priority-desc">Priority High→Low</SelectItem>
-                                <SelectItem value="priority-asc">Priority Low→High</SelectItem>
-                                <SelectItem value="estimation-desc">Estimation High→Low</SelectItem>
-                                <SelectItem value="estimation-asc">Estimation Low→High</SelectItem>
-                                <SelectItem value="state-asc">State A→Z</SelectItem>
-                                <SelectItem value="state-desc">State Z→A</SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        {/* Divider */}
-                        <div className="h-6 w-px bg-slate-300"></div>
-
-                        {/* Action Buttons */}
-                        <Button
-                            size="sm"
-                            onClick={() => setShowBulkEstimate(true)}
-                            disabled={filteredRequirements.length === 0}
-                            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all duration-300 h-10 font-semibold"
-                        >
-                            <Zap className="mr-2 h-4 w-4" />
-                            Estimate All
-                        </Button>
-
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setShowImportDialog(true)}
-                            className="hover:bg-white/60 h-10"
-                        >
-                            <Upload className="h-4 w-4" />
-                        </Button>
-
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="hover:bg-white/60 h-10"
-                                    aria-label="More options"
-                                >
-                                    <MoreVertical className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-md border-slate-200/50">
-                                <DropdownMenuItem
-                                    className="text-destructive focus:text-destructive cursor-pointer"
-                                    onClick={() => setShowClearDialog(true)}
-                                    disabled={requirements.length === 0}
-                                >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Clear All
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-
-                        <Button
-                            size="sm"
-                            onClick={() => setShowCreateDialog(true)}
-                            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 font-semibold h-10"
-                        >
-                            <Plus className="mr-2 h-4 w-4" />
-                            New
-                        </Button>
-                    </div>
+                    <Button
+                        onClick={() => setShowCreateDialog(true)}
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md"
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        New
+                    </Button>
                 </div>
             </header>
 
-            {/* Scrollable Content Area */}
-            <div className="relative z-0 flex-1 overflow-hidden">
-                <div className="container mx-auto px-6 h-full">
+            {/* Main Content */}
+            <div className="flex-1 overflow-auto">
+                <div className="container mx-auto px-6 py-12">
                     {filteredRequirements.length === 0 ? (
-                        <div className="h-full flex items-center justify-center">
-                            <Card className="max-w-md border-slate-200/50 bg-white/80 backdrop-blur-lg shadow-2xl animate-in fade-in duration-500">
-                                <CardContent className="flex flex-col items-center py-12 px-8">
-                                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center mb-6 shadow-lg">
-                                        <FileText className="h-10 w-10 text-blue-600" />
+                        <div className="max-w-7xl mx-auto">
+                            <div className="grid lg:grid-cols-2 gap-12 items-center">
+                                {/* Left: Welcome Message */}
+                                <div className="space-y-8">
+                                    <div className="space-y-4">
+                                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100/80 border border-blue-200/50 backdrop-blur-sm">
+                                            <span className="relative flex h-2 w-2">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                                            </span>
+                                            <span className="text-xs font-medium text-blue-900">
+                                                {requirements.length === 0 ? 'Start Building' : 'No Results'}
+                                            </span>
+                                        </div>
+
+                                        <h2 className="text-5xl font-bold text-slate-900 leading-tight">
+                                            {requirements.length === 0 ? (
+                                                <>
+                                                    Add Your First
+                                                    <span className="block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                                        Requirement
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    No Matching
+                                                    <span className="block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                                        Requirements
+                                                    </span>
+                                                </>
+                                            )}
+                                        </h2>
+
+                                        <p className="text-lg text-slate-600 leading-relaxed">
+                                            {requirements.length === 0
+                                                ? 'Start by creating requirements or import them from Excel. Each requirement can be estimated individually with detailed analysis of activities, drivers, and risks.'
+                                                : 'Try adjusting your search filters or criteria to find what you\'re looking for. You can filter by priority, state, or use the search bar.'}
+                                        </p>
                                     </div>
-                                    <h3 className="text-xl font-bold mb-2 text-slate-900">
-                                        {requirements.length === 0 ? 'No requirements yet' : 'No matching requirements'}
-                                    </h3>
-                                    <p className="text-slate-600 text-center mb-6">
-                                        {requirements.length === 0
-                                            ? 'Create your first requirement to start estimating'
-                                            : 'Try adjusting your filters or search term'}
-                                    </p>
+
                                     {requirements.length === 0 && (
-                                        <Button
-                                            onClick={() => setShowCreateDialog(true)}
-                                            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 font-semibold"
-                                        >
-                                            <Plus className="mr-2 h-4 w-4" />
-                                            Create Requirement
-                                        </Button>
+                                        <>
+                                            <div className="flex flex-wrap gap-3">
+                                                <Button
+                                                    size="lg"
+                                                    onClick={() => setShowCreateDialog(true)}
+                                                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                                                >
+                                                    <Plus className="mr-2 h-5 w-5" />
+                                                    Create Requirement
+                                                </Button>
+                                                <Button
+                                                    size="lg"
+                                                    variant="outline"
+                                                    onClick={() => setShowImportDialog(true)}
+                                                    className="border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300"
+                                                >
+                                                    <Upload className="mr-2 h-5 w-5" />
+                                                    Import from Excel
+                                                </Button>
+                                            </div>
+
+                                            {/* Stats */}
+                                            <div className="grid grid-cols-3 gap-4 pt-4">
+                                                <div className="group bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-slate-200/50 hover:border-blue-300/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                                                    <div className="text-3xl font-bold bg-gradient-to-br from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-1">
+                                                        <FileText className="h-8 w-8" />
+                                                    </div>
+                                                    <p className="text-xs font-semibold text-slate-900">Requirements</p>
+                                                    <p className="text-xs text-slate-500 mt-1">Track & organize</p>
+                                                </div>
+                                                <div className="group bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-slate-200/50 hover:border-indigo-300/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                                                    <div className="text-3xl font-bold bg-gradient-to-br from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-1">
+                                                        <Zap className="h-8 w-8" />
+                                                    </div>
+                                                    <p className="text-xs font-semibold text-slate-900">AI Estimates</p>
+                                                    <p className="text-xs text-slate-500 mt-1">Smart analysis</p>
+                                                </div>
+                                                <div className="group bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-slate-200/50 hover:border-purple-300/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                                                    <div className="text-3xl font-bold bg-gradient-to-br from-purple-600 to-pink-600 bg-clip-text text-transparent mb-1">
+                                                        <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                                        </svg>
+                                                    </div>
+                                                    <p className="text-xs font-semibold text-slate-900">Reports</p>
+                                                    <p className="text-xs text-slate-500 mt-1">Detailed insights</p>
+                                                </div>
+                                            </div>
+                                        </>
                                     )}
-                                </CardContent>
-                            </Card>
+                                </div>
+
+                                {/* Right: Features Card */}
+                                <div className="space-y-6">
+                                    <Card className="border-slate-200/50 bg-white/60 backdrop-blur-md shadow-xl hover:shadow-2xl transition-all duration-300">
+                                        <CardContent className="p-6">
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+                                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-xl font-bold text-slate-900">Requirement Management</h3>
+                                                    <p className="text-xs text-slate-500 mt-0.5">Powerful tools at your fingertips</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-3 mt-6">
+                                                {[
+                                                    {
+                                                        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />,
+                                                        title: 'Create & Organize',
+                                                        desc: 'Add requirements manually or import from Excel spreadsheets',
+                                                        color: 'from-blue-500 to-cyan-500'
+                                                    },
+                                                    {
+                                                        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />,
+                                                        title: 'Bulk Estimation',
+                                                        desc: 'Estimate multiple requirements at once with AI assistance',
+                                                        color: 'from-indigo-500 to-purple-500'
+                                                    },
+                                                    {
+                                                        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />,
+                                                        title: 'Filter & Sort',
+                                                        desc: 'Organize by priority, state, estimation, or custom criteria',
+                                                        color: 'from-purple-500 to-pink-500'
+                                                    },
+                                                    {
+                                                        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
+                                                        title: 'Track Progress',
+                                                        desc: 'Monitor estimation status and total effort in real-time',
+                                                        color: 'from-pink-500 to-rose-500'
+                                                    },
+                                                ].map((feature, index) => (
+                                                    <div
+                                                        key={index}
+                                                        className="group flex gap-4 items-start p-4 rounded-xl hover:bg-white/80 transition-all duration-300 hover:shadow-md cursor-default"
+                                                    >
+                                                        <div className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${feature.color} shadow-lg flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300`}>
+                                                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                {feature.icon}
+                                                            </svg>
+                                                        </div>
+                                                        <div className="flex-1 min-w-0 pt-1">
+                                                            <p className="text-sm font-bold text-slate-900 mb-1">{feature.title}</p>
+                                                            <p className="text-xs text-slate-600 leading-relaxed">{feature.desc}</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </div>
                         </div>
                     ) : (
-                        <div className="h-full overflow-y-auto py-6">
-                            <div className="grid gap-4 pb-6">
+                        <div className="max-w-7xl mx-auto">
+                            {/* Controls Section */}
+                            <div className="mb-6">
+                                <div className="flex flex-wrap items-center gap-3">
+                                    {/* Search */}
+                                    <div className="relative flex-1 min-w-[240px]">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                        <Input
+                                            placeholder="Search requirements..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            className="pl-9 h-10 border-slate-300 focus:border-blue-500 focus:ring-blue-500 bg-white/80 backdrop-blur-sm shadow-sm"
+                                        />
+                                    </div>
+
+                                    {/* Filters */}
+                                    <Select value={filterPriority} onValueChange={setFilterPriority}>
+                                        <SelectTrigger className="w-32 h-10 border-slate-300 bg-white/80 backdrop-blur-sm shadow-sm">
+                                            <SelectValue placeholder="Priority" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white/95 backdrop-blur-lg border-slate-200/50">
+                                            <SelectItem value="all">All</SelectItem>
+                                            <SelectItem value="HIGH">High</SelectItem>
+                                            <SelectItem value="MEDIUM">Medium</SelectItem>
+                                            <SelectItem value="LOW">Low</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+
+                                    <Select value={filterState} onValueChange={setFilterState}>
+                                        <SelectTrigger className="w-32 h-10 border-slate-300 bg-white/80 backdrop-blur-sm shadow-sm">
+                                            <SelectValue placeholder="State" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white/95 backdrop-blur-lg border-slate-200/50">
+                                            <SelectItem value="all">All</SelectItem>
+                                            <SelectItem value="PROPOSED">Proposed</SelectItem>
+                                            <SelectItem value="SELECTED">Selected</SelectItem>
+                                            <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+                                            <SelectItem value="DONE">Done</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+
+                                    {/* Sort */}
+                                    <Select value={sortBy} onValueChange={setSortBy}>
+                                        <SelectTrigger className="w-44 h-10 border-slate-300 bg-white/80 backdrop-blur-sm shadow-sm">
+                                            <ArrowUpDown className="mr-2 h-3.5 w-3.5" />
+                                            <SelectValue placeholder="Sort by" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white/95 backdrop-blur-lg border-slate-200/50">
+                                            <SelectItem value="updated-desc">Most Recent</SelectItem>
+                                            <SelectItem value="updated-asc">Oldest</SelectItem>
+                                            <SelectItem value="title-asc">Title A→Z</SelectItem>
+                                            <SelectItem value="title-desc">Title Z→A</SelectItem>
+                                            <SelectItem value="priority-desc">Priority High→Low</SelectItem>
+                                            <SelectItem value="priority-asc">Priority Low→High</SelectItem>
+                                            <SelectItem value="estimation-desc">Estimation High→Low</SelectItem>
+                                            <SelectItem value="estimation-asc">Estimation Low→High</SelectItem>
+                                            <SelectItem value="state-asc">State A→Z</SelectItem>
+                                            <SelectItem value="state-desc">State Z→A</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+
+                                    {/* Action Buttons */}
+                                    <div className="flex gap-2 ml-auto">
+                                        <Button
+                                            size="sm"
+                                            onClick={() => setShowBulkEstimate(true)}
+                                            disabled={filteredRequirements.length === 0}
+                                            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all duration-300 h-10"
+                                        >
+                                            <Zap className="mr-2 h-4 w-4" />
+                                            Estimate All
+                                        </Button>
+
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => setShowImportDialog(true)}
+                                            className="hover:bg-white/60 h-10"
+                                        >
+                                            <Upload className="h-4 w-4" />
+                                        </Button>
+
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="hover:bg-white/60 h-10"
+                                                    aria-label="More options"
+                                                >
+                                                    <MoreVertical className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-md border-slate-200/50">
+                                                <DropdownMenuItem
+                                                    className="text-destructive focus:text-destructive cursor-pointer"
+                                                    onClick={() => setShowClearDialog(true)}
+                                                    disabled={requirements.length === 0}
+                                                >
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    Clear All
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Requirements Grid */}
+                            <div className="grid gap-4">
                                 {filteredRequirements.map((req) => {
                                     const estimation = req.latest_estimation;
                                     const hasEstimation = !!estimation;

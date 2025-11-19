@@ -1,19 +1,42 @@
-# Requirements Estimation System - Phase 1 MVP
+# Requirements Estimation System - Enterprise Edition
 
 ## 🎯 Overview
 
-A multi-tech requirements estimation system with AI-assisted activity selection and deterministic calculation engine. Built with React, TypeScript, Shadcn-UI, Supabase, and OpenAI.
+An **enterprise-grade** multi-technology requirements estimation system with AI-assisted activity selection and deterministic calculation engine. Built with React 19, TypeScript, Shadcn-UI, Supabase, and OpenAI GPT-4.
 
-## ✨ Features (Phase 1)
+The system provides transparent, repeatable effort estimation for software requirements across multiple technology stacks (Power Platform, Backend APIs, Frontend React, Multi-stack), combining AI intelligence for activity suggestions with a deterministic calculation engine for consistent results.
+
+## ✨ Features
 
 ### Core Functionality
-- ✅ **Home Wizard (No Login Required)**: 5-step estimation wizard accessible without authentication
-- ✅ **AI-Assisted Activity Selection**: OpenAI suggests relevant activities based on requirement description
-- ✅ **Deterministic Calculation Engine**: Transparent formula for effort calculation
-- ✅ **Multi-Technology Support**: Power Platform, Backend API, Frontend React, and more
-- ✅ **Authentication**: Supabase Auth with email/password
-- ✅ **Lists Management**: Create and manage estimation projects
-- ✅ **Row Level Security**: Users see only their own data
+- ✅ **Home Wizard (No Login Required)**: 5-step estimation wizard accessible without authentication for quick demos
+- ✅ **AI-Assisted Activity Selection**: OpenAI GPT-4 suggests relevant activities based on requirement description + technology context
+- ✅ **Deterministic Calculation Engine**: Transparent, repeatable formula for effort calculation
+- ✅ **Multi-Technology Support**: Power Platform, Backend API, Frontend React, Multi-stack presets
+- ✅ **Authentication**: Supabase Auth with email/password and Row Level Security
+- ✅ **Lists Management**: Create and manage estimation projects/sprints
+- ✅ **Requirements CRUD**: Complete create, read, update, delete operations for requirements
+- ✅ **Multiple Estimation Scenarios**: Save multiple estimates per requirement with custom scenario names
+
+### Import/Export Features
+- ✅ **Excel/CSV Import**: Bulk import requirements from Excel or CSV files
+  - Multi-sheet support with sheet selection
+  - Intelligent column mapping with auto-detection
+  - Multi-column merge for complex descriptions
+  - AI-generated titles for missing titles
+  - Validation and duplicate detection
+  - Preview before import with error reporting
+  - Downloadable template file
+- ✅ **PDF Export**: Export estimates with detailed breakdown (jsPDF + jsPDF-AutoTable)
+- ✅ **Excel Export**: Multi-sheet workbook (requirements + estimations + KPI)
+
+### Advanced Estimation Features
+- ✅ **Estimation History**: Complete audit trail with chronological history of all estimates
+- ✅ **Scenario Management**: Save multiple estimation versions (e.g., "Base", "Optimistic", "With Integration")
+- ✅ **Comparison Tool**: Side-by-side comparison of two estimates with diff visualization
+- ✅ **Timeline Visualization**: Visual evolution of estimates over time with statistics
+- ✅ **Bulk Estimation**: Estimate multiple requirements in batch with AI suggestions
+- ✅ **Real-time Calculation**: Live updates as activities, drivers, and risks are selected
 
 ### Estimation Formula
 ```
@@ -91,32 +114,64 @@ The application will be available at `http://localhost:5173`
 ```
 src/
 ├── types/
-│   ├── database.ts          # Supabase database types
-│   └── estimation.ts        # Estimation engine types
+│   ├── database.ts              # Supabase database types
+│   ├── estimation.ts            # Estimation engine types
+│   └── ai-validation.ts         # AI input sanitization
 ├── lib/
-│   ├── supabase.ts          # Supabase client & auth helpers
-│   ├── estimationEngine.ts  # Deterministic calculation engine
-│   └── openai.ts            # AI activity suggestion service
+│   ├── supabase.ts              # Supabase client & auth helpers
+│   ├── estimationEngine.ts      # ⭐ Deterministic calculation engine
+│   ├── excelParser.ts           # ⭐ Excel/CSV parsing with XLSX library
+│   ├── openai.ts                # ⭐ AI proxy: suggest activities + generate titles
+│   └── constants.ts             # App constants (priority/state variants)
 ├── hooks/
-│   ├── useAuth.ts           # Authentication hook
-│   └── useWizardState.ts    # Wizard state management (localStorage)
+│   ├── useAuth.ts               # Authentication hook
+│   ├── useWizardState.ts        # Wizard state management (Zustand)
+│   ├── useEstimationData.ts     # Fetch catalogs (activities/drivers/risks)
+│   ├── useEstimationHistory.ts  # Fetch estimation history
+│   ├── useEstimationState.ts    # Estimation calculation state
+│   └── useRequirement.ts        # CRUD operations for requirements
 ├── components/
 │   ├── auth/
-│   │   └── AuthGuard.tsx    # Protected route wrapper
+│   │   └── AuthGuard.tsx        # Protected route wrapper
 │   ├── wizard/
-│   │   ├── WizardStep1.tsx  # Requirement info
-│   │   ├── WizardStep2.tsx  # Technology selection
-│   │   ├── WizardStep3.tsx  # AI activity suggestions
-│   │   ├── WizardStep4.tsx  # Drivers & risks
-│   │   └── WizardStep5.tsx  # Results & export
-│   └── lists/
-│       └── CreateListDialog.tsx
+│   │   ├── WizardStep1.tsx      # Requirement info input
+│   │   ├── WizardStep2.tsx      # Technology preset selection
+│   │   ├── WizardStep3.tsx      # AI activity suggestions
+│   │   ├── WizardStep4.tsx      # Drivers & risks selection
+│   │   └── WizardStep5.tsx      # Results & breakdown display
+│   ├── estimation/
+│   │   ├── EstimationComparison.tsx  # ⭐ Compare two estimates
+│   │   ├── EstimationTimeline.tsx    # ⭐ Timeline visualization
+│   │   ├── ActivitiesSection.tsx     # Activities selection UI
+│   │   ├── DriversSection.tsx        # Drivers configuration
+│   │   ├── RisksSection.tsx          # Risks selection
+│   │   ├── TechnologySection.tsx     # Technology preset picker
+│   │   └── CalculationSummary.tsx    # Real-time calculation display
+│   ├── requirements/
+│   │   ├── ImportRequirementsDialog.tsx  # ⭐ Excel import wizard
+│   │   ├── BulkEstimateDialog.tsx        # Bulk estimation tool
+│   │   ├── CreateRequirementDialog.tsx   # Create new requirement
+│   │   └── DeleteRequirementDialog.tsx   # Delete confirmation
+│   ├── lists/
+│   │   ├── CreateListDialog.tsx      # Create new list
+│   │   └── ClearListDialog.tsx       # Clear list confirmation
+│   └── ui/                       # Shadcn-UI components (buttons, dialogs, etc.)
 ├── pages/
-│   ├── Home.tsx             # Landing page + wizard
-│   ├── Login.tsx            # Authentication
-│   ├── Register.tsx         # User registration
-│   └── Lists.tsx            # Projects management
-└── App.tsx                  # Main app with routing
+│   ├── Home.tsx                  # Landing page + public wizard
+│   ├── Login.tsx                 # Authentication
+│   ├── Register.tsx              # User registration
+│   ├── Lists.tsx                 # Projects/lists management
+│   ├── Requirements.tsx          # ⭐ Requirements list + import/export
+│   └── RequirementDetail.tsx     # ⭐ Requirement detail + estimation + history
+└── App.tsx                       # Main app with routing
+
+netlify/functions/
+└── ai-suggest.ts                 # ⭐ Serverless OpenAI proxy with caching
+
+SQL files:
+├── supabase_schema.sql                      # ⭐ Complete DB schema + RLS + triggers
+├── supabase_seed.sql                        # ⭐ Seed data (27 activities + 5 drivers + 8 risks + 4 presets)
+└── estimation_history_optimizations.sql     # Performance indexes + views
 ```
 
 ## 🎮 Usage Guide
@@ -134,10 +189,54 @@ src/
 
 ### For Authenticated Users
 
+#### Creating and Managing Lists (Projects)
 1. **Sign Up/Login**: Create account or sign in
-2. **Create Project**: Click "New Project" to create a list
-3. **Add Requirements**: (Coming in next iteration)
-4. **View Dashboard**: (Phase 2 feature)
+2. **Create List**: Click "New List" to create a project/sprint container
+3. **Configure List**: Set name, description, owner, and default technology preset
+
+#### Managing Requirements
+1. **Add Single Requirement**: Click "+ New Requirement" to create one requirement
+   - Enter ID, title, description, priority, state, business owner
+   - Select technology preset
+   - Add labels for categorization
+
+2. **Bulk Import from Excel/CSV**: Click "Import from Excel"
+   - Upload .xlsx, .xls, or .csv file
+   - Select sheet (if multiple sheets)
+   - Map columns to requirement fields:
+     - **Intelligent auto-detection**: system suggests column mappings
+     - **Multi-column merge**: combine multiple columns into description
+     - **AI title generation**: generates titles from descriptions if missing
+   - Preview imported data with validation
+   - Confirm import (duplicates are automatically skipped)
+   - Download template file for reference
+
+#### Estimating Requirements
+1. **Single Estimation**:
+   - Click on a requirement to open detail page
+   - Go to "Estimation" tab
+   - Click "Suggest Activities with AI" or select manually
+   - Configure drivers (Complexity, Environments, Reuse, Stakeholders, Regulation)
+   - Select applicable risks
+   - Review real-time calculation
+   - Save with custom scenario name (e.g., "Base", "Optimistic", "With API Integration")
+
+2. **Bulk Estimation**:
+   - Select multiple requirements (checkbox)
+   - Click "Bulk Estimate"
+   - System runs AI suggestions for all selected requirements in parallel
+   - Review and adjust estimates
+   - Save all at once
+
+3. **View Estimation History**:
+   - Go to "History" tab in requirement detail
+   - See chronological list of all saved estimates
+   - View timeline visualization with trend analysis
+   - Compare any two estimates to see differences
+
+#### Exporting Data
+- **Export PDF**: Download individual estimate with breakdown
+- **Export Excel**: Download multi-sheet workbook with requirements, estimations, and KPI
 
 ## 🔐 Security
 
@@ -179,48 +278,65 @@ pnpm run build
 
 ## 🛠 Technology Stack
 
-- **Frontend**: React 18, TypeScript, Vite
-- **UI**: Shadcn-UI, Tailwind CSS
-- **Database**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth
-- **AI**: OpenAI GPT-4o-mini
-- **State Management**: React hooks, localStorage
+- **Frontend**: React 19, TypeScript, Vite
+- **UI**: Shadcn-UI (Radix UI + Tailwind CSS)
+- **Database**: Supabase (PostgreSQL with Row Level Security)
+- **Authentication**: Supabase Auth (email/password)
+- **AI**: OpenAI GPT-4 (via Netlify Functions serverless proxy)
+- **State Management**: Zustand (local state) + React Query (server state)
 - **Routing**: React Router v6
-- **Forms**: React Hook Form (planned)
+- **Forms**: React Hook Form + Zod validation
+- **Excel/CSV**: XLSX library for parsing and generation
+- **PDF Export**: jsPDF + jsPDF-AutoTable
+- **Deployment**: Netlify with serverless functions
 
-## 🚧 Phase 2 Roadmap
+## ✅ Implemented Features (Phase 1 Complete)
 
-- [x] Requirements CRUD (create, edit, delete)
-- [x] Requirement Detail page with Estimation tab
-- [x] **Estimation history and comparison** ✨ NEW
-  - Save multiple estimation scenarios with custom names
-  - View chronological history of all estimates
-  - Compare two estimates to see differences in activities, drivers, and risks
-  - Visual timeline showing evolution of estimates over time
-  - Statistics: min, max, average, trend analysis
-- [ ] 3-column dashboard (lists, requirements, treemap)
-- [ ] Interactive treemap visualization
-- [ ] PDF/CSV export implementation
-- [ ] Filters and search
-- [ ] Bulk import requirements
+### Core Features
+- [x] **Home Wizard**: Public estimation wizard (no login required)
+- [x] **Authentication**: Email/password with Supabase Auth
+- [x] **Lists Management**: CRUD operations for projects/sprints
+- [x] **Requirements Management**: Complete CRUD with filtering and search
+- [x] **Deterministic Estimation Engine**: Transparent calculation formula
+- [x] **AI Activity Suggestions**: OpenAI GPT-4 integration via serverless functions
+- [x] **Row Level Security**: PostgreSQL RLS policies for multi-tenancy
 
-### ✨ Recently Completed: Estimation History
+### Import/Export
+- [x] **Excel/CSV Import**: Bulk import with intelligent column mapping and AI title generation
+- [x] **PDF Export**: Individual estimate export with breakdown
+- [x] **Excel Export**: Multi-sheet workbook (requirements + estimations + KPI)
+- [x] **Template Download**: Sample Excel template for bulk import
 
-The system now includes a complete **estimation history and comparison** feature:
+### Estimation Features
+- [x] **Multiple Scenarios**: Save multiple estimates per requirement with custom names
+- [x] **Estimation History**: Chronological audit trail of all estimates
+- [x] **Comparison Tool**: Side-by-side diff of two estimates
+- [x] **Timeline Visualization**: Evolution graph with statistics (min/max/avg/trend)
+- [x] **Bulk Estimation**: Batch estimate multiple requirements with AI
+- [x] **Real-time Calculation**: Live updates during estimation configuration
 
-- **Multiple Scenarios**: Save different versions of estimates with custom names (e.g., "Base", "Optimistic", "With Integration")
-- **History Tab**: View all previous estimations in chronological order with full details
-- **Comparison Tool**: Select and compare two estimates side-by-side
-  - See differences in total days, activities, drivers, and risks
-  - Visual indicators for increases/decreases
-  - Color-coded badges for added/removed items
-- **Timeline Visualization**: See the evolution of estimates over time
-  - Min/max/average statistics
-  - Trend analysis with percentage change
-  - Visual bars proportional to effort
-  - Delta indicators between consecutive estimates
+### Advanced Features
+- [x] **AI Caching**: In-memory cache (5 min TTL) to reduce API costs
+- [x] **Input Sanitization**: Anti-injection protection for AI prompts
+- [x] **Fallback Mechanisms**: Graceful degradation if AI unavailable
+- [x] **Responsive Design**: Mobile-friendly UI
+- [x] **Performance Optimization**: React Query caching, lazy loading
 
-📖 See [ESTIMATION_HISTORY.md](./ESTIMATION_HISTORY.md) for complete documentation and usage examples.
+📖 **Documentation**: See [ESTIMATION_HISTORY.md](./ESTIMATION_HISTORY.md) for detailed estimation history features and usage examples.
+
+## 🚧 Future Enhancements (Phase 2)
+
+- [ ] **Dashboard Analytics**: Advanced KPI visualizations
+- [ ] **Treemap Visualization**: Interactive effort distribution by technology/group
+- [ ] **Parent-Child Requirements**: Hierarchical requirement structure
+- [ ] **Workflow Approvals**: Multi-level approval process
+- [ ] **Email Notifications**: Automated alerts for key events
+- [ ] **Custom Templates**: User-defined requirement templates
+- [ ] **Public API**: REST API for external integrations
+- [ ] **Custom Activity Catalog**: List-specific activity overrides
+- [ ] **Multi-tenant Workspaces**: Shared team workspaces
+- [ ] **Audit Log**: Complete change tracking
+- [ ] **Gantt Chart Export**: Timeline planning view
 
 ## 📝 Notes
 
@@ -248,11 +364,25 @@ The system now includes a complete **estimation history and comparison** feature
 - Restart dev server after adding environment variables
 
 ### "AI suggestions not working"
-- Check `OPENAI_API_KEY` in `.env` (no VITE_ prefix)
-- For local dev with Netlify CLI: `netlify dev` instead of `pnpm run dev`
-- Verify OpenAI API key is valid and has credits
-- Check browser console and Netlify function logs for errors
-- System falls back to preset defaults if AI fails
+- Check `OPENAI_API_KEY` in `.env` (no VITE_ prefix - server-side only)
+- For local dev with Netlify Functions: use `pnpm run dev:netlify` instead of `pnpm run dev`
+- Verify OpenAI API key is valid and has available credits
+- Check browser console and Netlify function logs for detailed errors
+- System automatically falls back to preset defaults if AI service fails gracefully
+
+### "Excel import not parsing correctly"
+- Ensure file is .xlsx, .xls, or .csv format
+- Check that first row contains column headers
+- Verify ID column exists (required field)
+- Use column mapping UI to manually assign columns if auto-detection fails
+- Download the template file for reference structure
+- Check browser console for detailed parsing errors
+
+### "Bulk estimation taking too long"
+- AI processes requests in parallel but may take time for large batches
+- Check network connectivity and OpenAI API rate limits
+- Consider splitting into smaller batches (10-20 requirements at a time)
+- Monitor progress bar for status updates
 
 ### "Cannot read properties of null"
 - Ensure database schema and seed data are properly executed
@@ -264,10 +394,41 @@ The system now includes a complete **estimation history and comparison** feature
 - Ensure user is authenticated
 - Verify `user_id` matches in database
 
+## 📊 Key Highlights
+
+### Excel Import System (Enterprise-Grade)
+- **Robust Parsing**: XLSX library for multi-format support (.xlsx, .xls, .csv)
+- **Intelligent Mapping**: Auto-detects columns using pattern matching algorithms
+- **Multi-Column Merge**: Combine multiple Excel columns into single description field
+- **AI Fallback**: Automatically generates titles from descriptions using GPT-4
+- **Validation**: Pre-import validation with error reporting and duplicate detection
+- **Template Support**: Downloadable sample template for users
+
+### AI Integration (Cost-Optimized)
+- **Compact Prompts**: ~60-70% token reduction for cost efficiency
+- **In-Memory Caching**: 5-minute TTL cache reduces redundant API calls
+- **Graceful Fallback**: Uses preset defaults if AI service unavailable
+- **Input Sanitization**: Anti-injection protection for secure prompt handling
+- **Serverless Architecture**: Netlify Functions keep API keys secure server-side
+
+### Estimation History (Complete Audit Trail)
+- **Named Scenarios**: Track different estimate versions with descriptive names
+- **Timeline Visualization**: Visual evolution graph with trend analysis
+- **Diff Viewer**: Granular comparison showing added/removed/changed items
+- **Statistics**: Aggregate metrics (min/max/average/trend percentage)
+- **Performance Optimized**: Dedicated database indexes and views for fast queries
+
+### Security & Performance
+- **Row Level Security**: PostgreSQL RLS for secure multi-tenancy
+- **React Query Caching**: Automatic cache invalidation and background refetching
+- **Lazy Loading**: Code-splitting for optimal bundle size
+- **Debounced Operations**: Search and filter optimizations
+- **Vite Build Optimization**: Fast builds and hot module replacement
+
 ## 📄 License
 
 This project is part of the MGX platform development.
 
 ## 🤝 Contributing
 
-This is Phase 1 MVP. Phase 2 features coming soon!
+Phase 1 MVP completed with all core features implemented. Phase 2 enhancements planned for Q1 2026.
