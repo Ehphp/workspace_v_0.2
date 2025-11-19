@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,8 +14,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { ArrowLeft, FileText, Calculator, History, Clock, Eye, Copy, RotateCcw, GitCompare } from 'lucide-react';
+import { ArrowLeft, FileText, Calculator, History, Clock, Eye, Copy, RotateCcw, GitCompare, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { suggestActivities } from '@/lib/openai';
 import { TechnologySection } from '@/components/estimation/TechnologySection';
@@ -25,6 +27,7 @@ import { RisksSection } from '@/components/estimation/RisksSection';
 import { CalculationSummary } from '@/components/estimation/CalculationSummary';
 import { EstimationComparison } from '@/components/estimation/EstimationComparison';
 import { EstimationTimeline } from '@/components/estimation/EstimationTimeline';
+import { Header } from '@/components/layout/Header';
 
 export default function RequirementDetail() {
     const navigate = useNavigate();
@@ -34,6 +37,7 @@ export default function RequirementDetail() {
     // Load requirement data
     const {
         requirement,
+        list,
         preset,
         loading: requirementLoading,
         error: requirementError
@@ -89,6 +93,18 @@ export default function RequirementDetail() {
     const [activeTab, setActiveTab] = useState<string>('info');
     const [expandedSection, setExpandedSection] = useState<'technology' | 'activities' | 'drivers' | 'risks' | null>('technology');
 
+    // Edit mode state
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedData, setEditedData] = useState({
+        title: '',
+        description: '',
+        priority: '',
+        state: '',
+        business_owner: '',
+        labels: [] as string[],
+        tech_preset_id: null as string | null,
+    });
+
     // Track unsaved changes
     const hasUnsavedChanges = useMemo(() => {
         const result = hasSelections && estimationResult !== null;
@@ -101,6 +117,24 @@ export default function RequirementDetail() {
         });
         return result;
     }, [hasSelections, estimationResult, selectedActivityIds, selectedPresetId]);
+
+    // Auto-set inherited technology from list when requirement doesn't have one
+    useEffect(() => {
+        if (!requirement || !list || requirementLoading || dataLoading) return;
+
+        // If requirement doesn't have a tech_preset_id but list does
+        if (!requirement.tech_preset_id && list.tech_preset_id) {
+            // Only set if not already selected (to avoid overriding user's manual selection)
+            if (!selectedPresetId && presets.length > 0) {
+                console.log('🔄 Auto-setting inherited technology from list:', list.tech_preset_id);
+                setSelectedPresetId(list.tech_preset_id);
+            }
+        } else if (requirement.tech_preset_id && !selectedPresetId && presets.length > 0) {
+            // If requirement has its own tech_preset_id, use it
+            console.log('🔄 Auto-setting requirement technology:', requirement.tech_preset_id);
+            setSelectedPresetId(requirement.tech_preset_id);
+        }
+    }, [requirement, list, requirementLoading, dataLoading, selectedPresetId, setSelectedPresetId, presets]);
 
     // Copy estimation to clipboard
     const handleCopyEstimation = useCallback((est: typeof estimationHistory[0]) => {
@@ -148,6 +182,66 @@ Risks: ${est.estimation_risks?.length || 0}`;
         toast.success(`Restored estimation: ${est.scenario_name}`);
         console.log('✅ Restoration complete, switched to Estimation tab');
     }, [applyAiSuggestions, drivers]);
+
+    // Edit mode handlers
+    const handleEdit = useCallback(() => {
+        if (!requirement) return;
+        setEditedData({
+            title: requirement.title,
+            description: requirement.description || '',
+            priority: requirement.priority,
+            state: requirement.state,
+            business_owner: requirement.business_owner || '',
+            labels: requirement.labels || [],
+            tech_preset_id: requirement.tech_preset_id || list?.tech_preset_id || null,
+        });
+        setIsEditing(true);
+        setActiveTab('info'); // Switch to info tab when editing
+    }, [requirement, list]);
+
+    const handleCancelEdit = useCallback(() => {
+        setIsEditing(false);
+        setEditedData({
+            title: '',
+            description: '',
+            priority: '',
+            state: '',
+            business_owner: '',
+            labels: [],
+            tech_preset_id: null,
+        });
+    }, []);
+
+    const handleSaveEdit = useCallback(async () => {
+        if (!requirement || !user) return;
+
+        try {
+            const { error } = await supabase
+                .from('requirements')
+                .update({
+                    title: editedData.title,
+                    description: editedData.description,
+                    priority: editedData.priority,
+                    state: editedData.state,
+                    business_owner: editedData.business_owner,
+                    labels: editedData.labels,
+                    tech_preset_id: editedData.tech_preset_id,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', requirement.id);
+
+            if (error) throw error;
+
+            toast.success('Requirement updated successfully');
+            setIsEditing(false);
+
+            // Reload requirement data
+            window.location.reload();
+        } catch (error) {
+            console.error('Error updating requirement:', error);
+            toast.error('Failed to update requirement');
+        }
+    }, [requirement, user, editedData]);
 
     // Combined loading state
     const loading = requirementLoading || dataLoading;
@@ -344,29 +438,72 @@ Risks: ${est.estimation_risks?.length || 0}`;
     ]);
 
     const getPriorityBadge = useCallback((priority: string) => {
-        const variants = {
-            HIGH: 'destructive',
-            MEDIUM: 'default',
-            LOW: 'secondary',
-        } as const;
+        const priorityConfig = {
+            HIGH: {
+                gradient: 'from-red-500 to-rose-500',
+                bgGradient: 'from-red-50 to-rose-50',
+                textColor: 'text-red-700',
+                borderColor: 'border-red-200/50'
+            },
+            MEDIUM: {
+                gradient: 'from-amber-500 to-orange-500',
+                bgGradient: 'from-amber-50 to-orange-50',
+                textColor: 'text-amber-700',
+                borderColor: 'border-amber-200/50'
+            },
+            LOW: {
+                gradient: 'from-emerald-500 to-teal-500',
+                bgGradient: 'from-emerald-50 to-teal-50',
+                textColor: 'text-emerald-700',
+                borderColor: 'border-emerald-200/50'
+            },
+        };
+
+        const config = priorityConfig[priority as keyof typeof priorityConfig] || priorityConfig.MEDIUM;
+
         return (
-            <Badge variant={variants[priority as keyof typeof variants] || 'secondary'}>
-                {priority}
-            </Badge>
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r ${config.bgGradient} border ${config.borderColor} shadow-sm`}>
+                <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${config.gradient} animate-pulse`}></div>
+                <span className={`text-sm font-semibold ${config.textColor}`}>{priority}</span>
+            </div>
         );
     }, []);
 
     const getStateBadge = useCallback((state: string) => {
-        const variants = {
-            PROPOSED: 'outline',
-            SELECTED: 'secondary',
-            SCHEDULED: 'default',
-            DONE: 'default',
-        } as const;
+        const stateConfig = {
+            PROPOSED: {
+                gradient: 'from-blue-500 to-indigo-500',
+                bgGradient: 'from-blue-50 to-indigo-50',
+                textColor: 'text-blue-700',
+                borderColor: 'border-blue-200/50'
+            },
+            APPROVED: {
+                gradient: 'from-emerald-500 to-teal-500',
+                bgGradient: 'from-emerald-50 to-teal-50',
+                textColor: 'text-emerald-700',
+                borderColor: 'border-emerald-200/50'
+            },
+            REJECTED: {
+                gradient: 'from-red-500 to-rose-500',
+                bgGradient: 'from-red-50 to-rose-50',
+                textColor: 'text-red-700',
+                borderColor: 'border-red-200/50'
+            },
+            IN_PROGRESS: {
+                gradient: 'from-purple-500 to-pink-500',
+                bgGradient: 'from-purple-50 to-pink-50',
+                textColor: 'text-purple-700',
+                borderColor: 'border-purple-200/50'
+            },
+        };
+
+        const config = stateConfig[state as keyof typeof stateConfig] || stateConfig.PROPOSED;
+
         return (
-            <Badge variant={variants[state as keyof typeof variants] || 'outline'}>
-                {state}
-            </Badge>
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r ${config.bgGradient} border ${config.borderColor} shadow-sm`}>
+                <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${config.gradient} animate-pulse`}></div>
+                <span className={`text-sm font-semibold ${config.textColor}`}>{state.replace('_', ' ')}</span>
+            </div>
         );
     }, []);
 
@@ -387,43 +524,74 @@ Risks: ${est.estimation_risks?.length || 0}`;
             {/* Subtle background pattern */}
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgxNDgsMTYzLDE4NCwwLjA1KSkgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40"></div>
 
-            {/* Header with glassmorphism */}
-            <header className="relative border-b border-white/20 backdrop-blur-md bg-white/80 shadow-sm">
-                <div className="container mx-auto px-6 h-16 flex items-center gap-4">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate(`/lists/${listId}/requirements`)}
-                        className="hover:bg-white/60 transition-all duration-300 -ml-2"
-                        aria-label="Back to requirements"
-                    >
-                        <ArrowLeft className="h-4 w-4" />
-                    </Button>
+            {/* Use shared Header component */}
+            <Header />
 
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center flex-shrink-0">
-                        <FileText className="w-5 h-5 text-white" />
-                    </div>
+            {/* Page specific info bar - cleaner and more spacious */}
+            <div className="relative border-b border-slate-200/60 bg-white/95 backdrop-blur-sm shadow-sm">
+                <div className="container mx-auto px-6 py-4">
+                    <div className="flex items-center justify-between gap-6">
+                        {/* Left side: Requirement info */}
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-md">
+                                <FileText className="w-5 h-5 text-white" />
+                            </div>
 
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                            <span className="font-mono text-[10px] text-slate-600 font-semibold">{requirement.req_id}</span>
-                            {getPriorityBadge(requirement.priority)}
-                            {getStateBadge(requirement.state)}
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="font-mono text-xs text-slate-500 font-semibold">{requirement.req_id}</span>
+                                    {getPriorityBadge(requirement.priority)}
+                                    {getStateBadge(requirement.state)}
+                                </div>
+                                {isEditing ? (
+                                    <Input
+                                        value={editedData.title}
+                                        onChange={(e) => setEditedData({ ...editedData, title: e.target.value })}
+                                        className="text-xl font-bold h-9 border-2 border-blue-400"
+                                        placeholder="Requirement title"
+                                    />
+                                ) : (
+                                    <h1 className="text-xl font-bold text-slate-900 truncate">
+                                        {requirement.title}
+                                    </h1>
+                                )}
+                            </div>
                         </div>
-                        <h1 className="text-lg font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent truncate">
-                            {requirement.title}
-                        </h1>
-                    </div>
 
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        className="bg-white/80 backdrop-blur-sm shadow-sm border-slate-300 hover:bg-white hover:border-blue-400 transition-all duration-300"
-                    >
-                        Edit
-                    </Button>
+                        {/* Right side: Actions */}
+                        {!isEditing ? (
+                            <Button
+                                size="default"
+                                variant="outline"
+                                onClick={handleEdit}
+                                className="bg-white border-slate-300 hover:bg-slate-50 hover:border-blue-400 transition-all duration-300 shadow-sm"
+                            >
+                                Edit
+                            </Button>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    size="default"
+                                    variant="outline"
+                                    onClick={handleCancelEdit}
+                                    className="bg-white border-slate-300 hover:bg-slate-50 hover:border-red-400 transition-all duration-300 shadow-sm"
+                                >
+                                    <X className="h-4 w-4 mr-1" />
+                                    Cancel
+                                </Button>
+                                <Button
+                                    size="default"
+                                    onClick={handleSaveEdit}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white transition-all duration-300 shadow-sm"
+                                >
+                                    <Save className="h-4 w-4 mr-1" />
+                                    Save
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </header>
+            </div>
 
             {/* Content Area with Tabs */}
             <div className="flex-1 overflow-hidden">
@@ -502,9 +670,18 @@ Risks: ${est.estimation_risks?.length || 0}`;
                                                     <CardTitle className="text-sm font-semibold text-slate-900">Description</CardTitle>
                                                 </CardHeader>
                                                 <CardContent className="px-4 pb-3 overflow-y-auto flex-1">
-                                                    <p className="text-xs whitespace-pre-wrap text-slate-700 leading-relaxed">
-                                                        {requirement.description || 'No description provided'}
-                                                    </p>
+                                                    {isEditing ? (
+                                                        <Textarea
+                                                            value={editedData.description}
+                                                            onChange={(e) => setEditedData({ ...editedData, description: e.target.value })}
+                                                            className="min-h-[200px] text-xs border-2 border-blue-400 resize-none"
+                                                            placeholder="Requirement description"
+                                                        />
+                                                    ) : (
+                                                        <p className="text-xs whitespace-pre-wrap text-slate-700 leading-relaxed">
+                                                            {requirement.description || 'No description provided'}
+                                                        </p>
+                                                    )}
                                                 </CardContent>
                                             </Card>
                                         </div>
@@ -520,32 +697,107 @@ Risks: ${est.estimation_risks?.length || 0}`;
                                                     <div className="grid grid-cols-2 gap-3 text-xs">
                                                         <div>
                                                             <span className="text-slate-600 font-medium">Priority:</span>
-                                                            <div className="mt-1">{getPriorityBadge(requirement.priority)}</div>
+                                                            {isEditing ? (
+                                                                <Select
+                                                                    value={editedData.priority}
+                                                                    onValueChange={(value) => setEditedData({ ...editedData, priority: value })}
+                                                                >
+                                                                    <SelectTrigger className="mt-1 h-8 border-2 border-blue-400">
+                                                                        <SelectValue />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="LOW">Low</SelectItem>
+                                                                        <SelectItem value="MEDIUM">Medium</SelectItem>
+                                                                        <SelectItem value="HIGH">High</SelectItem>
+                                                                        <SelectItem value="CRITICAL">Critical</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            ) : (
+                                                                <div className="mt-1">{getPriorityBadge(requirement.priority)}</div>
+                                                            )}
                                                         </div>
                                                         <div>
                                                             <span className="text-slate-600 font-medium">State:</span>
-                                                            <div className="mt-1">{getStateBadge(requirement.state)}</div>
+                                                            {isEditing ? (
+                                                                <Select
+                                                                    value={editedData.state}
+                                                                    onValueChange={(value) => setEditedData({ ...editedData, state: value })}
+                                                                >
+                                                                    <SelectTrigger className="mt-1 h-8 border-2 border-blue-400">
+                                                                        <SelectValue />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="DRAFT">Draft</SelectItem>
+                                                                        <SelectItem value="PROPOSED">Proposed</SelectItem>
+                                                                        <SelectItem value="APPROVED">Approved</SelectItem>
+                                                                        <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                                                                        <SelectItem value="COMPLETED">Completed</SelectItem>
+                                                                        <SelectItem value="REJECTED">Rejected</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            ) : (
+                                                                <div className="mt-1">{getStateBadge(requirement.state)}</div>
+                                                            )}
                                                         </div>
                                                         <div>
                                                             <span className="text-slate-600 font-medium">Business Owner:</span>
-                                                            <div className="mt-1 font-semibold text-slate-900">{requirement.business_owner || 'N/A'}</div>
+                                                            {isEditing ? (
+                                                                <Input
+                                                                    value={editedData.business_owner}
+                                                                    onChange={(e) => setEditedData({ ...editedData, business_owner: e.target.value })}
+                                                                    className="mt-1 h-8 border-2 border-blue-400"
+                                                                    placeholder="Business Owner"
+                                                                />
+                                                            ) : (
+                                                                <div className="mt-1 font-semibold text-slate-900">{requirement.business_owner || 'N/A'}</div>
+                                                            )}
                                                         </div>
                                                         <div>
                                                             <span className="text-slate-600 font-medium">Technology:</span>
-                                                            <div className="mt-1 font-semibold text-slate-900">{preset?.name || 'N/A'}</div>
+                                                            {isEditing ? (
+                                                                <Select
+                                                                    value={editedData.tech_preset_id || ''}
+                                                                    onValueChange={(value) => setEditedData({ ...editedData, tech_preset_id: value })}
+                                                                >
+                                                                    <SelectTrigger className="mt-1 h-8 border-2 border-blue-400">
+                                                                        <SelectValue placeholder="Select technology" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        {presets.map((p) => (
+                                                                            <SelectItem key={p.id} value={p.id}>
+                                                                                {p.name}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            ) : (
+                                                                <div className="mt-1 font-semibold text-slate-900">{preset?.name || 'N/A'}</div>
+                                                            )}
                                                         </div>
-                                                        {requirement.labels && requirement.labels.length > 0 && (
+                                                        {(requirement.labels && requirement.labels.length > 0) || isEditing ? (
                                                             <div className="col-span-2">
                                                                 <span className="text-slate-600 font-medium">Labels:</span>
-                                                                <div className="mt-1 flex flex-wrap gap-1">
-                                                                    {requirement.labels.map((label, idx) => (
-                                                                        <Badge key={idx} variant="outline" className="text-[10px] border-slate-300 bg-white/80 px-1.5 py-0">
-                                                                            {label}
-                                                                        </Badge>
-                                                                    ))}
-                                                                </div>
+                                                                {isEditing ? (
+                                                                    <Input
+                                                                        value={editedData.labels.join(', ')}
+                                                                        onChange={(e) => setEditedData({
+                                                                            ...editedData,
+                                                                            labels: e.target.value.split(',').map(l => l.trim()).filter(l => l.length > 0)
+                                                                        })}
+                                                                        className="mt-1 h-8 border-2 border-blue-400"
+                                                                        placeholder="Comma-separated labels"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="mt-1 flex flex-wrap gap-1">
+                                                                        {requirement.labels.map((label, idx) => (
+                                                                            <Badge key={idx} variant="outline" className="text-[10px] border-slate-300 bg-white/80 px-1.5 py-0">
+                                                                                {label}
+                                                                            </Badge>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        )}
+                                                        ) : null}
                                                     </div>
                                                 </CardContent>
                                             </Card>

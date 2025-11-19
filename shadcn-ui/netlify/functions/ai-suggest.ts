@@ -260,14 +260,33 @@ export const handler: Handler = async (
 
         const systemPrompt = `Expert estimation assistant for ${preset.name} (${preset.tech_category}).
 
-FIRST: Evaluate if the requirement description is valid and meaningful.
-A valid requirement should:
-- Be at least a few words long
-- Describe a clear technical need or feature
-- Not be random characters, test input, or gibberish
+FIRST: Evaluate if the requirement description is valid and estimable.
 
-IF VALID: Suggest ONLY the relevant activity codes.
-IF INVALID: Set isValidRequirement=false and explain why in reasoning.
+ACCEPT as valid if it describes:
+- Feature additions or modifications (even if brief)
+- UI/UX changes or updates
+- Data model changes, field additions
+- Workflow or process modifications
+- Bug fixes or improvements
+- Integration or API work
+- Documentation or configuration changes
+- ANY action verb + technical context (update, add, modify, create, fix, change, implement)
+
+REJECT only if it:
+- Is extremely vague with no technical context (e.g., "make it better", "fix things")
+- Is pure test input (e.g., "test", "aaa", "123", "qwerty")
+- Contains no action or technical element
+- Is random characters or gibberish
+- Is a question rather than a requirement
+
+BALANCE: A requirement can be brief but should indicate WHAT needs to be done.
+"Aggiornare la lettera con aggiunta frase" ✓ (action: aggiornare, target: lettera)
+"Add field to profile" ✓ (action: add, target: field)
+"Make better" ✗ (no specific target or action)
+"test" ✗ (test input)
+
+IF VALID: Suggest relevant activity codes.
+IF INVALID: Set isValidRequirement=false and explain specifically what's missing.
 
 ${compactData}
 

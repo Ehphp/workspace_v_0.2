@@ -1,7 +1,9 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
+import { ChevronRight } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -16,6 +18,38 @@ import { Calculator, User, LogOut } from 'lucide-react';
 export function Header() {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const params = useParams<{ listId?: string; reqId?: string }>();
+    const [listName, setListName] = useState<string>('');
+    const [requirementTitle, setRequirementTitle] = useState<string>('');
+
+    // Load list and requirement data for breadcrumb
+    useEffect(() => {
+        const loadBreadcrumbData = async () => {
+            if (params.listId && user) {
+                const { data: list } = await supabase
+                    .from('lists')
+                    .select('name')
+                    .eq('id', params.listId)
+                    .eq('user_id', user.id)
+                    .single();
+
+                if (list) setListName(list.name);
+            }
+
+            if (params.reqId && user) {
+                const { data: req } = await supabase
+                    .from('requirements')
+                    .select('title')
+                    .eq('id', params.reqId)
+                    .single();
+
+                if (req) setRequirementTitle(req.title);
+            }
+        };
+
+        loadBreadcrumbData();
+    }, [params.listId, params.reqId, user]);
 
     const handleSignOut = async () => {
         await supabase.auth.signOut();
@@ -27,11 +61,69 @@ export function Header() {
         return user.email.substring(0, 2).toUpperCase();
     };
 
+    const isActive = (path: string) => {
+        if (path === '/') {
+            return location.pathname === '/';
+        }
+        if (path === '/lists') {
+            // Only highlight "My Lists" when exactly on /lists, not on sub-routes
+            return location.pathname === '/lists';
+        }
+        return location.pathname.startsWith(path);
+    };
+
+    // Generate breadcrumb based on current route
+    const getBreadcrumb = () => {
+        const pathParts = location.pathname.split('/').filter(Boolean);
+
+        if (pathParts[0] === 'lists' && params.listId) {
+            if (pathParts[2] === 'requirements') {
+                if (params.reqId) {
+                    // On requirement detail page
+                    return (
+                        <div className="flex items-center gap-1 text-sm">
+                            <Link to="/lists" className="text-slate-600 hover:text-blue-600 transition-colors">
+                                My Lists
+                            </Link>
+                            <ChevronRight className="h-4 w-4 text-slate-400" />
+                            <Link
+                                to={`/lists/${params.listId}/requirements`}
+                                className="text-slate-600 hover:text-blue-600 transition-colors max-w-[150px] truncate"
+                            >
+                                {listName || 'Project'}
+                            </Link>
+                            <ChevronRight className="h-4 w-4 text-slate-400" />
+                            <span className="text-slate-900 font-medium max-w-[200px] truncate">
+                                {requirementTitle || 'Requirement'}
+                            </span>
+                        </div>
+                    );
+                } else {
+                    // On requirements list page
+                    return (
+                        <div className="flex items-center gap-1 text-sm">
+                            <Link to="/lists" className="text-slate-600 hover:text-blue-600 transition-colors">
+                                My Lists
+                            </Link>
+                            <ChevronRight className="h-4 w-4 text-slate-400" />
+                            <span className="text-slate-900 font-medium max-w-[200px] truncate">
+                                {listName || 'Project'}
+                            </span>
+                        </div>
+                    );
+                }
+            }
+        }
+        return null;
+    };
+
+    const breadcrumb = getBreadcrumb();
+
     return (
         <header className="border-b border-slate-200/60 backdrop-blur-xl bg-white/90 shadow-sm sticky top-0 z-50">
-            <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+            <div className="container mx-auto px-6 h-16 flex items-center justify-between gap-4">
                 {/* Logo & Brand */}
-                <Link to="/" className="flex items-center gap-3 group">
+                <Link to="/" className="flex items-center gap-3 group flex-shrink-0">
                     <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300">
                         <Calculator className="h-5 w-5 text-white" />
                     </div>
@@ -45,16 +137,26 @@ export function Header() {
                     </div>
                 </Link>
 
+                {/* Breadcrumb - shown when navigating in deep routes */}
+                {breadcrumb && (
+                    <div className="flex-1 min-w-0 flex items-center">
+                        <div className="px-4 py-2 rounded-lg bg-slate-50/80 backdrop-blur-sm border border-slate-200/50">
+                            {breadcrumb}
+                        </div>
+                    </div>
+                )}
+
                 {/* Navigation */}
-                <nav className="flex items-center gap-2">
+                <nav className="flex items-center gap-2 flex-shrink-0">
                     {user ? (
                         <>
-                            <Link to="/lists">
+                            <Link to="/">
                                 <Button
                                     variant="ghost"
-                                    className="hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium"
+                                    className={`hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium ${isActive('/') ? 'bg-blue-50 text-blue-700' : ''
+                                        }`}
                                 >
-                                    My Lists
+                                    Home
                                 </Button>
                             </Link>
 

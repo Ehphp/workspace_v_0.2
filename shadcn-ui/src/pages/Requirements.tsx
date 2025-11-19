@@ -22,6 +22,7 @@ import { ImportRequirementsDialog } from '@/components/requirements/ImportRequir
 import { ClearListDialog } from '@/components/lists/ClearListDialog';
 import { DeleteRequirementDialog } from '@/components/requirements/DeleteRequirementDialog';
 import { BulkEstimateDialog } from '@/components/requirements/BulkEstimateDialog';
+import { Header } from '@/components/layout/Header';
 
 export default function Requirements() {
     const navigate = useNavigate();
@@ -185,18 +186,75 @@ export default function Requirements() {
     }, [requirements, searchTerm, filterPriority, filterState, sortBy]);
 
     const getPriorityBadge = (priority: string) => {
+        const priorityConfig = {
+            HIGH: {
+                gradient: 'from-red-500 to-rose-500',
+                bgGradient: 'from-red-50 to-rose-50',
+                textColor: 'text-red-700',
+                borderColor: 'border-red-200/50',
+                icon: '🔴'
+            },
+            MEDIUM: {
+                gradient: 'from-amber-500 to-orange-500',
+                bgGradient: 'from-amber-50 to-orange-50',
+                textColor: 'text-amber-700',
+                borderColor: 'border-amber-200/50',
+                icon: '🟡'
+            },
+            LOW: {
+                gradient: 'from-emerald-500 to-teal-500',
+                bgGradient: 'from-emerald-50 to-teal-50',
+                textColor: 'text-emerald-700',
+                borderColor: 'border-emerald-200/50',
+                icon: '🟢'
+            },
+        };
+
+        const config = priorityConfig[priority as keyof typeof priorityConfig] || priorityConfig.MEDIUM;
+
         return (
-            <Badge variant={PRIORITY_VARIANTS[priority as keyof typeof PRIORITY_VARIANTS] || 'secondary'}>
-                {priority}
-            </Badge>
+            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gradient-to-r ${config.bgGradient} border ${config.borderColor} shadow-sm`}>
+                <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${config.gradient} animate-pulse`}></div>
+                <span className={`text-xs font-semibold ${config.textColor}`}>{priority}</span>
+            </div>
         );
     };
 
     const getStateBadge = (state: string) => {
+        const stateConfig = {
+            PROPOSED: {
+                gradient: 'from-blue-500 to-indigo-500',
+                bgGradient: 'from-blue-50 to-indigo-50',
+                textColor: 'text-blue-700',
+                borderColor: 'border-blue-200/50'
+            },
+            APPROVED: {
+                gradient: 'from-emerald-500 to-teal-500',
+                bgGradient: 'from-emerald-50 to-teal-50',
+                textColor: 'text-emerald-700',
+                borderColor: 'border-emerald-200/50'
+            },
+            REJECTED: {
+                gradient: 'from-red-500 to-rose-500',
+                bgGradient: 'from-red-50 to-rose-50',
+                textColor: 'text-red-700',
+                borderColor: 'border-red-200/50'
+            },
+            IN_PROGRESS: {
+                gradient: 'from-purple-500 to-pink-500',
+                bgGradient: 'from-purple-50 to-pink-50',
+                textColor: 'text-purple-700',
+                borderColor: 'border-purple-200/50'
+            },
+        };
+
+        const config = stateConfig[state as keyof typeof stateConfig] || stateConfig.PROPOSED;
+
         return (
-            <Badge variant={STATE_VARIANTS[state as keyof typeof STATE_VARIANTS] || 'outline'}>
-                {state}
-            </Badge>
+            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gradient-to-r ${config.bgGradient} border ${config.borderColor} shadow-sm`}>
+                <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${config.gradient} animate-pulse`}></div>
+                <span className={`text-xs font-semibold ${config.textColor}`}>{state.replace('_', ' ')}</span>
+            </div>
         );
     };
 
@@ -217,64 +275,74 @@ export default function Requirements() {
     const notEstimatedCount = filteredRequirements.length - estimatedCount;
 
     return (
-        <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+        <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
             {/* Subtle background pattern */}
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgxNDgsMTYzLDE4NCwwLjA1KSkgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40"></div>
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgxNDgsMTYzLDE4NCwwLjA1KSkgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40 pointer-events-none"></div>
 
-            {/* Header with glassmorphism */}
-            <header className="relative border-b border-white/20 backdrop-blur-md bg-white/80 shadow-sm">
-                <div className="container mx-auto px-6 h-16 flex items-center gap-4">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate('/lists')}
-                        className="hover:bg-white/60 transition-all duration-300 -ml-2"
-                        aria-label="Back to projects"
-                    >
-                        <ArrowLeft className="h-4 w-4" />
-                    </Button>
+            {/* Use shared Header component */}
+            <Header />
 
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center flex-shrink-0">
-                        <FileText className="w-5 h-5 text-white" />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                        <h1 className="text-lg font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent truncate">
-                            {list?.name}
-                        </h1>
-                        {list?.description && (
-                            <p className="text-xs text-slate-600 truncate">{list.description}</p>
-                        )}
-                    </div>
-
-                    {/* Summary Card */}
-                    <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/50 shadow-md backdrop-blur-sm">
-                        <div className="text-center">
-                            <div className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                                {totalEstimation.toFixed(1)}
+            {/* Page specific info bar - cleaner and more spacious */}
+            <div className="relative border-b border-slate-200/60 bg-white/95 backdrop-blur-sm shadow-sm">
+                <div className="container mx-auto px-6 py-4">
+                    <div className="flex items-center justify-between gap-6">
+                        {/* Left side: Project info */}
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-md">
+                                <FileText className="w-5 h-5 text-white" />
                             </div>
-                            <div className="text-[9px] text-slate-600 font-medium uppercase tracking-wide">days</div>
-                        </div>
-                        <div className="h-7 w-px bg-blue-200/50"></div>
-                        <div className="text-left">
-                            <div className="text-[11px] text-slate-600 font-medium">
-                                <span className="text-blue-600 font-semibold">{estimatedCount}</span> estimated
+
+                            <div className="flex-1 min-w-0">
+                                <h1 className="text-xl font-bold text-slate-900 truncate mb-1">
+                                    {list?.name}
+                                </h1>
+                                {list?.description && (
+                                    <p className="text-sm text-slate-600 truncate">{list.description}</p>
+                                )}
                             </div>
-                            <div className="text-[11px] text-slate-600 font-medium">
-                                <span className="text-slate-700 font-semibold">{notEstimatedCount}</span> pending
+
+                            {/* Summary Card - more elegant */}
+                            <div className="flex items-center gap-4 px-5 py-3 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/50 shadow-sm">
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                        {totalEstimation.toFixed(1)}
+                                    </div>
+                                    <div className="text-xs text-slate-600 font-medium">Total Days</div>
+                                </div>
+                                <div className="h-10 w-px bg-blue-300/30"></div>
+                                <div className="text-left space-y-0.5">
+                                    <div className="text-sm text-slate-700">
+                                        <span className="font-bold text-blue-600">{estimatedCount}</span> estimated
+                                    </div>
+                                    <div className="text-sm text-slate-700">
+                                        <span className="font-bold text-slate-800">{notEstimatedCount}</span> pending
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <Button
-                        onClick={() => setShowCreateDialog(true)}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md"
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        New
-                    </Button>
+                        {/* Right side: Actions */}
+                        <div className="flex items-center gap-3">
+                            <Button
+                                onClick={() => setShowBulkEstimate(true)}
+                                disabled={filteredRequirements.length === 0}
+                                variant="outline"
+                                className="border-indigo-300 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-400 shadow-sm hover:shadow-md transition-all duration-300"
+                            >
+                                <Zap className="mr-2 h-4 w-4" />
+                                Estimate All
+                            </Button>
+                            <Button
+                                onClick={() => setShowCreateDialog(true)}
+                                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md"
+                            >
+                                <Plus className="mr-2 h-4 w-4" />
+                                New Requirement
+                            </Button>
+                        </div>
+                    </div>
                 </div>
-            </header>
+            </div>
 
             {/* Main Content */}
             <div className="flex-1 overflow-auto">
@@ -500,16 +568,6 @@ export default function Requirements() {
 
                                     {/* Action Buttons */}
                                     <div className="flex gap-2 ml-auto">
-                                        <Button
-                                            size="sm"
-                                            onClick={() => setShowBulkEstimate(true)}
-                                            disabled={filteredRequirements.length === 0}
-                                            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all duration-300 h-10"
-                                        >
-                                            <Zap className="mr-2 h-4 w-4" />
-                                            Estimate All
-                                        </Button>
-
                                         <Button
                                             size="sm"
                                             variant="outline"

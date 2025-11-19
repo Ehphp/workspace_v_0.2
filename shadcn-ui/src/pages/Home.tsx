@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useWizardState } from '@/hooks/useWizardState';
+import { useAuth } from '@/hooks/useAuth';
+import { signOut } from '@/lib/supabase';
 import { WizardStep1 } from '@/components/wizard/WizardStep1';
 import { WizardStep2 } from '@/components/wizard/WizardStep2';
 import { WizardStep3 } from '@/components/wizard/WizardStep3';
@@ -15,13 +17,20 @@ export default function Home() {
   const [showWizard, setShowWizard] = useState(false);
   const [showQuickEstimate, setShowQuickEstimate] = useState(false);
   const { data, updateData, resetData } = useWizardState();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   const steps = [
-    { title: 'Requirement', component: WizardStep1 },
-    { title: 'Technology', component: WizardStep2 },
-    { title: 'Activities', component: WizardStep3 },
-    { title: 'Drivers & Risks', component: WizardStep4 },
-    { title: 'Results', component: WizardStep5 },
+    { title: 'Requirement', component: WizardStep1, color: 'from-blue-500 to-cyan-500', bgColor: 'bg-gradient-to-br from-blue-500 to-cyan-500', textColor: 'text-blue-600' },
+    { title: 'Technology', component: WizardStep2, color: 'from-indigo-500 to-purple-500', bgColor: 'bg-gradient-to-br from-indigo-500 to-purple-500', textColor: 'text-indigo-600' },
+    { title: 'Activities', component: WizardStep3, color: 'from-purple-500 to-pink-500', bgColor: 'bg-gradient-to-br from-purple-500 to-pink-500', textColor: 'text-purple-600' },
+    { title: 'Drivers & Risks', component: WizardStep4, color: 'from-pink-500 to-rose-500', bgColor: 'bg-gradient-to-br from-pink-500 to-rose-500', textColor: 'text-pink-600' },
+    { title: 'Results', component: WizardStep5, color: 'from-rose-500 to-orange-500', bgColor: 'bg-gradient-to-br from-rose-500 to-orange-500', textColor: 'text-rose-600' },
   ];
 
   const handleStartWizard = () => {
@@ -69,15 +78,40 @@ export default function Home() {
                 Requirements Estimator
               </h1>
             </div>
-            <div className="flex gap-2">
-              <Link to="/login">
-                <Button variant="ghost" size="sm" className="hover:bg-white/50">Sign In</Button>
-              </Link>
-              <Link to="/register">
-                <Button size="sm" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
-                  Get Started
-                </Button>
-              </Link>
+            <div className="flex gap-2 items-center">
+              {loading ? (
+                <div className="h-8 w-24 bg-slate-200 animate-pulse rounded"></div>
+              ) : user ? (
+                <>
+                  <span className="text-sm text-slate-600 mr-2">
+                    {user.email}
+                  </span>
+                  <Link to="/lists">
+                    <Button variant="ghost" size="sm" className="hover:bg-white/50">
+                      My Lists
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleLogout}
+                    className="hover:bg-white/50"
+                  >
+                    Logout
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login">
+                    <Button variant="ghost" size="sm" className="hover:bg-white/50">Sign In</Button>
+                  </Link>
+                  <Link to="/register">
+                    <Button size="sm" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
+                      Get Started
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </header>
@@ -277,34 +311,76 @@ export default function Home() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50">
-      {/* Header */}
-      <header className="border-b bg-white">
-        <div className="container mx-auto px-6 h-14 flex justify-between items-center">
-          <h1 className="text-base font-semibold text-slate-900">Requirements Estimation</h1>
-          <Button variant="ghost" size="sm" onClick={handleReset}>
-            ← Back to Home
-          </Button>
+    <div className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+      {/* Header with glassmorphism - matching home style */}
+      <header className="border-b border-slate-200/60 backdrop-blur-xl bg-white/90 shadow-sm flex-shrink-0">
+        <div className="container mx-auto px-6 h-14 flex items-center justify-between gap-4">
+          {/* Logo & Brand */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-bold text-base leading-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+                Requirements Estimator
+              </span>
+              <span className="text-[10px] text-slate-500 font-medium leading-tight">
+                Advanced Wizard Mode
+              </span>
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {loading ? (
+              <div className="h-8 w-24 bg-slate-200 animate-pulse rounded"></div>
+            ) : user ? (
+              <>
+                <span className="text-sm text-slate-600 mr-2">
+                  {user.email}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="hover:bg-red-50 hover:text-red-600"
+                >
+                  Logout
+                </Button>
+                <div className="w-px h-6 bg-slate-200 mx-1" />
+              </>
+            ) : null}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleReset}
+              className="hover:bg-blue-50 hover:text-blue-700 transition-colors"
+            >
+              ← Back to Home
+            </Button>
+          </div>
         </div>
       </header>
 
       {/* Progress Steps */}
-      <div className="border-b bg-white">
-        <div className="container mx-auto px-6 py-3">
+      <div className="border-b bg-white flex-shrink-0">
+        <div className="container mx-auto px-6 py-2">
           <div className="flex items-center justify-between max-w-4xl mx-auto">
             {steps.map((step, index) => (
               <div key={index} className="flex items-center">
                 <div className="flex flex-col items-center">
                   <div
-                    className={`w-7 h-7 rounded flex items-center justify-center text-xs font-semibold ${index <= currentStep
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-slate-200 text-slate-500'
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold shadow-md transition-all duration-300 ${index <= currentStep
+                        ? `${step.bgColor} text-white transform scale-110`
+                        : 'bg-slate-200 text-slate-500'
                       }`}
                   >
                     {index + 1}
                   </div>
                   <span
-                    className={`text-xs mt-1 ${index <= currentStep ? 'text-primary font-medium' : 'text-slate-500'
+                    className={`text-xs mt-1 font-medium transition-colors ${index <= currentStep ? step.textColor : 'text-slate-500'
                       }`}
                   >
                     {step.title}
@@ -312,7 +388,9 @@ export default function Home() {
                 </div>
                 {index < steps.length - 1 && (
                   <div
-                    className={`w-12 h-0.5 mx-2 ${index < currentStep ? 'bg-primary' : 'bg-slate-200'
+                    className={`w-12 h-1 mx-2 rounded-full transition-all duration-300 ${index < currentStep
+                        ? `bg-gradient-to-r ${steps[index].color}`
+                        : 'bg-slate-200'
                       }`}
                   />
                 )}
@@ -322,11 +400,11 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Wizard Content - Scrollable */}
-      <div className="flex-1 overflow-auto">
-        <div className="container mx-auto px-6 py-4">
-          <Card className="max-w-4xl mx-auto border-slate-200">
-            <CardContent className="p-5">
+      {/* Wizard Content - Full height without scroll */}
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-auto">
+          <div className="container mx-auto px-6 py-3 h-full">
+            <div className="max-w-4xl mx-auto h-full flex flex-col">
               <CurrentStepComponent
                 data={data}
                 onUpdate={updateData}
@@ -334,8 +412,8 @@ export default function Home() {
                 onBack={handleBack}
                 onReset={handleReset}
               />
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     </div>

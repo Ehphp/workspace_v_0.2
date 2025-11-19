@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import type { Requirement, TechnologyPreset } from '@/types/database';
+import type { Requirement, TechnologyPreset, List } from '@/types/database';
 
 interface UseRequirementReturn {
     requirement: Requirement | null;
+    list: List | null;
     preset: TechnologyPreset | null;
     loading: boolean;
     error: Error | null;
@@ -22,6 +23,7 @@ export function useRequirement(
 ): UseRequirementReturn {
     const navigate = useNavigate();
     const [requirement, setRequirement] = useState<Requirement | null>(null);
+    const [list, setList] = useState<List | null>(null);
     const [preset, setPreset] = useState<TechnologyPreset | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
@@ -36,6 +38,25 @@ export function useRequirement(
         setError(null);
 
         try {
+            // Load list first
+            const { data: listData, error: listError } = await supabase
+                .from('lists')
+                .select('*')
+                .eq('id', listId)
+                .eq('user_id', userId)
+                .abortSignal(signal as any)
+                .single();
+
+            if (listError) throw listError;
+
+            if (!listData) {
+                throw new Error('List not found');
+            }
+
+            if (!signal?.aborted) {
+                setList(listData);
+            }
+
             // Load requirement
             const { data: reqData, error: reqError } = await supabase
                 .from('requirements')
@@ -54,12 +75,13 @@ export function useRequirement(
             if (!signal?.aborted) {
                 setRequirement(reqData);
 
-                // Load technology preset if exists
-                if (reqData.tech_preset_id) {
+                // Load technology preset if exists (from requirement or list)
+                const techPresetId = reqData.tech_preset_id || listData.tech_preset_id;
+                if (techPresetId) {
                     const { data: presetData, error: presetError } = await supabase
                         .from('technology_presets')
                         .select('*')
-                        .eq('id', reqData.tech_preset_id)
+                        .eq('id', techPresetId)
                         .abortSignal(signal as any)
                         .single();
 
@@ -103,5 +125,5 @@ export function useRequirement(
         await loadRequirement();
     }, [loadRequirement]);
 
-    return { requirement, preset, loading, error, refetch };
+    return { requirement, list, preset, loading, error, refetch };
 }

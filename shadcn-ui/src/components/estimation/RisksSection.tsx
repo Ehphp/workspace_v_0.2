@@ -34,32 +34,37 @@ export function RisksSection({
     return (
         <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
             <CardHeader
-                className="pb-3 bg-gradient-to-r from-rose-50 to-rose-100 cursor-pointer"
+                className="pb-3 bg-gradient-to-r from-rose-50 to-orange-50 cursor-pointer border-b border-rose-100"
                 onClick={onToggle}
             >
                 <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle className="text-sm font-semibold text-slate-900">Rischi PP</CardTitle>
-                                <CardDescription className="text-xs">
-                                    Identify risks that may impact the estimation
-                                </CardDescription>
-                            </div>
-                            <div className="text-right mr-8">
-                                <div className="text-xs text-muted-foreground">Score</div>
-                                <div className="flex items-center gap-2 justify-end transition-all duration-300">
-                                    <div className="text-xl font-bold">{currentRiskScore}</div>
-                                    <Badge variant={riskLevel.variant} className="transition-all duration-300">{riskLevel.label}</Badge>
+                    <div className="flex items-center gap-2 flex-1">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-500 to-orange-500 flex items-center justify-center flex-shrink-0 shadow-md">
+                            <AlertTriangle className="h-4 w-4 text-white" />
+                        </div>
+                        <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-sm font-semibold text-slate-900">Risk Factors</CardTitle>
+                                    <CardDescription className="text-xs">
+                                        {selectedRiskIds.length > 0 ? `${selectedRiskIds.length} selected` : 'Identify potential risks'}
+                                    </CardDescription>
+                                </div>
+                                <div className="text-right mr-8">
+                                    <div className="text-xs text-slate-500">Score</div>
+                                    <div className="flex items-center gap-2 justify-end transition-all duration-300">
+                                        <div className="text-xl font-bold bg-gradient-to-r from-rose-600 to-orange-600 bg-clip-text text-transparent">{currentRiskScore}</div>
+                                        <Badge variant={riskLevel.variant} className="transition-all duration-300">{riskLevel.label}</Badge>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    {isExpanded ? <ChevronUp className="h-4 w-4 text-rose-600" /> : <ChevronDown className="h-4 w-4 text-rose-600" />}
                 </div>
             </CardHeader>
             {isExpanded && (
-                <CardContent>
+                <CardContent className="pt-4">
                     <div className="grid gap-2 md:grid-cols-2">
                         {risks.map((risk) => {
                             const isSelected = selectedRiskIds.includes(risk.id);
@@ -67,7 +72,11 @@ export function RisksSection({
                             return (
                                 <div
                                     key={risk.id}
-                                    className="flex items-start gap-3 p-3 rounded-lg border border-slate-200/50 hover:bg-orange-50/50 hover:border-orange-300/50 transition-all duration-200"
+                                    className={`group flex items-start space-x-3 p-3 border-2 rounded-xl transition-all duration-300 cursor-pointer ${isSelected
+                                            ? 'border-rose-300 bg-gradient-to-r from-rose-50 to-orange-50 shadow-md'
+                                            : 'border-slate-200 hover:border-rose-200 hover:bg-rose-50/30'
+                                        }`}
+                                    onClick={() => onRiskToggle(risk.id)}
                                 >
                                     <Checkbox
                                         id={risk.id}
@@ -76,21 +85,19 @@ export function RisksSection({
                                         className="mt-1"
                                     />
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <AlertTriangle className="h-3 w-3 text-muted-foreground" />
-                                            <label
-                                                htmlFor={risk.id}
-                                                className="text-sm font-medium cursor-pointer"
-                                            >
-                                                {risk.name}
-                                            </label>
-                                            <Badge variant="outline" className="text-xs">
-                                                +{risk.weight}
-                                            </Badge>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground">
-                                            {risk.description}
-                                        </p>
+                                        <label htmlFor={risk.id} className="cursor-pointer">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="font-bold text-sm text-slate-900 group-hover:text-rose-700 transition-colors">
+                                                    {risk.name}
+                                                </span>
+                                                <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                                                    +{risk.weight}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                                                {risk.description}
+                                            </p>
+                                        </label>
                                     </div>
                                 </div>
                             );
