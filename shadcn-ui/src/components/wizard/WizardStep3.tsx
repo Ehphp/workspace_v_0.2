@@ -21,10 +21,18 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
   const [aiLoading, setAiLoading] = useState(false);
   const [aiUsed, setAiUsed] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [aiStatus, setAiStatus] = useState<'idle' | 'analyzing' | 'success' | 'error'>('idle');
 
   useEffect(() => {
     loadData();
   }, []);
+
+  // Auto-trigger AI when data is loaded (only once)
+  useEffect(() => {
+    if (!loading && !aiUsed && !aiLoading && preset && data.description && data.selectedActivityCodes.length === 0) {
+      handleAISuggest();
+    }
+  }, [loading, preset]);
 
   const loadData = async () => {
     try {
@@ -81,6 +89,7 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
     if (!preset) return;
 
     setAiLoading(true);
+    setAiStatus('analyzing');
     try {
       // Always try AI first (Netlify function handles server-side API key)
       const { suggestActivities } = await import('@/lib/openai');
@@ -102,10 +111,9 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
         onUpdate({
           selectedActivityCodes: preset.default_activity_codes,
           aiSuggestedActivityCodes: preset.default_activity_codes,
-          selectedDriverValues: preset.default_driver_values,
-          selectedRiskCodes: preset.default_risks,
         });
         setAiUsed(true);
+        setAiStatus('success');
         setAiLoading(false);
         return;
       }
@@ -119,10 +127,9 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
         onUpdate({
           selectedActivityCodes: preset.default_activity_codes,
           aiSuggestedActivityCodes: preset.default_activity_codes,
-          selectedDriverValues: preset.default_driver_values,
-          selectedRiskCodes: preset.default_risks,
         });
         setAiUsed(true);
+        setAiStatus('success');
         setAiLoading(false);
         return;
       }
@@ -130,11 +137,10 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
       onUpdate({
         selectedActivityCodes: suggestedCodes,
         aiSuggestedActivityCodes: suggestedCodes,
-        selectedDriverValues: preset.default_driver_values, // Use preset defaults, not AI suggestions
-        selectedRiskCodes: preset.default_risks, // Use preset defaults, not AI suggestions
       });
 
       setAiUsed(true);
+      setAiStatus('success');
     } catch (error) {
       console.error('AI suggestion failed, using preset defaults:', error);
 
@@ -142,10 +148,9 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
       onUpdate({
         selectedActivityCodes: preset.default_activity_codes,
         aiSuggestedActivityCodes: preset.default_activity_codes,
-        selectedDriverValues: preset.default_driver_values,
-        selectedRiskCodes: preset.default_risks,
       });
       setAiUsed(true);
+      setAiStatus('error');
     }
     setAiLoading(false);
   };
@@ -174,17 +179,17 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
   }
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-slate-900">Select Activities</h2>
+              <h2 className="text-lg font-bold text-slate-900">Select Activities</h2>
               {isDemoMode && (
                 <Badge variant="secondary" className="text-xs">
                   Demo Mode
@@ -192,55 +197,77 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
               )}
             </div>
             <p className="text-sm text-slate-600 mt-1">
-              Get AI suggestions or select activities manually
+              AI is analyzing your requirement to suggest relevant activities
             </p>
           </div>
         </div>
       </div>
 
-      {!aiUsed && (
-        <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl">
-          <div className="flex items-start gap-3">
+      {/* AI Status Banner */}
+      {aiLoading && (
+        <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl animate-pulse">
+          <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-slate-900 mb-1">
-                {isDemoMode ? 'Smart Keyword Analysis' : 'AI-Powered Analysis'}
+              <p className="text-sm font-semibold text-purple-900 flex items-center gap-2">
+                {isDemoMode ? '🎯 Analyzing Keywords...' : '🤖 AI is Thinking...'}
               </p>
-              <p className="text-xs text-slate-600 mb-3">
+              <p className="text-xs text-purple-700 mt-1">
                 {isDemoMode
-                  ? 'Get smart suggestions based on keywords in your description'
-                  : 'Let AI analyze your requirement and suggest relevant activities'}
+                  ? 'Scanning your description for relevant keywords and patterns'
+                  : 'Analyzing requirement complexity and suggesting optimal activities'}
               </p>
-              <Button
-                onClick={handleAISuggest}
-                disabled={aiLoading}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-md hover:shadow-lg transition-all duration-300"
-                size="sm"
-              >
-                {aiLoading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                    <span>Analyzing...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    <span>{isDemoMode ? 'Get Smart Suggestions' : 'Get AI Suggestions'}</span>
-                  </div>
-                )}
-              </Button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="space-y-5 max-h-[420px] overflow-y-auto pr-2">
+      {/* AI Success Banner */}
+      {aiUsed && aiStatus === 'success' && (
+        <div className="p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-300 rounded-xl">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-green-900">
+                ✨ {data.selectedActivityCodes.length} Activities Suggested
+              </p>
+              <p className="text-xs text-green-700 mt-0.5">
+                Review and adjust the selection below as needed
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Error Banner */}
+      {aiUsed && aiStatus === 'error' && (
+        <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-xl">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900">
+                Using Default Activities
+              </p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                AI unavailable - using preset recommendations
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Activities List */}
+      <div className="space-y-3 max-h-[340px] overflow-y-auto pr-2">
         {Object.entries(groupedActivities).map(([group, groupActivities]) => (
           <div key={group}>
             <h3 className="font-bold text-sm mb-3 text-slate-900 flex items-center gap-2">

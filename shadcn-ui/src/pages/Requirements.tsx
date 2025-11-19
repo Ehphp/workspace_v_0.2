@@ -185,13 +185,14 @@ export default function Requirements() {
         return sorted;
     }, [requirements, searchTerm, filterPriority, filterState, sortBy]);
 
-    const getPriorityBadge = (priority: string) => {
-        const priorityConfig = {
+    const getPriorityConfig = (priority: string) => {
+        const configs = {
             HIGH: {
                 gradient: 'from-red-500 to-rose-500',
                 bgGradient: 'from-red-50 to-rose-50',
                 textColor: 'text-red-700',
                 borderColor: 'border-red-200/50',
+                leftBorder: 'border-l-red-500',
                 icon: '🔴'
             },
             MEDIUM: {
@@ -199,6 +200,7 @@ export default function Requirements() {
                 bgGradient: 'from-amber-50 to-orange-50',
                 textColor: 'text-amber-700',
                 borderColor: 'border-amber-200/50',
+                leftBorder: 'border-l-amber-500',
                 icon: '🟡'
             },
             LOW: {
@@ -206,11 +208,15 @@ export default function Requirements() {
                 bgGradient: 'from-emerald-50 to-teal-50',
                 textColor: 'text-emerald-700',
                 borderColor: 'border-emerald-200/50',
+                leftBorder: 'border-l-emerald-500',
                 icon: '🟢'
             },
         };
+        return configs[priority as keyof typeof configs] || configs.MEDIUM;
+    };
 
-        const config = priorityConfig[priority as keyof typeof priorityConfig] || priorityConfig.MEDIUM;
+    const getPriorityBadge = (priority: string) => {
+        const config = getPriorityConfig(priority);
 
         return (
             <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gradient-to-r ${config.bgGradient} border ${config.borderColor} shadow-sm`}>
@@ -226,33 +232,86 @@ export default function Requirements() {
                 gradient: 'from-blue-500 to-indigo-500',
                 bgGradient: 'from-blue-50 to-indigo-50',
                 textColor: 'text-blue-700',
-                borderColor: 'border-blue-200/50'
+                borderColor: 'border-blue-200/50',
+                icon: (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                )
             },
             APPROVED: {
                 gradient: 'from-emerald-500 to-teal-500',
                 bgGradient: 'from-emerald-50 to-teal-50',
                 textColor: 'text-emerald-700',
-                borderColor: 'border-emerald-200/50'
+                borderColor: 'border-emerald-200/50',
+                icon: (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                )
+            },
+            SELECTED: {
+                gradient: 'from-violet-500 to-purple-500',
+                bgGradient: 'from-violet-50 to-purple-50',
+                textColor: 'text-violet-700',
+                borderColor: 'border-violet-200/50',
+                icon: (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                )
+            },
+            SCHEDULED: {
+                gradient: 'from-orange-500 to-amber-500',
+                bgGradient: 'from-orange-50 to-amber-50',
+                textColor: 'text-orange-700',
+                borderColor: 'border-orange-200/50',
+                icon: (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                )
+            },
+            DONE: {
+                gradient: 'from-teal-500 to-cyan-500',
+                bgGradient: 'from-teal-50 to-cyan-50',
+                textColor: 'text-teal-700',
+                borderColor: 'border-teal-200/50',
+                icon: (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                )
             },
             REJECTED: {
                 gradient: 'from-red-500 to-rose-500',
                 bgGradient: 'from-red-50 to-rose-50',
                 textColor: 'text-red-700',
-                borderColor: 'border-red-200/50'
+                borderColor: 'border-red-200/50',
+                icon: (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                )
             },
             IN_PROGRESS: {
                 gradient: 'from-purple-500 to-pink-500',
                 bgGradient: 'from-purple-50 to-pink-50',
                 textColor: 'text-purple-700',
-                borderColor: 'border-purple-200/50'
+                borderColor: 'border-purple-200/50',
+                icon: (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                )
             },
         };
 
         const config = stateConfig[state as keyof typeof stateConfig] || stateConfig.PROPOSED;
 
         return (
-            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gradient-to-r ${config.bgGradient} border ${config.borderColor} shadow-sm`}>
-                <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${config.gradient} animate-pulse`}></div>
+            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gradient-to-r ${config.bgGradient} border ${config.borderColor} shadow-sm transition-all duration-200 hover:shadow-md`}>
+                <div className={config.textColor}>{config.icon}</div>
                 <span className={`text-xs font-semibold ${config.textColor}`}>{state.replace('_', ' ')}</span>
             </div>
         );
@@ -604,15 +663,16 @@ export default function Requirements() {
                             </div>
 
                             {/* Requirements Grid */}
-                            <div className="grid gap-4">
+                            <div className="grid gap-5">
                                 {filteredRequirements.map((req) => {
                                     const estimation = req.latest_estimation;
                                     const hasEstimation = !!estimation;
+                                    const priorityConfig = getPriorityConfig(req.priority);
 
                                     return (
                                         <Card
                                             key={req.id}
-                                            className="group border-slate-200/50 bg-white/80 backdrop-blur-md hover:bg-white/95 hover:shadow-2xl hover:-translate-y-1 hover:scale-[1.01] transition-all duration-300 cursor-pointer"
+                                            className={`group relative overflow-hidden border-slate-200/60 bg-white/90 backdrop-blur-md hover:bg-white hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-500 ease-out cursor-pointer border-l-4 ${priorityConfig.leftBorder}`}
                                             onClick={() => navigate(`/lists/${listId}/requirements/${req.id}`)}
                                             role="button"
                                             tabIndex={0}
@@ -624,47 +684,75 @@ export default function Requirements() {
                                                 }
                                             }}
                                         >
-                                            <CardHeader className="pb-3">
-                                                <div className="flex items-start gap-3">
+                                            {/* Subtle gradient overlay on hover */}
+                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-50/0 to-indigo-50/0 group-hover:via-blue-50/30 group-hover:to-indigo-50/20 transition-all duration-500 pointer-events-none" />
+
+                                            <CardHeader className="pb-4 pt-5 px-5 relative">
+                                                <div className="flex items-start gap-4">
                                                     <div
-                                                        className="flex-1 min-w-0 cursor-pointer"
+                                                        className="flex-1 min-w-0 cursor-pointer space-y-3"
                                                         onClick={() => navigate(`/lists/${listId}/requirements/${req.id}`)}
                                                     >
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <span className="font-mono text-xs text-muted-foreground">{req.req_id}</span>
+                                                        {/* Top row: ID and badges */}
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="font-mono text-xs font-semibold text-slate-500 bg-slate-100/80 px-2 py-1 rounded">{req.req_id}</span>
                                                             {getPriorityBadge(req.priority)}
                                                             {getStateBadge(req.state)}
                                                         </div>
+
+                                                        {/* Title - more prominent */}
                                                         <h3
-                                                            className="font-semibold text-base truncate"
+                                                            className="font-bold text-lg text-slate-900 group-hover:text-blue-700 transition-colors duration-300 line-clamp-2 leading-snug"
                                                             title={req.title}
                                                         >
                                                             {req.title}
                                                         </h3>
-                                                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                                                            {req.description || 'No description'}
+
+                                                        {/* Description - better spacing */}
+                                                        <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
+                                                            {req.description || 'No description provided'}
                                                         </p>
-                                                        <div className="flex gap-4 text-xs text-muted-foreground mt-2">
+
+                                                        {/* Metadata row - refined styling */}
+                                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500">
                                                             {req.business_owner && (
-                                                                <span>Owner: <span className="font-medium">{req.business_owner}</span></span>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                                    </svg>
+                                                                    <span className="font-medium text-slate-700">{req.business_owner}</span>
+                                                                </div>
                                                             )}
                                                             {req.labels && req.labels.length > 0 && (
-                                                                <span>Labels: {req.labels.length}</span>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                                                    </svg>
+                                                                    <span>{req.labels.length} label{req.labels.length !== 1 ? 's' : ''}</span>
+                                                                </div>
                                                             )}
+                                                            <div className="flex items-center gap-1.5">
+                                                                <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                </svg>
+                                                                <span>{new Date(req.updated_at).toLocaleDateString()}</span>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
+
+                                                    {/* Right side: Estimation and Actions */}
+                                                    <div className="flex items-start gap-3 flex-shrink-0">
                                                         {hasEstimation ? (
-                                                            <div className="text-right bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/50 px-3 py-2 rounded-lg shadow-sm">
-                                                                <div className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                                            <div className="text-center bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200/60 px-4 py-2.5 rounded-xl shadow-sm group-hover:shadow-md group-hover:border-blue-300/70 transition-all duration-300">
+                                                                <div className="text-2xl font-bold bg-gradient-to-br from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                                                                     {estimation.total_days.toFixed(1)}
                                                                 </div>
-                                                                <div className="text-xs text-muted-foreground">days</div>
+                                                                <div className="text-xs text-slate-600 font-medium mt-0.5">days</div>
                                                             </div>
                                                         ) : (
-                                                            <div className="text-right bg-slate-100/80 border border-slate-200/50 px-3 py-2 rounded-lg shadow-sm">
-                                                                <div className="text-sm font-medium text-slate-600">Not</div>
-                                                                <div className="text-xs text-muted-foreground">estimated</div>
+                                                            <div className="text-center bg-slate-50 border-2 border-slate-200/60 px-4 py-2.5 rounded-xl shadow-sm">
+                                                                <div className="text-sm font-semibold text-slate-500">Not</div>
+                                                                <div className="text-xs text-slate-400 mt-0.5">estimated</div>
                                                             </div>
                                                         )}
                                                         <DropdownMenu>
@@ -672,15 +760,15 @@ export default function Requirements() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    className="h-8 w-8 p-0"
+                                                                    className="h-9 w-9 p-0 hover:bg-slate-100 rounded-lg transition-colors duration-200"
                                                                     aria-label={`Options for requirement ${req.title}`}
                                                                 >
-                                                                    <MoreVertical className="h-4 w-4" />
+                                                                    <MoreVertical className="h-4 w-4 text-slate-600" />
                                                                 </Button>
                                                             </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end">
+                                                            <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-lg border-slate-200/60">
                                                                 <DropdownMenuItem
-                                                                    className="text-destructive focus:text-destructive"
+                                                                    className="text-destructive focus:text-destructive cursor-pointer"
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
                                                                         setDeleteRequirement(req);

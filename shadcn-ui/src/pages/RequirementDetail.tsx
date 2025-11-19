@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { ArrowLeft, FileText, Calculator, History, Clock, Eye, Copy, RotateCcw, GitCompare, Save, X } from 'lucide-react';
+import { ArrowLeft, FileText, Calculator, History, Clock, Eye, Copy, RotateCcw, GitCompare, Save, X, Pencil, Zap, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { suggestActivities } from '@/lib/openai';
 import { TechnologySection } from '@/components/estimation/TechnologySection';
@@ -40,7 +40,8 @@ export default function RequirementDetail() {
         list,
         preset,
         loading: requirementLoading,
-        error: requirementError
+        error: requirementError,
+        refetch: refetchRequirement
     } = useRequirement(listId, reqId, user?.id);
 
     // Load estimation master data
@@ -84,7 +85,15 @@ export default function RequirementDetail() {
     // Local UI state
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [isQuickEstimating, setIsQuickEstimating] = useState(false);
     const [showScenarioDialog, setShowScenarioDialog] = useState(false);
+    const [showQuickEstimateError, setShowQuickEstimateError] = useState(false);
+    const [quickEstimateErrorData, setQuickEstimateErrorData] = useState<{
+        title: string;
+        message: string;
+        reasoning?: string;
+        type: 'invalid' | 'no-activities';
+    } | null>(null);
     const [scenarioName, setScenarioName] = useState('Default');
     const [selectedEstimationId, setSelectedEstimationId] = useState<string | null>(null);
     const [expandedEstimationId, setExpandedEstimationId] = useState<string | null>(null);
@@ -93,8 +102,10 @@ export default function RequirementDetail() {
     const [activeTab, setActiveTab] = useState<string>('info');
     const [expandedSection, setExpandedSection] = useState<'technology' | 'activities' | 'drivers' | 'risks' | null>('technology');
 
-    // Edit mode state
-    const [isEditing, setIsEditing] = useState(false);
+    // Edit mode state - granular per section
+    type EditSection = 'header' | 'description' | 'details';
+    const [editingSections, setEditingSections] = useState<Set<EditSection>>(new Set());
+    const [savingSections, setSavingSections] = useState<Set<EditSection>>(new Set());
     const [editedData, setEditedData] = useState({
         title: '',
         description: '',
@@ -104,6 +115,31 @@ export default function RequirementDetail() {
         labels: [] as string[],
         tech_preset_id: null as string | null,
     });
+
+    // Helper functions for section editing
+    const isEditingSection = (section: EditSection) => editingSections.has(section);
+    const isSavingSection = (section: EditSection) => savingSections.has(section);
+    const startEditingSection = (section: EditSection) => {
+        if (!requirement) return;
+        // Initialize editedData with current values
+        setEditedData({
+            title: requirement.title,
+            description: requirement.description || '',
+            priority: requirement.priority,
+            state: requirement.state,
+            business_owner: requirement.business_owner || '',
+            labels: requirement.labels || [],
+            tech_preset_id: requirement.tech_preset_id || list?.tech_preset_id || null,
+        });
+        setEditingSections(prev => new Set(prev).add(section));
+    };
+    const stopEditingSection = (section: EditSection) => {
+        setEditingSections(prev => {
+            const next = new Set(prev);
+            next.delete(section);
+            return next;
+        });
+    };
 
     // Track unsaved changes
     const hasUnsavedChanges = useMemo(() => {
@@ -118,7 +154,28 @@ export default function RequirementDetail() {
         return result;
     }, [hasSelections, estimationResult, selectedActivityIds, selectedPresetId]);
 
-    // Auto-set inherited technology from list when requirement doesn't have one
+    // Track unsaved edit changes per section
+    const hasUnsavedEditChanges = useMemo(() => {
+        if (!requirement || editingSections.size === 0) return false;
+
+        if (isEditingSection('header')) {
+            if (editedData.title !== requirement.title ||
+                editedData.priority !== requirement.priority ||
+                editedData.state !== requirement.state) return true;
+        }
+
+        if (isEditingSection('description')) {
+            if (editedData.description !== (requirement.description || '')) return true;
+        }
+
+        if (isEditingSection('details')) {
+            if (editedData.business_owner !== (requirement.business_owner || '') ||
+                JSON.stringify(editedData.labels) !== JSON.stringify(requirement.labels || []) ||
+                editedData.tech_preset_id !== (requirement.tech_preset_id || list?.tech_preset_id || null)) return true;
+        }
+
+        return false;
+    }, [requirement, editedData, editingSections, list]);    // Auto-set inherited technology from list when requirement doesn't have one
     useEffect(() => {
         if (!requirement || !list || requirementLoading || dataLoading) return;
 
@@ -183,67 +240,213 @@ Risks: ${est.estimation_risks?.length || 0}`;
         console.log('✅ Restoration complete, switched to Estimation tab');
     }, [applyAiSuggestions, drivers]);
 
-    // Edit mode handlers
-    const handleEdit = useCallback(() => {
+    // Section-specific edit handlers
+    const handleCancelSection = useCallback((section: EditSection) => {
+        // Check for unsaved changes in this specific section
+        let hasChanges = false;
+
         if (!requirement) return;
-        setEditedData({
-            title: requirement.title,
-            description: requirement.description || '',
-            priority: requirement.priority,
-            state: requirement.state,
-            business_owner: requirement.business_owner || '',
-            labels: requirement.labels || [],
-            tech_preset_id: requirement.tech_preset_id || list?.tech_preset_id || null,
-        });
-        setIsEditing(true);
-        setActiveTab('info'); // Switch to info tab when editing
-    }, [requirement, list]);
 
-    const handleCancelEdit = useCallback(() => {
-        setIsEditing(false);
-        setEditedData({
-            title: '',
-            description: '',
-            priority: '',
-            state: '',
-            business_owner: '',
-            labels: [],
-            tech_preset_id: null,
-        });
-    }, []);
+        if (section === 'header') {
+            hasChanges = editedData.title !== requirement.title ||
+                editedData.priority !== requirement.priority ||
+                editedData.state !== requirement.state;
+        } else if (section === 'description') {
+            hasChanges = editedData.description !== (requirement.description || '');
+        } else if (section === 'details') {
+            hasChanges = editedData.business_owner !== (requirement.business_owner || '') ||
+                JSON.stringify(editedData.labels) !== JSON.stringify(requirement.labels || []) ||
+                editedData.tech_preset_id !== (requirement.tech_preset_id || list?.tech_preset_id || null);
+        }
 
-    const handleSaveEdit = useCallback(async () => {
-        if (!requirement || !user) return;
+        if (hasChanges) {
+            if (!window.confirm('You have unsaved changes in this section. Are you sure you want to cancel?')) {
+                return;
+            }
+        }
+
+        stopEditingSection(section);
+    }, [requirement, editedData, list]);
+
+    const handleSaveHeader = useCallback(async () => {
+        if (!requirement || !user || isSavingSection('header')) return;
+
+        // Validazione header
+        if (!editedData.title.trim()) {
+            toast.error('Validation failed', {
+                description: 'Title is required',
+            });
+            return;
+        }
+
+        if (editedData.title.length > 200) {
+            toast.error('Validation failed', {
+                description: 'Title is too long (max 200 characters)',
+            });
+            return;
+        }
+
+        const validStates = ['DRAFT', 'PROPOSED', 'APPROVED', 'IN_PROGRESS', 'COMPLETED', 'REJECTED'];
+        if (!validStates.includes(editedData.state)) {
+            toast.error('Validation failed', {
+                description: 'Invalid state selected',
+            });
+            return;
+        }
+
+        const validPriorities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+        if (!validPriorities.includes(editedData.priority)) {
+            toast.error('Validation failed', {
+                description: 'Invalid priority selected',
+            });
+            return;
+        }
+
+        setSavingSections(prev => new Set(prev).add('header'));
 
         try {
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('requirements')
                 .update({
-                    title: editedData.title,
-                    description: editedData.description,
+                    title: editedData.title.trim(),
                     priority: editedData.priority,
                     state: editedData.state,
-                    business_owner: editedData.business_owner,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', requirement.id)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            toast.success('Header updated successfully');
+            stopEditingSection('header');
+            await refetchRequirement();
+        } catch (error: any) {
+            console.error('Error updating header:', error);
+
+            let errorMessage = 'An unexpected error occurred';
+
+            if (error?.message) {
+                errorMessage = error.message;
+            }
+
+            if (error?.code === '23505') {
+                errorMessage = 'A requirement with this title already exists';
+            } else if (error?.message?.includes('JWT')) {
+                errorMessage = 'Session expired. Please log in again';
+            }
+
+            toast.error('Failed to update header', {
+                description: errorMessage,
+            });
+        } finally {
+            setSavingSections(prev => {
+                const next = new Set(prev);
+                next.delete('header');
+                return next;
+            });
+        }
+    }, [requirement, user, editedData, refetchRequirement]);
+
+    const handleSaveDescription = useCallback(async () => {
+        if (!requirement || !user || isSavingSection('description')) return;
+
+        // Validazione description
+        if (editedData.description && editedData.description.length > 5000) {
+            toast.error('Validation failed', {
+                description: 'Description is too long (max 5000 characters)',
+            });
+            return;
+        }
+
+        setSavingSections(prev => new Set(prev).add('description'));
+
+        try {
+            const { data, error } = await supabase
+                .from('requirements')
+                .update({
+                    description: editedData.description?.trim() || null,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', requirement.id)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            toast.success('Description updated successfully');
+            stopEditingSection('description');
+            await refetchRequirement();
+        } catch (error: any) {
+            console.error('Error updating description:', error);
+
+            let errorMessage = 'An unexpected error occurred';
+            if (error?.message) {
+                errorMessage = error.message;
+            }
+
+            toast.error('Failed to update description', {
+                description: errorMessage,
+            });
+        } finally {
+            setSavingSections(prev => {
+                const next = new Set(prev);
+                next.delete('description');
+                return next;
+            });
+        }
+    }, [requirement, user, editedData, refetchRequirement]);
+
+    const handleSaveDetails = useCallback(async () => {
+        if (!requirement || !user || isSavingSection('details')) return;
+
+        setSavingSections(prev => new Set(prev).add('details'));
+
+        try {
+            const { data, error } = await supabase
+                .from('requirements')
+                .update({
+                    business_owner: editedData.business_owner?.trim() || null,
                     labels: editedData.labels,
                     tech_preset_id: editedData.tech_preset_id,
                     updated_at: new Date().toISOString(),
                 })
-                .eq('id', requirement.id);
+                .eq('id', requirement.id)
+                .select()
+                .single();
 
             if (error) throw error;
 
-            toast.success('Requirement updated successfully');
-            setIsEditing(false);
+            toast.success('Details updated successfully');
+            stopEditingSection('details');
+            await refetchRequirement();
+        } catch (error: any) {
+            console.error('Error updating details:', error);
 
-            // Reload requirement data
-            window.location.reload();
-        } catch (error) {
-            console.error('Error updating requirement:', error);
-            toast.error('Failed to update requirement');
+            let errorMessage = 'An unexpected error occurred';
+
+            if (error?.message) {
+                errorMessage = error.message;
+            }
+
+            if (error?.code === '23503') {
+                errorMessage = 'Invalid technology preset or foreign key constraint';
+            } else if (error?.message?.includes('JWT')) {
+                errorMessage = 'Session expired. Please log in again';
+            }
+
+            toast.error('Failed to update details', {
+                description: errorMessage,
+            });
+        } finally {
+            setSavingSections(prev => {
+                const next = new Set(prev);
+                next.delete('details');
+                return next;
+            });
         }
-    }, [requirement, user, editedData]);
-
-    // Combined loading state
+    }, [requirement, user, editedData, refetchRequirement]);    // Combined loading state
     const loading = requirementLoading || dataLoading;
 
     const handlePresetChange = useCallback((presetId: string) => {
@@ -257,6 +460,111 @@ Risks: ${est.estimation_risks?.length || 0}`;
             description: 'Default activities, drivers and risks loaded from preset'
         });
     }, [selectedPresetId, applyPresetDefaults]);
+
+    const handleQuickEstimate = useCallback(async () => {
+        if (!requirement?.description) {
+            toast.error('Quick Estimate requires a description', {
+                description: 'Please add a description to the requirement first',
+            });
+            return;
+        }
+
+        setIsQuickEstimating(true);
+
+        try {
+            // Step 1: Select preset (use requirement's preset, list's preset, or first available)
+            let presetToUse = selectedPresetId;
+
+            if (!presetToUse) {
+                presetToUse = requirement.tech_preset_id || list?.tech_preset_id || presets[0]?.id;
+
+                if (!presetToUse) {
+                    throw new Error('No technology preset available');
+                }
+
+                console.log('🔄 Quick Estimate: Auto-selecting preset:', presetToUse);
+                setSelectedPresetId(presetToUse);
+            }
+
+            // Step 2: Apply preset defaults (activities, drivers, risks)
+            console.log('🔄 Quick Estimate: Applying preset defaults');
+            applyPresetDefaults(presetToUse);
+
+            // Wait a bit for state to update
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Step 3: Run AI suggestions to refine activities
+            console.log('🔄 Quick Estimate: Getting AI suggestions');
+            const selectedPreset = presets.find((p) => p.id === presetToUse);
+
+            if (selectedPreset) {
+                const suggestions = await suggestActivities({
+                    description: requirement.description,
+                    preset: selectedPreset,
+                    activities,
+                    drivers,
+                    risks,
+                });
+
+                // ✅ VALIDAZIONE: Blocca requisiti senza senso
+                if (!suggestions.isValidRequirement) {
+                    setIsQuickEstimating(false);
+                    setQuickEstimateErrorData({
+                        title: 'Invalid Requirement Detected',
+                        message: 'The AI analysis determined that this requirement description is not valid or clear enough for estimation.',
+                        reasoning: suggestions.reasoning,
+                        type: 'invalid'
+                    });
+                    setShowQuickEstimateError(true);
+                    console.log('❌ Quick Estimate aborted: Invalid requirement');
+                    return;
+                }
+
+                // ✅ VALIDAZIONE: Verifica che ci siano attività suggerite
+                if (!suggestions.activityCodes || suggestions.activityCodes.length === 0) {
+                    setIsQuickEstimating(false);
+                    setQuickEstimateErrorData({
+                        title: 'No Activities Could Be Identified',
+                        message: 'The AI could not identify any specific development activities from the requirement description.',
+                        reasoning: suggestions.reasoning,
+                        type: 'no-activities'
+                    });
+                    setShowQuickEstimateError(true);
+                    console.log('⚠️ Quick Estimate aborted: No activities suggested');
+                    return;
+                }
+
+                // Applica suggerimenti AI
+                const suggestedActivityIds = activities
+                    .filter((a) => suggestions.activityCodes.includes(a.code))
+                    .map((a) => a.id);
+
+                console.log('🔄 Quick Estimate: Applying AI suggestions');
+                applyAiSuggestions(
+                    suggestedActivityIds,
+                    undefined,
+                    undefined
+                );
+            }
+
+            // Step 4: Switch to Estimation tab
+            setActiveTab('estimation');
+
+            toast.success('Quick Estimate completed!', {
+                description: 'Review the estimation and save when ready',
+            });
+
+            console.log('✅ Quick Estimate complete');
+        } catch (error) {
+            console.error('Quick Estimate error:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            toast.error('Quick Estimate failed', {
+                description: errorMessage,
+            });
+        } finally {
+            setIsQuickEstimating(false);
+        }
+    }, [requirement, list, selectedPresetId, presets, activities, drivers, risks, applyPresetDefaults, applyAiSuggestions, setSelectedPresetId]);
 
     const handleAiSuggest = useCallback(async () => {
         if (!requirement?.description || !selectedPresetId) {
@@ -540,10 +848,47 @@ Risks: ${est.estimation_risks?.length || 0}`;
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className="font-mono text-xs text-slate-500 font-semibold">{requirement.req_id}</span>
-                                    {getPriorityBadge(requirement.priority)}
-                                    {getStateBadge(requirement.state)}
+                                    {isEditingSection('header') ? (
+                                        <>
+                                            <Select
+                                                value={editedData.priority}
+                                                onValueChange={(value) => setEditedData({ ...editedData, priority: value })}
+                                            >
+                                                <SelectTrigger className="h-7 w-32 border-2 border-blue-400 text-xs">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="LOW">Low</SelectItem>
+                                                    <SelectItem value="MEDIUM">Medium</SelectItem>
+                                                    <SelectItem value="HIGH">High</SelectItem>
+                                                    <SelectItem value="CRITICAL">Critical</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <Select
+                                                value={editedData.state}
+                                                onValueChange={(value) => setEditedData({ ...editedData, state: value })}
+                                            >
+                                                <SelectTrigger className="h-7 w-40 border-2 border-blue-400 text-xs">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="DRAFT">Draft</SelectItem>
+                                                    <SelectItem value="PROPOSED">Proposed</SelectItem>
+                                                    <SelectItem value="APPROVED">Approved</SelectItem>
+                                                    <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                                                    <SelectItem value="COMPLETED">Completed</SelectItem>
+                                                    <SelectItem value="REJECTED">Rejected</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {getPriorityBadge(requirement.priority)}
+                                            {getStateBadge(requirement.state)}
+                                        </>
+                                    )}
                                 </div>
-                                {isEditing ? (
+                                {isEditingSection('header') ? (
                                     <Input
                                         value={editedData.title}
                                         onChange={(e) => setEditedData({ ...editedData, title: e.target.value })}
@@ -558,37 +903,72 @@ Risks: ${est.estimation_risks?.length || 0}`;
                             </div>
                         </div>
 
-                        {/* Right side: Actions */}
-                        {!isEditing ? (
+                        {/* Right side: Quick Estimate & Header Edit Controls */}
+                        <div className="flex items-center gap-2">
+                            {/* Quick Estimate Button */}
                             <Button
-                                size="default"
-                                variant="outline"
-                                onClick={handleEdit}
-                                className="bg-white border-slate-300 hover:bg-slate-50 hover:border-blue-400 transition-all duration-300 shadow-sm"
+                                size="sm"
+                                onClick={handleQuickEstimate}
+                                disabled={isQuickEstimating || !requirement?.description}
+                                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-md transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Quick Estimate: Auto-apply preset, template and AI suggestions"
                             >
-                                Edit
+                                {isQuickEstimating ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                                        <span className="text-xs font-medium">Estimating...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Zap className="h-3 w-3 mr-1" />
+                                        <span className="text-xs font-medium">Quick Estimate</span>
+                                    </>
+                                )}
                             </Button>
-                        ) : (
-                            <div className="flex items-center gap-2">
+
+                            {/* Header Edit Button */}
+                            {!isEditingSection('header') ? (
                                 <Button
-                                    size="default"
-                                    variant="outline"
-                                    onClick={handleCancelEdit}
-                                    className="bg-white border-slate-300 hover:bg-slate-50 hover:border-red-400 transition-all duration-300 shadow-sm"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => startEditingSection('header')}
+                                    className="hover:bg-blue-50 transition-all duration-300"
                                 >
-                                    <X className="h-4 w-4 mr-1" />
-                                    Cancel
+                                    <Pencil className="h-4 w-4 text-slate-400 hover:text-blue-600" />
                                 </Button>
-                                <Button
-                                    size="default"
-                                    onClick={handleSaveEdit}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white transition-all duration-300 shadow-sm"
-                                >
-                                    <Save className="h-4 w-4 mr-1" />
-                                    Save
-                                </Button>
-                            </div>
-                        )}
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleCancelSection('header')}
+                                        disabled={isSavingSection('header')}
+                                        className="border-slate-300 hover:bg-slate-50 hover:border-red-400 transition-all duration-300 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <X className="h-3 w-3 mr-1" />
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        onClick={handleSaveHeader}
+                                        disabled={isSavingSection('header')}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white transition-all duration-300 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isSavingSection('header') ? (
+                                            <>
+                                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Save className="h-3 w-3 mr-1" />
+                                                Save
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -667,10 +1047,53 @@ Risks: ${est.estimation_risks?.length || 0}`;
                                             {/* Description Card - altezza limitata con scroll */}
                                             <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm flex flex-col" style={{ maxHeight: estimationHistory.length > 0 ? 'calc(100vh - 320px)' : 'calc(100vh - 220px)' }}>
                                                 <CardHeader className="pb-2 pt-3 px-4 bg-gradient-to-r from-slate-50 to-blue-50 flex-none">
-                                                    <CardTitle className="text-sm font-semibold text-slate-900">Description</CardTitle>
+                                                    <div className="flex items-center justify-between">
+                                                        <CardTitle className="text-sm font-semibold text-slate-900">Description</CardTitle>
+                                                        {!isEditingSection('description') ? (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                onClick={() => startEditingSection('description')}
+                                                                className="h-7 w-7 p-0 hover:bg-blue-50"
+                                                            >
+                                                                <Pencil className="h-3 w-3 text-slate-400 hover:text-blue-600" />
+                                                            </Button>
+                                                        ) : (
+                                                            <div className="flex items-center gap-1">
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    onClick={() => handleCancelSection('description')}
+                                                                    disabled={isSavingSection('description')}
+                                                                    className="h-7 px-2 text-xs hover:bg-red-50 disabled:opacity-50"
+                                                                >
+                                                                    <X className="h-3 w-3 mr-1" />
+                                                                    Cancel
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    onClick={handleSaveDescription}
+                                                                    disabled={isSavingSection('description')}
+                                                                    className="h-7 px-2 text-xs bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+                                                                >
+                                                                    {isSavingSection('description') ? (
+                                                                        <>
+                                                                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                                                                            Saving...
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Save className="h-3 w-3 mr-1" />
+                                                                            Save
+                                                                        </>
+                                                                    )}
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </CardHeader>
                                                 <CardContent className="px-4 pb-3 overflow-y-auto flex-1">
-                                                    {isEditing ? (
+                                                    {isEditingSection('description') ? (
                                                         <Textarea
                                                             value={editedData.description}
                                                             onChange={(e) => setEditedData({ ...editedData, description: e.target.value })}
@@ -691,57 +1114,56 @@ Risks: ${est.estimation_risks?.length || 0}`;
                                             {/* Details Card - compatta */}
                                             <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm">
                                                 <CardHeader className="pb-2 pt-3 px-4 bg-gradient-to-r from-slate-50 to-blue-50">
-                                                    <CardTitle className="text-sm font-semibold text-slate-900">Details</CardTitle>
+                                                    <div className="flex items-center justify-between">
+                                                        <CardTitle className="text-sm font-semibold text-slate-900">Details</CardTitle>
+                                                        {!isEditingSection('details') ? (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                onClick={() => startEditingSection('details')}
+                                                                className="h-7 w-7 p-0 hover:bg-blue-50"
+                                                            >
+                                                                <Pencil className="h-3 w-3 text-slate-400 hover:text-blue-600" />
+                                                            </Button>
+                                                        ) : (
+                                                            <div className="flex items-center gap-1">
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    onClick={() => handleCancelSection('details')}
+                                                                    disabled={isSavingSection('details')}
+                                                                    className="h-7 px-2 text-xs hover:bg-red-50 disabled:opacity-50"
+                                                                >
+                                                                    <X className="h-3 w-3 mr-1" />
+                                                                    Cancel
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    onClick={handleSaveDetails}
+                                                                    disabled={isSavingSection('details')}
+                                                                    className="h-7 px-2 text-xs bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+                                                                >
+                                                                    {isSavingSection('details') ? (
+                                                                        <>
+                                                                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                                                                            Saving...
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Save className="h-3 w-3 mr-1" />
+                                                                            Save
+                                                                        </>
+                                                                    )}
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </CardHeader>
                                                 <CardContent className="px-4 pb-3">
                                                     <div className="grid grid-cols-2 gap-3 text-xs">
                                                         <div>
-                                                            <span className="text-slate-600 font-medium">Priority:</span>
-                                                            {isEditing ? (
-                                                                <Select
-                                                                    value={editedData.priority}
-                                                                    onValueChange={(value) => setEditedData({ ...editedData, priority: value })}
-                                                                >
-                                                                    <SelectTrigger className="mt-1 h-8 border-2 border-blue-400">
-                                                                        <SelectValue />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="LOW">Low</SelectItem>
-                                                                        <SelectItem value="MEDIUM">Medium</SelectItem>
-                                                                        <SelectItem value="HIGH">High</SelectItem>
-                                                                        <SelectItem value="CRITICAL">Critical</SelectItem>
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            ) : (
-                                                                <div className="mt-1">{getPriorityBadge(requirement.priority)}</div>
-                                                            )}
-                                                        </div>
-                                                        <div>
-                                                            <span className="text-slate-600 font-medium">State:</span>
-                                                            {isEditing ? (
-                                                                <Select
-                                                                    value={editedData.state}
-                                                                    onValueChange={(value) => setEditedData({ ...editedData, state: value })}
-                                                                >
-                                                                    <SelectTrigger className="mt-1 h-8 border-2 border-blue-400">
-                                                                        <SelectValue />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="DRAFT">Draft</SelectItem>
-                                                                        <SelectItem value="PROPOSED">Proposed</SelectItem>
-                                                                        <SelectItem value="APPROVED">Approved</SelectItem>
-                                                                        <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                                                                        <SelectItem value="COMPLETED">Completed</SelectItem>
-                                                                        <SelectItem value="REJECTED">Rejected</SelectItem>
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            ) : (
-                                                                <div className="mt-1">{getStateBadge(requirement.state)}</div>
-                                                            )}
-                                                        </div>
-                                                        <div>
                                                             <span className="text-slate-600 font-medium">Business Owner:</span>
-                                                            {isEditing ? (
+                                                            {isEditingSection('details') ? (
                                                                 <Input
                                                                     value={editedData.business_owner}
                                                                     onChange={(e) => setEditedData({ ...editedData, business_owner: e.target.value })}
@@ -754,7 +1176,7 @@ Risks: ${est.estimation_risks?.length || 0}`;
                                                         </div>
                                                         <div>
                                                             <span className="text-slate-600 font-medium">Technology:</span>
-                                                            {isEditing ? (
+                                                            {isEditingSection('details') ? (
                                                                 <Select
                                                                     value={editedData.tech_preset_id || ''}
                                                                     onValueChange={(value) => setEditedData({ ...editedData, tech_preset_id: value })}
@@ -774,10 +1196,10 @@ Risks: ${est.estimation_risks?.length || 0}`;
                                                                 <div className="mt-1 font-semibold text-slate-900">{preset?.name || 'N/A'}</div>
                                                             )}
                                                         </div>
-                                                        {(requirement.labels && requirement.labels.length > 0) || isEditing ? (
+                                                        {(requirement.labels && requirement.labels.length > 0) || isEditingSection('details') ? (
                                                             <div className="col-span-2">
                                                                 <span className="text-slate-600 font-medium">Labels:</span>
-                                                                {isEditing ? (
+                                                                {isEditingSection('details') ? (
                                                                     <Input
                                                                         value={editedData.labels.join(', ')}
                                                                         onChange={(e) => setEditedData({
@@ -1225,6 +1647,83 @@ Risks: ${est.estimation_risks?.length || 0}`;
                             className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg"
                         >
                             {isSaving ? 'Saving...' : 'Save Estimation'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Quick Estimate Error Dialog - Purple gradient theme */}
+            <AlertDialog open={showQuickEstimateError} onOpenChange={setShowQuickEstimateError}>
+                <AlertDialogContent className="bg-white/95 backdrop-blur-lg border-white/50 shadow-2xl max-w-lg">
+                    <AlertDialogHeader>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0 shadow-lg">
+                                <AlertTriangle className="h-6 w-6 text-white" />
+                            </div>
+                            <AlertDialogTitle className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                                {quickEstimateErrorData?.title || 'Quick Estimate Failed'}
+                            </AlertDialogTitle>
+                        </div>
+                        <AlertDialogDescription className="text-slate-700 text-base leading-relaxed">
+                            {quickEstimateErrorData?.message}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    {/* AI Reasoning Box */}
+                    {quickEstimateErrorData?.reasoning && (
+                        <div className="my-4 p-4 rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200">
+                            <div className="flex items-start gap-2">
+                                <div className="w-1 h-full bg-gradient-to-b from-purple-500 to-pink-500 rounded-full flex-shrink-0 mt-1"></div>
+                                <div>
+                                    <h4 className="text-sm font-semibold text-purple-900 mb-1">AI Analysis:</h4>
+                                    <p className="text-sm text-purple-800 leading-relaxed">
+                                        {quickEstimateErrorData.reasoning}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Suggestions */}
+                    <div className="my-4 p-4 rounded-lg bg-blue-50 border border-blue-200">
+                        <h4 className="text-sm font-semibold text-blue-900 mb-2">💡 What you can do:</h4>
+                        <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                            {quickEstimateErrorData?.type === 'invalid' ? (
+                                <>
+                                    <li>Provide a clear, technical description of what needs to be built</li>
+                                    <li>Include specific features, functionality, or user stories</li>
+                                    <li>Avoid vague or meaningless text</li>
+                                    <li>Use proper technical terminology</li>
+                                </>
+                            ) : (
+                                <>
+                                    <li>Add more specific details about the functionality needed</li>
+                                    <li>Describe technical requirements and components</li>
+                                    <li>Include information about data, APIs, or integrations</li>
+                                    <li>Specify user interactions or business logic</li>
+                                </>
+                            )}
+                        </ul>
+                    </div>
+
+                    <AlertDialogFooter className="gap-2">
+                        <AlertDialogCancel
+                            className="border-slate-300 hover:bg-slate-100"
+                        >
+                            Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                setShowQuickEstimateError(false);
+                                setActiveTab('info');
+                                // Focus on description section after closing
+                                setTimeout(() => {
+                                    startEditingSection('description');
+                                }, 100);
+                            }}
+                            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg"
+                        >
+                            Edit Description
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

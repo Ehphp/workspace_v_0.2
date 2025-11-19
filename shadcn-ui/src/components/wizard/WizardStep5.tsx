@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
 import { MOCK_ACTIVITIES, MOCK_DRIVERS, MOCK_RISKS } from '@/lib/mockData';
 import { calculateEstimation } from '@/lib/estimationEngine';
+import { generateTitleFromDescription } from '@/lib/openai';
 import type { Activity, Driver, Risk } from '@/types/database';
 import type { WizardData } from '@/hooks/useWizardState';
 import type { EstimationResult } from '@/types/estimation';
@@ -24,10 +25,32 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
   const [risks, setRisks] = useState<Risk[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [generatedTitle, setGeneratedTitle] = useState<string>('');
+  const [titleLoading, setTitleLoading] = useState(true);
 
   useEffect(() => {
     calculateResult();
+    generateTitle();
   }, []);
+
+  const generateTitle = async () => {
+    if (!data.description) {
+      setGeneratedTitle(data.reqId);
+      setTitleLoading(false);
+      return;
+    }
+
+    try {
+      setTitleLoading(true);
+      const title = await generateTitleFromDescription(data.description);
+      setGeneratedTitle(title);
+    } catch (error) {
+      console.error('Error generating title:', error);
+      setGeneratedTitle(data.description.substring(0, 100));
+    } finally {
+      setTitleLoading(false);
+    }
+  };
 
   const calculateResult = async () => {
     try {
@@ -160,24 +183,34 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg">
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-slate-900">Estimation Results</h2>
+              <h2 className="text-lg font-bold text-slate-900">Estimation Results</h2>
               {isDemoMode && (
                 <Badge variant="secondary" className="text-xs">
                   Demo Mode
                 </Badge>
               )}
             </div>
-            <p className="text-sm text-slate-600 mt-1">
+            <div className="mt-2">
+              {titleLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                  <p className="text-xs text-slate-500 italic">Generating title with AI...</p>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-900 font-semibold">{generatedTitle}</p>
+              )}
+            </div>
+            <p className="text-xs text-slate-600 mt-1">
               Your calculated effort estimation with full transparency
             </p>
           </div>
@@ -237,9 +270,9 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
               Breakdown Details
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0 space-y-4 max-h-[320px] overflow-y-auto pr-2">
+          <CardContent className="pt-0 space-y-3 max-h-[240px] overflow-y-auto pr-2">
             <div>
-              <h4 className="font-bold text-sm mb-2 text-slate-900 flex items-center gap-2">
+              <h4 className="font-bold text-xs mb-1.5 text-slate-900 flex items-center gap-2">
                 <div className="w-6 h-6 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
                   {data.selectedActivityCodes.length}
                 </div>
@@ -267,7 +300,7 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
             </div>
 
             <div>
-              <h4 className="font-bold text-sm mb-2 text-slate-900 flex items-center gap-2">
+              <h4 className="font-bold text-xs mb-1.5 text-slate-900 flex items-center gap-2">
                 <div className="w-6 h-6 rounded bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
                   <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -292,7 +325,7 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
             </div>
 
             <div>
-              <h4 className="font-bold text-sm mb-2 text-slate-900 flex items-center gap-2">
+              <h4 className="font-bold text-xs mb-1.5 text-slate-900 flex items-center gap-2">
                 <div className="w-6 h-6 rounded bg-gradient-to-br from-rose-500 to-red-500 flex items-center justify-center text-white text-xs font-bold">
                   {data.selectedRiskCodes.length}
                 </div>
