@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import {
     Dialog,
     DialogContent,
@@ -36,9 +37,9 @@ export function CreateRequirementDialog({
     onSuccess,
 }: CreateRequirementDialogProps) {
     const { user } = useAuth();
+    const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
-        req_id: '',
         title: '',
         description: '',
         priority: 'MEDIUM',
@@ -46,15 +47,45 @@ export function CreateRequirementDialog({
         business_owner: '',
     });
 
+    const generateNextReqId = async (): Promise<string> => {
+        // Get all existing requirements for this list to find the next number
+        const { data: existingReqs } = await supabase
+            .from('requirements')
+            .select('req_id')
+            .eq('list_id', listId)
+            .order('created_at', { ascending: false });
+
+        if (!existingReqs || existingReqs.length === 0) {
+            return 'REQ-001';
+        }
+
+        // Extract numbers from existing IDs (e.g., "REQ-001" -> 1)
+        const numbers = existingReqs
+            .map(req => {
+                const match = req.req_id.match(/REQ-(\d+)/);
+                return match ? parseInt(match[1], 10) : 0;
+            })
+            .filter(num => num > 0);
+
+        const maxNumber = numbers.length > 0 ? Math.max(...numbers) : 0;
+        const nextNumber = maxNumber + 1;
+
+        // Format as REQ-XXX with leading zeros
+        return `REQ-${nextNumber.toString().padStart(3, '0')}`;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
 
         setLoading(true);
         try {
+            // Generate next requirement ID
+            const generatedReqId = await generateNextReqId();
+
             const { error } = await supabase.from('requirements').insert({
                 list_id: listId,
-                req_id: formData.req_id,
+                req_id: generatedReqId,
                 title: formData.title,
                 description: formData.description,
                 priority: formData.priority,
@@ -64,10 +95,22 @@ export function CreateRequirementDialog({
                 labels: [],
             });
 
-            if (error) throw error;
+            if (error) {
+                console.error('Error creating requirement:', error);
+                toast({
+                    title: 'Error',
+                    description: error.message || 'Failed to create requirement',
+                    variant: 'destructive',
+                });
+                return;
+            }
+
+            toast({
+                title: 'Success',
+                description: `Requirement ${generatedReqId} created successfully`,
+            });
 
             setFormData({
-                req_id: '',
                 title: '',
                 description: '',
                 priority: 'MEDIUM',
@@ -78,6 +121,11 @@ export function CreateRequirementDialog({
             onOpenChange(false);
         } catch (error) {
             console.error('Error creating requirement:', error);
+            toast({
+                title: 'Error',
+                description: 'An unexpected error occurred',
+                variant: 'destructive',
+            });
         } finally {
             setLoading(false);
         }
@@ -94,29 +142,6 @@ export function CreateRequirementDialog({
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="req_id">Requirement ID *</Label>
-                            <Input
-                                id="req_id"
-                                placeholder="REQ-001"
-                                value={formData.req_id}
-                                onChange={(e) => setFormData({ ...formData, req_id: e.target.value })}
-                                required
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="business_owner">Business Owner</Label>
-                            <Input
-                                id="business_owner"
-                                placeholder="John Doe"
-                                value={formData.business_owner}
-                                onChange={(e) => setFormData({ ...formData, business_owner: e.target.value })}
-                            />
-                        </div>
-                    </div>
-
                     <div className="space-y-2">
                         <Label htmlFor="title">Title *</Label>
                         <Input
@@ -125,6 +150,7 @@ export function CreateRequirementDialog({
                             value={formData.title}
                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                             required
+                            autoFocus
                         />
                     </div>
 
@@ -141,6 +167,16 @@ export function CreateRequirementDialog({
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
+                            <Label htmlFor="business_owner">Business Owner</Label>
+                            <Input
+                                id="business_owner"
+                                placeholder="John Doe"
+                                value={formData.business_owner}
+                                onChange={(e) => setFormData({ ...formData, business_owner: e.target.value })}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
                             <Label htmlFor="priority">Priority</Label>
                             <Select
                                 value={formData.priority}
@@ -156,24 +192,24 @@ export function CreateRequirementDialog({
                                 </SelectContent>
                             </Select>
                         </div>
+                    </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="state">State</Label>
-                            <Select
-                                value={formData.state}
-                                onValueChange={(value) => setFormData({ ...formData, state: value })}
-                            >
-                                <SelectTrigger id="state">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="PROPOSED">Proposed</SelectItem>
-                                    <SelectItem value="SELECTED">Selected</SelectItem>
-                                    <SelectItem value="SCHEDULED">Scheduled</SelectItem>
-                                    <SelectItem value="DONE">Done</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="state">State</Label>
+                        <Select
+                            value={formData.state}
+                            onValueChange={(value) => setFormData({ ...formData, state: value })}
+                        >
+                            <SelectTrigger id="state">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="PROPOSED">Proposed</SelectItem>
+                                <SelectItem value="SELECTED">Selected</SelectItem>
+                                <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+                                <SelectItem value="DONE">Done</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <DialogFooter>
