@@ -27,17 +27,50 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
 
   const loadPresets = async () => {
     try {
-      const { data: presetsData, error } = await supabase
-        .from('technology_presets')
-        .select('*')
-        .order('name');
+      const [{ data: presetsData, error: presetsError }, { data: pivotData, error: pivotError }] = await Promise.all([
+        supabase
+          .from('technology_presets')
+          .select('*')
+          .order('name'),
+        supabase
+          .from('technology_preset_activities')
+          .select('tech_preset_id, position, activities(code)'),
+      ]);
 
-      if (error || !presetsData || presetsData.length === 0) {
+      if (presetsError || !presetsData || presetsData.length === 0) {
         setPresets(MOCK_TECHNOLOGY_PRESETS);
         setIsDemoMode(true);
       } else {
-        setPresets(presetsData);
+        // Normalize default activities from pivot if available
+        const grouped: Record<string, { code: string | null; position: number | null }[]> = {};
+        (pivotData || []).forEach((row: any) => {
+          grouped[row.tech_preset_id] = grouped[row.tech_preset_id] || [];
+          grouped[row.tech_preset_id].push({
+            code: row.activities?.code ?? null,
+            position: row.position ?? null,
+          });
+        });
+
+        const normalizedPresets = presetsData.map((p) => {
+          const rows = grouped[p.id] || [];
+          if (rows.length === 0) return p;
+          const codes = rows
+            .sort((a, b) => {
+              const pa = a.position ?? Number.MAX_SAFE_INTEGER;
+              const pb = b.position ?? Number.MAX_SAFE_INTEGER;
+              return pa - pb;
+            })
+            .map((r) => r.code)
+            .filter((code): code is string => Boolean(code));
+          if (codes.length === 0) return p;
+          return { ...p, default_activity_codes: codes };
+        });
+
+        setPresets(normalizedPresets);
         setIsDemoMode(false);
+        if (pivotError) {
+          console.warn('Pivot load warning (fallback to presets defaults):', pivotError);
+        }
       }
     } catch (error) {
       setPresets(MOCK_TECHNOLOGY_PRESETS);

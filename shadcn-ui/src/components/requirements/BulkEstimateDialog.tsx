@@ -92,11 +92,47 @@ export function BulkEstimateDialog({
 
         // Pre-load all unique presets
         const uniquePresetIds = [...new Set(estimableRequirements.map(r => r.tech_preset_id || listTechPresetId).filter(Boolean))];
-        const presetsRes = await supabase
-            .from('technology_presets')
-            .select('*')
-            .in('id', uniquePresetIds as string[]);
-        const presetsMap = new Map((presetsRes.data || []).map(p => [p.id, p]));
+        const [presetsRes, pivotRes] = await Promise.all([
+            supabase
+                .from('technology_presets')
+                .select('*')
+                .in('id', uniquePresetIds as string[]),
+            supabase
+                .from('technology_preset_activities')
+                .select('tech_preset_id, activity_id, position')
+                .in('tech_preset_id', uniquePresetIds as string[]),
+        ]);
+
+        const activityById = new Map(sharedActivities.map((a: Activity) => [a.id, a]));
+        const pivotByPreset = new Map<string, { activity_id: string; position: number | null }[]>();
+        (pivotRes.data || []).forEach((row: any) => {
+            if (!pivotByPreset.has(row.tech_preset_id)) {
+                pivotByPreset.set(row.tech_preset_id, []);
+            }
+            pivotByPreset.get(row.tech_preset_id)!.push({
+                activity_id: row.activity_id,
+                position: row.position ?? null,
+            });
+        });
+
+        const normalizedPresets = (presetsRes.data || []).map((p) => {
+            const rows = pivotByPreset.get(p.id) || [];
+            if (rows.length === 0) return p;
+
+            const codes = rows
+                .sort((a, b) => {
+                    const pa = a.position ?? Number.MAX_SAFE_INTEGER;
+                    const pb = b.position ?? Number.MAX_SAFE_INTEGER;
+                    return pa - pb;
+                })
+                .map((r) => activityById.get(r.activity_id)?.code)
+                .filter((code): code is string => Boolean(code));
+
+            if (codes.length === 0) return p;
+            return { ...p, default_activity_codes: codes };
+        });
+
+        const presetsMap = new Map(normalizedPresets.map(p => [p.id, p]));
         console.log('✅ Pre-loaded data ready');
 
         // Process in batches of MAX_CONCURRENT
@@ -130,8 +166,19 @@ export function BulkEstimateDialog({
                         throw new Error('Technology preset not found');
                     }
 
-                    // Reuse pre-loaded data (no DB calls!)
-                    const activities = sharedActivities;
+                    // Reuse pre-loaded data (no DB calls!) and filter by tech category
+                    const activities = sharedActivities.filter(
+                        (a: Activity) =>
+                            a.tech_category === preset.tech_category ||
+                            a.tech_category === 'MULTI'
+                    );
+                    if (activities.length === 0) {
+                        return {
+                            requirementId: req.id,
+                            success: false,
+                            error: 'No compatible activities for preset category',
+                        };
+                    }
                     const drivers = sharedDrivers;
                     const risks = sharedRisks;
 
@@ -173,29 +220,32 @@ export function BulkEstimateDialog({
 
                     const aiSuggestion = await response.json();
 
-                    // Check if the requirement is valid
-                    if (!aiSuggestion.isValidRequirement) {
-                        console.warn(`Invalid requirement for ${req.req_id}: ${aiSuggestion.reasoning || 'requirement not valid'}`);
-                        return {
-                            requirementId: req.id,
-                            success: false,
-                            error: aiSuggestion.reasoning || 'Invalid or unclear requirement description'
-                        };
+                    // Pick AI suggestions when valid; fallback to preset defaults filtered by allowed activities
+                    let chosenCodes: string[] = [];
+                    if (aiSuggestion.isValidRequirement && aiSuggestion.activityCodes && aiSuggestion.activityCodes.length > 0) {
+                        chosenCodes = aiSuggestion.activityCodes.filter((code: string) =>
+                            activities.some((a: Activity) => a.code === code)
+                        );
                     }
 
-                    // Check if GPT suggested any activities
-                    if (!aiSuggestion.activityCodes || aiSuggestion.activityCodes.length === 0) {
-                        console.warn(`No activities suggested for ${req.req_id}: ${aiSuggestion.reasoning || 'description unclear'}`);
+                    if (chosenCodes.length === 0) {
+                        // Fallback to preset defaults (already normalized via pivot)
+                        chosenCodes = (preset.default_activity_codes || []).filter((code: string) =>
+                            activities.some((a: Activity) => a.code === code)
+                        );
+                    }
+
+                    if (chosenCodes.length === 0) {
                         return {
                             requirementId: req.id,
                             success: false,
-                            error: aiSuggestion.reasoning || 'Description too short or unclear'
+                            error: aiSuggestion.reasoning || 'No compatible activities found for this preset',
                         };
                     }
 
                     // Calculate estimation (using pre-loaded data)
                     const selectedActivities = activities.filter((a: Activity) =>
-                        aiSuggestion.activityCodes.includes(a.code)
+                        chosenCodes.includes(a.code)
                     ) || [];
 
                     // NO drivers and risks - GPT suggests only activities

@@ -61,15 +61,44 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
           .eq('active', true)
           .order('group');
 
+        let resolvedActivities: Activity[];
+        let effectivePreset: TechnologyPreset | null = currentPreset;
+
         if (activitiesError || !activitiesData || activitiesData.length === 0) {
-          const mockActivities = MOCK_ACTIVITIES.filter(
+          resolvedActivities = MOCK_ACTIVITIES.filter(
             a => a.tech_category === currentPreset!.tech_category || a.tech_category === 'MULTI'
           );
-          setActivities(mockActivities);
           setIsDemoMode(true);
         } else {
-          setActivities(activitiesData);
+          resolvedActivities = activitiesData;
         }
+
+        // Hydrate preset defaults from pivot table if available (only when using real data)
+        if (!activitiesError && activitiesData && activitiesData.length > 0 && effectivePreset) {
+          const { data: pivotData, error: pivotError } = await supabase
+            .from('technology_preset_activities')
+            .select('activity_id, position')
+            .eq('tech_preset_id', effectivePreset.id);
+
+          if (!pivotError && pivotData && pivotData.length > 0) {
+            const activityById = new Map(resolvedActivities.map((a) => [a.id, a]));
+            const codes = pivotData
+              .sort((a, b) => {
+                const pa = (a.position ?? Number.MAX_SAFE_INTEGER);
+                const pb = (b.position ?? Number.MAX_SAFE_INTEGER);
+                return pa - pb;
+              })
+              .map((row) => activityById.get(row.activity_id)?.code)
+              .filter((code): code is string => Boolean(code));
+
+            if (codes.length > 0) {
+              effectivePreset = { ...effectivePreset, default_activity_codes: codes };
+            }
+          }
+        }
+
+        setPreset(effectivePreset);
+        setActivities(resolvedActivities);
       }
     } catch (error) {
       const currentPreset = MOCK_TECHNOLOGY_PRESETS.find(p => p.id === data.techPresetId) || MOCK_TECHNOLOGY_PRESETS[0];

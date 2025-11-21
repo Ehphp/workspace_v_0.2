@@ -11,7 +11,10 @@ import Lists from './pages/Lists';
 import Requirements from './pages/Requirements';
 import RequirementDetail from './pages/RequirementDetail';
 import NotFound from './pages/NotFound';
+import Admin from './pages/Admin';
 import AdminActivities from './pages/AdminActivities';
+import Presets from './pages/Presets';
+import HowItWorks from './pages/HowItWorks';
 
 const queryClient = new QueryClient();
 
@@ -25,6 +28,7 @@ const App = () => (
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
           <Route
             path="/lists"
             element={
@@ -50,10 +54,26 @@ const App = () => (
             }
           />
           <Route
+            path="/admin"
+            element={
+              <AuthGuard>
+                <Admin />
+              </AuthGuard>
+            }
+          />
+          <Route
             path="/admin/activities"
             element={
               <AuthGuard>
                 <AdminActivities />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/presets"
+            element={
+              <AuthGuard>
+                <Presets />
               </AuthGuard>
             }
           />

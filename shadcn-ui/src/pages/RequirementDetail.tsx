@@ -82,6 +82,27 @@ export default function RequirementDetail() {
         presets,
     });
 
+    const selectedPreset = useMemo(
+        () => presets.find((p) => p.id === selectedPresetId) || null,
+        [presets, selectedPresetId]
+    );
+
+    const availableActivities = useMemo(() => {
+        if (!selectedPreset) return activities;
+        return activities.filter(
+            (a) =>
+                a.tech_category === selectedPreset.tech_category ||
+                a.tech_category === 'MULTI'
+        );
+    }, [activities, selectedPreset]);
+
+    useEffect(() => {
+        if (!selectedPreset || dataLoading) return;
+        if (availableActivities.length === 0) {
+            toast.error('Nessuna attivita disponibile per la tecnologia selezionata. Cambia preset o abilita attivita MULTI.');
+        }
+    }, [availableActivities.length, dataLoading, selectedPreset]);
+
     // Local UI state
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -1279,7 +1300,7 @@ Risks: ${est.estimation_risks?.length || 0}`;
                                         />
 
                                         <ActivitiesSection
-                                            activities={activities}
+                                            activities={availableActivities}
                                             selectedActivityIds={selectedActivityIds}
                                             aiSuggestedIds={aiSuggestedIds}
                                             onActivityToggle={toggleActivity}

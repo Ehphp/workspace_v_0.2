@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
+import { toast } from 'sonner';
 import type { TechnologyPreset, Activity, Driver, Risk } from '@/types/database';
 import type { EstimationResult } from '@/types/estimation';
 import { calculateEstimation } from '@/lib/estimationEngine';
@@ -56,14 +57,27 @@ export function useEstimationState({
         return presets.find((p) => p.id === selectedPresetId) || null;
     }, [presets, selectedPresetId]);
 
+    // Helper: check if an activity is compatible with the selected preset category
+    const isActivityAllowed = useCallback((activity: Activity | undefined) => {
+        if (!activity) return false;
+        if (!selectedPreset) return true; // No preset selected yet -> allow all
+        return activity.tech_category === 'MULTI' || activity.tech_category === selectedPreset.tech_category;
+    }, [selectedPreset]);
+
     // Memoized toggle handlers
     const toggleActivity = useCallback((activityId: string) => {
+        const activity = activities.find((a) => a.id === activityId);
+        if (!isActivityAllowed(activity)) {
+            toast.error('Attivita non compatibile con la tecnologia selezionata.');
+            return;
+        }
+
         setSelectedActivityIds((prev) =>
             prev.includes(activityId)
                 ? prev.filter((id) => id !== activityId)
                 : [...prev, activityId]
         );
-    }, []);
+    }, [activities, isActivityAllowed]);
 
     const setDriverValue = useCallback((driverId: string, value: string) => {
         setSelectedDriverValues((prev) => ({
@@ -109,6 +123,21 @@ export function useEstimationState({
             .map((a) => a.id);
         setSelectedActivityIds(defaultActivityIds);
 
+        // Warn if some preset activities are missing or inactive
+        if (preset.default_activity_codes?.length) {
+            const missingCodes = preset.default_activity_codes.filter(
+                (code) => !activities.some((a) => a.code === code)
+            );
+            if (missingCodes.length > 0) {
+                toast.warning('Alcune attivita del preset non sono disponibili', {
+                    description: missingCodes.join(', '),
+                });
+            }
+            if (defaultActivityIds.length === 0) {
+                toast.error('Nessuna attivita del preset e disponibile per il calcolo.');
+            }
+        }
+
         // Apply default risks
         const defaultRiskIds = risks
             .filter((r) => preset.default_risks?.includes(r.code))
@@ -125,8 +154,22 @@ export function useEstimationState({
         driverValues?: Record<string, string>, // Can be code-based or ID-based
         riskIds?: string[]
     ) => {
-        setSelectedActivityIds(activityIds);
-        setAiSuggestedIds(activityIds);
+        // Enforce compatibility with selected technology (MULTI allowed)
+        const allowedActivityIds = activityIds.filter((id) => {
+            const activity = activities.find((a) => a.id === id);
+            return isActivityAllowed(activity);
+        });
+
+        const removed = activityIds.length - allowedActivityIds.length;
+        if (removed > 0) {
+            toast.warning('Alcune attivita sono state rimosse perche non compatibili con la tecnologia selezionata.');
+        }
+        if (activityIds.length > 0 && allowedActivityIds.length === 0) {
+            toast.error('Nessuna delle attivita suggerite e compatibile con la tecnologia selezionata.');
+        }
+
+        setSelectedActivityIds(allowedActivityIds);
+        setAiSuggestedIds(allowedActivityIds);
 
         // ✅ FIX: Reset drivers/risks if undefined (instead of keeping previous values)
         if (driverValues !== undefined) {
@@ -159,7 +202,7 @@ export function useEstimationState({
             // Reset risks if undefined
             setSelectedRiskIds([]);
         }
-    }, [drivers]);
+    }, [activities, drivers, isActivityAllowed]);
 
     // Reset all selections
     const resetSelections = useCallback(() => {

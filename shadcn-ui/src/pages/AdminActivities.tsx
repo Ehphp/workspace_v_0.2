@@ -10,6 +10,9 @@ import {
   CheckCircle2,
   AlertTriangle,
   ArrowLeft,
+  Settings2,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { supabase } from '@/lib/supabase';
@@ -39,6 +42,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const techOptions = [
   { value: 'POWER_PLATFORM', label: 'Power Platform' },
@@ -55,8 +66,23 @@ const groupOptions = [
   { value: 'GOVERNANCE', label: 'Governance' },
 ];
 
+const generateActivityCode = (name: string, techCategory: string): string => {
+  const techPrefix = techCategory === 'POWER_PLATFORM' ? 'PP' :
+    techCategory === 'BACKEND' ? 'BE' :
+      techCategory === 'FRONTEND' ? 'FE' : 'MULTI';
+
+  const sanitized = name
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter(word => word.length > 2)
+    .slice(0, 3)
+    .join('_');
+
+  return `CSTM_${techPrefix}_${sanitized}`;
+};
+
 const initialForm = {
-  code: 'CSTM_',
   name: '',
   description: '',
   baseDays: '1.0',
@@ -79,6 +105,14 @@ export default function AdminActivities() {
   const [editForm, setEditForm] = useState(initialForm);
   const [filterTech, setFilterTech] = useState<string>('ALL');
   const [viewFilter, setViewFilter] = useState<ViewFilter>('ALL');
+  const [visibleColumns, setVisibleColumns] = useState({
+    codice: false,
+    nome: true,
+    tecnologia: false,
+    fase: false,
+    origine: false,
+    peso: true,
+  });
 
   useEffect(() => {
     if (user) {
@@ -130,8 +164,8 @@ export default function AdminActivities() {
     e.preventDefault();
     const baseDays = Number(form.baseDays);
 
-    if (!form.code.trim() || !form.name.trim()) {
-      toast.error('Codice e nome sono obbligatori');
+    if (!form.name.trim()) {
+      toast.error('Nome obbligatorio');
       return;
     }
 
@@ -142,10 +176,12 @@ export default function AdminActivities() {
       return;
     }
 
+    const generatedCode = generateActivityCode(form.name, form.techCategory);
+
     setSaving(true);
     try {
       const { error } = await supabase.from('activities').insert({
-        code: form.code,
+        code: generatedCode,
         name: form.name,
         description: form.description,
         base_days: baseDays,
@@ -162,12 +198,9 @@ export default function AdminActivities() {
       }
 
       toast.success('Attività creata', {
-        description: `${form.code.toUpperCase()} • ${baseDays.toFixed(2)} giorni`,
+        description: `${generatedCode} • ${baseDays.toFixed(2)} giorni`,
       });
-      setForm({
-        ...initialForm,
-        code: form.code.startsWith('CSTM_') ? form.code : 'CSTM_',
-      });
+      setForm(initialForm);
       await loadActivities();
     } catch (err: any) {
       toast.error('Errore durante il salvataggio', {
@@ -181,7 +214,6 @@ export default function AdminActivities() {
   const openEdit = (activity: Activity) => {
     setEditActivity(activity);
     setEditForm({
-      code: activity.code,
       name: activity.name,
       description: activity.description || '',
       baseDays: activity.base_days.toString(),
@@ -193,9 +225,7 @@ export default function AdminActivities() {
   };
 
   const handleDuplicate = (activity: Activity) => {
-    const suggestedCode = activity.code.toUpperCase().includes('CSTM') ? activity.code.toUpperCase() : `${activity.code.toUpperCase()}_CSTM`;
     setForm({
-      code: suggestedCode,
       name: activity.name,
       description: activity.description || '',
       baseDays: activity.base_days.toString(),
@@ -409,18 +439,6 @@ export default function AdminActivities() {
               <CardContent className="max-h-[calc(100vh-420px)] overflow-y-auto">
                 <form className="space-y-3" onSubmit={handleCreate}>
                   <div className="space-y-2">
-                    <Label htmlFor="code">Codice attività</Label>
-                    <Input
-                      id="code"
-                      value={form.code}
-                      onChange={(e) => setForm((prev) => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                      placeholder="CSTM_API_HARDENING"
-                      required
-                    />
-                    <p className="text-xs text-slate-500">Usa un prefisso chiaro (es. CSTM_) per distinguere le attività custom.</p>
-                  </div>
-
-                  <div className="space-y-2">
                     <Label htmlFor="name">Nome</Label>
                     <Input
                       id="name"
@@ -429,6 +447,7 @@ export default function AdminActivities() {
                       placeholder="API hardening & security review"
                       required
                     />
+                    <p className="text-xs text-slate-500">Il codice sarà generato automaticamente dal nome e dalla tecnologia.</p>
                   </div>
 
                   <div className="space-y-2">
@@ -481,29 +500,20 @@ export default function AdminActivities() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label>Peso (giorni base)</Label>
-                      <Input
-                        type="number"
-                        step="0.05"
-                        min="0.05"
-                        value={form.baseDays}
-                        onChange={(e) => setForm((prev) => ({ ...prev, baseDays: e.target.value }))}
-                        required
-                      />
-                      <p className="text-xs text-slate-500">Usato dal motore deterministico come base_days.</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Attiva</Label>
-                      <div className="flex items-center gap-3 h-10 px-3 rounded-lg border border-slate-200 bg-slate-50">
-                        <Switch
-                          checked={form.active}
-                          onCheckedChange={(checked) => setForm((prev) => ({ ...prev, active: checked }))}
-                        />
-                        <span className="text-sm text-slate-700">{form.active ? 'Disponibile' : 'Disattiva'}</span>
-                      </div>
-                    </div>
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold text-slate-900">⚖️ Peso (giorni base)</Label>
+                    <Input
+                      type="number"
+                      step="0.05"
+                      min="0.05"
+                      value={form.baseDays}
+                      onChange={(e) => setForm((prev) => ({ ...prev, baseDays: e.target.value }))}
+                      required
+                      className="text-lg font-semibold h-12"
+                    />
+                    <p className="text-xs text-slate-600 bg-amber-50 border border-amber-200 rounded-md p-2">
+                      💡 <strong>Importante:</strong> Questo valore determina l'impatto dell'attività sui calcoli di stima. Usato dal motore deterministico come base_days.
+                    </p>
                   </div>
 
                   <Button
@@ -553,6 +563,56 @@ export default function AdminActivities() {
                         ))}
                       </SelectContent>
                     </Select>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8 gap-2">
+                          <Settings2 className="h-4 w-4" />
+                          Colonne
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-[200px]">
+                        <DropdownMenuLabel>Mostra colonne</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuCheckboxItem
+                          checked={visibleColumns.codice}
+                          onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, codice: checked }))}
+                        >
+                          Codice
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem
+                          checked={visibleColumns.nome}
+                          onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, nome: checked }))}
+                        >
+                          Nome
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem
+                          checked={visibleColumns.tecnologia}
+                          onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, tecnologia: checked }))}
+                        >
+                          Tecnologia
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem
+                          checked={visibleColumns.fase}
+                          onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, fase: checked }))}
+                        >
+                          Fase
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem
+                          checked={visibleColumns.origine}
+                          onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, origine: checked }))}
+                        >
+                          Origine
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem
+                          checked={visibleColumns.peso}
+                          onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, peso: checked }))}
+                        >
+                          Peso
+                        </DropdownMenuCheckboxItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
                     <Badge variant="secondary" className="bg-slate-100 text-slate-700 border-slate-200">
                       {activityRows.length} risultati
                     </Badge>
@@ -563,26 +623,25 @@ export default function AdminActivities() {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50/80">
-                          <TableHead>Codice</TableHead>
-                          <TableHead>Nome</TableHead>
-                          <TableHead className="hidden lg:table-cell">Tecnologia</TableHead>
-                          <TableHead className="hidden lg:table-cell">Fase</TableHead>
-                          <TableHead>Origine</TableHead>
-                          <TableHead>Peso</TableHead>
-                          <TableHead>Stato</TableHead>
+                          {visibleColumns.codice && <TableHead>Codice</TableHead>}
+                          {visibleColumns.nome && <TableHead>Nome</TableHead>}
+                          {visibleColumns.tecnologia && <TableHead className="hidden lg:table-cell">Tecnologia</TableHead>}
+                          {visibleColumns.fase && <TableHead className="hidden lg:table-cell">Fase</TableHead>}
+                          {visibleColumns.origine && <TableHead>Origine</TableHead>}
+                          {visibleColumns.peso && <TableHead className="font-semibold">Peso</TableHead>}
                           <TableHead className="text-right">Azioni</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {fetching ? (
                           <TableRow>
-                            <TableCell colSpan={8} className="text-center py-8 text-slate-500">
+                            <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length + 1} className="text-center py-8 text-slate-500">
                               Caricamento...
                             </TableCell>
                           </TableRow>
                         ) : activityRows.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={8} className="text-center py-8 text-slate-500">
+                            <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length + 1} className="text-center py-8 text-slate-500">
                               Nessuna attività trovata
                             </TableCell>
                           </TableRow>
@@ -600,48 +659,45 @@ export default function AdminActivities() {
                               : 'OOTB';
                             return (
                               <TableRow key={activity.id}>
-                                <TableCell className="font-semibold">{activity.code}</TableCell>
-                                <TableCell className="max-w-[240px]">
-                                  <div className="text-slate-900 font-medium truncate">{activity.name}</div>
-                                  <div className="text-xs text-slate-500 truncate">{activity.description}</div>
-                                  {baseRef && (
-                                    <div className="text-[10px] text-slate-500 mt-0.5">
-                                      Deriva da {baseRef.code}
+                                {visibleColumns.codice && (
+                                  <TableCell className="font-semibold text-slate-700">{activity.code}</TableCell>
+                                )}
+                                {visibleColumns.nome && (
+                                  <TableCell className="max-w-[240px]">
+                                    <div className="text-slate-900 font-medium truncate">{activity.name}</div>
+                                    <div className="text-xs text-slate-500 truncate">{activity.description}</div>
+                                    {baseRef && (
+                                      <div className="text-[10px] text-slate-500 mt-0.5">
+                                        Deriva da {baseRef.code}
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                )}
+                                {visibleColumns.tecnologia && (
+                                  <TableCell className="hidden lg:table-cell text-xs text-slate-600">
+                                    {techOptions.find((t) => t.value === activity.tech_category)?.label || activity.tech_category}
+                                  </TableCell>
+                                )}
+                                {visibleColumns.fase && (
+                                  <TableCell className="hidden lg:table-cell text-xs text-slate-600">
+                                    {groupOptions.find((g) => g.value === activity.group)?.label || activity.group}
+                                  </TableCell>
+                                )}
+                                {visibleColumns.origine && (
+                                  <TableCell>
+                                    <Badge variant={isCustom ? 'default' : 'outline'} className={isCustom ? 'bg-amber-100 text-amber-800 border-amber-200' : ''}>
+                                      {originLabel}
+                                    </Badge>
+                                  </TableCell>
+                                )}
+                                {visibleColumns.peso && (
+                                  <TableCell>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-2xl font-bold text-slate-900">{activity.base_days.toFixed(1)}</span>
+                                      <span className="text-xs text-slate-500 font-medium">giorni</span>
                                     </div>
-                                  )}
-                                </TableCell>
-                                <TableCell className="hidden lg:table-cell text-xs text-slate-600">
-                                  {techOptions.find((t) => t.value === activity.tech_category)?.label || activity.tech_category}
-                                </TableCell>
-                                <TableCell className="hidden lg:table-cell text-xs text-slate-600">
-                                  {groupOptions.find((g) => g.value === activity.group)?.label || activity.group}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant={isCustom ? 'default' : 'outline'} className={isCustom ? 'bg-amber-100 text-amber-800 border-amber-200' : ''}>
-                                    {originLabel}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200">
-                                    {activity.base_days.toFixed(2)} d
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  {isCustom ? (
-                                    <div className="flex items-center gap-2">
-                                      <Switch
-                                        checked={activity.active}
-                                        onCheckedChange={() => toggleActive(activity)}
-                                        disabled={!editable}
-                                      />
-                                      <span className="text-xs text-slate-600">
-                                        {activity.active ? 'Attiva' : 'Spenta'}
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    <span className="text-xs text-slate-500">Read-only</span>
-                                  )}
-                                </TableCell>
+                                  </TableCell>
+                                )}
                                 <TableCell className="text-right">
                                   {isCustom ? (
                                     <>
@@ -680,17 +736,6 @@ export default function AdminActivities() {
             <DialogTitle>Modifica attività custom</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-code">Codice attività</Label>
-              <Input
-                id="edit-code"
-                value={editForm.code}
-                disabled
-                className="bg-slate-50"
-              />
-              <p className="text-xs text-slate-500">Il codice non può essere modificato dopo la creazione.</p>
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="edit-name">Nome</Label>
               <Input
@@ -750,28 +795,20 @@ export default function AdminActivities() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Peso (giorni base)</Label>
-                <Input
-                  type="number"
-                  step="0.05"
-                  min="0.05"
-                  value={editForm.baseDays}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, baseDays: e.target.value }))}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Attiva</Label>
-                <div className="flex items-center gap-3 h-10 px-3 rounded-lg border border-slate-200 bg-slate-50">
-                  <Switch
-                    checked={editForm.active}
-                    onCheckedChange={(checked) => setEditForm((prev) => ({ ...prev, active: checked }))}
-                  />
-                  <span className="text-sm text-slate-700">{editForm.active ? 'Disponibile' : 'Disattiva'}</span>
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label className="text-base font-semibold text-slate-900">⚖️ Peso (giorni base)</Label>
+              <Input
+                type="number"
+                step="0.05"
+                min="0.05"
+                value={editForm.baseDays}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, baseDays: e.target.value }))}
+                required
+                className="text-lg font-semibold h-12"
+              />
+              <p className="text-xs text-slate-600 bg-amber-50 border border-amber-200 rounded-md p-2">
+                💡 <strong>Importante:</strong> Questo valore determina l'impatto dell'attività sui calcoli di stima.
+              </p>
             </div>
           </div>
           <DialogFooter>

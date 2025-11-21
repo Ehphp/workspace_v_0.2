@@ -43,7 +43,9 @@ export default function Lists() {
       .eq('user_id', user.id)
       .order('updated_at', { ascending: false });
 
-    if (!showArchived) {
+    if (showArchived) {
+      query = query.eq('status', 'ARCHIVED');
+    } else {
       query = query.neq('status', 'ARCHIVED');
     }
 
@@ -186,20 +188,34 @@ export default function Lists() {
           <div className="h-full flex items-center justify-center">
             <Card className="max-w-md border-slate-200/50 bg-white/60 backdrop-blur-md shadow-xl hover:shadow-2xl transition-all duration-300">
               <CardContent className="flex flex-col items-center py-12 px-8">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center mb-4 shadow-lg">
-                  <FolderOpen className="h-10 w-10 text-blue-600" />
-                </div>
-                <h3 className="text-xl font-bold mb-2 text-slate-900">No projects yet</h3>
-                <p className="text-slate-600 text-center mb-6">
-                  Create your first project to start estimating requirements
-                </p>
-                <Button
-                  onClick={() => setShowCreateDialog(true)}
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Project
-                </Button>
+                {showArchived ? (
+                  <>
+                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-gray-100 flex items-center justify-center mb-4 shadow-lg">
+                      <Archive className="h-10 w-10 text-slate-600" />
+                    </div>
+                    <h3 className="text-xl font-bold mb-2 text-slate-900">No archived projects</h3>
+                    <p className="text-slate-600 text-center">
+                      You don't have any archived projects yet
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center mb-4 shadow-lg">
+                      <FolderOpen className="h-10 w-10 text-blue-600" />
+                    </div>
+                    <h3 className="text-xl font-bold mb-2 text-slate-900">No projects yet</h3>
+                    <p className="text-slate-600 text-center mb-6">
+                      Create your first project to start estimating requirements
+                    </p>
+                    <Button
+                      onClick={() => setShowCreateDialog(true)}
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Project
+                    </Button>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -214,8 +230,8 @@ export default function Lists() {
                 >
                   {/* Colored top border based on status */}
                   <div className={`h-1 bg-gradient-to-r ${list.status === 'ACTIVE' ? 'from-emerald-400 to-teal-500' :
-                      list.status === 'DRAFT' ? 'from-amber-400 to-orange-500' :
-                        'from-slate-400 to-gray-500'
+                    list.status === 'DRAFT' ? 'from-amber-400 to-orange-500' :
+                      'from-slate-400 to-gray-500'
                     }`}></div>
 
                   <CardHeader className="pb-3">

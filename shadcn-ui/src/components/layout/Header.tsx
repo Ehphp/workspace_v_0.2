@@ -160,14 +160,14 @@ export function Header() {
                                 </Button>
                             </Link>
 
-                            <Link to="/admin/activities">
+                            <Link to="/admin">
                                 <Button
                                     variant="ghost"
                                     className={`hover:bg-amber-50 hover:text-amber-700 transition-colors font-medium flex items-center gap-1 ${isActive('/admin') ? 'bg-amber-50 text-amber-700' : ''
                                         }`}
                                 >
                                     <Shield className="h-4 w-4" />
-                                    Custom activities
+                                    Admin
                                 </Button>
                             </Link>
 

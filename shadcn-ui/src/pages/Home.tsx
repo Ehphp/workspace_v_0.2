@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useWizardState } from '@/hooks/useWizardState';
@@ -19,6 +19,7 @@ export default function Home() {
   const { data, updateData, resetData } = useWizardState();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = async () => {
     await signOut();
@@ -57,6 +58,25 @@ export default function Home() {
     setShowWizard(false);
   };
 
+  useEffect(() => {
+    const state = location.state as { openQuick?: boolean; openWizard?: boolean } | null;
+    if (!state) return;
+
+    if (state.openQuick) {
+      setShowQuickEstimate(true);
+    }
+
+    if (state.openWizard) {
+      resetData();
+      setCurrentStep(0);
+      setShowWizard(true);
+    }
+
+    if (state.openQuick || state.openWizard) {
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.pathname, location.state, navigate, resetData]);
+
   const CurrentStepComponent = steps[currentStep].component;
 
   if (!showWizard) {
@@ -79,6 +99,11 @@ export default function Home() {
               </h1>
             </div>
             <div className="flex gap-2 items-center">
+              <Link to="/how-it-works">
+                <Button variant="ghost" size="sm" className="hover:bg-white/50">
+                  Come funziona
+                </Button>
+              </Link>
               {loading ? (
                 <div className="h-8 w-24 bg-slate-200 animate-pulse rounded"></div>
               ) : user ? (
@@ -165,6 +190,15 @@ export default function Home() {
                     </svg>
                     Advanced Wizard
                   </Button>
+                  <Link to="/how-it-works">
+                    <Button
+                      size="lg"
+                      variant="ghost"
+                      className="text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                    >
+                      Guarda come funziona
+                    </Button>
+                  </Link>
                   <Link to="/register">
                     <Button
                       size="lg"
@@ -299,6 +333,19 @@ export default function Home() {
                     <span className="font-medium">Accurate</span>
                   </div>
                 </div>
+                <div className="pt-4">
+                  <div className="p-4 rounded-xl border border-slate-200/70 bg-white/70 backdrop-blur flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">Nuovo qui?</p>
+                      <p className="text-sm text-slate-600">Scopri come stimiamo in 3 minuti.</p>
+                    </div>
+                    <Link to="/how-it-works">
+                      <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-50">
+                        Come funziona
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -352,13 +399,22 @@ export default function Home() {
                 <div className="w-px h-6 bg-slate-200 mx-1" />
               </>
             ) : null}
+            <Link to="/how-it-works">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hover:bg-blue-50 hover:text-blue-700 transition-colors"
+              >
+                Come funziona
+              </Button>
+            </Link>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleReset}
               className="hover:bg-blue-50 hover:text-blue-700 transition-colors"
             >
-              ← Back to Home
+              Back to Home
             </Button>
           </div>
         </div>

@@ -33,6 +33,7 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
     const [description, setDescription] = useState('');
     const [techPresetId, setTechPresetId] = useState('');
     const [presets, setPresets] = useState<TechnologyPreset[]>([]);
+    const [presetActivities, setPresetActivities] = useState<Record<string, { activity_id: string; position: number | null }[]>>({});
     const [loading, setLoading] = useState(false);
     const [calculating, setCalculating] = useState(false);
     const [result, setResult] = useState<EstimationResult | null>(null);
@@ -55,17 +56,33 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
     const loadPresets = async () => {
         setLoading(true);
         try {
-            const { data: presetsData, error } = await supabase
-                .from('technology_presets')
-                .select('*')
-                .order('name');
+            const [{ data: presetsData, error: presetsError }, { data: pivotData, error: pivotError }] = await Promise.all([
+                supabase
+                    .from('technology_presets')
+                    .select('*')
+                    .order('name'),
+                supabase
+                    .from('technology_preset_activities')
+                    .select('tech_preset_id, activity_id, position'),
+            ]);
 
-            if (error || !presetsData || presetsData.length === 0) {
+            if (presetsError || !presetsData || presetsData.length === 0) {
                 setPresets(MOCK_TECHNOLOGY_PRESETS);
                 setIsDemoMode(true);
             } else {
                 setPresets(presetsData);
                 setIsDemoMode(false);
+                if (!pivotError && pivotData) {
+                    const grouped: Record<string, { activity_id: string; position: number | null }[]> = {};
+                    pivotData.forEach((row: any) => {
+                        grouped[row.tech_preset_id] = grouped[row.tech_preset_id] || [];
+                        grouped[row.tech_preset_id].push({
+                            activity_id: row.activity_id,
+                            position: row.position ?? null,
+                        });
+                    });
+                    setPresetActivities(grouped);
+                }
             }
         } catch (error) {
             setPresets(MOCK_TECHNOLOGY_PRESETS);
@@ -114,46 +131,75 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                 allRisks = risksResult.data;
             }
 
+            // Filter activities by preset tech category (allow MULTI)
+            const allowedActivities = allActivities.filter(
+                (a) => a.tech_category === selectedPreset.tech_category || a.tech_category === 'MULTI'
+            );
+            if (allowedActivities.length === 0) {
+                setError('No activities available for the selected technology preset. Please choose another preset.');
+                return;
+            }
+
+            const activityById = new Map(allowedActivities.map((a) => [a.id, a]));
+            const defaultCodesFromPivot = (() => {
+                const rows = presetActivities[selectedPreset.id] || [];
+                if (rows.length === 0) return selectedPreset.default_activity_codes || [];
+                return rows
+                    .sort((a, b) => {
+                        const pa = a.position ?? Number.MAX_SAFE_INTEGER;
+                        const pb = b.position ?? Number.MAX_SAFE_INTEGER;
+                        return pa - pb;
+                    })
+                    .map((row) => activityById.get(row.activity_id)?.code)
+                    .filter((code): code is string => Boolean(code));
+            })();
+
             // Get AI suggestions
             const aiSuggestion = await suggestActivities({
                 description,
                 preset: selectedPreset,
-                activities: allActivities,
+                activities: allowedActivities,
                 drivers: allDrivers,
                 risks: allRisks,
             });
 
-            // Check if the requirement is valid
-            if (!aiSuggestion.isValidRequirement) {
-                setError(
-                    aiSuggestion.reasoning ||
-                    'The requirement description is not valid or clear enough. Please provide a meaningful description of what needs to be developed.'
+            // Determine which activity codes to use (AI suggestion or preset defaults as fallback)
+            let chosenCodes: string[] = [];
+            let reasoning = aiSuggestion.reasoning || '';
+
+            if (aiSuggestion.isValidRequirement && aiSuggestion.activityCodes && aiSuggestion.activityCodes.length > 0) {
+                chosenCodes = aiSuggestion.activityCodes.filter((code) =>
+                    allowedActivities.some((a) => a.code === code)
                 );
-                return;
+                if (chosenCodes.length === 0) {
+                    reasoning = 'Suggested activities are not compatible with the selected technology. Falling back to preset defaults.';
+                }
             }
 
-            // Check if GPT suggested any activities
-            if (!aiSuggestion.activityCodes || aiSuggestion.activityCodes.length === 0) {
-                setError(
-                    aiSuggestion.reasoning ||
-                    'The description is too short or unclear. Please provide more details about the requirement.'
-                );
-                return;
+            if (chosenCodes.length === 0) {
+                chosenCodes = defaultCodesFromPivot;
+                if (chosenCodes.length === 0) {
+                    setError(
+                        aiSuggestion.reasoning ||
+                        'No compatible activities found for this preset. Please provide more details or choose another preset.'
+                    );
+                    return;
+                }
             }
 
             // Prepare selected activities with base days
-            const selectedActivitiesForCalc = aiSuggestion.activityCodes.map((code) => {
-                const activity = allActivities.find((a) => a.code === code);
+            const selectedActivitiesForCalc = chosenCodes.map((code) => {
+                const activity = allowedActivities.find((a) => a.code === code);
                 return {
                     code,
                     baseDays: activity?.base_days || 0,
-                    isAiSuggested: true,
+                    isAiSuggested: aiSuggestion.isValidRequirement ?? false,
                 };
             });
 
             // Store activities with full details for display
-            const activitiesWithDetails = aiSuggestion.activityCodes.map((code) => {
-                const activity = allActivities.find((a) => a.code === code);
+            const activitiesWithDetails = chosenCodes.map((code) => {
+                const activity = allowedActivities.find((a) => a.code === code);
                 return {
                     code,
                     name: activity?.name || code,
@@ -175,7 +221,7 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
 
             setResult(estimationResult);
             setSelectedActivities(activitiesWithDetails);
-            setAiReasoning(aiSuggestion.reasoning || '');
+            setAiReasoning(reasoning);
         } catch (err) {
             console.error('Error calculating quick estimate:', err);
             setError(err instanceof Error ? err.message : 'Failed to calculate estimate');
