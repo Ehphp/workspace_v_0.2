@@ -41,7 +41,7 @@
 - Indicatori di variazione tra stime consecutive
 - Codifica colori: verde (prima), blu (ultima), grigio (intermedie)
 
-**`ESTIMATION_HISTORY.md`** (nuovo)
+**`docs/architecture/estimation-history.md`** (nuovo)
 - Documentazione completa delle funzionalità
 - Guida all'uso con esempi pratici
 - Architettura tecnica e schema database
@@ -270,7 +270,7 @@ interface EstimationTimelineProps {
 
 ## 📚 Documentazione Correlata
 
-- `ESTIMATION_HISTORY.md` - Guida utente completa
+- `docs/architecture/estimation-history.md` - Guida utente completa
 - `estimation_history_optimizations.sql` - Ottimizzazioni DB
 - `supabase_schema.sql` - Schema database originale
 - `README.md` - Documentazione progetto generale

@@ -31,11 +31,60 @@ function getCachedResponse(key: string): any | null {
     return null;
 }
 
-// Helper to create compact prompt (reduces tokens by 60-70%)
+// Helper to create descriptive prompt with full activity details
+// This provides GPT with complete context to make accurate suggestions
+function createDescriptivePrompt(activities: any[]): string {
+    // Format: CODE: Name | Description | Effort | Group
+    const activitiesStr = activities.map(a =>
+        `CODE: ${a.code}\n` +
+        `NAME: ${a.name}\n` +
+        `DESCRIPTION: ${a.description}\n` +
+        `EFFORT: ${a.base_days} days | GROUP: ${a.group}\n` +
+        `---`
+    ).join('\n\n');
+
+    return `AVAILABLE ACTIVITIES:\n\n${activitiesStr}`;
+}
+
+// Helper to create JSON schema with strict validation for structured outputs
+// This ensures GPT can ONLY return valid activity codes (no invented codes possible)
+function createActivitySchema(validActivityCodes: string[]) {
+    return {
+        type: "json_schema" as const,
+        json_schema: {
+            name: "activity_suggestion_response",
+            strict: true,  // ✅ CRITICAL: Enforces strict schema adherence by OpenAI
+            schema: {
+                type: "object",
+                properties: {
+                    isValidRequirement: {
+                        type: "boolean",
+                        description: "Whether the requirement description is valid and estimable"
+                    },
+                    activityCodes: {
+                        type: "array",
+                        description: "Array of relevant activity codes for this requirement",
+                        items: {
+                            type: "string",
+                            enum: validActivityCodes  // ✅ GPT can ONLY return codes from this list
+                        }
+                    },
+                    reasoning: {
+                        type: "string",
+                        description: "Brief explanation of the activity selection (max 500 characters)"
+                    }
+                },
+                required: ["isValidRequirement", "activityCodes", "reasoning"],
+                additionalProperties: false  // ✅ No extra fields allowed
+            }
+        }
+    };
+}
+
+// Legacy compact function (kept for reference - can be removed later)
 function createCompactPrompt(activities: any[], drivers: any[], risks: any[]): string {
     const activitiesStr = activities.map(a => `${a.code}(${a.base_days}d,${a.group})`).join(', ');
     const driversStr = drivers.map(d => {
-        // Safely handle options - it might not exist or be empty
         if (!d.options || !Array.isArray(d.options) || d.options.length === 0) {
             return `${d.code}(1.0)`;
         }
@@ -245,74 +294,92 @@ export const handler: Handler = async (
             console.log('🧪 Test mode: cache disabled');
         }
 
-        // Build COMPACT system prompt (60-70% token reduction)
-        console.log('📝 Creating compact prompt...');
+        // Build DESCRIPTIVE system prompt with full activity details
+        console.log('📝 Creating descriptive prompt with full activity details...');
         console.log('- relevantActivities:', relevantActivities?.length);
-        console.log('- drivers:', drivers?.length);
-        console.log('- risks:', risks?.length);
 
-        let compactData;
+        let descriptiveData;
         try {
-            compactData = createCompactPrompt(relevantActivities, drivers, risks);
-            console.log('✅ Compact prompt created, length:', compactData?.length);
+            descriptiveData = createDescriptivePrompt(relevantActivities);
+            console.log('✅ Descriptive prompt created, length:', descriptiveData?.length);
         } catch (error: any) {
-            console.error('❌ Error in createCompactPrompt:', error.message);
+            console.error('❌ Error in createDescriptivePrompt:', error.message);
             console.error('Stack:', error.stack);
-            throw new Error(`Failed to create compact prompt: ${error.message}`);
+            throw new Error(`Failed to create descriptive prompt: ${error.message}`);
         }
 
-        const systemPrompt = `Expert estimation assistant for ${preset.name} (${preset.tech_category}).
+        const systemPrompt = `You are an expert software estimation assistant for ${preset.name} (${preset.tech_category}).
 
-FIRST: Evaluate if the requirement description is valid and estimable.
+YOUR TASK:
+Analyze the requirement description and suggest ONLY the relevant activity codes needed to implement it.
 
-ACCEPT as valid if it describes:
-- Feature additions or modifications (even if brief)
-- UI/UX changes or updates
-- Data model changes, field additions
-- Workflow or process modifications
-- Bug fixes or improvements
-- Integration or API work
-- Documentation or configuration changes
-- ANY action verb + technical context (update, add, modify, create, fix, change, implement)
+IMPORTANT CONSTRAINTS:
+- You suggest ONLY activity codes (you NEVER suggest drivers or risks)
+- Drivers and risks will be selected manually by the user
+- Return JSON with: isValidRequirement (boolean), activityCodes (array of strings), reasoning (string)
+- Activity codes MUST be from the available list below
 
-REJECT only if it:
-- Is extremely vague with no technical context (e.g., "make it better", "fix things")
-- Is pure test input (e.g., "test", "aaa", "123", "qwerty")
-- Contains no action or technical element
-- Is random characters or gibberish
-- Is a question rather than a requirement
+VALIDATION RULES:
 
-BALANCE: A requirement can be brief but should indicate WHAT needs to be done.
+ACCEPT if requirement describes:
+✓ Feature additions or modifications (even if brief)
+✓ UI/UX changes or updates
+✓ Data model changes, field additions
+✓ Workflow or process modifications
+✓ Bug fixes or improvements
+✓ Integration or API work
+✓ Documentation or configuration changes
+✓ ANY action verb + technical context (update, add, modify, create, fix, change, implement)
+
+REJECT only if:
+✗ Extremely vague with no technical context (e.g., "make it better", "fix things")
+✗ Pure test input (e.g., "test", "aaa", "123", "qwerty")
+✗ No action or technical element
+✗ Random characters or gibberish
+✗ Is a question rather than a requirement
+
+EXAMPLES:
 "Aggiornare la lettera con aggiunta frase" ✓ (action: aggiornare, target: lettera)
 "Add field to profile" ✓ (action: add, target: field)
 "Make better" ✗ (no specific target or action)
 "test" ✗ (test input)
 
-IF VALID: Suggest relevant activity codes.
-IF INVALID: Set isValidRequirement=false and explain specifically what's missing.
+${descriptiveData}
 
-${compactData}
+SELECTION GUIDELINES:
+- Read the activity DESCRIPTION carefully to understand when to use it
+- Consider the EFFORT (base days) to ensure realistic coverage
+- Select activities from appropriate GROUP (ANALYSIS, DEV, TEST, OPS, GOVERNANCE)
+- Choose activities that match the requirement's scope and complexity
+- Include typical SDLC activities: analysis → development → testing → deployment
 
-IMPORTANT: Return ONLY activity codes. Drivers and risks will be selected manually by the user.
-Return JSON: {"isValidRequirement": true/false, "activityCodes": ["CODE"], "reasoning": "brief explanation"}`;
+RETURN FORMAT:
+{"isValidRequirement": true/false, "activityCodes": ["CODE1", "CODE2", ...], "reasoning": "brief explanation of your selection"}`;
 
         const userPrompt = sanitizedDescription.substring(0, 1000); // Limit to 1000 chars
 
-        console.log('Calling OpenAI API (optimized)...');
+        console.log('Calling OpenAI API with structured outputs...');
         console.log('Model: gpt-4o-mini');
         console.log('Test mode:', testMode ? 'enabled (temp=0.7, no cache)' : 'disabled (temp=0.0, cached)');
         console.log('System prompt length:', systemPrompt.length, '(optimized)');
         console.log('User prompt length:', userPrompt.length);
 
-        // Call OpenAI API with optimized parameters
+        // Generate strict JSON schema with enum of valid activity codes
+        // This guarantees GPT cannot invent or suggest invalid codes
+        const responseSchema = createActivitySchema(
+            relevantActivities.map(a => a.code)
+        );
+        console.log('✅ Using structured outputs with', relevantActivities.length, 'valid activity codes in enum');
+
+        // Call OpenAI API with structured outputs (Phase 2 improvement)
         const temperature = testMode ? 0.7 : 0.0; // ✅ CHANGED: 0.0 for maximum determinism (was 0.1)
         const response = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
+            model: 'gpt-4o-mini',  // Supports structured outputs
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
             ],
-            response_format: { type: 'json_object' },
+            response_format: responseSchema,  // ✅ PHASE 2: Strict schema with enum validation
             temperature,
             max_tokens: 500, // Limit response size
         });
@@ -332,18 +399,30 @@ Return JSON: {"isValidRequirement": true/false, "activityCodes": ["CODE"], "reas
             throw new Error('No response from OpenAI');
         }
 
-        // Parse JSON safely
-        let rawSuggestion: unknown;
+        // Parse JSON (guaranteed valid by structured outputs schema)
+        let suggestion: any;
         try {
-            rawSuggestion = JSON.parse(content);
+            suggestion = JSON.parse(content);
         } catch (parseError) {
             console.error('JSON parse error:', parseError);
             throw new Error('Invalid JSON response from AI');
         }
 
-        // Validate with Zod schema and cross-validate with master data
+        // ✅ PHASE 2 IMPROVEMENT: Minimal validation needed
+        // Structured outputs guarantee:
+        // - activityCodes contains ONLY codes from enum (no invalid codes possible)
+        // - All required fields present (isValidRequirement, activityCodes, reasoning)
+        // - No additional properties
+        // - Correct types for all fields
+
+        console.log('✅ Structured output received and validated by OpenAI');
+        console.log('- isValidRequirement:', suggestion.isValidRequirement);
+        console.log('- activityCodes count:', suggestion.activityCodes?.length);
+        console.log('- All codes pre-validated by enum constraint');
+
+        // Keep basic Zod validation for extra safety (optional - can be removed)
         const validatedSuggestion = validateAISuggestion(
-            rawSuggestion,
+            suggestion,
             relevantActivities.map((a) => a.code),
             drivers.map((d) => d.code),
             risks.map((r) => r.code)

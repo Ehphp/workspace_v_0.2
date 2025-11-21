@@ -1,5 +1,15 @@
 # Guida ai Test di Varianza AI
 
+## ⚠️ NOTA IMPORTANTE - MIGLIORAMENTI RECENTI (2025-11-21)
+
+Il sistema AI è stato recentemente migliorato con:
+- ✅ **Prompt descrittivo**: GPT riceve ora descrizioni complete delle attività (non solo codici)
+- ✅ **Prompt semplificato**: Rimossi driver/risks (GPT suggerisce SOLO attività)
+- ✅ **Temperature 0.0**: Massimo determinismo
+- 🔄 **In arrivo**: Structured outputs e seed deterministico (Fase 2/3)
+
+Questi miglioramenti dovrebbero aumentare la consistenza AI. Consulta `AI_DETERMINISM_IMPROVEMENT_PLAN.md` per dettagli.
+
 ## Obiettivo
 
 Misurare quanto GPT è **consistente** quando analizza lo stesso requisito più volte. Questo è importante per capire:
@@ -149,25 +159,45 @@ COMPLEXITY:
 
 ## Se la Consistenza è Bassa (<60%)
 
-### Possibili Cause
+### Possibili Cause e Soluzioni Implementate
 
 1. **Temperature troppo alta** nel prompt GPT
-   - Soluzione: ridurre da 0.7 a 0.3
+   - ✅ **RISOLTO**: Temperature impostata a 0.0 (massimo determinismo)
+   - Prima: 0.7-0.8 (alta varianza)
+   - Ora: 0.0 (varianza minimizzata)
 
 2. **Prompt troppo generico**
-   - Soluzione: aggiungere più contesto e vincoli
+   - ✅ **RISOLTO**: Implementato prompt descrittivo con dettagli completi
+   - Prima: `PP_DV_FIELD(0.25d,DEV)` (solo codice e giorni)
+   - Ora: Include NAME, DESCRIPTION, EFFORT, GROUP per ogni attività
 
-3. **Mancanza di esempi**
-   - Soluzione: aggiungere few-shot examples
+3. **Driver/Risks nel prompt (inutili)**
+   - ✅ **RISOLTO**: Rimossi dal prompt (GPT suggerisce SOLO attività)
+   - Risparmio: ~200 tokens per richiesta
+   - Beneficio: Prompt più focalizzato e chiaro
 
-4. **Requisito ambiguo**
-   - Soluzione: riformulare il requisito in modo più chiaro
+4. **Mancanza di structured outputs**
+   - 🔄 **IN ROADMAP (Fase 2)**: Schema strict con enum per activity codes
+   - Beneficio atteso: GPT non potrà inventare codici inesistenti
 
-### Come Migliorare
+5. **Assenza di seed deterministico**
+   - 🔄 **IN ROADMAP (Fase 3)**: Seed basato su hash requirement + preset
+   - Beneficio atteso: Determinismo garantito da OpenAI
+
+6. **Requisito ambiguo**
+   - ⚠️ **RICHIEDE AZIONE UTENTE**: Riformulare requisito con più contesto
+
+### Come Migliorare Ulteriormente
+
+Per i miglioramenti futuri (Fase 2 e 3), consulta `AI_DETERMINISM_IMPROVEMENT_PLAN.md`.
 
 ```typescript
-// PRIMA (temperatura alta, prompt generico)
+// ❌ PRIMA (temperatura alta, prompt compatto)
 temperature: 0.8
+prompt: "Activities: PP_DV_FIELD(0.25d,DEV), ..."
+
+// ✅ DOPO (IMPLEMENTATO - temperatura 0, prompt descrittivo)
+temperature: 0.0
 prompt: "Suggest activities for this requirement"
 
 // DOPO (temperatura bassa, prompt specifico)
