@@ -10,6 +10,8 @@ Enterprise-grade requirements estimation with AI-assisted activity selection, a 
 - Import/export: Excel/CSV imports with auto-mapping and AI title generation; PDF/Excel exports.
 - Estimation history: named scenarios, timeline, and comparisons.
 - Security: Supabase Auth with Row Level Security on user data; caching and input sanitization around AI calls.
+- Custom activities: authenticated users can add/edit their own activities (with weights) and toggle availability; system activities remain read-only.
+  - Override/fork: è possibile duplicare un’attività OOTB in una custom collegata tramite `base_activity_id` per personalizzare peso/nome senza toccare il catalogo di sistema.
 
 ## Quick Start
 1. **Install dependencies**
@@ -32,6 +34,24 @@ Enterprise-grade requirements estimation with AI-assisted activity selection, a 
    # or with Netlify functions locally
    pnpm run dev:netlify
    ```
+
+## Custom activities panel
+- Route: `/admin/activities` (visible once logged in).
+- Access: all authenticated users can create/edit only their `is_custom=true` activities; others remain view-only.
+- DB prerequisites (if your DB was created before this feature):
+  ```sql
+  alter table activities add column if not exists is_custom boolean default false;
+  alter table activities add column if not exists created_by uuid references auth.users(id);
+  alter table activities add column if not exists base_activity_id uuid references activities(id);
+  create index if not exists idx_activities_is_custom on activities(is_custom);
+  create index if not exists idx_activities_created_by on activities(created_by);
+  create index if not exists idx_activities_base_activity on activities(base_activity_id);
+  create policy "Users can insert custom activities" on activities
+    for insert with check (auth.role() = 'authenticated' and is_custom = true and (created_by = auth.uid() or created_by is null));
+  create policy "Users can update their custom activities" on activities
+    for update using (auth.role() = 'authenticated' and is_custom = true and created_by = auth.uid())
+    with check (auth.role() = 'authenticated' and is_custom = true and created_by = auth.uid());
+  ```
 
 ## Useful Scripts
 - `pnpm run dev` — Vite dev server.

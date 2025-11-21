@@ -13,7 +13,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Calculator, User, LogOut } from 'lucide-react';
+import { Calculator, User, LogOut, Shield } from 'lucide-react';
 
 export function Header() {
     const { user } = useAuth();
@@ -157,6 +157,17 @@ export function Header() {
                                         }`}
                                 >
                                     Home
+                                </Button>
+                            </Link>
+
+                            <Link to="/admin/activities">
+                                <Button
+                                    variant="ghost"
+                                    className={`hover:bg-amber-50 hover:text-amber-700 transition-colors font-medium flex items-center gap-1 ${isActive('/admin') ? 'bg-amber-50 text-amber-700' : ''
+                                        }`}
+                                >
+                                    <Shield className="h-4 w-4" />
+                                    Custom activities
                                 </Button>
                             </Link>
 

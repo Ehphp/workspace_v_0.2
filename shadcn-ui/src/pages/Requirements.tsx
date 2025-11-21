@@ -407,53 +407,33 @@ export default function Requirements() {
             <div className="flex-1 overflow-auto">
                 <div className="container mx-auto px-6 py-12">
                     {filteredRequirements.length === 0 ? (
-                        <div className="max-w-7xl mx-auto">
-                            <div className="grid lg:grid-cols-2 gap-12 items-center">
-                                {/* Left: Welcome Message */}
-                                <div className="space-y-8">
-                                    <div className="space-y-4">
-                                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100/80 border border-blue-200/50 backdrop-blur-sm">
-                                            <span className="relative flex h-2 w-2">
-                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                                            </span>
-                                            <span className="text-xs font-medium text-blue-900">
-                                                {requirements.length === 0 ? 'Start Building' : 'No Results'}
-                                            </span>
-                                        </div>
+                        <div className="max-w-4xl mx-auto">
+                            {requirements.length === 0 ? (
+                                // Empty list state
+                                <Card className="border-slate-200 bg-white shadow-lg">
+                                    <CardContent className="p-12 text-center">
+                                        <div className="max-w-md mx-auto space-y-6">
+                                            {/* Icon */}
+                                            <div className="mx-auto w-24 h-24 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center border-2 border-slate-300/50">
+                                                <FileText className="h-12 w-12 text-slate-400" />
+                                            </div>
 
-                                        <h2 className="text-5xl font-bold text-slate-900 leading-tight">
-                                            {requirements.length === 0 ? (
-                                                <>
-                                                    Add Your First
-                                                    <span className="block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                                                        Requirement
-                                                    </span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    No Matching
-                                                    <span className="block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                                                        Requirements
-                                                    </span>
-                                                </>
-                                            )}
-                                        </h2>
+                                            {/* Title */}
+                                            <div className="space-y-2">
+                                                <h3 className="text-2xl font-bold text-slate-900">
+                                                    No Requirements Yet
+                                                </h3>
+                                                <p className="text-slate-600">
+                                                    This project is empty. Start by adding your first requirement or import them from an Excel file.
+                                                </p>
+                                            </div>
 
-                                        <p className="text-lg text-slate-600 leading-relaxed">
-                                            {requirements.length === 0
-                                                ? 'Start by creating requirements or import them from Excel. Each requirement can be estimated individually with detailed analysis of activities, drivers, and risks.'
-                                                : 'Try adjusting your search filters or criteria to find what you\'re looking for. You can filter by priority, state, or use the search bar.'}
-                                        </p>
-                                    </div>
-
-                                    {requirements.length === 0 && (
-                                        <>
-                                            <div className="flex flex-wrap gap-3">
+                                            {/* Actions */}
+                                            <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
                                                 <Button
                                                     size="lg"
                                                     onClick={() => setShowCreateDialog(true)}
-                                                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                                                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                                                 >
                                                     <Plus className="mr-2 h-5 w-5" />
                                                     Create Requirement
@@ -462,106 +442,87 @@ export default function Requirements() {
                                                     size="lg"
                                                     variant="outline"
                                                     onClick={() => setShowImportDialog(true)}
-                                                    className="border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300"
+                                                    className="border-slate-300"
                                                 >
                                                     <Upload className="mr-2 h-5 w-5" />
                                                     Import from Excel
                                                 </Button>
                                             </div>
 
-                                            {/* Stats */}
-                                            <div className="grid grid-cols-3 gap-4 pt-4">
-                                                <div className="group bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-slate-200/50 hover:border-blue-300/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                                                    <div className="text-3xl font-bold bg-gradient-to-br from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-1">
-                                                        <FileText className="h-8 w-8" />
+                                            {/* Quick tips */}
+                                            <div className="pt-6 border-t border-slate-200">
+                                                <div className="grid grid-cols-4 gap-3 text-center">
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                                                            <Plus className="h-5 w-5 text-blue-600" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-semibold text-slate-900">Manual Entry</p>
+                                                            <p className="text-xs text-slate-600">Create one by one</p>
+                                                        </div>
                                                     </div>
-                                                    <p className="text-xs font-semibold text-slate-900">Requirements</p>
-                                                    <p className="text-xs text-slate-500 mt-1">Track & organize</p>
-                                                </div>
-                                                <div className="group bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-slate-200/50 hover:border-indigo-300/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                                                    <div className="text-3xl font-bold bg-gradient-to-br from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-1">
-                                                        <Zap className="h-8 w-8" />
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                                                            <Upload className="h-5 w-5 text-indigo-600" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-semibold text-slate-900">Bulk Import</p>
+                                                            <p className="text-xs text-slate-600">Upload from Excel</p>
+                                                        </div>
                                                     </div>
-                                                    <p className="text-xs font-semibold text-slate-900">AI Estimates</p>
-                                                    <p className="text-xs text-slate-500 mt-1">Smart analysis</p>
-                                                </div>
-                                                <div className="group bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-slate-200/50 hover:border-purple-300/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                                                    <div className="text-3xl font-bold bg-gradient-to-br from-purple-600 to-pink-600 bg-clip-text text-transparent mb-1">
-                                                        <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                                        </svg>
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                                                            <Zap className="h-5 w-5 text-purple-600" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-semibold text-slate-900">AI Estimation</p>
+                                                            <p className="text-xs text-slate-600">Smart estimates</p>
+                                                        </div>
                                                     </div>
-                                                    <p className="text-xs font-semibold text-slate-900">Reports</p>
-                                                    <p className="text-xs text-slate-500 mt-1">Detailed insights</p>
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-
-                                {/* Right: Features Card */}
-                                <div className="space-y-6">
-                                    <Card className="border-slate-200/50 bg-white/60 backdrop-blur-md shadow-xl hover:shadow-2xl transition-all duration-300">
-                                        <CardContent className="p-6">
-                                            <div className="flex items-center gap-2 mb-4">
-                                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
-                                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                                    </svg>
-                                                </div>
-                                                <div>
-                                                    <h3 className="text-xl font-bold text-slate-900">Requirement Management</h3>
-                                                    <p className="text-xs text-slate-500 mt-0.5">Powerful tools at your fingertips</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-3 mt-6">
-                                                {[
-                                                    {
-                                                        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />,
-                                                        title: 'Create & Organize',
-                                                        desc: 'Add requirements manually or import from Excel spreadsheets',
-                                                        color: 'from-blue-500 to-cyan-500'
-                                                    },
-                                                    {
-                                                        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />,
-                                                        title: 'Bulk Estimation',
-                                                        desc: 'Estimate multiple requirements at once with AI assistance',
-                                                        color: 'from-indigo-500 to-purple-500'
-                                                    },
-                                                    {
-                                                        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />,
-                                                        title: 'Filter & Sort',
-                                                        desc: 'Organize by priority, state, estimation, or custom criteria',
-                                                        color: 'from-purple-500 to-pink-500'
-                                                    },
-                                                    {
-                                                        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
-                                                        title: 'Track Progress',
-                                                        desc: 'Monitor estimation status and total effort in real-time',
-                                                        color: 'from-pink-500 to-rose-500'
-                                                    },
-                                                ].map((feature, index) => (
-                                                    <div
-                                                        key={index}
-                                                        className="group flex gap-4 items-start p-4 rounded-xl hover:bg-white/80 transition-all duration-300 hover:shadow-md cursor-default"
-                                                    >
-                                                        <div className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${feature.color} shadow-lg flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300`}>
-                                                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                {feature.icon}
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <div className="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
+                                                            <svg className="h-5 w-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                                             </svg>
                                                         </div>
-                                                        <div className="flex-1 min-w-0 pt-1">
-                                                            <p className="text-sm font-bold text-slate-900 mb-1">{feature.title}</p>
-                                                            <p className="text-xs text-slate-600 leading-relaxed">{feature.desc}</p>
+                                                        <div>
+                                                            <p className="text-xs font-semibold text-slate-900">Track Progress</p>
+                                                            <p className="text-xs text-slate-600">Monitor status</p>
                                                         </div>
                                                     </div>
-                                                ))}
+                                                </div>
                                             </div>
-                                        </CardContent>
-                                    </Card>
-                                </div>
-                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ) : (
+                                // No results from filters
+                                <Card className="border-slate-200 bg-white shadow-lg">
+                                    <CardContent className="p-12 text-center">
+                                        <div className="max-w-md mx-auto space-y-6">
+                                            <div className="mx-auto w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center">
+                                                <Search className="h-10 w-10 text-slate-400" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <h3 className="text-2xl font-bold text-slate-900">No Matching Requirements</h3>
+                                                <p className="text-slate-600">
+                                                    Try adjusting your search filters or criteria to find what you're looking for.
+                                                </p>
+                                            </div>
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => {
+                                                    setSearchTerm('');
+                                                    setFilterPriority('all');
+                                                    setFilterState('all');
+                                                }}
+                                            >
+                                                Clear Filters
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
                         </div>
                     ) : (
                         <div className="max-w-7xl mx-auto">

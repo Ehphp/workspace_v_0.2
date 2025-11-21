@@ -9,6 +9,9 @@ export interface Activity {
   tech_category: 'POWER_PLATFORM' | 'BACKEND' | 'FRONTEND' | 'MULTI';
   group: 'ANALYSIS' | 'DEV' | 'TEST' | 'OPS' | 'GOVERNANCE';
   active: boolean;
+  is_custom?: boolean;
+  base_activity_id?: string | null;
+  created_by?: string | null;
   created_at: string;
 }
 

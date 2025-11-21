@@ -35,7 +35,7 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
 
   const generateTitle = async () => {
     if (!data.description) {
-      setGeneratedTitle(data.reqId);
+      setGeneratedTitle('Untitled Requirement');
       setTitleLoading(false);
       return;
     }

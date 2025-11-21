@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
 export interface WizardData {
-  reqId: string;
+  reqId?: string;
   title?: string;
   description: string;
   techPresetId: string;
@@ -44,7 +44,6 @@ export function useWizardState() {
 
 function getInitialData(): WizardData {
   return {
-    reqId: '',
     description: '',
     techPresetId: '',
     selectedActivityCodes: [],

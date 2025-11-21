@@ -372,17 +372,17 @@ export default function Home() {
               <div key={index} className="flex items-center">
                 <div className="flex flex-col items-center">
                   <div
-                    onClick={() => setCurrentStep(index)}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold shadow-md transition-all duration-300 cursor-pointer ${index <= currentStep
-                      ? `${step.bgColor} text-white transform scale-110 hover:scale-115`
-                      : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
+                    onClick={() => index <= currentStep && setCurrentStep(index)}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold shadow-md transition-all duration-300 ${index <= currentStep
+                      ? `${step.bgColor} text-white transform scale-110 hover:scale-115 cursor-pointer`
+                      : 'bg-slate-200 text-slate-500 cursor-not-allowed'
                       }`}
                   >
                     {index + 1}
                   </div>
                   <span
-                    onClick={() => setCurrentStep(index)}
-                    className={`text-xs mt-1 font-medium transition-colors cursor-pointer ${index <= currentStep ? step.textColor : 'text-slate-500 hover:text-slate-700'
+                    onClick={() => index <= currentStep && setCurrentStep(index)}
+                    className={`text-xs mt-1 font-medium transition-colors ${index <= currentStep ? `${step.textColor} cursor-pointer` : 'text-slate-500 cursor-not-allowed'
                       }`}
                   >
                     {step.title}

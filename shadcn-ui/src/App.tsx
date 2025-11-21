@@ -11,6 +11,7 @@ import Lists from './pages/Lists';
 import Requirements from './pages/Requirements';
 import RequirementDetail from './pages/RequirementDetail';
 import NotFound from './pages/NotFound';
+import AdminActivities from './pages/AdminActivities';
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,14 @@ const App = () => (
             element={
               <AuthGuard>
                 <RequirementDetail />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/admin/activities"
+            element={
+              <AuthGuard>
+                <AdminActivities />
               </AuthGuard>
             }
           />

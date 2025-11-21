@@ -100,50 +100,67 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto pr-2 -mr-2">
         {loading ? (
           <div className="text-center py-12">
-            <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
-            <p className="text-sm text-slate-600 mt-4">Loading presets...</p>
+            <div className="relative w-16 h-16 mx-auto">
+              <div className="w-16 h-16 border-4 border-indigo-100 rounded-full"></div>
+              <div className="w-16 h-16 border-4 border-t-indigo-600 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+            </div>
+            <p className="text-sm text-slate-600 mt-4 font-medium">Loading technologies...</p>
           </div>
         ) : (
           <RadioGroup
             value={data.techPresetId}
             onValueChange={(value) => onUpdate({ techPresetId: value })}
           >
-            <div className="space-y-2">
-              {presets.map((preset) => (
-                <div
-                  key={preset.id}
-                  className="group relative flex items-start space-x-3 p-3 border-2 border-slate-200 rounded-xl hover:border-indigo-300 hover:bg-gradient-to-r hover:from-indigo-50/50 hover:to-purple-50/50 cursor-pointer transition-all duration-300 hover:shadow-md"
-                  onClick={() => onUpdate({ techPresetId: preset.id })}
-                >
-                  <RadioGroupItem value={preset.id} id={preset.id} className="mt-0.5" />
-                  <div className="flex-1">
-                    <Label htmlFor={preset.id} className="cursor-pointer">
-                      <div className="font-bold text-sm text-slate-900 group-hover:text-indigo-700 transition-colors">
-                        {preset.name}
-                      </div>
-                      <div className="text-xs text-slate-600 mt-0.5 leading-relaxed">
-                        {preset.description}
-                      </div>
-                    </Label>
-                  </div>
-                  {data.techPresetId === preset.id && (
-                    <div className="absolute top-3 right-3">
-                      <div className="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center">
-                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path
-                            fillRule="evenodd"
-                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                            clipRule="evenodd"
-                          />
+            <div className="grid gap-3">
+              {presets.map((preset) => {
+                const isSelected = data.techPresetId === preset.id;
+                return (
+                  <div
+                    key={preset.id}
+                    className={`group relative p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${isSelected
+                        ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 via-purple-50 to-indigo-50 shadow-xl shadow-indigo-100 ring-4 ring-indigo-100'
+                        : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-lg hover:scale-[1.02]'
+                      }`}
+                    onClick={() => onUpdate({ techPresetId: preset.id })}
+                  >
+                    {/* Selection Indicator */}
+                    <div className={`absolute top-4 left-4 w-6 h-6 rounded-full border-2 transition-all duration-300 flex items-center justify-center ${isSelected
+                        ? 'border-indigo-500 bg-gradient-to-br from-indigo-600 to-purple-600'
+                        : 'border-slate-300 group-hover:border-indigo-400'
+                      }`}>
+                      {isSelected && (
+                        <svg className="w-4 h-4 text-white animate-scale-in" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
-                      </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              ))}
+
+                    {/* Content */}
+                    <div className="ml-10">
+                      <Label htmlFor={preset.id} className="cursor-pointer">
+                        <div className={`font-bold text-base mb-1 transition-colors ${isSelected ? 'text-indigo-900' : 'text-slate-900 group-hover:text-indigo-700'
+                          }`}>
+                          {preset.name}
+                        </div>
+                        <div className={`text-sm leading-relaxed transition-colors ${isSelected ? 'text-indigo-700' : 'text-slate-600'
+                          }`}>
+                          {preset.description}
+                        </div>
+                      </Label>
+                    </div>
+
+                    {/* Hover Effect Gradient */}
+                    <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500/0 to-purple-500/0 transition-opacity duration-300 pointer-events-none ${!isSelected ? 'group-hover:from-indigo-500/5 group-hover:to-purple-500/5' : ''
+                      }`} />
+
+                    {/* Hidden RadioGroupItem for accessibility */}
+                    <RadioGroupItem value={preset.id} id={preset.id} className="sr-only" />
+                  </div>
+                );
+              })}
             </div>
           </RadioGroup>
         )}
@@ -151,31 +168,27 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
 
       <div className="flex-shrink-0 border-t border-slate-200 pt-4 mt-4 bg-white">
         <div className="flex justify-between">
-          <Button variant="outline" onClick={onBack} className="hover:bg-slate-50">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
+          <Button
+            variant="outline"
+            onClick={onBack}
+            size="lg"
+            className="hover:bg-slate-50 border-slate-300 group"
+          >
+            <svg className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back
+            <span className="font-semibold">Back</span>
           </Button>
 
           <Button
             onClick={onNext}
             disabled={!canProceed}
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            size="lg"
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group"
           >
-            <span>Next: Select Activities</span>
-            <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 7l5 5m0 0l-5 5m5-5H6"
-              />
+            <span className="font-semibold">Next: Select Activities</span>
+            <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>
           </Button>
         </div>

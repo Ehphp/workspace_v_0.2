@@ -18,6 +18,9 @@ CREATE TABLE activities (
     tech_category VARCHAR(50) NOT NULL, -- POWER_PLATFORM, BACKEND, FRONTEND, MULTI
     "group" VARCHAR(50) NOT NULL, -- ANALYSIS, DEV, TEST, OPS, GOVERNANCE
     active BOOLEAN DEFAULT true,
+    is_custom BOOLEAN DEFAULT false, -- Created via admin panel
+    base_activity_id UUID REFERENCES activities(id), -- Optional link to OOTB activity when overriding
+    created_by UUID REFERENCES auth.users(id), -- Track who added the activity
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -143,6 +146,9 @@ CREATE INDEX idx_estimations_requirement_id ON estimations(requirement_id);
 CREATE INDEX idx_estimations_user_id ON estimations(user_id);
 CREATE INDEX idx_activities_tech_category ON activities(tech_category);
 CREATE INDEX idx_activities_group ON activities("group");
+CREATE INDEX idx_activities_is_custom ON activities(is_custom);
+CREATE INDEX idx_activities_created_by ON activities(created_by);
+CREATE INDEX idx_activities_base_activity ON activities(base_activity_id);
 
 -- ============================================
 -- ROW LEVEL SECURITY (RLS)
@@ -167,6 +173,26 @@ CREATE POLICY "Allow public read on activities" ON activities FOR SELECT USING (
 CREATE POLICY "Allow public read on drivers" ON drivers FOR SELECT USING (true);
 CREATE POLICY "Allow public read on risks" ON risks FOR SELECT USING (true);
 CREATE POLICY "Allow public read on technology_presets" ON technology_presets FOR SELECT USING (true);
+CREATE POLICY "Users can insert custom activities" ON activities
+    FOR INSERT
+    WITH CHECK (
+        auth.role() = 'authenticated'
+        AND is_custom = true
+        AND (created_by = auth.uid() OR created_by IS NULL)
+    );
+
+CREATE POLICY "Users can update their custom activities" ON activities
+    FOR UPDATE
+    USING (
+        auth.role() = 'authenticated'
+        AND is_custom = true
+        AND created_by = auth.uid()
+    )
+    WITH CHECK (
+        auth.role() = 'authenticated'
+        AND is_custom = true
+        AND created_by = auth.uid()
+    );
 
 -- Policies for lists (users see only their own)
 CREATE POLICY "Users can view their own lists" ON lists
