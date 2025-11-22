@@ -6,9 +6,9 @@ import { createClient } from '@supabase/supabase-js';
 // Configurable security controls
 const REQUIRE_AUTH = process.env.AI_REQUIRE_AUTH !== 'false'; // default: require auth
 const ALLOWED_ORIGINS = (process.env.AI_ALLOWED_ORIGINS || '')
-  .split(',')
-  .map((o) => o.trim())
-  .filter(Boolean);
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
 const RATE_LIMIT_MAX = Number(process.env.AI_RATE_LIMIT_MAX || 50);
 const RATE_LIMIT_WINDOW_MS = Number(process.env.AI_RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000);
 
@@ -16,8 +16,8 @@ const RATE_LIMIT_WINDOW_MS = Number(process.env.AI_RATE_LIMIT_WINDOW_MS || 10 * 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 const supabaseServer = supabaseUrl && supabaseAnonKey
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+    ? createClient(supabaseUrl, supabaseAnonKey)
+    : null;
 
 // Initialize OpenAI with server-side API key
 const openai = new OpenAI({
@@ -569,7 +569,7 @@ RETURN FORMAT:
         console.log('- Usage:', JSON.stringify(response.usage));
 
         const message = response.choices[0]?.message;
-        const parsedContent = message?.parsed ?? message?.content;
+        const parsedContent = message?.content;
 
         // Log basic info for troubleshooting
         const debugPreview =
@@ -583,17 +583,13 @@ RETURN FORMAT:
             throw new Error('No response from OpenAI');
         }
 
-        // Parse structured output: prefer parsed object when available, fallback to JSON string
+        // Parse structured output: fallback to JSON string
         let suggestion: any;
-        if (typeof parsedContent === 'object') {
-            suggestion = parsedContent;
-        } else {
-            try {
-                suggestion = JSON.parse(parsedContent);
-            } catch (parseError) {
-                console.error('JSON parse error:', parseError);
-                throw new Error('Invalid JSON response from AI');
-            }
+        try {
+            suggestion = JSON.parse(parsedContent);
+        } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            throw new Error('Invalid JSON response from AI');
         }
 
         // PHASE 2 IMPROVEMENT: Minimal validation needed

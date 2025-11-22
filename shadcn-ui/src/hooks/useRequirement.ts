@@ -96,5 +96,12 @@ export function useRequirement(
     const loading = query.isLoading || query.isFetching || !enabled;
     const error = (query.error as Error) || null;
 
-    return { requirement, list, preset, loading, error, refetch: query.refetch };
+    return {
+        requirement,
+        list,
+        preset,
+        loading,
+        error,
+        refetch: async () => { await query.refetch(); }
+    };
 }

@@ -32,6 +32,7 @@ export default function Requirements() {
     const [list, setList] = useState<List | null>(null);
     const [requirements, setRequirements] = useState<RequirementWithEstimation[]>([]);
     const [loading, setLoading] = useState(true);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterPriority, setFilterPriority] = useState<string>('all');
     const [filterState, setFilterState] = useState<string>('all');
@@ -46,6 +47,7 @@ export default function Requirements() {
         if (!user || !listId) return;
 
         setLoading(true);
+        setErrorMessage(null);
 
         try {
             // Load list details
@@ -69,6 +71,7 @@ export default function Requirements() {
                     description: 'Failed to load project details',
                     variant: 'destructive',
                 });
+                setErrorMessage('Failed to load project details');
                 navigate('/lists');
                 return;
             }
@@ -104,6 +107,7 @@ export default function Requirements() {
                         description: 'Failed to load requirements',
                         variant: 'destructive',
                     });
+                    setErrorMessage('Failed to load requirements. Please retry.');
                 }
             } else if (!reqAborted) {
                 // Transform data to include latest estimation
@@ -133,6 +137,7 @@ export default function Requirements() {
                     description: 'An unexpected error occurred',
                     variant: 'destructive',
                 });
+                setErrorMessage('Unexpected error while loading requirements.');
             }
         } finally {
             if (!signal?.aborted) {
@@ -336,14 +341,6 @@ export default function Requirements() {
         );
     };
 
-    if (loading) {
-        return (
-            <div className="h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            </div>
-        );
-    }
-
     // Calculate total estimation
     const totalEstimation = filteredRequirements.reduce((sum, req) => {
         return sum + (req.latest_estimation?.total_days || 0);
@@ -351,6 +348,30 @@ export default function Requirements() {
 
     const estimatedCount = filteredRequirements.filter((req) => req.latest_estimation).length;
     const notEstimatedCount = filteredRequirements.length - estimatedCount;
+    const isEmpty = !loading && filteredRequirements.length === 0;
+
+    const skeletonCards = Array.from({ length: 3 }).map((_, idx) => (
+        <Card key={`skeleton-${idx}`} className="border-slate-200/60 bg-white/80">
+            <CardHeader className="pb-4 pt-5 px-5 relative">
+                <div className="flex items-start gap-4 animate-pulse">
+                    <div className="flex-1 space-y-3">
+                        <div className="flex gap-2">
+                            <div className="h-5 w-16 rounded bg-slate-200/80"></div>
+                            <div className="h-5 w-14 rounded bg-slate-200/80"></div>
+                            <div className="h-5 w-20 rounded bg-slate-200/80"></div>
+                        </div>
+                        <div className="h-6 w-3/4 rounded bg-slate-200/80"></div>
+                        <div className="h-4 w-full rounded bg-slate-200/80"></div>
+                        <div className="flex gap-3">
+                            <div className="h-4 w-24 rounded bg-slate-200/80"></div>
+                            <div className="h-4 w-24 rounded bg-slate-200/80"></div>
+                        </div>
+                    </div>
+                    <div className="h-14 w-20 rounded-xl bg-slate-200/80"></div>
+                </div>
+            </CardHeader>
+        </Card>
+    ));
 
     return (
         <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
@@ -420,6 +441,22 @@ export default function Requirements() {
                         </div>
                     </div>
                 </div>
+
+                {errorMessage && (
+                    <div className="container mx-auto px-6 pb-4">
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                                <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" />
+                                </svg>
+                                <span>{errorMessage}</span>
+                            </div>
+                            <Button variant="outline" size="sm" onClick={() => loadData()} className="border-amber-300 text-amber-800 hover:bg-amber-100">
+                                Retry
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Main Content */}
@@ -644,7 +681,17 @@ export default function Requirements() {
 
                             {/* Requirements Grid */}
                             <div className="grid gap-5">
-                                {filteredRequirements.map((req) => {
+                                {loading ? (
+                                    skeletonCards
+                                ) : isEmpty ? (
+                                    <div className="text-center py-10 bg-white/70 border border-dashed border-slate-200 rounded-xl">
+                                        <p className="text-slate-600">No requirements yet.</p>
+                                        <div className="mt-4 flex gap-3 justify-center">
+                                            <Button onClick={() => setShowCreateDialog(true)}>Create requirement</Button>
+                                            <Button variant="outline" onClick={() => setShowImportDialog(true)}>Import from Excel</Button>
+                                        </div>
+                                    </div>
+                                ) : filteredRequirements.map((req) => {
                                     const estimation = req.latest_estimation;
                                     const hasEstimation = !!estimation;
                                     const priorityConfig = getPriorityConfig(req.priority);
