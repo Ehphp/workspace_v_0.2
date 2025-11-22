@@ -61,7 +61,7 @@ export default function Presets() {
             activities.forEach((a) => activityById.set(a.id, a));
 
             const pivotByPreset = new Map<string, { activity_id: string; position: number | null }[]>();
-            (pivotRes.data || []).forEach((row: any) => {
+            ((pivotRes.data as { tech_preset_id: string; activity_id: string; position: number | null }[] | null) || []).forEach((row) => {
                 if (!pivotByPreset.has(row.tech_preset_id)) {
                     pivotByPreset.set(row.tech_preset_id, []);
                 }
@@ -95,9 +95,10 @@ export default function Presets() {
             });
 
             setPresets(presetViews);
-        } catch (err: any) {
+        } catch (err) {
             console.error('Failed to load presets', err);
-            setError(err?.message || 'Failed to load presets');
+            const message = err instanceof Error ? err.message : 'Failed to load presets';
+            setError(message);
         } finally {
             setLoading(false);
         }

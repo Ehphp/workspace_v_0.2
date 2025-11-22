@@ -20,10 +20,11 @@ export class ApiError extends Error {
   }
 }
 
-async function requireSingle<T>(promise: Promise<{ data: T | null; error: any; status: number }>): Promise<T> {
+async function requireSingle<T>(promise: Promise<{ data: T | null; error: unknown; status: number }>): Promise<T> {
   const { data, error, status } = await promise;
   if (error || !data) {
-    throw new ApiError(error?.message || 'Resource not found', status, error);
+    const message = error && typeof error === 'object' && 'message' in error ? (error as { message: string }).message : 'Resource not found';
+    throw new ApiError(message, status, error);
   }
   return data;
 }
@@ -90,7 +91,7 @@ export async function fetchEstimationMasterData(): Promise<EstimationMasterData>
   (activitiesRes.data || []).forEach((a) => activityById.set(a.id, a));
 
   const pivotByPreset = new Map<string, { activity_id: string; position: number | null }[]>();
-  (tpaRes.data || []).forEach((row: any) => {
+  (tpaRes.data as { tech_preset_id: string; activity_id: string; position: number | null }[] | null || []).forEach((row) => {
     if (!pivotByPreset.has(row.tech_preset_id)) {
       pivotByPreset.set(row.tech_preset_id, []);
     }

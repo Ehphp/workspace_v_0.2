@@ -42,12 +42,14 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
         setIsDemoMode(true);
       } else {
         // Normalize default activities from pivot if available
+        type PivotRow = { tech_preset_id: string; position: number | null; activities?: { code: string | null } };
         const grouped: Record<string, { code: string | null; position: number | null }[]> = {};
-        (pivotData || []).forEach((row: any) => {
+        (pivotData as PivotRow[] | null || []).forEach((row) => {
+          const position = row.position ?? null;
           grouped[row.tech_preset_id] = grouped[row.tech_preset_id] || [];
           grouped[row.tech_preset_id].push({
             code: row.activities?.code ?? null,
-            position: row.position ?? null,
+            position,
           });
         });
 

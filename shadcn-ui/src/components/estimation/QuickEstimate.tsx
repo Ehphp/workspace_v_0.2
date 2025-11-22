@@ -22,7 +22,7 @@ import { MOCK_TECHNOLOGY_PRESETS, MOCK_ACTIVITIES, MOCK_DRIVERS, MOCK_RISKS } fr
 import { calculateEstimation } from '@/lib/estimationEngine';
 import { suggestActivities } from '@/lib/openai';
 import type { TechnologyPreset, Activity, Driver, Risk } from '@/types/database';
-import type { EstimationResult } from '@/types/estimation';
+import type { EstimationResult, SelectedDriver, SelectedRisk } from '@/types/estimation';
 
 interface QuickEstimateProps {
     open: boolean;
@@ -56,6 +56,8 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
     const loadPresets = async () => {
         setLoading(true);
         try {
+            type PivotRow = { tech_preset_id: string; activity_id: string; position: number | null };
+
             const [{ data: presetsData, error: presetsError }, { data: pivotData, error: pivotError }] = await Promise.all([
                 supabase
                     .from('technology_presets')
@@ -74,11 +76,12 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                 setIsDemoMode(false);
                 if (!pivotError && pivotData) {
                     const grouped: Record<string, { activity_id: string; position: number | null }[]> = {};
-                    pivotData.forEach((row: any) => {
-                        grouped[row.tech_preset_id] = grouped[row.tech_preset_id] || [];
+                    (pivotData as PivotRow[]).forEach((row) => {
+                        const position = row.position ?? null;
+                        if (!grouped[row.tech_preset_id]) grouped[row.tech_preset_id] = [];
                         grouped[row.tech_preset_id].push({
                             activity_id: row.activity_id,
-                            position: row.position ?? null,
+                            position,
                         });
                     });
                     setPresetActivities(grouped);
@@ -217,8 +220,8 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
 
             // NO drivers and risks - GPT suggests only activities
             // Users will add drivers and risks manually if needed
-            const selectedDrivers: any[] = [];
-            const selectedRisks: any[] = [];
+            const selectedDrivers: SelectedDriver[] = [];
+            const selectedRisks: SelectedRisk[] = [];
 
             // Calculate estimation with only activities (no multipliers or risks)
             const estimationResult = calculateEstimation({

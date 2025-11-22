@@ -5,9 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GitCompare, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { Activity, Driver, Risk } from '@/types/database';
+import type { EstimationHistoryItem } from '@/hooks/useEstimationHistory';
 
 interface EstimationComparisonProps {
-    estimations: any[];
+    estimations: EstimationHistoryItem[];
     activities: Activity[];
     drivers: Driver[];
     risks: Risk[];
@@ -182,12 +183,12 @@ export function EstimationComparison({ estimations, activities, drivers, risks }
                         <CardContent>
                             <div className="space-y-2 text-xs">
                                 {/* Activities only in est1 */}
-                                {est1.estimation_activities
-                                    ?.filter(
-                                        (a1: any) =>
-                                            !est2.estimation_activities?.some((a2: any) => a2.activity_id === a1.activity_id)
+                                {(est1.estimation_activities ?? [])
+                                    .filter(
+                                        (a1) =>
+                                            !(est2.estimation_activities ?? []).some((a2) => a2.activity_id === a1.activity_id)
                                     )
-                                    .map((act: any) => (
+                                    .map((act) => (
                                         <div key={act.activity_id} className="flex items-center gap-2">
                                             <Badge variant="destructive" className="text-xs">Removed</Badge>
                                             <span>{getActivityName(act.activity_id)}</span>
@@ -195,21 +196,21 @@ export function EstimationComparison({ estimations, activities, drivers, risks }
                                     ))}
 
                                 {/* Activities only in est2 */}
-                                {est2.estimation_activities
-                                    ?.filter(
-                                        (a2: any) =>
-                                            !est1.estimation_activities?.some((a1: any) => a1.activity_id === a2.activity_id)
+                                {(est2.estimation_activities ?? [])
+                                    .filter(
+                                        (a2) =>
+                                            !(est1.estimation_activities ?? []).some((a1) => a1.activity_id === a2.activity_id)
                                     )
-                                    .map((act: any) => (
+                                    .map((act) => (
                                         <div key={act.activity_id} className="flex items-center gap-2">
                                             <Badge variant="default" className="text-xs">Added</Badge>
                                             <span>{getActivityName(act.activity_id)}</span>
                                         </div>
                                     ))}
 
-                                {est1.estimation_activities?.length === est2.estimation_activities?.length &&
-                                    est1.estimation_activities?.every((a1: any) =>
-                                        est2.estimation_activities?.some((a2: any) => a2.activity_id === a1.activity_id)
+                                { (est1.estimation_activities?.length || 0) === (est2.estimation_activities?.length || 0) &&
+                                    (est1.estimation_activities ?? []).every((a1) =>
+                                        (est2.estimation_activities ?? []).some((a2) => a2.activity_id === a1.activity_id)
                                     ) && (
                                         <div className="text-muted-foreground text-center py-2">No changes in activities</div>
                                     )}
@@ -224,8 +225,8 @@ export function EstimationComparison({ estimations, activities, drivers, risks }
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-2 text-xs">
-                                {est1.estimation_drivers?.map((d1: any) => {
-                                    const d2 = est2.estimation_drivers?.find((d: any) => d.driver_id === d1.driver_id);
+                                {(est1.estimation_drivers ?? []).map((d1) => {
+                                    const d2 = (est2.estimation_drivers ?? []).find((d) => d.driver_id === d1.driver_id);
                                     if (!d2 || d1.selected_value === d2.selected_value) return null;
 
                                     return (
@@ -251,11 +252,11 @@ export function EstimationComparison({ estimations, activities, drivers, risks }
                         <CardContent>
                             <div className="space-y-2 text-xs">
                                 {/* Risks only in est1 */}
-                                {est1.estimation_risks
-                                    ?.filter(
-                                        (r1: any) => !est2.estimation_risks?.some((r2: any) => r2.risk_id === r1.risk_id)
+                                {(est1.estimation_risks ?? [])
+                                    .filter(
+                                        (r1) => !(est2.estimation_risks ?? []).some((r2) => r2.risk_id === r1.risk_id)
                                     )
-                                    .map((risk: any) => (
+                                    .map((risk) => (
                                         <div key={risk.risk_id} className="flex items-center gap-2">
                                             <Badge variant="destructive" className="text-xs">Removed</Badge>
                                             <span>{getRiskName(risk.risk_id)}</span>
@@ -263,20 +264,20 @@ export function EstimationComparison({ estimations, activities, drivers, risks }
                                     ))}
 
                                 {/* Risks only in est2 */}
-                                {est2.estimation_risks
-                                    ?.filter(
-                                        (r2: any) => !est1.estimation_risks?.some((r1: any) => r1.risk_id === r2.risk_id)
+                                {(est2.estimation_risks ?? [])
+                                    .filter(
+                                        (r2) => !(est1.estimation_risks ?? []).some((r1) => r1.risk_id === r2.risk_id)
                                     )
-                                    .map((risk: any) => (
+                                    .map((risk) => (
                                         <div key={risk.risk_id} className="flex items-center gap-2">
                                             <Badge variant="default" className="text-xs">Added</Badge>
                                             <span>{getRiskName(risk.risk_id)}</span>
                                         </div>
                                     ))}
 
-                                {est1.estimation_risks?.length === est2.estimation_risks?.length &&
-                                    est1.estimation_risks?.every((r1: any) =>
-                                        est2.estimation_risks?.some((r2: any) => r2.risk_id === r1.risk_id)
+                                {(est1.estimation_risks?.length || 0) === (est2.estimation_risks?.length || 0) &&
+                                    (est1.estimation_risks ?? []).every((r1) =>
+                                        (est2.estimation_risks ?? []).some((r2) => r2.risk_id === r1.risk_id)
                                     ) && (
                                         <div className="text-muted-foreground text-center py-2">No changes in risks</div>
                                     )}

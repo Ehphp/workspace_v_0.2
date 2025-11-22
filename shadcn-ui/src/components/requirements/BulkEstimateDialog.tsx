@@ -108,6 +108,7 @@ export function BulkEstimateDialog({
 
         // Pre-load all unique presets
         const uniquePresetIds = [...new Set(estimableRequirements.map(r => r.tech_preset_id || listTechPresetId).filter(Boolean))];
+        type PivotRow = { tech_preset_id: string; activity_id: string; position: number | null };
         const [presetsRes, pivotRes] = await Promise.all([
             supabase
                 .from('technology_presets')
@@ -121,7 +122,7 @@ export function BulkEstimateDialog({
 
         const activityById = new Map(sharedActivities.map((a: Activity) => [a.id, a]));
         const pivotByPreset = new Map<string, { activity_id: string; position: number | null }[]>();
-        (pivotRes.data || []).forEach((row: any) => {
+        (pivotRes.data as PivotRow[] | null || []).forEach((row) => {
             if (!pivotByPreset.has(row.tech_preset_id)) {
                 pivotByPreset.set(row.tech_preset_id, []);
             }

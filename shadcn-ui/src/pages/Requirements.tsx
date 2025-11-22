@@ -58,7 +58,7 @@ export default function Requirements() {
                 .select('*')
                 .eq('id', listId)
                 .eq('user_id', user.id)
-                .abortSignal(signal as any)
+                .abortSignal(signal as AbortSignal)
                 .single();
 
             const isAborted =
@@ -94,7 +94,7 @@ export default function Requirements() {
                 `)
                 .eq('list_id', listId)
                 .order('created_at', { ascending: false })
-                .abortSignal(signal as any);
+                .abortSignal(signal as AbortSignal);
 
             const reqAborted =
                 signal?.aborted ||
@@ -127,8 +127,8 @@ export default function Requirements() {
             }
         } catch (error) {
             const isAbortError =
-                (error as any)?.name === 'AbortError' ||
-                (error as any)?.message?.includes?.('AbortError') ||
+                (error as Error)?.name === 'AbortError' ||
+                (error as Error)?.message?.includes?.('AbortError') ||
                 signal?.aborted;
             if (isAbortError) return;
 
@@ -167,7 +167,7 @@ export default function Requirements() {
         const lowerSearchTerm = searchTerm.toLowerCase();
 
         // Filter
-        let filtered = requirements.filter((req) => {
+        const filtered = requirements.filter((req) => {
             const matchesSearch = !searchTerm ||
                 req.title.toLowerCase().includes(lowerSearchTerm) ||
                 req.req_id.toLowerCase().includes(lowerSearchTerm) ||

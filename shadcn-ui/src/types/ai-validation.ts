@@ -57,7 +57,8 @@ export function sanitizePromptInput(text: string): string {
     return text
         .replace(/[<>]/g, '')           // Remove HTML-like tags
         .replace(/[{}]/g, '')            // Remove JSON delimiters
-        .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+        // eslint-disable-next-line no-control-regex
+        .replace(/[\u0000-\u001F\u007F]/g, '') // Remove control characters
         .slice(0, 5000)                  // Limit length
         .trim();
 }

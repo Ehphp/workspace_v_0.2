@@ -1,8 +1,9 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { TrendingUp, TrendingDown } from 'lucide-react';
+import type { EstimationHistoryItem } from '@/hooks/useEstimationHistory';
 
 interface EstimationTimelineProps {
-    estimations: any[];
+    estimations: EstimationHistoryItem[];
 }
 
 export function EstimationTimeline({ estimations }: EstimationTimelineProps) {

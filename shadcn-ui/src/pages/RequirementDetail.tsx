@@ -169,6 +169,20 @@ export default function RequirementDetail() {
         });
     };
 
+    const parseError = (err: unknown) => {
+        const message =
+            err instanceof Error
+                ? err.message
+                : (err && typeof err === 'object' && 'message' in err && typeof (err as { message?: unknown }).message === 'string'
+                    ? (err as { message: string }).message
+                    : 'An unexpected error occurred');
+        const code =
+            err && typeof err === 'object' && 'code' in err && typeof (err as { code?: unknown }).code === 'string'
+                ? (err as { code: string }).code
+                : undefined;
+        return { message, code };
+    };
+
     // Track unsaved changes
     const hasUnsavedChanges = useMemo(() => {
         const result = hasSelections && estimationResult !== null;
@@ -350,18 +364,15 @@ Risks: ${est.estimation_risks?.length || 0}`;
             toast.success('Header updated successfully');
             stopEditingSection('header');
             await refetchRequirement();
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error updating header:', error);
 
-            let errorMessage = 'An unexpected error occurred';
+            const { message, code } = parseError(error);
+            let errorMessage = message;
 
-            if (error?.message) {
-                errorMessage = error.message;
-            }
-
-            if (error?.code === '23505') {
+            if (code === '23505') {
                 errorMessage = 'A requirement with this title already exists';
-            } else if (error?.message?.includes('JWT')) {
+            } else if (message.includes('JWT')) {
                 errorMessage = 'Session expired. Please log in again';
             }
 
@@ -406,13 +417,11 @@ Risks: ${est.estimation_risks?.length || 0}`;
             toast.success('Description updated successfully');
             stopEditingSection('description');
             await refetchRequirement();
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error updating description:', error);
 
-            let errorMessage = 'An unexpected error occurred';
-            if (error?.message) {
-                errorMessage = error.message;
-            }
+            const { message } = parseError(error);
+            const errorMessage = message;
 
             toast.error('Failed to update description', {
                 description: errorMessage,
@@ -449,18 +458,15 @@ Risks: ${est.estimation_risks?.length || 0}`;
             toast.success('Details updated successfully');
             stopEditingSection('details');
             await refetchRequirement();
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error updating details:', error);
 
-            let errorMessage = 'An unexpected error occurred';
+            const { message, code } = parseError(error);
+            let errorMessage = message;
 
-            if (error?.message) {
-                errorMessage = error.message;
-            }
-
-            if (error?.code === '23503') {
+            if (code === '23503') {
                 errorMessage = 'Invalid technology preset or foreign key constraint';
-            } else if (error?.message?.includes('JWT')) {
+            } else if (message.includes('JWT')) {
                 errorMessage = 'Session expired. Please log in again';
             }
 

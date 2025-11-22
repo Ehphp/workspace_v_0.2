@@ -202,9 +202,10 @@ export default function AdminActivities() {
       });
       setForm(initialForm);
       await loadActivities();
-    } catch (err: any) {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Riprovare tra qualche secondo';
       toast.error('Errore durante il salvataggio', {
-        description: err?.message || 'Riprovare tra qualche secondo',
+        description: message,
       });
     } finally {
       setSaving(false);
@@ -279,9 +280,10 @@ export default function AdminActivities() {
       });
       setEditActivity(null);
       await loadActivities();
-    } catch (err: any) {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Riprovare tra qualche secondo';
       toast.error('Aggiornamento non riuscito', {
-        description: err?.message || 'Riprovare tra qualche secondo',
+        description: message,
       });
     } finally {
       setSaving(false);
@@ -308,9 +310,10 @@ export default function AdminActivities() {
         description: `${activity.code} è ora ${!activity.active ? 'attiva' : 'disattivata'}`,
       });
       await loadActivities();
-    } catch (err: any) {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : undefined;
       toast.error('Impossibile aggiornare lo stato', {
-        description: err?.message,
+        description: message,
       });
     }
   };

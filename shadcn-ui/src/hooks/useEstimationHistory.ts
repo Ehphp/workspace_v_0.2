@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
-interface EstimationHistoryItem {
+export interface EstimationHistoryItem {
     id: string;
     requirement_id: string;
     user_id: string;
@@ -58,7 +58,7 @@ export function useEstimationHistory(
         enabled,
         staleTime: 30_000,
         retry: false,
-        queryFn: async ({ signal }) => {
+        queryFn: async ({ signal }: { signal: AbortSignal }) => {
             const { data: estimations, error: historyError, count } = await supabase
                 .from('estimations')
                 .select(`
@@ -70,7 +70,7 @@ export function useEstimationHistory(
                 .eq('requirement_id', requirementId)
                 .order('created_at', { ascending: false })
                 .range(rangeStart, rangeEnd)
-                .abortSignal(signal as any);
+                .abortSignal(signal);
 
             if (historyError) throw historyError;
             return { estimations: estimations || [], total: count ?? (estimations?.length || 0) };
