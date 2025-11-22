@@ -57,7 +57,12 @@ export default function Requirements() {
                 .abortSignal(signal as any)
                 .single();
 
-            if (listError) {
+            const isAborted =
+                signal?.aborted ||
+                listError?.name === 'AbortError' ||
+                listError?.message?.includes('AbortError');
+
+            if (listError && !isAborted) {
                 console.error('Error loading list:', listError);
                 toast({
                     title: 'Error',
@@ -68,7 +73,7 @@ export default function Requirements() {
                 return;
             }
 
-            if (signal?.aborted) return;
+            if (isAborted) return;
             setList(listData);
 
             // Load requirements with their latest estimation
@@ -86,16 +91,21 @@ export default function Requirements() {
                 .order('created_at', { ascending: false })
                 .abortSignal(signal as any);
 
-            if (reqError) {
+            const reqAborted =
+                signal?.aborted ||
+                reqError?.name === 'AbortError' ||
+                reqError?.message?.includes('AbortError');
+
+            if (reqError && !reqAborted) {
                 console.error('Error loading requirements:', reqError);
-                if (!signal?.aborted) {
+                if (!reqAborted) {
                     toast({
                         title: 'Error',
                         description: 'Failed to load requirements',
                         variant: 'destructive',
                     });
                 }
-            } else if (!signal?.aborted) {
+            } else if (!reqAborted) {
                 // Transform data to include latest estimation
                 const requirementsWithEstimation = (reqData || []).map((req: Requirement & { estimations?: Estimation[] }) => {
                     const sortedEstimations = (req.estimations || []).sort(
@@ -110,6 +120,12 @@ export default function Requirements() {
                 setRequirements(requirementsWithEstimation);
             }
         } catch (error) {
+            const isAbortError =
+                (error as any)?.name === 'AbortError' ||
+                (error as any)?.message?.includes?.('AbortError') ||
+                signal?.aborted;
+            if (isAbortError) return;
+
             console.error('Unexpected error loading data:', error);
             if (!signal?.aborted) {
                 toast({

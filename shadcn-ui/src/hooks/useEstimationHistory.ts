@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
@@ -37,21 +38,14 @@ interface UseEstimationHistoryReturn {
  * Custom hook to load estimation history with proper error handling
  */
 export function useEstimationHistory(requirementId: string | undefined): UseEstimationHistoryReturn {
-    const [history, setHistory] = useState<EstimationHistoryItem[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<Error | null>(null);
+    const enabled = Boolean(requirementId);
 
-    const loadHistory = useCallback(async (signal?: AbortSignal) => {
-        if (!requirementId) {
-            setHistory([]);
-            setLoading(false);
-            return;
-        }
-
-        setLoading(true);
-        setError(null);
-
-        try {
+    const query = useQuery({
+        queryKey: ['estimation-history', requirementId],
+        enabled,
+        staleTime: 30_000,
+        retry: false,
+        queryFn: async ({ signal }) => {
             const { data: estimations, error: historyError } = await supabase
                 .from('estimations')
                 .select(`
@@ -65,37 +59,19 @@ export function useEstimationHistory(requirementId: string | undefined): UseEsti
                 .abortSignal(signal as any);
 
             if (historyError) throw historyError;
-
-            if (!signal?.aborted) {
-                setHistory(estimations || []);
-            }
-        } catch (err) {
-            if (!signal?.aborted) {
-                const error = err instanceof Error ? err : new Error('Failed to load estimation history');
-                setError(error);
-                toast.error('Failed to load estimation history', {
-                    description: error.message,
-                });
-            }
-        } finally {
-            if (!signal?.aborted) {
-                setLoading(false);
-            }
-        }
-    }, [requirementId]);
+            return estimations || [];
+        },
+    });
 
     useEffect(() => {
-        const abortController = new AbortController();
-        loadHistory(abortController.signal);
+        if (!query.error || !enabled) return;
+        const message = query.error instanceof Error ? query.error.message : 'Failed to load estimation history';
+        toast.error('Failed to load estimation history', { description: message });
+    }, [query.error, enabled]);
 
-        return () => {
-            abortController.abort();
-        };
-    }, [loadHistory]);
+    const history = useMemo<EstimationHistoryItem[]>(() => query.data || [], [query.data]);
+    const loading = query.isLoading || query.isFetching;
+    const error = (query.error as Error) || null;
 
-    const refetch = useCallback(async () => {
-        await loadHistory();
-    }, [loadHistory]);
-
-    return { history, loading, error, refetch };
+    return { history, loading, error, refetch: query.refetch };
 }

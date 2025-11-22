@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import type { Requirement, TechnologyPreset, List } from '@/types/database';
@@ -22,108 +23,78 @@ export function useRequirement(
     userId: string | undefined
 ): UseRequirementReturn {
     const navigate = useNavigate();
-    const [requirement, setRequirement] = useState<Requirement | null>(null);
-    const [list, setList] = useState<List | null>(null);
-    const [preset, setPreset] = useState<TechnologyPreset | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<Error | null>(null);
 
-    const loadRequirement = useCallback(async (signal?: AbortSignal) => {
-        if (!userId || !listId || !reqId) {
-            setLoading(false);
-            return;
-        }
+    const enabled = Boolean(userId && listId && reqId);
 
-        setLoading(true);
-        setError(null);
-
-        try {
-            // Load list first
+    const query = useQuery({
+        queryKey: ['requirement', userId, listId, reqId],
+        enabled,
+        staleTime: 60_000, // 1 minute caching
+        retry: false,
+        queryFn: async () => {
+            // Load list scoped to user
             const { data: listData, error: listError } = await supabase
                 .from('lists')
                 .select('*')
                 .eq('id', listId)
                 .eq('user_id', userId)
-                .abortSignal(signal as any)
                 .single();
 
             if (listError) throw listError;
+            if (!listData) throw new Error('List not found');
 
-            if (!listData) {
-                throw new Error('List not found');
-            }
-
-            if (!signal?.aborted) {
-                setList(listData);
-            }
-
-            // Load requirement
+            // Load requirement scoped to list
             const { data: reqData, error: reqError } = await supabase
                 .from('requirements')
                 .select('*')
                 .eq('id', reqId)
                 .eq('list_id', listId)
-                .abortSignal(signal as any)
                 .single();
 
             if (reqError) throw reqError;
+            if (!reqData) throw new Error('Requirement not found');
 
-            if (!reqData) {
-                throw new Error('Requirement not found');
-            }
-
-            if (!signal?.aborted) {
-                setRequirement(reqData);
-
-                // Load technology preset if exists (from requirement or list)
-                const techPresetId = reqData.tech_preset_id || listData.tech_preset_id;
-                if (techPresetId) {
-                    const { data: presetData, error: presetError } = await supabase
-                        .from('technology_presets')
-                        .select('*')
-                        .eq('id', techPresetId)
-                        .abortSignal(signal as any)
-                        .single();
-
-                    if (presetError) {
-                        console.warn('Failed to load preset:', presetError);
-                    } else if (presetData) {
-                        setPreset(presetData);
-                    }
+            // Load technology preset if defined on requirement or list
+            const techPresetId = reqData.tech_preset_id || listData.tech_preset_id;
+            let presetData: TechnologyPreset | null = null;
+            if (techPresetId) {
+                const { data, error } = await supabase
+                    .from('technology_presets')
+                    .select('*')
+                    .eq('id', techPresetId)
+                    .single();
+                if (error) {
+                    console.warn('Failed to load preset:', error);
+                } else if (data) {
+                    presetData = data;
                 }
             }
-        } catch (err) {
-            if (!signal?.aborted) {
-                const error = err instanceof Error ? err : new Error('Failed to load requirement');
-                setError(error);
-                toast.error('Failed to load requirement', {
-                    description: error.message,
-                });
 
-                // Navigate back to requirements list after a short delay
-                setTimeout(() => {
-                    navigate(`/lists/${listId}/requirements`);
-                }, 2000);
-            }
-        } finally {
-            if (!signal?.aborted) {
-                setLoading(false);
-            }
-        }
-    }, [userId, listId, reqId, navigate]);
+            return {
+                list: listData as List,
+                requirement: reqData as Requirement,
+                preset: presetData,
+            };
+        },
+    });
 
+    // Navigate away and notify on error
     useEffect(() => {
-        const abortController = new AbortController();
-        loadRequirement(abortController.signal);
+        if (!query.error || !enabled) return;
+        const message =
+            query.error instanceof Error ? query.error.message : 'Failed to load requirement';
+        toast.error('Failed to load requirement', { description: message });
+        const timer = setTimeout(() => {
+            navigate(`/lists/${listId}/requirements`);
+        }, 2000);
+        return () => clearTimeout(timer);
+    }, [query.error, enabled, navigate, listId]);
 
-        return () => {
-            abortController.abort();
-        };
-    }, [loadRequirement]);
+    const requirement = useMemo(() => query.data?.requirement ?? null, [query.data]);
+    const list = useMemo(() => query.data?.list ?? null, [query.data]);
+    const preset = useMemo(() => query.data?.preset ?? null, [query.data]);
+    const loading = query.isLoading || query.isFetching || !enabled;
+    const error = (query.error as Error) || null;
 
-    const refetch = useCallback(async () => {
-        await loadRequirement();
-    }, [loadRequirement]);
-
-    return { requirement, list, preset, loading, error, refetch };
+    return { requirement, list, preset, loading, error, refetch: query.refetch };
 }

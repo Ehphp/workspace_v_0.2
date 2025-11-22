@@ -1,6 +1,7 @@
 import type { Activity, Driver, Risk, TechnologyPreset } from '@/types/database';
 import type { AIActivitySuggestion } from '@/types/estimation';
 import { sanitizePromptInput } from '@/types/ai-validation';
+import { supabase } from '@/lib/supabase';
 
 interface SuggestActivitiesInput {
   description: string;
@@ -21,6 +22,14 @@ export async function suggestActivities(
   const { description, preset, activities, baseUrl = '', testMode = false } = input;
 
   try {
+    // Fetch current session token (if available) to authenticate serverless call
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const authHeader = session?.access_token
+      ? { Authorization: `Bearer ${session.access_token}` }
+      : {};
+
     // Sanitize input to prevent injection attacks
     const sanitizedDescription = sanitizePromptInput(description);
 
@@ -30,6 +39,7 @@ export async function suggestActivities(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...authHeader,
       },
       body: JSON.stringify({
         description: sanitizedDescription,
@@ -63,6 +73,13 @@ export async function suggestActivities(
  */
 export async function generateTitleFromDescription(description: string): Promise<string> {
   try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const authHeader = session?.access_token
+      ? { Authorization: `Bearer ${session.access_token}` }
+      : {};
+
     // Sanitize input
     const sanitizedDescription = sanitizePromptInput(description);
 
@@ -70,6 +87,7 @@ export async function generateTitleFromDescription(description: string): Promise
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...authHeader,
       },
       body: JSON.stringify({
         action: 'generate-title',

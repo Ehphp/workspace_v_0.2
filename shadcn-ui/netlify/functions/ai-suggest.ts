@@ -1,6 +1,23 @@
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import OpenAI from 'openai';
 import { validateAISuggestion, sanitizePromptInput } from '../../src/types/ai-validation';
+import { createClient } from '@supabase/supabase-js';
+
+// Configurable security controls
+const REQUIRE_AUTH = process.env.AI_REQUIRE_AUTH !== 'false'; // default: require auth
+const ALLOWED_ORIGINS = (process.env.AI_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+const RATE_LIMIT_MAX = Number(process.env.AI_RATE_LIMIT_MAX || 50);
+const RATE_LIMIT_WINDOW_MS = Number(process.env.AI_RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000);
+
+// Supabase client for token validation (server-side)
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabaseServer = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
 
 // Initialize OpenAI with server-side API key
 const openai = new OpenAI({
@@ -11,6 +28,70 @@ const openai = new OpenAI({
 const aiCache = new Map<string, { response: any; timestamp: number }>();
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 // Ensures same requirement returns same result within the TTL window
+
+// Simple in-memory rate limiting (per IP or user)
+const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
+
+function getAllowedOrigin(originHeader: string | undefined): string {
+    if (ALLOWED_ORIGINS.length === 0) return '*';
+    if (originHeader && ALLOWED_ORIGINS.includes(originHeader)) return originHeader;
+    // fallback to first allowed origin to avoid null header
+    return ALLOWED_ORIGINS[0];
+}
+
+function isOriginAllowed(originHeader: string | undefined): boolean {
+    if (ALLOWED_ORIGINS.length === 0) return true;
+    if (!originHeader) return false;
+    return ALLOWED_ORIGINS.includes(originHeader);
+}
+
+function checkRateLimit(key: string): { allowed: boolean; retryAfter?: number } {
+    const now = Date.now();
+    const entry = rateLimitMap.get(key);
+    if (!entry) {
+        rateLimitMap.set(key, { count: 1, windowStart: now });
+        return { allowed: true };
+    }
+
+    const elapsed = now - entry.windowStart;
+    if (elapsed > RATE_LIMIT_WINDOW_MS) {
+        rateLimitMap.set(key, { count: 1, windowStart: now });
+        return { allowed: true };
+    }
+
+    if (entry.count >= RATE_LIMIT_MAX) {
+        const retryAfter = Math.ceil((RATE_LIMIT_WINDOW_MS - elapsed) / 1000);
+        return { allowed: false, retryAfter };
+    }
+
+    entry.count += 1;
+    rateLimitMap.set(key, entry);
+    return { allowed: true };
+}
+
+async function validateAuthToken(authHeader: string | undefined) {
+    if (!REQUIRE_AUTH) {
+        return { ok: true, userId: null };
+    }
+
+    if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
+        return { ok: false, statusCode: 401, message: 'Missing bearer token' };
+    }
+
+    if (!supabaseServer) {
+        console.error('Supabase server client not configured');
+        return { ok: false, statusCode: 500, message: 'Server auth not configured' };
+    }
+
+    const token = authHeader.slice(7);
+    const { data, error } = await supabaseServer.auth.getUser(token);
+    if (error || !data?.user) {
+        console.warn('Supabase token validation failed', error);
+        return { ok: false, statusCode: 401, message: 'Invalid or expired token' };
+    }
+
+    return { ok: true, userId: data.user.id };
+}
 
 // Helper to generate cache key with activity codes hash
 function getCacheKey(description: string, presetId: string, activityCodes: string[]): string {
@@ -182,9 +263,12 @@ export const handler: Handler = async (
     event: HandlerEvent,
     context: HandlerContext
 ) => {
+    const originHeader = event.headers.origin || event.headers.Origin;
+    const allowOrigin = getAllowedOrigin(originHeader);
+
     // CORS headers
     const headers = {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': allowOrigin,
         'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Content-Type': 'application/json',
@@ -205,6 +289,45 @@ export const handler: Handler = async (
             statusCode: 405,
             headers,
             body: JSON.stringify({ error: 'Method Not Allowed' }),
+        };
+    }
+
+    // Origin allowlist check
+    if (!isOriginAllowed(originHeader)) {
+        console.warn('Blocked origin', originHeader);
+        return {
+            statusCode: 403,
+            headers,
+            body: JSON.stringify({ error: 'Origin not allowed' }),
+        };
+    }
+
+    // Auth validation (if enabled)
+    const authHeader = event.headers.authorization || (event.headers.Authorization as string | undefined);
+    const authResult = await validateAuthToken(authHeader);
+    if (!authResult.ok) {
+        return {
+            statusCode: authResult.statusCode || 401,
+            headers,
+            body: JSON.stringify({ error: authResult.message || 'Unauthorized' }),
+        };
+    }
+
+    // Basic rate limiting by user or IP
+    const rateKey =
+        authResult.userId ||
+        (event.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ||
+        event.headers['client-ip'] ||
+        'anonymous';
+    const rateStatus = checkRateLimit(rateKey);
+    if (!rateStatus.allowed) {
+        return {
+            statusCode: 429,
+            headers: {
+                ...headers,
+                'Retry-After': String(rateStatus.retryAfter ?? 60),
+            },
+            body: JSON.stringify({ error: 'Rate limit exceeded' }),
         };
     }
 

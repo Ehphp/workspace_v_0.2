@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import type { TechnologyPreset, Activity, Driver, Risk } from '@/types/database';
@@ -22,21 +23,11 @@ interface UseEstimationDataReturn {
  * Handles loading presets, activities, drivers, and risks with proper error handling
  */
 export function useEstimationData(): UseEstimationDataReturn {
-    const [data, setData] = useState<EstimationData>({
-        presets: [],
-        activities: [],
-        drivers: [],
-        risks: [],
-    });
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<Error | null>(null);
-
-    const loadData = useCallback(async (signal?: AbortSignal) => {
-        setLoading(true);
-        setError(null);
-
-        try {
-            // Load all data in parallel for better performance
+    const query = useQuery({
+        queryKey: ['estimation-data'],
+        staleTime: 60_000, // cache master data for 1 minute
+        retry: false,
+        queryFn: async ({ signal }) => {
             const [presetsRes, activitiesRes, driversRes, risksRes, tpaRes] = await Promise.all([
                 supabase
                     .from('technology_presets')
@@ -65,14 +56,12 @@ export function useEstimationData(): UseEstimationDataReturn {
                     .abortSignal(signal as any),
             ]);
 
-            // Check for errors
             if (presetsRes.error) throw presetsRes.error;
             if (activitiesRes.error) throw activitiesRes.error;
             if (driversRes.error) throw driversRes.error;
             if (risksRes.error) throw risksRes.error;
             if (tpaRes.error) throw tpaRes.error;
 
-            // Normalize presets default activities from pivot table (if present)
             const activityById = new Map<string, Activity>();
             (activitiesRes.data || []).forEach((a) => activityById.set(a.id, a));
 
@@ -104,42 +93,32 @@ export function useEstimationData(): UseEstimationDataReturn {
                 return { ...p, default_activity_codes: codes };
             });
 
-            // Update state only if not aborted
-            if (!signal?.aborted) {
-                setData({
-                    presets: normalizedPresets,
-                    activities: activitiesRes.data || [],
-                    drivers: driversRes.data || [],
-                    risks: risksRes.data || [],
-                });
-            }
-        } catch (err) {
-            if (!signal?.aborted) {
-                const error = err instanceof Error ? err : new Error('Failed to load estimation data');
-                setError(error);
-                toast.error('Failed to load estimation data', {
-                    description: error.message,
-                });
-            }
-        } finally {
-            if (!signal?.aborted) {
-                setLoading(false);
-            }
-        }
-    }, []);
+            return {
+                presets: normalizedPresets,
+                activities: activitiesRes.data || [],
+                drivers: driversRes.data || [],
+                risks: risksRes.data || [],
+            } as EstimationData;
+        },
+    });
 
     useEffect(() => {
-        const abortController = new AbortController();
-        loadData(abortController.signal);
+        if (!query.error) return;
+        const message = query.error instanceof Error ? query.error.message : 'Failed to load estimation data';
+        toast.error('Failed to load estimation data', {
+            description: message,
+        });
+    }, [query.error]);
 
-        return () => {
-            abortController.abort();
-        };
-    }, [loadData]);
+    const data = useMemo<EstimationData>(() => query.data ?? {
+        presets: [],
+        activities: [],
+        drivers: [],
+        risks: [],
+    }, [query.data]);
 
-    const refetch = useCallback(async () => {
-        await loadData();
-    }, [loadData]);
+    const loading = query.isLoading || query.isFetching;
+    const error = (query.error as Error) || null;
 
-    return { data, loading, error, refetch };
+    return { data, loading, error, refetch: query.refetch };
 }

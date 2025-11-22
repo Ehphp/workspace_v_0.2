@@ -57,6 +57,16 @@ CREATE TABLE technology_presets (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Pivot: default activities per technology preset (ordered)
+CREATE TABLE technology_preset_activities (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tech_preset_id UUID NOT NULL REFERENCES technology_presets(id) ON DELETE CASCADE,
+    activity_id UUID NOT NULL REFERENCES activities(id),
+    position INTEGER, -- optional ordering (lower = higher priority)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (tech_preset_id, activity_id)
+);
+
 -- ============================================
 -- USER DATA TABLES
 -- ============================================
@@ -149,6 +159,8 @@ CREATE INDEX idx_activities_group ON activities("group");
 CREATE INDEX idx_activities_is_custom ON activities(is_custom);
 CREATE INDEX idx_activities_created_by ON activities(created_by);
 CREATE INDEX idx_activities_base_activity ON activities(base_activity_id);
+CREATE INDEX idx_tech_preset_activities_preset ON technology_preset_activities(tech_preset_id);
+CREATE INDEX idx_tech_preset_activities_position ON technology_preset_activities(tech_preset_id, position);
 
 -- ============================================
 -- ROW LEVEL SECURITY (RLS)
@@ -161,6 +173,7 @@ ALTER TABLE estimations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE estimation_activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE estimation_drivers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE estimation_risks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE technology_preset_activities ENABLE ROW LEVEL SECURITY;
 
 -- Catalog tables are public read-only
 ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
@@ -173,6 +186,7 @@ CREATE POLICY "Allow public read on activities" ON activities FOR SELECT USING (
 CREATE POLICY "Allow public read on drivers" ON drivers FOR SELECT USING (true);
 CREATE POLICY "Allow public read on risks" ON risks FOR SELECT USING (true);
 CREATE POLICY "Allow public read on technology_presets" ON technology_presets FOR SELECT USING (true);
+CREATE POLICY "Allow public read on technology_preset_activities" ON technology_preset_activities FOR SELECT USING (true);
 CREATE POLICY "Users can insert custom activities" ON activities
     FOR INSERT
     WITH CHECK (
