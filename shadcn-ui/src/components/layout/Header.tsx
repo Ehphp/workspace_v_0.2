@@ -13,7 +13,8 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Calculator, User, LogOut, Shield } from 'lucide-react';
+import { User, LogOut, Shield, List, Layers, BookOpen } from 'lucide-react';
+import { SynteroMark } from './SynteroMark';
 
 export function Header() {
     const { user } = useAuth();
@@ -61,15 +62,14 @@ export function Header() {
         return user.email.substring(0, 2).toUpperCase();
     };
 
-    const isActive = (path: string) => {
-        if (path === '/') {
-            return location.pathname === '/';
-        }
-        if (path === '/lists') {
-            // Only highlight "My Lists" when exactly on /lists, not on sub-routes
-            return location.pathname === '/lists';
-        }
-        return location.pathname.startsWith(path);
+    const isActive = (path: string | string[]) => {
+        const paths = Array.isArray(path) ? path : [path];
+        return paths.some((p) => {
+            if (p === '/') {
+                return location.pathname === '/';
+            }
+            return location.pathname.startsWith(p);
+        });
     };
 
     // Generate breadcrumb based on current route
@@ -124,17 +124,7 @@ export function Header() {
             <div className="container mx-auto px-6 h-16 flex items-center justify-between gap-4">
                 {/* Logo & Brand */}
                 <Link to="/" className="flex items-center gap-3 group flex-shrink-0">
-                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300">
-                        <Calculator className="h-5 w-5 text-white" />
-                    </div>
-                    <div className="flex flex-col">
-                        <span className="font-bold text-base leading-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-                            Requirements Estimator
-                        </span>
-                        <span className="text-[10px] text-slate-500 font-medium leading-tight">
-                            Smart estimation for your projects
-                        </span>
-                    </div>
+                    <SynteroMark subtitle="AI estimation workspace" compact />
                 </Link>
 
                 {/* Breadcrumb - shown when navigating in deep routes */}
@@ -153,21 +143,49 @@ export function Header() {
                             <Link to="/">
                                 <Button
                                     variant="ghost"
-                                    className={`hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium ${isActive('/') ? 'bg-blue-50 text-blue-700' : ''
-                                        }`}
+                                    className={`hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium ${isActive('/') ? 'bg-blue-50 text-blue-700' : ''}`}
                                 >
                                     Home
+                                </Button>
+                            </Link>
+
+                            <Link to="/lists">
+                                <Button
+                                    variant="ghost"
+                                    className={`hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium flex items-center gap-1 ${isActive('/lists') ? 'bg-blue-50 text-blue-700' : ''}`}
+                                >
+                                    <List className="h-4 w-4" />
+                                    Lists
                                 </Button>
                             </Link>
 
                             <Link to="/admin">
                                 <Button
                                     variant="ghost"
-                                    className={`hover:bg-amber-50 hover:text-amber-700 transition-colors font-medium flex items-center gap-1 ${isActive('/admin') ? 'bg-amber-50 text-amber-700' : ''
-                                        }`}
+                                    className={`hover:bg-amber-50 hover:text-amber-700 transition-colors font-medium flex items-center gap-1 ${isActive(['/admin']) ? 'bg-amber-50 text-amber-700' : ''}`}
                                 >
                                     <Shield className="h-4 w-4" />
                                     Admin
+                                </Button>
+                            </Link>
+
+                            <Link to="/presets">
+                                <Button
+                                    variant="ghost"
+                                    className={`hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium flex items-center gap-1 ${isActive('/presets') ? 'bg-blue-50 text-blue-700' : ''}`}
+                                >
+                                    <Layers className="h-4 w-4" />
+                                    Presets
+                                </Button>
+                            </Link>
+
+                            <Link to="/how-it-works">
+                                <Button
+                                    variant="ghost"
+                                    className={`hover:bg-slate-100 transition-colors font-medium flex items-center gap-1 ${isActive('/how-it-works') ? 'bg-slate-100 text-slate-800' : ''}`}
+                                >
+                                    <BookOpen className="h-4 w-4" />
+                                    Come funziona
                                 </Button>
                             </Link>
 

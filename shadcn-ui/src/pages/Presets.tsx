@@ -136,8 +136,8 @@ export default function Presets() {
                             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                             Aggiorna
                         </Button>
-                        <Button variant="default" onClick={() => navigate('/lists')}>
-                            Vai alle liste
+                        <Button variant="default" onClick={() => navigate('/admin')}>
+                            Torna ad Admin
                         </Button>
                     </div>
                 </div>

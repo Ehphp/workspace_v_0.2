@@ -13,6 +13,11 @@ Enterprise-grade requirements estimation with AI-assisted activity selection, a 
 - Custom activities: authenticated users can add/edit their own activities (with weights) and toggle availability; system activities remain read-only.
   - Override/fork: è possibile duplicare un’attività OOTB in una custom collegata tramite `base_activity_id` per personalizzare peso/nome senza toccare il catalogo di sistema.
 
+## Navigazione UI (stato attuale)
+- Header autenticato: Home `/`, Lists `/lists`, Admin `/admin`, Presets `/presets`, guida `/how-it-works`; dropdown account con Profile `/profile` e sign out.
+- Stato attivo copre sottorotte: `/admin/activities` e `/presets` restano evidenziate; `/lists/:id/requirements[...]` resta sotto Lists con breadcrumb dinamico.
+- Flussi di ritorno: da Custom Activities e Presets i CTA riportano alla dashboard Admin (`/admin`) per evitare deviazioni verso le liste.
+
 ## Quick Start
 1. **Install dependencies**
    ```bash
@@ -71,7 +76,10 @@ Enterprise-grade requirements estimation with AI-assisted activity selection, a 
 - Setup: `docs/setup/setup-guide.md`
 - Deployment: `docs/deployment/deployment.md`
 - Estimation history: `docs/architecture/estimation-history.md`
-- AI determinism and testing: `docs/ai/ai-determinism-improvement-plan.md`, `docs/ai/ai-variance-testing.md`
+- **AI System** (see `docs/ai/README.md` for complete index):
+  - `docs/ai/ai-system-overview.md` — ⭐ Come funziona il sistema AI (inizia da qui)
+  - `docs/ai/ai-input-validation.md` — Validazione e sanitizzazione (4 livelli)
+  - `docs/ai/ai-variance-testing.md` — Test di consistenza AI
 - Testing: `docs/testing/testing-guide.md`
 
 ## Deployment

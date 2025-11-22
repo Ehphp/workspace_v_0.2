@@ -359,11 +359,11 @@ export default function AdminActivities() {
             </Button>
             <Button
               variant="ghost"
-              onClick={() => navigate('/lists')}
+              onClick={() => navigate('/admin')}
               className="hover:bg-slate-100"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Torna alle liste
+              Torna ad Admin
             </Button>
           </div>
         </div>
@@ -824,4 +824,3 @@ export default function AdminActivities() {
     </div>
   );
 }
-

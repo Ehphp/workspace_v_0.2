@@ -15,6 +15,7 @@ import Admin from './pages/Admin';
 import AdminActivities from './pages/AdminActivities';
 import Presets from './pages/Presets';
 import HowItWorks from './pages/HowItWorks';
+import Profile from './pages/Profile';
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,14 @@ const App = () => (
             element={
               <AuthGuard>
                 <Presets />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <AuthGuard>
+                <Profile />
               </AuthGuard>
             }
           />

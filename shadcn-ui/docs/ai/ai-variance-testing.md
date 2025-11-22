@@ -1,116 +1,103 @@
-# Guida ai Test di Varianza AI
+# Test di Consistenza AI
 
-## ⚠️ NOTA IMPORTANTE - MIGLIORAMENTI RECENTI (2025-11-21)
+## 📋 Obiettivo
 
-Il sistema AI è stato recentemente migliorato con:
-- ✅ **Prompt descrittivo**: GPT riceve ora descrizioni complete delle attività (non solo codici)
-- ✅ **Prompt semplificato**: Rimossi driver/risks (GPT suggerisce SOLO attività)
-- ✅ **Temperature 0.0**: Massimo determinismo
-- 🔄 **In arrivo**: Structured outputs e seed deterministico (Fase 2/3)
+Misurare quanto il sistema AI è **consistente** quando analizza lo stesso requisito più volte.
 
-Questi miglioramenti dovrebbero aumentare la consistenza AI. Consulta `AI_DETERMINISM_IMPROVEMENT_PLAN.md` per dettagli.
+**Perché è importante**:
+- Verificare che l'AI suggerisca attività simili per lo stesso requisito
+- Identificare variazioni problematiche
+- Valutare l'impatto delle modifiche al sistema
 
-## Obiettivo
+---
 
-Misurare quanto GPT è **consistente** quando analizza lo stesso requisito più volte. Questo è importante per capire:
-- Se l'AI suggerisce sempre le stesse attività per lo stesso requisito
-- Quanto varia tra diverse esecuzioni
-- Se requisiti semplici hanno più consistenza di quelli complessi
-
-## File di Test
-
-`src/test/aiVariance.test.ts`
-
-## ⚠️ IMPORTANTE
+## ⚠️ Importante
 
 **Questi test chiamano l'API OpenAI reale e consumano token!**
-- Sono disabilitati di default (`.skip`)
-- Eseguili solo quando necessario
-- Ogni run costa circa 500-1000 token
+- Disabilitati di default (`.skip`)
+- Esegui solo quando necessario
+- Costo: ~500-1000 token per test run
 
-## Come Eseguire i Test
+---
 
-### Test con API Reale (costa token!)
+## 🎯 Quick Start
+
+### Test Simulati (Gratuiti, No API)
 
 ```bash
-# 1. Apri il file src/test/aiVariance.test.ts
-# 2. Rimuovi .skip dalle righe:
-#    describe.skip('Single Requirement - Multiple Runs', () => {
-#    diventa:
-#    describe('Single Requirement - Multiple Runs', () => {
+# Esegue solo simulazioni locali
+pnpm test aiVariance
+```
 
-# 3. Assicurati che OPENAI_API_KEY sia configurato
+Output mostra esempi di alta/media/bassa consistenza senza chiamare GPT.
+
+### Test Reali (Consumano Token)
+
+```bash
+# 1. Apri src/test/aiVariance.test.ts
+# 2. Rimuovi .skip da:
+describe.skip('Single Requirement - Multiple Runs', () => {
+# Diventa:
+describe('Single Requirement - Multiple Runs', () => {
+
+# 3. Verifica OPENAI_API_KEY configurato
 # 4. Esegui:
 pnpm test aiVariance
 ```
 
-### Test Simulati (gratuito, no API)
+---
 
-```bash
-# Esegue solo i test locali senza chiamare GPT
-pnpm test aiVariance
-```
+## 📊 Test Disponibili
 
-## Test Disponibili
+### 1. Same Requirement - 5 Runs
 
-### 1. **Same Requirement - 5 Runs** (API reale)
-
-Analizza lo stesso requisito 5 volte consecutive e misura:
+Analizza lo stesso requisito 5 volte consecutive:
 
 ```typescript
-Requirement: "Create a user authentication system with login, registration, password reset, and email verification"
+Requirement: "Create user authentication system with login and registration"
 
 Run 1: [REQ_ANALYSIS, DEV_BACKEND, DEV_FRONTEND, TEST_UNIT]
 Run 2: [REQ_ANALYSIS, DEV_BACKEND, DEV_FRONTEND, TEST_UNIT, TEST_INTEG]
 Run 3: [REQ_ANALYSIS, DEV_BACKEND, DEV_FRONTEND, TEST_UNIT]
-Run 4: [REQ_ANALYSIS, DESIGN_UI, DEV_BACKEND, DEV_FRONTEND, TEST_UNIT]
+Run 4: [REQ_ANALYSIS, DEV_BACKEND, DEV_FRONTEND, TEST_UNIT]
 Run 5: [REQ_ANALYSIS, DEV_BACKEND, DEV_FRONTEND, TEST_UNIT]
-
-Variance Analysis:
-  REQ_ANALYSIS: 5/5 (100%)    ← Sempre suggerito
-  DEV_BACKEND: 5/5 (100%)     ← Sempre suggerito
-  DEV_FRONTEND: 5/5 (100%)    ← Sempre suggerito
-  TEST_UNIT: 5/5 (100%)       ← Sempre suggerito
-  DESIGN_UI: 1/5 (20%)        ← Raro
-  TEST_INTEG: 1/5 (20%)       ← Raro
-
-Average Jaccard Similarity: 87.5%
 ```
 
-**Interpretazione:**
-- **>80% similarity** = AI molto consistente ✅
-- **60-80% similarity** = AI moderatamente consistente ⚠️
-- **<60% similarity** = AI inconsistente ❌
+**Metriche Calcolate**:
+- Activity Frequency: Quante volte ogni attività appare
+- Jaccard Similarity: Sovrapposizione tra run
+- Average Consistency: Media delle similarity
 
-### 2. **Simple vs Complex Requirements** (API reale)
+### 2. Simple vs Complex Requirements
 
-Confronta la consistenza tra:
+Confronta consistenza tra:
 
 ```typescript
-// Requisito SEMPLICE
+// SEMPLICE
 "Add a button to the homepage"
-→ Expected: 2-3 activities, alta consistenza
+→ Expected: 2-3 activities, >85% consistency
 
-// Requisito COMPLESSO  
-"Build a complete e-commerce platform..."
-→ Expected: 6-8 activities, media consistenza
+// COMPLESSO
+"Build complete e-commerce platform with payment, inventory, shipping"
+→ Expected: 6-8 activities, 65-80% consistency
 ```
 
-**Ipotesi:** Requisiti semplici dovrebbero avere **più consistenza** di quelli complessi.
+**Ipotesi**: Requisiti semplici = più consistenza.
 
-### 3. **Variance Simulation** (locale, no API)
+### 3. Variance Simulation (Locale)
 
-Simula scenari di varianza senza chiamare l'API:
+Mostra esempi di:
+- **Alta consistenza** (>80%): AI molto stabile
+- **Media consistenza** (60-80%): AI moderatamente stabile
+- **Bassa consistenza** (<60%): AI variabile
 
-- **Alta consistenza**: AI suggerisce sempre le stesse cose
-- **Media consistenza**: AI varia leggermente
-- **Bassa consistenza**: AI molto variabile
+---
 
-## Metriche Calcolate
+## 📐 Metriche
 
 ### Jaccard Similarity
 
-Misura la sovrapposizione tra due set:
+Misura sovrapposizione tra due set di attività:
 
 ```
 Similarity = |Intersection| / |Union|
@@ -119,233 +106,285 @@ Esempio:
 Run 1: {A, B, C, D}
 Run 2: {B, C, D, E}
 
-Intersection: {B, C, D} = 3 elementi
-Union: {A, B, C, D, E} = 5 elementi
+Intersection: {B, C, D} = 3
+Union: {A, B, C, D, E} = 5
 Similarity: 3/5 = 60%
 ```
 
+**Interpretazione**:
+- **>80%** = ✅ AI molto consistente
+- **60-80%** = ⚠️ AI moderatamente consistente  
+- **<60%** = ❌ AI inconsistente (problema!)
+
 ### Activity Frequency
 
-Quante volte ogni attività appare:
+Frequenza di suggerimento per ogni attività:
 
 ```
-REQ_ANALYSIS: 5/5 (100%) → Core activity
-TEST_INTEG: 2/5 (40%)    → Optional activity  
-DEPLOY: 0/5 (0%)         → Never suggested
+REQ_ANALYSIS: 5/5 (100%)  ← Core (sempre)
+DEV_BACKEND: 5/5 (100%)   ← Core (sempre)
+TEST_INTEG: 2/5 (40%)     ← Optional
+DEPLOY: 0/5 (0%)          ← Mai suggerito
 ```
 
-### Driver Variance
+---
 
-Varianza nei valori dei driver:
+## 📈 Risultati Attesi
 
-```
-COMPLEXITY:
-  HIGH: 3/5 (60%)
-  MEDIUM: 2/5 (40%)
-  LOW: 0/5 (0%)
-```
+### Sistema Attuale (2025-11-21)
 
-## Risultati Attesi
+Con le ottimizzazioni implementate:
 
-### Requisiti Semplici
-- Jaccard Similarity: **>85%**
-- Numero attività: **2-4**
-- Varianza driver: **<20%**
+| Tipo Requisito | Jaccard Similarity | N° Attività | Varianza |
+|----------------|-------------------|-------------|----------|
+| **Semplice** | >85% | 2-4 | Bassa |
+| **Standard** | 75-85% | 4-6 | Media |
+| **Complesso** | 65-80% | 6-8 | Media-Alta |
 
-### Requisiti Complessi  
-- Jaccard Similarity: **65-80%**
-- Numero attività: **5-8**
-- Varianza driver: **20-40%**
+### Fattori che Influenzano Consistenza
 
-## Se la Consistenza è Bassa (<60%)
+✅ **Aumentano Consistenza**:
+- Temperature 0.0
+- Prompt descrittivo e chiaro
+- Structured outputs con enum
+- Requisito ben definito
+- Cache attiva (24h)
 
-### Possibili Cause e Soluzioni Implementate
+❌ **Diminuiscono Consistenza**:
+- Temperature >0.0
+- Prompt ambiguo
+- Requisito vago
+- Troppi codici attività disponibili
 
-1. **Temperature troppo alta** nel prompt GPT
-   - ✅ **RISOLTO**: Temperature impostata a 0.0 (massimo determinismo)
-   - Prima: 0.7-0.8 (alta varianza)
-   - Ora: 0.0 (varianza minimizzata)
+---
 
-2. **Prompt troppo generico**
-   - ✅ **RISOLTO**: Implementato prompt descrittivo con dettagli completi
-   - Prima: `PP_DV_FIELD(0.25d,DEV)` (solo codice e giorni)
-   - Ora: Include NAME, DESCRIPTION, EFFORT, GROUP per ogni attività
+## 🔍 Analisi dei Risultati
 
-3. **Driver/Risks nel prompt (inutili)**
-   - ✅ **RISOLTO**: Rimossi dal prompt (GPT suggerisce SOLO attività)
-   - Risparmio: ~200 tokens per richiesta
-   - Beneficio: Prompt più focalizzato e chiaro
-
-4. **Mancanza di structured outputs**
-   - 🔄 **IN ROADMAP (Fase 2)**: Schema strict con enum per activity codes
-   - Beneficio atteso: GPT non potrà inventare codici inesistenti
-
-5. **Assenza di seed deterministico**
-   - 🔄 **IN ROADMAP (Fase 3)**: Seed basato su hash requirement + preset
-   - Beneficio atteso: Determinismo garantito da OpenAI
-
-6. **Requisito ambiguo**
-   - ⚠️ **RICHIEDE AZIONE UTENTE**: Riformulare requisito con più contesto
-
-### Come Migliorare Ulteriormente
-
-Per i miglioramenti futuri (Fase 2 e 3), consulta `AI_DETERMINISM_IMPROVEMENT_PLAN.md`.
-
-```typescript
-// ❌ PRIMA (temperatura alta, prompt compatto)
-temperature: 0.8
-prompt: "Activities: PP_DV_FIELD(0.25d,DEV), ..."
-
-// ✅ DOPO (IMPLEMENTATO - temperatura 0, prompt descrittivo)
-temperature: 0.0
-prompt: "Suggest activities for this requirement"
-
-// DOPO (temperatura bassa, prompt specifico)
-temperature: 0.3
-prompt: `You must suggest activities from this exact list.
-Always include: REQ_ANALYSIS
-For backend work, include: DEV_BACKEND
-For frontend work, include: DEV_FRONTEND
-Always include at least one TEST_ activity.
-
-Requirement: ${description}`
-```
-
-## Analisi dei Risultati Reali
-
-### Quando Esegui il Test
-
-1. **Controlla la console** per vedere l'output dettagliato
-2. **Copia i risultati** e salvali per confronto futuro
-3. **Calcola statistiche** su più esecuzioni
-
-### Esempio Output
+### Esempio Output Completo
 
 ```
 === AI VARIANCE TEST ===
 Requirement: "Create user authentication system..."
 Runs: 5
+Model: gpt-4o-mini
+Temperature: 0.0
 
 Run 1/5...
   Activities: [REQ_ANALYSIS, DEV_BACKEND, DEV_FRONTEND, TEST_UNIT]
-  Drivers: {"COMPLEXITY":"HIGH","INTEGRATION":"FEW"}
-  Risks: [R_TECH, R_INTEG]
-  Reasoning: This requires backend API development...
-
+  Count: 4
+  
 Run 2/5...
   Activities: [REQ_ANALYSIS, DEV_BACKEND, DEV_FRONTEND, TEST_UNIT, TEST_INTEG]
-  Drivers: {"COMPLEXITY":"HIGH","INTEGRATION":"MANY"}
-  Risks: [R_TECH, R_INTEG]
-  Reasoning: Authentication involves complex backend logic...
+  Count: 5
 
-[... più runs ...]
+[...]
 
 === VARIANCE ANALYSIS ===
 
-Activities Variance:
-  REQ_ANALYSIS: 5/5 (100%)
+Activity Frequency:
+  REQ_ANALYSIS: 5/5 (100%)    ← Always suggested
   DEV_BACKEND: 5/5 (100%)
   DEV_FRONTEND: 5/5 (100%)
   TEST_UNIT: 5/5 (100%)
-  TEST_INTEG: 1/5 (20%)
+  TEST_INTEG: 1/5 (20%)       ← Sometimes
 
-Average Jaccard Similarity: 87.5%
+Jaccard Similarity (pairwise):
+  Run 1 vs Run 2: 80%
+  Run 1 vs Run 3: 100%
+  Run 1 vs Run 4: 100%
+  Run 1 vs Run 5: 100%
+  [...]
+  
+Average Similarity: 87.5%
 Min Similarity: 80.0%
 Max Similarity: 100.0%
 
-Drivers Variance:
-  COMPLEXITY:
-    HIGH: 5/5 (100%)
-    MEDIUM: 0/5 (0%)
-  INTEGRATION:
-    FEW: 3/5 (60%)
-    MANY: 2/5 (40%)
-
-Risks Variance:
-  R_TECH: 5/5 (100%)
-  R_INTEG: 4/5 (80%)
-  R_PERF: 0/5 (0%)
-
 === CONCLUSIONS ===
 ✅ AI is HIGHLY CONSISTENT (>80% similarity)
+Core activities stable: REQ_ANALYSIS, DEV_BACKEND, DEV_FRONTEND, TEST_UNIT
+Optional activities variable: TEST_INTEG (20%)
 ```
 
-## Best Practices
+### Come Interpretare
 
-### 1. Test Periodici
-
-Esegui questi test:
-- ✅ Dopo modifiche al prompt GPT
-- ✅ Dopo aggiornamenti al modello OpenAI
-- ✅ Quando noti risultati strani in produzione
-
-### 2. Conserva i Risultati
-
-Salva i log per confrontare nel tempo:
-
-```bash
-pnpm test aiVariance > test-results-2025-11-19.txt
-```
-
-### 3. Test A/B
-
-Confronta diverse versioni del prompt:
-
-```typescript
-// Version A (temperatura 0.3)
-const resultA = await testWithPromptV1();
-
-// Version B (temperatura 0.7)  
-const resultB = await testWithPromptV2();
-
-console.log('Version A consistency:', resultA.similarity);
-console.log('Version B consistency:', resultB.similarity);
-```
-
-### 4. Monitora i Costi
-
-Ogni test costa token:
-- 5 runs × 1000 token/run = ~5000 token
-- A $0.03/1k token = ~$0.15 per test completo
-
-## Troubleshooting
-
-### Test non parte
-```bash
-# Verifica che OPENAI_API_KEY sia configurato
-echo $env:OPENAI_API_KEY  # Windows PowerShell
-```
-
-### Rate Limit Error
-```typescript
-// Aumenta il delay tra le chiamate
-await new Promise(resolve => setTimeout(resolve, 2000)); // 2 secondi
-```
-
-### Timeout Error
-```typescript
-// Aumenta il timeout del test
-it('should test variance', async () => {
-  // ...
-}, 120000); // 120 secondi invece di 60
-```
-
-## Domande Frequenti
-
-**Q: Quanto è normale la varianza?**  
-A: Per requisiti standard, 70-85% di similarity è accettabile. <60% indica un problema.
-
-**Q: Devo eseguire questi test spesso?**  
-A: No, solo quando modifichi il sistema di AI o noti comportamenti strani.
-
-**Q: Posso usare questi test in CI/CD?**  
-A: No, consumano troppi token. Usali solo manualmente quando necessario.
-
-**Q: Come riduco la varianza?**  
-A: Abbassa la temperature (0.3-0.5), rendi il prompt più specifico, aggiungi vincoli chiari.
+| Avg Similarity | Interpretazione | Azione |
+|---------------|-----------------|--------|
+| **>85%** | ✅ Eccellente | Nessuna azione |
+| **75-85%** | ✅ Buono | Monitor |
+| **60-75%** | ⚠️ Accettabile | Investigare |
+| **<60%** | ❌ Problema | Fix necessario |
 
 ---
 
-**Autore**: AI Variance Testing Suite  
-**Data**: 19 Novembre 2025  
-**Versione**: 1.0
+## 🛠️ Troubleshooting
+
+### Consistenza Bassa (<60%)
+
+**Possibili Cause**:
+
+1. **Temperature troppo alta**
+   - Verifica: `netlify/functions/ai-suggest.ts` → `temperature: 0.0`
+   - Fix: Abbassa a 0.0
+
+2. **Requisito ambiguo**
+   - Esempio: "make it better" (troppo vago)
+   - Fix: Riformula con verbo d'azione + contesto
+
+3. **Prompt modificato**
+   - Verifica: Confronta prompt con versione baseline
+   - Fix: Ripristina prompt standard
+
+4. **Cache disabilitata**
+   - Effetto: Ogni richiesta = nuova chiamata API
+   - Note: Cache migliora consistenza nella stessa finestra 24h
+
+### Test Non Parte
+
+```bash
+# Verifica API key
+echo $env:OPENAI_API_KEY  # Windows PowerShell
+
+# Verifica che .skip sia rimosso
+# In src/test/aiVariance.test.ts
+```
+
+### Rate Limit Error
+
+```typescript
+// Aumenta delay tra chiamate (in test file)
+await new Promise(resolve => setTimeout(resolve, 2000)); // 2s
+```
+
+### Timeout Error
+
+```typescript
+// Aumenta timeout test
+it('should test variance', async () => {
+  // ...
+}, 120000); // 120 secondi
+```
+
+---
+
+## ✅ Best Practices
+
+### 1. Quando Eseguire Test
+
+Esegui test variance quando:
+- ✅ Modifichi prompt GPT
+- ✅ Cambi temperature
+- ✅ Aggiorni modello OpenAI
+- ✅ Noti risultati strani in produzione
+- ✅ Dopo deploy major
+
+**Non eseguire**:
+- ❌ In CI/CD automatico (costa token)
+- ❌ Troppo frequentemente (spreco)
+
+### 2. Conserva Risultati
+
+Salva log per confronti futuri:
+
+```bash
+pnpm test aiVariance > test-results-$(date +%Y%m%d).txt
+```
+
+### 3. Confronta Nel Tempo
+
+```bash
+# Prima della modifica
+pnpm test aiVariance > before.txt
+
+# Dopo la modifica
+pnpm test aiVariance > after.txt
+
+# Confronta
+diff before.txt after.txt
+```
+
+### 4. Monitora Costi
+
+```
+5 runs × ~1000 token/run = ~5000 token/test
+A $0.0015/1k token = ~$0.0075 per test completo
+```
+
+---
+
+## 🎓 Esempi Pratici
+
+### Test Dopo Modifica Prompt
+
+```typescript
+// Scenario: Hai modificato il system prompt
+// Goal: Verificare che consistency non peggiori
+
+// 1. Esegui test con prompt vecchio (baseline)
+const baselineResults = await runVarianceTest();
+// Avg Similarity: 85%
+
+// 2. Applica modifica prompt
+
+// 3. Esegui test con prompt nuovo
+const newResults = await runVarianceTest();
+// Avg Similarity: 83%
+
+// 4. Confronta
+if (newResults.avgSimilarity < baselineResults.avgSimilarity - 5) {
+  console.warn('⚠️ Consistency degraded! Review changes.');
+}
+```
+
+### Test Requisiti Edge Case
+
+```typescript
+// Test con requisiti problematici
+const edgeCases = [
+  "test",                    // Input di test
+  "make it better",          // Troppo vago
+  "aaaaaa",                  // Gibberish
+  "requisito molto complesso con tante feature", // Complesso
+];
+
+for (const req of edgeCases) {
+  const result = await testVariance(req);
+  console.log(`${req}: ${result.similarity}%`);
+}
+```
+
+---
+
+## 📚 Riferimenti
+
+- **`ai-system-overview.md`** - Come funziona il sistema AI
+- **`ai-input-validation.md`** - Validazione e sicurezza
+- **`src/test/aiVariance.test.ts`** - Codice test
+
+---
+
+## ❓ FAQ
+
+**Q: Quanto è normale la varianza?**  
+A: 70-85% è accettabile per requisiti standard. <60% indica problema.
+
+**Q: Devo eseguire questi test spesso?**  
+A: No, solo quando modifichi AI o noti anomalie.
+
+**Q: Posso automatizzare in CI/CD?**  
+A: No, costano troppi token. Solo manualmente quando serve.
+
+**Q: Come miglioro la consistenza?**  
+A: Temperature 0.0, prompt chiaro, requisiti ben definiti.
+
+**Q: Cache influenza risultati?**  
+A: Sì, nella stessa finestra 24h la cache garantisce consistenza 100%.
+
+**Q: Cosa significa "varianza accettabile"?**  
+A: Attività core (REQ_ANALYSIS, DEV_*) sempre presenti, attività opzionali (TEST_INTEG, DEPLOY) possono variare.
+
+---
+
+**Versione**: 1.0  
+**Data Creazione**: 2025-11-21  
+**Ultima Modifica**: 2025-11-21  
+**Maintainer**: Development Team

@@ -11,6 +11,7 @@ import { WizardStep3 } from '@/components/wizard/WizardStep3';
 import { WizardStep4 } from '@/components/wizard/WizardStep4';
 import { WizardStep5 } from '@/components/wizard/WizardStep5';
 import { QuickEstimate } from '@/components/estimation/QuickEstimate';
+import { SynteroMark } from '@/components/layout/SynteroMark';
 
 export default function Home() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -88,16 +89,7 @@ export default function Home() {
         {/* Header with glassmorphism */}
         <header className="relative border-b border-white/20 backdrop-blur-md bg-white/80 shadow-sm">
           <div className="container mx-auto px-6 h-16 flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <h1 className="text-lg font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-                Requirements Estimator
-              </h1>
-            </div>
+            <SynteroMark subtitle="AI estimation workspace" />
             <div className="flex gap-2 items-center">
               <Link to="/how-it-works">
                 <Button variant="ghost" size="sm" className="hover:bg-white/50">
@@ -157,14 +149,14 @@ export default function Home() {
                   </div>
 
                   <h2 className="text-5xl font-bold text-slate-900 leading-tight">
-                    Professional
-                    <span className="block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                      Requirements Estimation
+                    Syntero
+                    <span className="block bg-gradient-to-r from-blue-600 via-indigo-600 to-amber-500 bg-clip-text text-transparent">
+                      AI-crafted requirements estimation
                     </span>
                   </h2>
 
                   <p className="text-lg text-slate-600 leading-relaxed">
-                    Ottieni una stima veloce con pochi dati e passa al wizard avanzato quando ti serve il massimo controllo su attività, driver e rischi.
+                    Il nuovo spazio di lavoro per raccogliere requisiti, stimare e condividere risultati in pochi minuti, con automazioni AI e trasparenza delle formule.
                   </p>
                 </div>
 
@@ -360,24 +352,10 @@ export default function Home() {
   return (
     <div className="h-screen flex flex-col bg-slate-50 overflow-hidden">
       {/* Header with glassmorphism - matching home style */}
-      <header className="border-b border-slate-200/60 backdrop-blur-xl bg-white/90 shadow-sm flex-shrink-0">
+          <header className="border-b border-slate-200/60 backdrop-blur-xl bg-white/90 shadow-sm flex-shrink-0">
         <div className="container mx-auto px-6 h-14 flex items-center justify-between gap-4">
           {/* Logo & Brand */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-base leading-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-                Requirements Estimator
-              </span>
-              <span className="text-[10px] text-slate-500 font-medium leading-tight">
-                Advanced Wizard Mode
-              </span>
-            </div>
-          </div>
+          <SynteroMark subtitle="Wizard mode" compact />
 
           {/* Navigation */}
           <div className="flex items-center gap-2 flex-shrink-0">

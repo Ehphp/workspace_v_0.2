@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Activity, Driver, Risk, DriverOption } from '@/types/database';
+import { sanitizePromptInput } from '@/types/ai-validation';
 import {
     Dialog,
     DialogContent,
@@ -182,9 +183,12 @@ export function BulkEstimateDialog({
                     const drivers = sharedDrivers;
                     const risks = sharedRisks;
 
+                    // Sanitize input to prevent injection attacks (consistency with openai.ts)
+                    const sanitizedDescription = sanitizePromptInput(req.description);
+
                     // Call AI suggestion API
                     console.log('🔍 Calling AI API for:', req.req_id);
-                    console.log('  - Description length:', req.description?.length);
+                    console.log('  - Description length:', sanitizedDescription?.length);
                     console.log('  - Preset:', preset.name);
                     console.log('  - Activities:', activities?.length);
                     console.log('  - Drivers:', drivers?.length);
@@ -194,16 +198,8 @@ export function BulkEstimateDialog({
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            action: 'suggest-activities',
-                            description: req.description,
-                            preset: {
-                                name: preset.name,
-                                description: preset.description,
-                                tech_category: preset.tech_category,
-                                default_activity_codes: preset.default_activity_codes || [],
-                                default_driver_values: preset.default_driver_values || {},
-                                default_risks: preset.default_risks || [],
-                            },
+                            description: sanitizedDescription,
+                            preset,
                             activities,
                             drivers,
                             risks,
@@ -213,9 +209,9 @@ export function BulkEstimateDialog({
                     console.log('📡 Response status:', response.status);
 
                     if (!response.ok) {
-                        const errorText = await response.text();
-                        console.error('❌ AI API Error:', errorText);
-                        throw new Error(`AI suggestion failed: ${response.status} - ${errorText.substring(0, 200)}`);
+                        const errorData = await response.json().catch(() => ({}));
+                        console.error('❌ AI API Error:', errorData);
+                        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
                     }
 
                     const aiSuggestion = await response.json();
