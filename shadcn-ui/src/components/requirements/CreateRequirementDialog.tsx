@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -22,6 +21,8 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
+import { createRequirement } from '@/lib/api';
+import { requirementSchema } from '@/lib/validation';
 
 interface CreateRequirementDialogProps {
     open: boolean;
@@ -47,67 +48,33 @@ export function CreateRequirementDialog({
         business_owner: '',
     });
 
-    const generateNextReqId = async (): Promise<string> => {
-        // Get all existing requirements for this list to find the next number
-        const { data: existingReqs } = await supabase
-            .from('requirements')
-            .select('req_id')
-            .eq('list_id', listId)
-            .order('created_at', { ascending: false });
-
-        if (!existingReqs || existingReqs.length === 0) {
-            return 'REQ-001';
-        }
-
-        // Extract numbers from existing IDs (e.g., "REQ-001" -> 1)
-        const numbers = existingReqs
-            .map(req => {
-                const match = req.req_id.match(/REQ-(\d+)/);
-                return match ? parseInt(match[1], 10) : 0;
-            })
-            .filter(num => num > 0);
-
-        const maxNumber = numbers.length > 0 ? Math.max(...numbers) : 0;
-        const nextNumber = maxNumber + 1;
-
-        // Format as REQ-XXX with leading zeros
-        return `REQ-${nextNumber.toString().padStart(3, '0')}`;
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
 
         setLoading(true);
         try {
-            // Generate next requirement ID
-            const generatedReqId = await generateNextReqId();
-
-            const { error } = await supabase.from('requirements').insert({
-                list_id: listId,
-                req_id: generatedReqId,
-                title: formData.title,
-                description: formData.description,
-                priority: formData.priority,
-                state: formData.state,
-                business_owner: formData.business_owner,
-                tech_preset_id: null,
-                labels: [],
-            });
-
-            if (error) {
-                console.error('Error creating requirement:', error);
+            const parsed = requirementSchema.safeParse(formData);
+            if (!parsed.success) {
+                const message = parsed.error.errors[0]?.message || 'Invalid data';
                 toast({
-                    title: 'Error',
-                    description: error.message || 'Failed to create requirement',
+                    title: 'Validation error',
+                    description: message,
                     variant: 'destructive',
                 });
+                setLoading(false);
                 return;
             }
 
+            const requirement = await createRequirement({
+                listId,
+                ...parsed.data,
+                tech_preset_id: null,
+            });
+
             toast({
                 title: 'Success',
-                description: `Requirement ${generatedReqId} created successfully`,
+                description: `Requirement ${requirement.req_id} created successfully`,
             });
 
             setFormData({

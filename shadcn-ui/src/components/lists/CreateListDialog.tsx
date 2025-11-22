@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,6 +15,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import type { TechnologyPreset } from '@/types/database';
+import { createList, fetchPresets } from '@/lib/api';
+import { listSchema } from '@/lib/validation';
 
 interface CreateListDialogProps {
   open: boolean;
@@ -40,15 +41,12 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
   }, [open]);
 
   const loadPresets = async () => {
-    const { data, error } = await supabase
-      .from('technology_presets')
-      .select('*')
-      .order('name');
-
-    if (error) {
+    try {
+      const data = await fetchPresets();
+      setPresets(data);
+    } catch (error) {
       console.error('Error loading presets:', error);
-    } else {
-      setPresets(data || []);
+      toast.error('Failed to load technology presets');
     }
   };
 
@@ -58,19 +56,27 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
 
     setLoading(true);
 
-    const { error } = await supabase.from('lists').insert({
-      user_id: user.id,
+    const parsed = listSchema.safeParse({
       name,
       description,
       owner: owner || user.email || '',
-      tech_preset_id: techPresetId === '__NONE__' ? null : techPresetId,
+      techPresetId: techPresetId === '__NONE__' ? null : techPresetId,
       status,
     });
 
-    if (error) {
-      console.error('Error creating list:', error);
-      toast.error('Failed to create project');
-    } else {
+    if (!parsed.success) {
+      const firstError = parsed.error.errors[0]?.message || 'Invalid data';
+      toast.error('Invalid project data', { description: firstError });
+      setLoading(false);
+      return;
+    }
+
+    try {
+      await createList({
+        userId: user.id,
+        ...parsed.data,
+      });
+
       toast.success('Project created successfully');
       setName('');
       setDescription('');
@@ -79,6 +85,9 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
       setStatus('DRAFT');
       onOpenChange(false);
       onSuccess();
+    } catch (error) {
+      console.error('Error creating list:', error);
+      toast.error('Failed to create project');
     }
 
     setLoading(false);

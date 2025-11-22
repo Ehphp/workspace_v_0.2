@@ -26,8 +26,8 @@ import { DriversSection } from '@/components/estimation/DriversSection';
 import { RisksSection } from '@/components/estimation/RisksSection';
 import { CalculationSummary } from '@/components/estimation/CalculationSummary';
 import { EstimationComparison } from '@/components/estimation/EstimationComparison';
-import { EstimationTimeline } from '@/components/estimation/EstimationTimeline';
-import { Header } from '@/components/layout/Header';
+import { Layout } from '@/components/layout/Layout';
+import { HistorySection } from '@/components/requirements/detail/HistorySection';
 
 export default function RequirementDetail() {
     const navigate = useNavigate();
@@ -52,11 +52,18 @@ export default function RequirementDetail() {
     } = useEstimationData();
 
     // Load estimation history
+    const HISTORY_PAGE_SIZE = 12;
+    const [historyPage, setHistoryPage] = useState(1);
     const {
         history: estimationHistory,
         loading: historyLoading,
+        totalCount: historyTotalCount,
         refetch: refetchHistory
-    } = useEstimationHistory(reqId);
+    } = useEstimationHistory(reqId, { page: historyPage, pageSize: HISTORY_PAGE_SIZE });
+
+    useEffect(() => {
+        setHistoryPage(1);
+    }, [reqId]);
 
     // Manage estimation state
     const {
@@ -829,12 +836,7 @@ Risks: ${est.estimation_risks?.length || 0}`;
     }
 
     return (
-        <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
-            {/* Subtle background pattern */}
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgxNDgsMTYzLDE4NCwwLjA1KSkgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40"></div>
-
-            {/* Use shared Header component */}
-            <Header />
+        <Layout showSidebar={false}>
 
             {/* Page specific info bar - cleaner and more spacious */}
             <div className="relative border-b border-slate-200/60 bg-white/95 backdrop-blur-sm shadow-sm">
@@ -1339,131 +1341,34 @@ Risks: ${est.estimation_risks?.length || 0}`;
                         {/* History Tab */}
                         <TabsContent value="history" className="mt-0">
                             <div className="container mx-auto px-6 py-12">
-                                <div className="max-w-7xl mx-auto">
-                                    {/* Timeline compatta - sempre visibile */}
-                                    {estimationHistory.length > 0 && (
-                                        <div className="mb-4 flex-none">
-                                            <EstimationTimeline estimations={estimationHistory} />
-                                        </div>
-                                    )}
+                                <div className="max-w-7xl mx-auto space-y-6">
+                                    <HistorySection
+                                        history={estimationHistory}
+                                        loading={historyLoading}
+                                        totalCount={historyTotalCount}
+                                        page={historyPage}
+                                        pageSize={HISTORY_PAGE_SIZE}
+                                        onPageChange={setHistoryPage}
+                                    />
 
-                                    {/* Compact History Cards - layout ottimizzato */}
-                                    <div className="flex-1 overflow-y-auto">
-                                        <div className="max-w-6xl mx-auto">
-                                            {historyLoading ? (
-                                                <div className="text-center py-12">
-                                                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto"></div>
-                                                </div>
-                                            ) : estimationHistory.length === 0 ? (
-                                                <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm">
-                                                    <CardContent className="text-center py-12 text-slate-600">
-                                                        <History className="h-12 w-12 mx-auto mb-4 opacity-40 text-slate-400" />
-                                                        <p className="text-sm font-medium">No estimation history yet</p>
-                                                        <p className="text-xs mt-2 text-slate-500">Save an estimation to start building history</p>
-                                                    </CardContent>
-                                                </Card>
-                                            ) : (
-                                                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
-                                                    {estimationHistory.map((est) => {
-                                                        const hasActivities = (est.estimation_activities?.length || 0) > 0;
-                                                        const hasDrivers = (est.estimation_drivers?.length || 0) > 0;
-                                                        const hasRisks = (est.estimation_risks?.length || 0) > 0;
-
-                                                        return (
-                                                            <Card key={est.id} className="rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border-l-4 border-l-blue-500 bg-white/90 backdrop-blur-sm">
-                                                                <CardContent className="p-4">
-                                                                    {/* Header */}
-                                                                    <div className="mb-3">
-                                                                        <h4 className="font-bold text-sm text-slate-900 truncate mb-1">
-                                                                            {est.scenario_name}
-                                                                        </h4>
-                                                                        <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                                                                            <Clock className="h-3 w-3" />
-                                                                            {new Date(est.created_at).toLocaleDateString()} {new Date(est.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {/* Key Metric - Total Days */}
-                                                                    <div className="text-center mb-3 py-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg">
-                                                                        <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                                                                            {est.total_days.toFixed(1)}
-                                                                        </div>
-                                                                        <div className="text-[10px] text-slate-600 font-medium uppercase mt-1">days</div>
-                                                                    </div>
-
-                                                                    {/* Metrics Grid */}
-                                                                    <div className="grid grid-cols-3 gap-2 mb-3 text-[10px]">
-                                                                        <div className="text-center bg-slate-50 rounded px-2 py-1">
-                                                                            <div className="text-slate-600">Base</div>
-                                                                            <div className="font-bold text-slate-900">{est.base_days.toFixed(1)}</div>
-                                                                        </div>
-                                                                        <div className="text-center bg-purple-50 rounded px-2 py-1">
-                                                                            <div className="text-slate-600">Mult</div>
-                                                                            <div className="font-bold text-purple-700">{est.driver_multiplier.toFixed(2)}x</div>
-                                                                        </div>
-                                                                        <div className="text-center bg-orange-50 rounded px-2 py-1">
-                                                                            <div className="text-slate-600">Cont</div>
-                                                                            <div className="font-bold text-orange-700">{est.contingency_percent}%</div>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {/* Counts */}
-                                                                    <div className="flex gap-1.5 mb-3 text-[10px]">
-                                                                        <span className={`px-2 py-1 rounded-md flex-1 text-center ${hasActivities ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
-                                                                            {est.estimation_activities?.length || 0} act
-                                                                        </span>
-                                                                        <span className={`px-2 py-1 rounded-md flex-1 text-center ${hasDrivers ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500'}`}>
-                                                                            {est.estimation_drivers?.length || 0} drv
-                                                                        </span>
-                                                                        <span className={`px-2 py-1 rounded-md flex-1 text-center ${hasRisks ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'}`}>
-                                                                            {est.estimation_risks?.length || 0} rsk
-                                                                        </span>
-                                                                    </div>
-
-                                                                    {/* Action Buttons */}
-                                                                    <div className="flex gap-1.5">
-                                                                        <Button
-                                                                            variant="outline"
-                                                                            size="sm"
-                                                                            className="flex-1 text-[10px] h-7"
-                                                                            onClick={() => {
-                                                                                setSelectedEstimationId(est.id);
-                                                                                setDrawerOpen(true);
-                                                                            }}
-                                                                        >
-                                                                            <Eye className="h-3 w-3 mr-1" />
-                                                                            View
-                                                                        </Button>
-                                                                        <Button
-                                                                            variant="outline"
-                                                                            size="sm"
-                                                                            className="h-7 w-7 p-0"
-                                                                            title="Copy to clipboard"
-                                                                            onClick={() => handleCopyEstimation(est)}
-                                                                        >
-                                                                            <Copy className="h-3 w-3" />
-                                                                        </Button>
-                                                                        <Button
-                                                                            variant="outline"
-                                                                            size="sm"
-                                                                            className="h-7 w-7 p-0"
-                                                                            title="Restore estimation"
-                                                                            onClick={() => handleRestoreEstimation(est)}
-                                                                        >
-                                                                            <RotateCcw className="h-3 w-3" />
-                                                                        </Button>
-                                                                    </div>
-                                                                </CardContent>
-                                                            </Card>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
+                                    <Card className="rounded-2xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm">
+                                        <CardHeader className="pb-4">
+                                            <CardTitle className="text-lg font-bold">Compare Estimations</CardTitle>
+                                            <CardDescription className="text-xs text-slate-600">Select two saved estimations to analyze differences</CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <EstimationComparison
+                                                estimations={estimationHistory}
+                                                activities={activities}
+                                                drivers={drivers}
+                                                risks={risks}
+                                            />
+                                        </CardContent>
+                                    </Card>
                                 </div>
                             </div>
                         </TabsContent>
+
                     </Tabs>
                 </div>
             </div>
@@ -1732,11 +1637,11 @@ Risks: ${est.estimation_risks?.length || 0}`;
 
             {/* Comparison Dialog - Fullscreen with scroll */}
             <Dialog open={comparisonDialogOpen} onOpenChange={setComparisonDialogOpen}>
-                <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0">
-                    <DialogHeader className="px-6 pt-6 pb-4 border-b">
-                        <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                            <GitCompare className="h-5 w-5" />
-                            Compare Estimations
+        <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b">
+                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                    <GitCompare className="h-5 w-5" />
+                    Compare Estimations
                         </DialogTitle>
                         <DialogDescription>
                             Select and compare two estimations to see their differences
@@ -1752,6 +1657,6 @@ Risks: ${est.estimation_risks?.length || 0}`;
                     </div>
                 </DialogContent>
             </Dialog>
-        </div >
+        </Layout>
     );
 }

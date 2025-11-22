@@ -22,7 +22,7 @@ import { ImportRequirementsDialog } from '@/components/requirements/ImportRequir
 import { ClearListDialog } from '@/components/lists/ClearListDialog';
 import { DeleteRequirementDialog } from '@/components/requirements/DeleteRequirementDialog';
 import { BulkEstimateDialog } from '@/components/requirements/BulkEstimateDialog';
-import { Header } from '@/components/layout/Header';
+import { Layout } from '@/components/layout/Layout';
 
 export default function Requirements() {
     const navigate = useNavigate();
@@ -42,6 +42,8 @@ export default function Requirements() {
     const [showClearDialog, setShowClearDialog] = useState(false);
     const [showBulkEstimate, setShowBulkEstimate] = useState(false);
     const [deleteRequirement, setDeleteRequirement] = useState<Requirement | null>(null);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
 
     const loadData = useCallback(async (signal?: AbortSignal) => {
         if (!user || !listId) return;
@@ -157,6 +159,10 @@ export default function Requirements() {
         };
     }, [user, listId, loadData]);
 
+    useEffect(() => {
+        setPage(1);
+    }, [searchTerm, filterPriority, filterState, sortBy, requirements.length]);
+
     const filteredRequirements = useMemo(() => {
         const lowerSearchTerm = searchTerm.toLowerCase();
 
@@ -208,6 +214,19 @@ export default function Requirements() {
 
         return sorted;
     }, [requirements, searchTerm, filterPriority, filterState, sortBy]);
+
+    const paginatedRequirements = useMemo(() => {
+        const start = (page - 1) * pageSize;
+        return filteredRequirements.slice(start, start + pageSize);
+    }, [filteredRequirements, page, pageSize]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredRequirements.length / pageSize));
+    const showingFrom = filteredRequirements.length === 0 ? 0 : (page - 1) * pageSize + 1;
+    const showingTo = Math.min(filteredRequirements.length, page * pageSize);
+
+    useEffect(() => {
+        setPage((prev) => Math.min(prev, totalPages));
+    }, [totalPages]);
 
     const getPriorityConfig = (priority: string) => {
         const configs = {
@@ -374,12 +393,7 @@ export default function Requirements() {
     ));
 
     return (
-        <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
-            {/* Subtle background pattern */}
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgxNDgsMTYzLDE4NCwwLjA1KSkgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40 pointer-events-none"></div>
-
-            {/* Use shared Header component */}
-            <Header />
+        <Layout showSidebar={false}>
 
             {/* Page specific info bar - cleaner and more spacious */}
             <div className="relative border-b border-slate-200/60 bg-white/95 backdrop-blur-sm shadow-sm">
@@ -460,7 +474,7 @@ export default function Requirements() {
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 overflow-auto">
+            <div className="relative">
                 <div className="container mx-auto px-6 py-12">
                     {filteredRequirements.length === 0 ? (
                         <div className="max-w-4xl mx-auto">
@@ -679,6 +693,56 @@ export default function Requirements() {
                                 </div>
                             </div>
 
+                            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 px-1">
+                                <div className="text-sm text-slate-600">
+                                    Showing {showingFrom}-{showingTo} of {filteredRequirements.length} requirements
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-slate-500">Rows</span>
+                                        <Select
+                                            value={String(pageSize)}
+                                            onValueChange={(value) => {
+                                                setPageSize(Number(value));
+                                                setPage(1);
+                                            }}
+                                        >
+                                            <SelectTrigger className="w-24 h-9 border-slate-300 bg-white/80">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-white/95 backdrop-blur-lg border-slate-200/50">
+                                                {[10, 20, 50].map((size) => (
+                                                    <SelectItem key={size} value={String(size)}>
+                                                        {size} / page
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={page <= 1}
+                                            onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                        >
+                                            Prev
+                                        </Button>
+                                        <span className="text-xs text-slate-600">
+                                            Page {page} / {totalPages}
+                                        </span>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={page >= totalPages}
+                                            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                        >
+                                            Next
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Requirements Grid */}
                             <div className="grid gap-5">
                                 {loading ? (
@@ -691,7 +755,7 @@ export default function Requirements() {
                                             <Button variant="outline" onClick={() => setShowImportDialog(true)}>Import from Excel</Button>
                                         </div>
                                     </div>
-                                ) : filteredRequirements.map((req) => {
+                                ) : paginatedRequirements.map((req) => {
                                     const estimation = req.latest_estimation;
                                     const hasEstimation = !!estimation;
                                     const priorityConfig = getPriorityConfig(req.priority);
@@ -816,7 +880,7 @@ export default function Requirements() {
                         </div>
                     )}
                 </div>
-            </div >
+            </div>
 
             <CreateRequirementDialog
                 open={showCreateDialog}
@@ -864,6 +928,6 @@ export default function Requirements() {
                 listTechPresetId={list?.tech_preset_id || null}
                 onSuccess={loadData}
             />
-        </div >
+        </Layout>
     );
 }

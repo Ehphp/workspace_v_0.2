@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { fetchRequirementBundle } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Requirement, TechnologyPreset, List } from '@/types/database';
 
@@ -32,49 +32,8 @@ export function useRequirement(
         staleTime: 60_000, // 1 minute caching
         retry: false,
         queryFn: async () => {
-            // Load list scoped to user
-            const { data: listData, error: listError } = await supabase
-                .from('lists')
-                .select('*')
-                .eq('id', listId)
-                .eq('user_id', userId)
-                .single();
-
-            if (listError) throw listError;
-            if (!listData) throw new Error('List not found');
-
-            // Load requirement scoped to list
-            const { data: reqData, error: reqError } = await supabase
-                .from('requirements')
-                .select('*')
-                .eq('id', reqId)
-                .eq('list_id', listId)
-                .single();
-
-            if (reqError) throw reqError;
-            if (!reqData) throw new Error('Requirement not found');
-
-            // Load technology preset if defined on requirement or list
-            const techPresetId = reqData.tech_preset_id || listData.tech_preset_id;
-            let presetData: TechnologyPreset | null = null;
-            if (techPresetId) {
-                const { data, error } = await supabase
-                    .from('technology_presets')
-                    .select('*')
-                    .eq('id', techPresetId)
-                    .single();
-                if (error) {
-                    console.warn('Failed to load preset:', error);
-                } else if (data) {
-                    presetData = data;
-                }
-            }
-
-            return {
-                list: listData as List,
-                requirement: reqData as Requirement,
-                preset: presetData,
-            };
+            const bundle = await fetchRequirementBundle(listId!, reqId!, userId!);
+            return bundle;
         },
     });
 

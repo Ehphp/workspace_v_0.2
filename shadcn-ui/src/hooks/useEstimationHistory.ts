@@ -32,34 +32,48 @@ interface UseEstimationHistoryReturn {
     loading: boolean;
     error: Error | null;
     refetch: () => Promise<void>;
+    totalCount: number;
+}
+
+interface UseEstimationHistoryOptions {
+    page?: number;
+    pageSize?: number;
 }
 
 /**
  * Custom hook to load estimation history with proper error handling
  */
-export function useEstimationHistory(requirementId: string | undefined): UseEstimationHistoryReturn {
+export function useEstimationHistory(
+    requirementId: string | undefined,
+    options?: UseEstimationHistoryOptions
+): UseEstimationHistoryReturn {
     const enabled = Boolean(requirementId);
+    const pageSize = Math.max(1, options?.pageSize || 12);
+    const page = Math.max(1, options?.page || 1);
+    const rangeStart = (page - 1) * pageSize;
+    const rangeEnd = rangeStart + pageSize - 1;
 
     const query = useQuery({
-        queryKey: ['estimation-history', requirementId],
+        queryKey: ['estimation-history', requirementId, page, pageSize],
         enabled,
         staleTime: 30_000,
         retry: false,
         queryFn: async ({ signal }) => {
-            const { data: estimations, error: historyError } = await supabase
+            const { data: estimations, error: historyError, count } = await supabase
                 .from('estimations')
                 .select(`
-          *,
-          estimation_activities (activity_id, is_ai_suggested),
-          estimation_drivers (driver_id, selected_value),
-          estimation_risks (risk_id)
-        `)
+                    *,
+                    estimation_activities (activity_id, is_ai_suggested),
+                    estimation_drivers (driver_id, selected_value),
+                    estimation_risks (risk_id)
+                `, { count: 'exact' })
                 .eq('requirement_id', requirementId)
                 .order('created_at', { ascending: false })
+                .range(rangeStart, rangeEnd)
                 .abortSignal(signal as any);
 
             if (historyError) throw historyError;
-            return estimations || [];
+            return { estimations: estimations || [], total: count ?? (estimations?.length || 0) };
         },
     });
 
@@ -69,9 +83,10 @@ export function useEstimationHistory(requirementId: string | undefined): UseEsti
         toast.error('Failed to load estimation history', { description: message });
     }, [query.error, enabled]);
 
-    const history = useMemo<EstimationHistoryItem[]>(() => query.data || [], [query.data]);
+    const history = useMemo<EstimationHistoryItem[]>(() => query.data?.estimations || [], [query.data]);
+    const totalCount = query.data?.total ?? history.length;
     const loading = query.isLoading || query.isFetching;
     const error = (query.error as Error) || null;
 
-    return { history, loading, error, refetch: query.refetch };
+    return { history, loading, error, refetch: query.refetch, totalCount };
 }

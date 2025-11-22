@@ -16,7 +16,7 @@ import type { List } from '@/types/database';
 import { CreateListDialog } from '@/components/lists/CreateListDialog';
 import { EditListDialog } from '@/components/lists/EditListDialog';
 import { DeleteListDialog } from '@/components/lists/DeleteListDialog';
-import { Header } from '@/components/layout/Header';
+import { Layout } from '@/components/layout/Layout';
 
 export default function Lists() {
   const navigate = useNavigate();
@@ -126,13 +126,7 @@ export default function Lists() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
-      {/* Subtle background pattern */}
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgxNDgsMTYzLDE4NCwwLjA1KSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40 pointer-events-none"></div>
-
-      {/* Use shared Header component with navigation */}
-      <Header />
-
+    <Layout showSidebar={false}>
       {/* Page specific header */}
       <div className="relative border-b border-white/20 bg-white/40 backdrop-blur-sm flex-none z-10">
         <div className="container mx-auto px-6 py-4">
@@ -183,9 +177,10 @@ export default function Lists() {
       </div>
 
       {/* Scrollable Content */}
-      <div className="relative flex-1 overflow-hidden z-0">
-        <div className="container mx-auto px-6 h-full">{lists.length === 0 ? (
-          <div className="h-full flex items-center justify-center">
+      <div className="relative z-0">
+        <div className="container mx-auto px-6 py-6">
+          {lists.length === 0 ? (
+          <div className="min-h-[50vh] flex items-center justify-center">
             <Card className="max-w-md border-slate-200/50 bg-white/60 backdrop-blur-md shadow-xl hover:shadow-2xl transition-all duration-300">
               <CardContent className="flex flex-col items-center py-12 px-8">
                 {showArchived ? (
@@ -220,7 +215,7 @@ export default function Lists() {
             </Card>
           </div>
         ) : (
-          <div className="h-full overflow-y-auto py-6">
+          <div className="py-6">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 pb-6">
               {lists.map((list) => (
                 <Card
@@ -348,6 +343,6 @@ export default function Lists() {
           }}
         />
       )}
-    </div>
+    </Layout>
   );
 }
