@@ -520,13 +520,13 @@ Risks: ${est.estimation_risks?.length || 0}`;
                     risks,
                 });
 
-                // ⚠️ VALIDAZIONE SOFT: Avvisa ma NON blocca (come QuickEstimate homepage)
+                // Stop if AI deems the requirement invalid
                 if (!suggestions.isValidRequirement) {
-                    console.warn('⚠️ Quick Estimate: AI marked requirement as potentially invalid, but continuing anyway');
-                    toast.warning('AI Warning', {
-                        description: suggestions.reasoning || 'The requirement description may be unclear, but we\'ll proceed with estimation.',
+                    setIsQuickEstimating(false);
+                    toast.error('Invalid requirement', {
+                        description: suggestions.reasoning || 'The requirement description is too vague to estimate.',
                     });
-                    // NON blocchiamo, continuiamo comunque
+                    return;
                 }
 
                 // ✅ VALIDAZIONE: Verifica che ci siano attività suggerite

@@ -81,6 +81,49 @@ function createActivitySchema(validActivityCodes: string[]) {
     };
 }
 
+// Lightweight, deterministic validation to avoid pointless AI calls
+function validateRequirementDescription(description: string): { isValid: boolean; reason?: string } {
+    const normalized = description.trim();
+
+    if (!normalized) {
+        return { isValid: false, reason: 'Description is empty' };
+    }
+
+    if (normalized.length < 6) {
+        return { isValid: false, reason: 'Description is too short to evaluate' };
+    }
+
+    if (!/[a-zA-Z\u00C0-\u017F]/.test(normalized)) {
+        return { isValid: false, reason: 'Description must contain alphabetic characters' };
+    }
+
+    const testInputPatterns = /^(test|aaa+|bbb+|ccc+|qwerty|asdf|lorem ipsum|123+|\d+)$/i;
+    if (testInputPatterns.test(normalized)) {
+        return { isValid: false, reason: 'Description looks like placeholder or test input' };
+    }
+
+    const hasActionVerb = /(add|update|modify|change|create|implement|build|fix|refactor|remove|delete|configure|enable|disable|integrate|migrate|rename|aggiorn|aggiung|modific|crea|elimin|rimuov|implement|configur|abilit|disabilit|corregg|integra|migra|sistem)/i.test(normalized);
+    if (!hasActionVerb) {
+        return { isValid: false, reason: 'Missing action verb' };
+    }
+
+    const words = normalized.split(/\s+/).filter(w => w.length >= 3);
+    if (words.length < 3) {
+        return { isValid: false, reason: 'Description is too short or ambiguous' };
+    }
+
+    const hasTechnicalTarget = /(api|endpoint|service|servizio|microservice|database|db|table|tabella|campo|column|form|pagina|screen|ui|ux|workflow|processo|process|configurazione|report|dashboard|notifica|email|auth|login|registrazione|utente|profilo|integrazione|deploy|pipeline|script|query|data|model|schema|cache|log|monitor|cron|job|batch|trigger|webhook|storage|bucket|file|documento|pdf|excel|csv|import|export|frontend|front-end|backend|back-end|api-gateway|serverless|lambda|function|cloud)/i.test(normalized);
+    if (!hasTechnicalTarget) {
+        return { isValid: false, reason: 'Missing technical target (API, form, table, workflow, etc.)' };
+    }
+
+    if (/[?]{2,}$/.test(normalized) || /\?$/.test(normalized)) {
+        return { isValid: false, reason: 'Description is a question, not a requirement' };
+    }
+
+    return { isValid: true };
+}
+
 // Legacy compact function (kept for reference - can be removed later)
 function createCompactPrompt(activities: any[], drivers: any[], risks: any[]): string {
     const activitiesStr = activities.map(a => `${a.code}(${a.base_days}d,${a.group})`).join(', ');
@@ -104,6 +147,7 @@ interface RequestBody {
     action?: 'suggest-activities' | 'generate-title';
     description: string;
     preset?: {
+        id: string;
         name: string;
         description: string;
         tech_category: string;
@@ -270,6 +314,21 @@ export const handler: Handler = async (
         console.log('- Drivers count:', drivers?.length);
         console.log('- Risks count:', risks?.length);
 
+        const descriptionCheck = validateRequirementDescription(sanitizedDescription);
+        if (!descriptionCheck.isValid) {
+            console.warn('Requirement rejected by deterministic validation:', descriptionCheck.reason);
+            const invalidSuggestion: AIActivitySuggestion = {
+                isValidRequirement: false,
+                activityCodes: [],
+                reasoning: descriptionCheck.reason || 'Requirement description is too vague or looks like test data',
+            };
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify(invalidSuggestion),
+            };
+        }
+
         // Filter activities relevant to the preset's tech category
         const relevantActivities = activities.filter(
             (a) => a.tech_category === preset.tech_category || a.tech_category === 'MULTI'
@@ -310,8 +369,11 @@ export const handler: Handler = async (
 
         const systemPrompt = `You are an expert software estimation assistant for ${preset.name} (${preset.tech_category}).
 
-YOUR TASK:
-Analyze the requirement description and suggest ONLY the relevant activity codes needed to implement it.
+STEP 1: Validate the requirement description.
+- If it is invalid or unclear, set isValidRequirement to false, return activityCodes as an empty array, and explain why in reasoning.
+- Invalid means: too vague, placeholder/test text, no action verb, no clear technical target (API, form, table, workflow, report, page, endpoint, etc.), gibberish, or a question.
+
+STEP 2: When valid, suggest ONLY the relevant activity codes needed to implement it.
 
 IMPORTANT CONSTRAINTS:
 - You suggest ONLY activity codes (you NEVER suggest drivers or risks)
@@ -322,27 +384,28 @@ IMPORTANT CONSTRAINTS:
 VALIDATION RULES:
 
 ACCEPT if requirement describes:
-✓ Feature additions or modifications (even if brief)
-✓ UI/UX changes or updates
-✓ Data model changes, field additions
-✓ Workflow or process modifications
-✓ Bug fixes or improvements
-✓ Integration or API work
-✓ Documentation or configuration changes
-✓ ANY action verb + technical context (update, add, modify, create, fix, change, implement)
+- Feature additions or modifications (even if brief)
+- UI/UX changes or updates
+- Data model changes, field additions
+- Workflow or process modifications
+- Bug fixes or improvements
+- Integration or API work
+- Documentation or configuration changes
+- ANY action verb + technical context (update, add, modify, create, fix, change, implement)
 
 REJECT only if:
-✗ Extremely vague with no technical context (e.g., "make it better", "fix things")
-✗ Pure test input (e.g., "test", "aaa", "123", "qwerty")
-✗ No action or technical element
-✗ Random characters or gibberish
-✗ Is a question rather than a requirement
+- Extremely vague with no technical context (e.g., "make it better", "fix things")
+- Pure test input (e.g., "test", "aaa", "123", "qwerty")
+- No action or technical element
+- No clear technical target (API, form, table, workflow, report, page, endpoint, etc.)
+- Random characters or gibberish
+- Is a question rather than a requirement
 
 EXAMPLES:
-"Aggiornare la lettera con aggiunta frase" ✓ (action: aggiornare, target: lettera)
-"Add field to profile" ✓ (action: add, target: field)
-"Make better" ✗ (no specific target or action)
-"test" ✗ (test input)
+"Aggiornare la lettera con aggiunta frase" -> accept (action: aggiornare, target: lettera)
+"Add field to profile" -> accept (action: add, target: field)
+"Make better" -> reject (no specific target or action)
+"test" -> reject (test input)
 
 ${descriptiveData}
 
@@ -351,7 +414,7 @@ SELECTION GUIDELINES:
 - Consider the EFFORT (base days) to ensure realistic coverage
 - Select activities from appropriate GROUP (ANALYSIS, DEV, TEST, OPS, GOVERNANCE)
 - Choose activities that match the requirement's scope and complexity
-- Include typical SDLC activities: analysis → development → testing → deployment
+- Include typical SDLC activities: analysis -> development -> testing -> deployment
 
 RETURN FORMAT:
 {"isValidRequirement": true/false, "activityCodes": ["CODE1", "CODE2", ...], "reasoning": "brief explanation of your selection"}`;
@@ -428,12 +491,20 @@ RETURN FORMAT:
             risks.map((r) => r.code)
         );
 
-        console.log('✅ Validated suggestion:', JSON.stringify(validatedSuggestion, null, 2));
+        const finalSuggestion: AIActivitySuggestion = validatedSuggestion.isValidRequirement
+            ? validatedSuggestion
+            : {
+                ...validatedSuggestion,
+                activityCodes: [],
+                reasoning: validatedSuggestion.reasoning || 'Requirement description is invalid or too vague',
+            };
+
+        console.log('Validated suggestion:', JSON.stringify(finalSuggestion, null, 2));
 
         // Cache the validated result (skip in test mode)
         if (!testMode) {
-            aiCache.set(cacheKey, { response: validatedSuggestion, timestamp: Date.now() });
-            console.log('💾 Cached response for future use');
+            aiCache.set(cacheKey, { response: finalSuggestion, timestamp: Date.now() });
+            console.log('Cached response for future use');
         }
 
         // Return successful response
@@ -441,7 +512,7 @@ RETURN FORMAT:
         return {
             statusCode: 200,
             headers,
-            body: JSON.stringify(validatedSuggestion),
+            body: JSON.stringify(finalSuggestion),
         };
     } catch (error: any) {
         console.error('=== ERROR in ai-suggest function ===');

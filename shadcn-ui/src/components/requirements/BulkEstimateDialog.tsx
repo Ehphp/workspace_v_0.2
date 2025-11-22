@@ -216,9 +216,18 @@ export function BulkEstimateDialog({
 
                     const aiSuggestion = await response.json();
 
+                    // Reject invalid requirements immediately (no fallback to defaults)
+                    if (!aiSuggestion.isValidRequirement) {
+                        return {
+                            requirementId: req.id,
+                            success: false,
+                            error: aiSuggestion.reasoning || 'Requirement description is not valid for estimation',
+                        };
+                    }
+
                     // Pick AI suggestions when valid; fallback to preset defaults filtered by allowed activities
                     let chosenCodes: string[] = [];
-                    if (aiSuggestion.isValidRequirement && aiSuggestion.activityCodes && aiSuggestion.activityCodes.length > 0) {
+                    if (aiSuggestion.activityCodes && aiSuggestion.activityCodes.length > 0) {
                         chosenCodes = aiSuggestion.activityCodes.filter((code: string) =>
                             activities.some((a: Activity) => a.code === code)
                         );

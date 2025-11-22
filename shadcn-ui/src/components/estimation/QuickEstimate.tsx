@@ -163,11 +163,19 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                 risks: allRisks,
             });
 
+            if (!aiSuggestion.isValidRequirement) {
+                setError(aiSuggestion.reasoning || 'The requirement description is not valid for estimation. Please provide a clearer technical target.');
+                setResult(null);
+                setSelectedActivities([]);
+                setAiReasoning(aiSuggestion.reasoning || '');
+                return;
+            }
+
             // Determine which activity codes to use (AI suggestion or preset defaults as fallback)
             let chosenCodes: string[] = [];
             let reasoning = aiSuggestion.reasoning || '';
 
-            if (aiSuggestion.isValidRequirement && aiSuggestion.activityCodes && aiSuggestion.activityCodes.length > 0) {
+            if (aiSuggestion.activityCodes && aiSuggestion.activityCodes.length > 0) {
                 chosenCodes = aiSuggestion.activityCodes.filter((code) =>
                     allowedActivities.some((a) => a.code === code)
                 );
