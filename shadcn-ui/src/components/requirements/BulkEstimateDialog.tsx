@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { Activity, Driver, Risk, DriverOption } from '@/types/database';
+import { calculateEstimation } from '@/lib/estimationEngine';
+import type { Activity } from '@/types/database';
 import { sanitizePromptInput } from '@/types/ai-validation';
 import {
     Dialog,
@@ -79,8 +80,22 @@ export function BulkEstimateDialog({
         let completed = 0;
         const results: RequirementStatus[] = [...initialStatuses];
 
+        // Fetch current user once
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        const userId = userData?.user?.id;
+        if (userError || !userId) {
+            const errorStatuses = estimableRequirements.map((req) => ({
+                requirement: req,
+                status: 'error' as EstimateStatus,
+                error: 'User not authenticated',
+            }));
+            setStatuses(errorStatuses);
+            setStep('complete');
+            return;
+        }
+
         // PRE-LOAD all data once (huge performance boost for bulk)
-        console.log('🚀 Pre-loading catalogs for bulk processing...');
+        console.log('Pre-loading catalogs for bulk processing...');
         const [activitiesRes, driversRes, risksRes] = await Promise.all([
             supabase.from('activities').select('*').eq('active', true),
             supabase.from('drivers').select('*'),
@@ -134,7 +149,7 @@ export function BulkEstimateDialog({
         });
 
         const presetsMap = new Map(normalizedPresets.map(p => [p.id, p]));
-        console.log('✅ Pre-loaded data ready');
+        console.log('Pre-loaded data ready');
 
         // Process in batches of MAX_CONCURRENT
         for (let i = 0; i < estimableRequirements.length; i += MAX_CONCURRENT) {
@@ -180,8 +195,6 @@ export function BulkEstimateDialog({
                             error: 'No compatible activities for preset category',
                         };
                     }
-                    const drivers = sharedDrivers;
-                    const risks = sharedRisks;
 
                     // Sanitize input to prevent injection attacks (consistency with openai.ts)
                     const sanitizedDescription = sanitizePromptInput(req.description);
@@ -191,8 +204,6 @@ export function BulkEstimateDialog({
                     console.log('  - Description length:', sanitizedDescription?.length);
                     console.log('  - Preset:', preset.name);
                     console.log('  - Activities:', activities?.length);
-                    console.log('  - Drivers:', drivers?.length);
-                    console.log('  - Risks:', risks?.length);
 
                     const response = await fetch('/.netlify/functions/ai-suggest', {
                         method: 'POST',
@@ -201,8 +212,8 @@ export function BulkEstimateDialog({
                             description: sanitizedDescription,
                             preset,
                             activities,
-                            drivers,
-                            risks,
+                            drivers: sharedDrivers,
+                            risks: sharedRisks,
                         }),
                     });
 
@@ -226,12 +237,12 @@ export function BulkEstimateDialog({
                     }
 
                     // Pick AI suggestions when valid; fallback to preset defaults filtered by allowed activities
-                    let chosenCodes: string[] = [];
-                    if (aiSuggestion.activityCodes && aiSuggestion.activityCodes.length > 0) {
-                        chosenCodes = aiSuggestion.activityCodes.filter((code: string) =>
+                    const aiActivityCodes =
+                        (aiSuggestion.activityCodes || []).filter((code: string) =>
                             activities.some((a: Activity) => a.code === code)
                         );
-                    }
+
+                    let chosenCodes: string[] = aiActivityCodes;
 
                     if (chosenCodes.length === 0) {
                         // Fallback to preset defaults (already normalized via pivot)
@@ -253,38 +264,41 @@ export function BulkEstimateDialog({
                         chosenCodes.includes(a.code)
                     ) || [];
 
-                    // NO drivers and risks - GPT suggests only activities
-                    const selectedDrivers: any[] = [];
-                    const selectedRisks: any[] = [];
+                    const aiCodesSet = new Set(aiActivityCodes);
 
-                    const baseDays = selectedActivities.reduce(
-                        (sum: number, a: Activity) => sum + a.base_days,
-                        0
-                    );
-                    const driverMultiplier = 1.0; // No driver multiplier
-                    const subtotal = baseDays * driverMultiplier;
-                    const riskScore = 0; // No risk score
-
-                    const contingencyPercent = 0.10; // Base contingency only
-
-                    const contingencyDays = subtotal * contingencyPercent;
-                    const totalDays = subtotal + contingencyDays;
-
-                    // Save estimation to database
-                    await supabase.from('estimations').insert({
-                        requirement_id: req.id,
-                        user_id: (await supabase.auth.getUser()).data.user?.id,
-                        total_days: totalDays,
-                        base_days: baseDays,
-                        driver_multiplier: driverMultiplier,
-                        risk_score: riskScore,
-                        contingency_percent: contingencyPercent * 100,
-                        scenario_name: 'AI Generated',
-                        selected_activities: aiSuggestion.activityCodes,
-                        selected_drivers: {}, // No drivers
-                        selected_risks: [], // No risks
-                        ai_reasoning: aiSuggestion.reasoning,
+                    const estimation = calculateEstimation({
+                        activities: selectedActivities.map((a: Activity) => ({
+                            code: a.code,
+                            baseDays: a.base_days,
+                            isAiSuggested: aiCodesSet.has(a.code),
+                        })),
+                        drivers: [],
+                        risks: [],
                     });
+
+                    const activitiesPayload = selectedActivities.map((a: Activity) => ({
+                        activity_id: a.id,
+                        is_ai_suggested: aiCodesSet.has(a.code),
+                        notes: '',
+                    }));
+
+                    const { error: saveError } = await supabase.rpc('save_estimation_atomic', {
+                        p_requirement_id: req.id,
+                        p_user_id: userId,
+                        p_total_days: estimation.totalDays,
+                        p_base_days: estimation.baseDays,
+                        p_driver_multiplier: estimation.driverMultiplier,
+                        p_risk_score: estimation.riskScore,
+                        p_contingency_percent: estimation.contingencyPercent,
+                        p_scenario_name: 'AI Generated (Bulk)',
+                        p_activities: activitiesPayload,
+                        p_drivers: null,
+                        p_risks: null,
+                    });
+
+                    if (saveError) {
+                        throw saveError;
+                    }
 
                     return { requirementId: req.id, success: true };
                 } catch (error) {
@@ -446,10 +460,10 @@ export function BulkEstimateDialog({
                                     <p className="text-lg font-semibold">Estimation Complete</p>
                                     <div className="flex gap-4 justify-center text-sm">
                                         <span className="text-green-600">
-                                            ✓ {successCount} successful
+                                            {successCount} successful
                                         </span>
                                         {errorCount > 0 && (
-                                            <span className="text-red-600">✗ {errorCount} failed</span>
+                                            <span className="text-red-600">{errorCount} failed</span>
                                         )}
                                     </div>
                                 </div>

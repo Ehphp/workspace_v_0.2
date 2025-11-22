@@ -7,10 +7,10 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-// In-memory cache for AI responses (TTL: 5 minutes)
+// In-memory cache for AI responses (24h TTL, resets on cold start)
 const aiCache = new Map<string, { response: any; timestamp: number }>();
-const CACHE_TTL = 24 * 60 * 60 * 1000; // ✅ CHANGED: 24 hours (was 5 minutes)
-// Ensures same requirement returns same result within 24 hours
+const CACHE_TTL = 24 * 60 * 60 * 1000;
+// Ensures same requirement returns same result within the TTL window
 
 // Helper to generate cache key with activity codes hash
 function getCacheKey(description: string, presetId: string, activityCodes: string[]): string {
@@ -53,7 +53,7 @@ function createActivitySchema(validActivityCodes: string[]) {
         type: "json_schema" as const,
         json_schema: {
             name: "activity_suggestion_response",
-            strict: true,  // ✅ CRITICAL: Enforces strict schema adherence by OpenAI
+            strict: true,  // CRITICAL: Enforces strict schema adherence by OpenAI
             schema: {
                 type: "object",
                 properties: {
@@ -66,7 +66,7 @@ function createActivitySchema(validActivityCodes: string[]) {
                         description: "Array of relevant activity codes for this requirement",
                         items: {
                             type: "string",
-                            enum: validActivityCodes  // ✅ GPT can ONLY return codes from this list
+                            enum: validActivityCodes  //  GPT can ONLY return codes from this list
                         }
                     },
                     reasoning: {
@@ -75,7 +75,7 @@ function createActivitySchema(validActivityCodes: string[]) {
                     }
                 },
                 required: ["isValidRequirement", "activityCodes", "reasoning"],
-                additionalProperties: false  // ✅ No extra fields allowed
+                additionalProperties: false  //  No extra fields allowed
             }
         }
     };
@@ -113,7 +113,13 @@ function validateRequirementDescription(description: string): { isValid: boolean
     }
 
     const hasTechnicalTarget = /(api|endpoint|service|servizio|microservice|database|db|table|tabella|campo|column|form|pagina|screen|ui|ux|workflow|processo|process|configurazione|report|dashboard|notifica|email|auth|login|registrazione|utente|profilo|integrazione|deploy|pipeline|script|query|data|model|schema|cache|log|monitor|cron|job|batch|trigger|webhook|storage|bucket|file|documento|pdf|excel|csv|import|export|frontend|front-end|backend|back-end|api-gateway|serverless|lambda|function|cloud)/i.test(normalized);
+    // Se non trova un technical target, ma ci sono almeno 3 parole e un verbo d'azione, accetta comunque ma logga un warning
     if (!hasTechnicalTarget) {
+        if (words.length >= 3 && hasActionVerb) {
+            console.warn('Warning: Nessun technical target rilevato, ma accettato per flessibilita.');
+            // Si accetta comunque, ma si potrebbe aggiungere una reason opzionale se serve
+            return { isValid: true };
+        }
         return { isValid: false, reason: 'Missing technical target (API, form, table, workflow, etc.)' };
     }
 
@@ -161,19 +167,6 @@ interface RequestBody {
         base_days: number;
         group: string;
         tech_category: string;
-    }>;
-    drivers?: Array<{
-        code: string;
-        name: string;
-        options?: Array<{
-            value: string;
-            multiplier: number;
-        }>;
-    }>;
-    risks?: Array<{
-        code: string;
-        name: string;
-        weight: number;
     }>;
     // Test mode: disable cache and increase temperature
     testMode?: boolean;
@@ -255,7 +248,7 @@ export const handler: Handler = async (
             const cacheKey = `title:${sanitizedDescription.substring(0, 200)}`;
             const cached = getCachedResponse(cacheKey);
             if (cached) {
-                console.log('✅ Using cached title');
+                console.log('Using cached title');
                 return {
                     statusCode: 200,
                     headers,
@@ -293,15 +286,15 @@ export const handler: Handler = async (
         }
 
         // Handle activity suggestions (original logic)
-        const { description, preset, activities, drivers, risks, testMode } = body;
+        const { description, preset, activities, testMode } = body;
 
-        if (!description || !preset || !activities || !drivers || !risks) {
+        if (!description || !preset || !activities) {
             console.error('Validation failed - missing fields');
             return {
                 statusCode: 400,
                 headers,
                 body: JSON.stringify({
-                    error: 'Missing required fields: description, preset, activities, drivers, risks',
+                    error: 'Missing required fields: description, preset, activities',
                 }),
             };
         }
@@ -311,8 +304,6 @@ export const handler: Handler = async (
         console.log('- Description length:', sanitizedDescription?.length);
         console.log('- Preset:', preset?.name);
         console.log('- Activities count:', activities?.length);
-        console.log('- Drivers count:', drivers?.length);
-        console.log('- Risks count:', risks?.length);
 
         const descriptionCheck = validateRequirementDescription(sanitizedDescription);
         if (!descriptionCheck.isValid) {
@@ -342,7 +333,7 @@ export const handler: Handler = async (
         if (!testMode) {
             const cached = getCachedResponse(cacheKey);
             if (cached) {
-                console.log('✅ Using cached AI suggestion');
+                console.log('Using cached AI suggestion');
                 return {
                     statusCode: 200,
                     headers,
@@ -350,19 +341,19 @@ export const handler: Handler = async (
                 };
             }
         } else {
-            console.log('🧪 Test mode: cache disabled');
+            console.log('Test mode: cache disabled');
         }
 
         // Build DESCRIPTIVE system prompt with full activity details
-        console.log('📝 Creating descriptive prompt with full activity details...');
+        console.log('Creating descriptive prompt with full activity details...');
         console.log('- relevantActivities:', relevantActivities?.length);
 
         let descriptiveData;
         try {
             descriptiveData = createDescriptivePrompt(relevantActivities);
-            console.log('✅ Descriptive prompt created, length:', descriptiveData?.length);
+            console.log('Descriptive prompt created, length:', descriptiveData?.length);
         } catch (error: any) {
-            console.error('❌ Error in createDescriptivePrompt:', error.message);
+            console.error('Error in createDescriptivePrompt:', error.message);
             console.error('Stack:', error.stack);
             throw new Error(`Failed to create descriptive prompt: ${error.message}`);
         }
@@ -432,63 +423,76 @@ RETURN FORMAT:
         const responseSchema = createActivitySchema(
             relevantActivities.map(a => a.code)
         );
-        console.log('✅ Using structured outputs with', relevantActivities.length, 'valid activity codes in enum');
+        console.log('Using structured outputs with', relevantActivities.length, 'valid activity codes in enum');
 
         // Call OpenAI API with structured outputs (Phase 2 improvement)
-        const temperature = testMode ? 0.7 : 0.0; // ✅ CHANGED: 0.0 for maximum determinism (was 0.1)
+        const temperature = testMode ? 0.7 : 0.0; // CHANGED: 0.0 for maximum determinism (was 0.1)
         const response = await openai.chat.completions.create({
             model: 'gpt-4o-mini',  // Supports structured outputs
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
             ],
-            response_format: responseSchema,  // ✅ PHASE 2: Strict schema with enum validation
+            response_format: responseSchema,  // PHASE 2: Strict schema with enum validation
             temperature,
             max_tokens: 500, // Limit response size
         });
 
-        console.log('✅ Using temperature:', temperature, '(determinism level:', temperature === 0 ? 'maximum' : 'test mode', ')');
+        console.log('Using temperature:', temperature, '(determinism level:', temperature === 0 ? 'maximum' : 'test mode', ')');
 
         console.log('OpenAI response received:');
         console.log('- Choices count:', response.choices?.length);
         console.log('- Model used:', response.model);
         console.log('- Usage:', JSON.stringify(response.usage));
 
-        const content = response.choices[0]?.message?.content;
-        console.log('Content length:', content?.length);
-        console.log('Content preview:', content?.substring(0, 200));
+        const message = response.choices[0]?.message;
+        const parsedContent = message?.parsed ?? message?.content;
 
-        if (!content) {
+        // Log basic info for troubleshooting
+        const debugPreview =
+            typeof parsedContent === 'string'
+                ? parsedContent.substring(0, 200)
+                : JSON.stringify(parsedContent)?.substring(0, 200);
+        console.log('Content present:', !!parsedContent);
+        console.log('Content preview:', debugPreview);
+
+        if (!parsedContent) {
             throw new Error('No response from OpenAI');
         }
 
-        // Parse JSON (guaranteed valid by structured outputs schema)
+        // Parse structured output: prefer parsed object when available, fallback to JSON string
         let suggestion: any;
-        try {
-            suggestion = JSON.parse(content);
-        } catch (parseError) {
-            console.error('JSON parse error:', parseError);
-            throw new Error('Invalid JSON response from AI');
+        if (typeof parsedContent === 'object') {
+            suggestion = parsedContent;
+        } else {
+            try {
+                suggestion = JSON.parse(parsedContent);
+            } catch (parseError) {
+                console.error('JSON parse error:', parseError);
+                throw new Error('Invalid JSON response from AI');
+            }
         }
 
-        // ✅ PHASE 2 IMPROVEMENT: Minimal validation needed
+        // PHASE 2 IMPROVEMENT: Minimal validation needed
         // Structured outputs guarantee:
         // - activityCodes contains ONLY codes from enum (no invalid codes possible)
         // - All required fields present (isValidRequirement, activityCodes, reasoning)
         // - No additional properties
         // - Correct types for all fields
 
-        console.log('✅ Structured output received and validated by OpenAI');
+        console.log(' Structured output received and validated by OpenAI');
         console.log('- isValidRequirement:', suggestion.isValidRequirement);
         console.log('- activityCodes count:', suggestion.activityCodes?.length);
         console.log('- All codes pre-validated by enum constraint');
 
         // Keep basic Zod validation for extra safety (optional - can be removed)
+
+        // Validazione base solo su activity codes
         const validatedSuggestion = validateAISuggestion(
             suggestion,
             relevantActivities.map((a) => a.code),
-            drivers.map((d) => d.code),
-            risks.map((r) => r.code)
+            [],
+            []
         );
 
         const finalSuggestion: AIActivitySuggestion = validatedSuggestion.isValidRequirement

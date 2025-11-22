@@ -121,15 +121,11 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
     try {
       // Always try AI first (Netlify function handles server-side API key)
       const { suggestActivities } = await import('@/lib/openai');
-      const { data: driversData } = await supabase.from('drivers').select('*');
-      const { data: risksData } = await supabase.from('risks').select('*');
 
       const suggestion = await suggestActivities({
         description: data.description,
         preset,
         activities,
-        drivers: driversData || MOCK_DRIVERS,
-        risks: risksData || MOCK_RISKS,
       });
 
       // Check if the requirement is valid

@@ -6,8 +6,6 @@ interface SuggestActivitiesInput {
   description: string;
   preset: TechnologyPreset;
   activities: Activity[];
-  drivers: Driver[];
-  risks: Risk[];
   baseUrl?: string; // Optional base URL for testing
   testMode?: boolean; // Disable cache and increase temperature for variance testing
 }
@@ -16,10 +14,11 @@ interface SuggestActivitiesInput {
  * Call the Netlify serverless function to get AI activity suggestions.
  * This keeps the OpenAI API key secure on the server side.
  */
+
 export async function suggestActivities(
   input: SuggestActivitiesInput
 ): Promise<AIActivitySuggestion> {
-  const { description, preset, activities, drivers, risks, baseUrl = '', testMode = false } = input;
+  const { description, preset, activities, baseUrl = '', testMode = false } = input;
 
   try {
     // Sanitize input to prevent injection attacks
@@ -36,8 +35,6 @@ export async function suggestActivities(
         description: sanitizedDescription,
         preset,
         activities,
-        drivers,
-        risks,
         testMode, // Pass test mode to function
       }),
     });

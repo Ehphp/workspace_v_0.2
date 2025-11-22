@@ -307,7 +307,7 @@ Risks: ${est.estimation_risks?.length || 0}`;
             return;
         }
 
-        const validStates = ['DRAFT', 'PROPOSED', 'APPROVED', 'IN_PROGRESS', 'COMPLETED', 'REJECTED'];
+        const validStates = ['PROPOSED', 'SELECTED', 'SCHEDULED', 'IN_PROGRESS', 'DONE', 'REJECTED'];
         if (!validStates.includes(editedData.state)) {
             toast.error('Validation failed', {
                 description: 'Invalid state selected',
@@ -315,7 +315,7 @@ Risks: ${est.estimation_risks?.length || 0}`;
             return;
         }
 
-        const validPriorities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+        const validPriorities = ['LOW', 'MEDIUM', 'HIGH'];
         if (!validPriorities.includes(editedData.priority)) {
             toast.error('Validation failed', {
                 description: 'Invalid priority selected',
@@ -516,8 +516,6 @@ Risks: ${est.estimation_risks?.length || 0}`;
                     description: requirement.description,
                     preset: selectedPreset,
                     activities,
-                    drivers,
-                    risks,
                 });
 
                 // Stop if AI deems the requirement invalid
@@ -588,8 +586,6 @@ Risks: ${est.estimation_risks?.length || 0}`;
                 description: requirement.description,
                 preset: selectedPreset,
                 activities,
-                drivers,
-                risks,
             });
 
             // Check if the requirement is valid

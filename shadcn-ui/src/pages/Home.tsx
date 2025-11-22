@@ -150,7 +150,7 @@ export default function Home() {
 
                   <h2 className="text-5xl font-bold text-slate-900 leading-tight">
                     Syntero
-                    <span className="block bg-gradient-to-r from-blue-600 via-indigo-600 to-amber-500 bg-clip-text text-transparent">
+                    <span className="block bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-500 bg-clip-text text-transparent">
                       AI-crafted requirements estimation
                     </span>
                   </h2>
@@ -325,19 +325,7 @@ export default function Home() {
                     <span className="font-medium">Accurate</span>
                   </div>
                 </div>
-                <div className="pt-4">
-                  <div className="p-4 rounded-xl border border-slate-200/70 bg-white/70 backdrop-blur flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">Nuovo qui?</p>
-                      <p className="text-sm text-slate-600">Scopri come stimiamo in 3 minuti.</p>
-                    </div>
-                    <Link to="/how-it-works">
-                      <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-50">
-                        Come funziona
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
+
               </div>
             </div>
           </div>
@@ -352,7 +340,7 @@ export default function Home() {
   return (
     <div className="h-screen flex flex-col bg-slate-50 overflow-hidden">
       {/* Header with glassmorphism - matching home style */}
-          <header className="border-b border-slate-200/60 backdrop-blur-xl bg-white/90 shadow-sm flex-shrink-0">
+      <header className="border-b border-slate-200/60 backdrop-blur-xl bg-white/90 shadow-sm flex-shrink-0">
         <div className="container mx-auto px-6 h-14 flex items-center justify-between gap-4">
           {/* Logo & Brand */}
           <SynteroMark subtitle="Wizard mode" compact />

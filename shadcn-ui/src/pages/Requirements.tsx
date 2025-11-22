@@ -42,10 +42,10 @@ export default function Requirements() {
     const [showBulkEstimate, setShowBulkEstimate] = useState(false);
     const [deleteRequirement, setDeleteRequirement] = useState<Requirement | null>(null);
 
-    const loadData = useCallback(async () => {
+    const loadData = useCallback(async (signal?: AbortSignal) => {
         if (!user || !listId) return;
 
-        let isMounted = true;
+        setLoading(true);
 
         try {
             // Load list details
@@ -54,6 +54,7 @@ export default function Requirements() {
                 .select('*')
                 .eq('id', listId)
                 .eq('user_id', user.id)
+                .abortSignal(signal as any)
                 .single();
 
             if (listError) {
@@ -67,7 +68,7 @@ export default function Requirements() {
                 return;
             }
 
-            if (!isMounted) return;
+            if (signal?.aborted) return;
             setList(listData);
 
             // Load requirements with their latest estimation
@@ -82,18 +83,19 @@ export default function Requirements() {
                     )
                 `)
                 .eq('list_id', listId)
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
+                .abortSignal(signal as any);
 
             if (reqError) {
                 console.error('Error loading requirements:', reqError);
-                if (isMounted) {
+                if (!signal?.aborted) {
                     toast({
                         title: 'Error',
                         description: 'Failed to load requirements',
                         variant: 'destructive',
                     });
                 }
-            } else if (isMounted) {
+            } else if (!signal?.aborted) {
                 // Transform data to include latest estimation
                 const requirementsWithEstimation = (reqData || []).map((req: Requirement & { estimations?: Estimation[] }) => {
                     const sortedEstimations = (req.estimations || []).sort(
@@ -109,7 +111,7 @@ export default function Requirements() {
             }
         } catch (error) {
             console.error('Unexpected error loading data:', error);
-            if (isMounted) {
+            if (!signal?.aborted) {
                 toast({
                     title: 'Error',
                     description: 'An unexpected error occurred',
@@ -117,20 +119,21 @@ export default function Requirements() {
                 });
             }
         } finally {
-            if (isMounted) {
+            if (!signal?.aborted) {
                 setLoading(false);
             }
         }
-
-        return () => {
-            isMounted = false;
-        };
     }, [user, listId, navigate, toast]);
 
     useEffect(() => {
+        const abortController = new AbortController();
         if (user && listId) {
-            loadData();
+            loadData(abortController.signal);
         }
+
+        return () => {
+            abortController.abort();
+        };
     }, [user, listId, loadData]);
 
     const filteredRequirements = useMemo(() => {
