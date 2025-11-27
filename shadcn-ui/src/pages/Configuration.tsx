@@ -17,7 +17,7 @@ export default function Configuration() {
     const navigate = useNavigate();
 
     return (
-        <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 overflow-hidden">
+        <div className="min-h-screen h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 overflow-hidden relative">
             {/* Background pattern - fixed layer */}
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgxNDgsMTYzLDE4NCwwLjA1KSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-30 pointer-events-none"></div>
 
@@ -44,9 +44,9 @@ export default function Configuration() {
                 </div>
             </div>
 
-            {/* Main Content - NO SCROLL, tutto deve fittare */}
-            <div className="relative flex-1 overflow-hidden flex items-center z-10">
-                <div className="container mx-auto px-6 py-4 max-h-full w-full">
+            {/* Main Content */}
+            <div className="relative flex-1 min-h-0 overflow-hidden flex z-10">
+                <div className="container mx-auto px-6 py-4 max-h-full w-full overflow-y-auto">
                     <div className="max-w-6xl mx-auto space-y-4">
                         {/* Welcome Card - Compatta */}
                         <Card className="bg-gradient-to-br from-blue-600 to-indigo-600 border-0 shadow-2xl">

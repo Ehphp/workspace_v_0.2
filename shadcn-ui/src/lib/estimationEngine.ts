@@ -29,6 +29,8 @@ export function calculateRiskScore(risks: { weight: number }[]): number {
 }
 
 export function calculateContingency(riskScore: number): number {
+  // No risks selected -> no contingency
+  if (riskScore <= 0) return 0.0;
   if (riskScore <= 10) return 0.10;
   if (riskScore <= 20) return 0.15;
   if (riskScore <= 30) return 0.20;

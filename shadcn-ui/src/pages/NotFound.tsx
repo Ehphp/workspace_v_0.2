@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 
 export default function NotFoundPage() {
   return (
-    <div className="h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50 overflow-hidden p-6 text-center">
+    <div className="min-h-screen h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50 overflow-auto p-6 text-center relative">
       <div className="space-y-6 max-w-md">
         <div className="space-y-3">
           <h1 className="text-8xl font-bold text-blue-600">404</h1>

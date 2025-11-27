@@ -9,10 +9,10 @@ export default function Profile() {
     const { user } = useAuth();
 
     return (
-        <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+        <div className="min-h-screen h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 overflow-hidden">
             <Header />
 
-            <main className="container mx-auto px-6 py-8 flex-1">
+            <main className="container mx-auto px-6 py-8 flex-1 min-h-0 overflow-y-auto">
                 <div className="max-w-4xl mx-auto space-y-6">
                     <div className="flex items-center justify-between gap-3">
                         <div className="space-y-1">

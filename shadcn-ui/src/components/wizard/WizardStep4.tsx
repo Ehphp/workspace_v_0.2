@@ -76,6 +76,7 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
   };
 
   const getContingency = (riskScore: number) => {
+    if (riskScore <= 0) return 0;
     if (riskScore <= 10) return 10;
     if (riskScore <= 20) return 15;
     if (riskScore <= 30) return 20;

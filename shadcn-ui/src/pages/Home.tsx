@@ -82,11 +82,11 @@ export default function Home() {
 
   if (!showWizard) {
     return (
-      <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 overflow-hidden">
+      <div className="min-h-screen h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 overflow-hidden relative">
         {/* Subtle background pattern */}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgxNDgsMTYzLDE4NCwwLjA1KSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40 pointer-events-none"></div>
 
-        {/* Header with glassmorphism - flex-shrink-0 */}
+        {/* Header */}
         <header className="relative border-b border-white/20 backdrop-blur-md bg-white/80 shadow-sm flex-shrink-0 z-10">
           <div className="container mx-auto px-6 h-16 flex justify-between items-center">
             <SynteroMark subtitle="AI estimation workspace" />
@@ -133,9 +133,9 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Main Content - flex-1 NO SCROLL, content must fit */}
-        <div className="flex-1 overflow-hidden relative z-10 flex items-center">
-          <div className="container mx-auto px-6 py-6 max-h-full">
+        {/* Main Content */}
+        <main className="flex-1 min-h-0 relative z-10 overflow-y-auto">
+          <div className="container mx-auto px-6 py-6 min-h-full flex items-center">
             <div className="grid lg:grid-cols-2 gap-8 max-w-7xl mx-auto items-center h-full">
               {/* Left: Hero */}
               <div className="space-y-4 relative">
@@ -244,7 +244,7 @@ export default function Home() {
                       </div>
                     </div>
                     <p className="text-xs text-slate-600 mb-3 leading-relaxed">
-                      Usa il processo completo in 5 step quando hai bisogno di configurare attività, driver e rischi nel dettaglio.
+                      Usa il processo completo in 5 step quando hai bisogno di configurare attivit��, driver e rischi nel dettaglio.
                     </p>
 
                     <div className="space-y-2">
@@ -281,7 +281,7 @@ export default function Home() {
                           num: '5',
                           title: 'View Results',
                           desc: 'Get detailed effort estimation',
-                          icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
+                          icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2z" />,
                           color: 'from-rose-500 to-orange-500'
                         },
                       ].map((step) => (
@@ -325,11 +325,10 @@ export default function Home() {
                     <span className="font-medium">Accurate</span>
                   </div>
                 </div>
-
               </div>
             </div>
           </div>
-        </div>
+        </main>
 
         {/* Quick Estimate Dialog */}
         <QuickEstimate open={showQuickEstimate} onOpenChange={setShowQuickEstimate} />
@@ -338,7 +337,7 @@ export default function Home() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+    <div className="min-h-screen h-screen flex flex-col bg-slate-50 overflow-hidden">
       {/* Header with glassmorphism - matching home style */}
       <header className="border-b border-slate-200/60 backdrop-blur-xl bg-white/90 shadow-sm flex-shrink-0">
         <div className="container mx-auto px-6 h-14 flex items-center justify-between gap-4">
@@ -425,8 +424,8 @@ export default function Home() {
       </div>
 
       {/* Wizard Content - Full height without scroll */}
-      <div className="flex-1 overflow-hidden flex flex-col">
-        <div className="flex-1 overflow-auto">
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        <div className="flex-1 min-h-0 overflow-auto">
           <div className="container mx-auto px-6 py-3 h-full">
             <div className="max-w-4xl mx-auto h-full flex flex-col">
               <CurrentStepComponent

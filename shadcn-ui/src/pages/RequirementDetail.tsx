@@ -983,9 +983,9 @@ Risks: ${est.estimation_risks?.length || 0}`;
             </div>
 
             {/* Content Area with Tabs */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-hidden">
                 <div className="h-full overflow-auto">
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="h-auto">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
                         {/* Tabs Navigation */}
                         <div className="border-b border-white/20 bg-white/60 backdrop-blur-sm flex-none shadow-sm sticky top-0 z-10">
                             <div className="container mx-auto px-6">
@@ -1015,16 +1015,16 @@ Risks: ${est.estimation_risks?.length || 0}`;
                             </div>
                         </div>
                         {/* Info Tab */}
-                        <TabsContent value="info" className="mt-0">
-                            <div className="container mx-auto px-6 py-12">
-                                <div className="max-w-7xl mx-auto">
+                        <TabsContent value="info" className="mt-0 flex-1">
+                            <div className="container mx-auto px-6 py-12 h-full">
+                                <div className="max-w-7xl mx-auto h-full flex flex-col">
                                     {/* Layout a 2 colonne per ottimizzare lo spazio */}
-                                    <div className="grid lg:grid-cols-2 gap-6">
+                                    <div className="grid lg:grid-cols-2 gap-6 h-full min-h-0">
                                         {/* Colonna Sinistra */}
-                                        <div className="space-y-6">
+                                        <div className="space-y-6 min-h-0 flex flex-col">
                                             {/* Estimation Summary Card - compatta */}
                                             {estimationHistory.length > 0 && (
-                                                <Card className="rounded-xl shadow-lg border-white/50 bg-gradient-to-br from-blue-50 to-indigo-50 backdrop-blur-sm">
+                                                <Card className="rounded-xl shadow-lg border-white/50 bg-gradient-to-br from-blue-50 to-indigo-50 backdrop-blur-sm flex-none">
                                                     <CardHeader className="pb-2 pt-3 px-4">
                                                         <CardTitle className="text-sm font-semibold text-slate-900">Estimation Summary</CardTitle>
                                                     </CardHeader>
@@ -1054,7 +1054,7 @@ Risks: ${est.estimation_risks?.length || 0}`;
                                             )}
 
                                             {/* Description Card - altezza limitata con scroll */}
-                                            <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm flex flex-col" style={{ maxHeight: estimationHistory.length > 0 ? 'calc(100vh - 320px)' : 'calc(100vh - 220px)' }}>
+                                            <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm flex flex-col flex-1 min-h-0">
                                                 <CardHeader className="pb-2 pt-3 px-4 bg-gradient-to-r from-slate-50 to-blue-50 flex-none">
                                                     <div className="flex items-center justify-between">
                                                         <CardTitle className="text-sm font-semibold text-slate-900">Description</CardTitle>
@@ -1119,7 +1119,7 @@ Risks: ${est.estimation_risks?.length || 0}`;
                                         </div>
 
                                         {/* Colonna Destra */}
-                                        <div className="space-y-4">
+                                        <div className="space-y-4 min-h-0 flex flex-col">
                                             {/* Details Card - compatta */}
                                             <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm">
                                                 <CardHeader className="pb-2 pt-3 px-4 bg-gradient-to-r from-slate-50 to-blue-50">
@@ -1278,8 +1278,8 @@ Risks: ${est.estimation_risks?.length || 0}`;
                         </TabsContent>
 
                         {/* Estimation Tab */}
-                        <TabsContent value="estimation" className="mt-0">
-                            <div className="container mx-auto px-6 py-12">
+                        <TabsContent value="estimation" className="mt-0 flex-1">
+                            <div className="container mx-auto px-6 py-12 h-full">
                                 {/* Header Sezione */}
                                 <div className="mb-6 px-4 py-3 rounded-xl bg-white/60 backdrop-blur-sm border border-white/50 shadow-md">
                                     <h2 className="text-lg font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
@@ -1288,9 +1288,9 @@ Risks: ${est.estimation_risks?.length || 0}`;
                                     <p className="text-xs text-slate-600 mt-1">Select technology, activities, drivers and risks to calculate the estimation</p>
                                 </div>
 
-                                <div className="grid lg:grid-cols-[1fr_360px] gap-6 pb-12">
+                                <div className="grid lg:grid-cols-[1fr_360px] gap-6 pb-12 h-full min-h-0">
                                     {/* Left Column - Configuration */}
-                                    <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-2">
+                                    <div className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-2">
                                         <TechnologySection
                                             presets={presets}
                                             selectedPresetId={selectedPresetId}
@@ -1345,8 +1345,8 @@ Risks: ${est.estimation_risks?.length || 0}`;
                         </TabsContent>
 
                         {/* History Tab */}
-                        <TabsContent value="history" className="mt-0">
-                            <div className="container mx-auto px-6 py-12">
+                        <TabsContent value="history" className="mt-0 flex-1">
+                            <div className="container mx-auto px-6 py-12 h-full overflow-y-auto">
                                 <div className="max-w-7xl mx-auto space-y-6">
                                     <HistorySection
                                         history={estimationHistory}

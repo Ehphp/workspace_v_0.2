@@ -122,15 +122,15 @@ export default function Presets() {
     }, [presets]);
 
     return (
-        <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/40 to-slate-50 overflow-hidden">
+        <div className="min-h-screen h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/40 to-slate-50 overflow-hidden">
             {/* Header - flex-shrink-0 */}
             <div className="flex-shrink-0">
                 <Header />
             </div>
 
             {/* Main content - NO SCROLL, flex layout */}
-            <div className="flex-1 overflow-hidden flex flex-col">
-                <div className="container mx-auto px-6 py-4 h-full flex flex-col gap-3">
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+                <div className="container mx-auto px-6 py-4 h-full flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto">
 
                     {/* Page Header - flex-shrink-0 */}
                     <div className="flex items-center justify-between gap-4 flex-shrink-0">

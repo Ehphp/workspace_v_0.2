@@ -13,7 +13,7 @@
       "dependencies": [
         "npm:@eslint/js@^9.9.0",
         "npm:@hookform/resolvers@^3.9.0",
-        "npm:@metagptx/vite-plugin-source-locator@latest",
+        "npm:@locator/babel-jsx@~0.5.1",
         "npm:@netlify/functions@^2.8.2",
         "npm:@radix-ui/react-accordion@^1.2.0",
         "npm:@radix-ui/react-alert-dialog@^1.1.1",
@@ -53,7 +53,7 @@
         "npm:@types/node@^22.5.5",
         "npm:@types/react-dom@^19.1.8",
         "npm:@types/react@^19.1.11",
-        "npm:@vitejs/plugin-react-swc@^3.5.0",
+        "npm:@vitejs/plugin-react-swc@^3.11.0",
         "npm:autoprefixer@^10.4.20",
         "npm:class-variance-authority@~0.7.1",
         "npm:clsx@^2.1.1",
