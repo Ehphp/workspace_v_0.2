@@ -128,40 +128,43 @@ export default function Presets() {
                 <Header />
             </div>
 
-            {/* Main content - flex-1 with internal scroll */}
-            <div className="flex-1 overflow-y-auto">
-                <div className="container mx-auto px-6 py-6 pb-12 space-y-6">
-                    <div className="flex items-center justify-between gap-4">
+            {/* Main content - NO SCROLL, flex layout */}
+            <div className="flex-1 overflow-hidden flex flex-col">
+                <div className="container mx-auto px-6 py-4 h-full flex flex-col gap-3">
+
+                    {/* Page Header - flex-shrink-0 */}
+                    <div className="flex items-center justify-between gap-4 flex-shrink-0">
                         <div>
                             <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Catalogo preset</p>
-                            <h1 className="text-2xl font-bold text-slate-900">Technology Presets</h1>
-                            <p className="text-sm text-slate-600">Consulta e applica i preset tecnologici con i loro default di attività, driver e rischi.</p>
+                            <h1 className="text-xl font-bold text-slate-900">Technology Presets</h1>
+                            <p className="text-xs text-slate-600">Consulta e applica i preset tecnologici.</p>
                         </div>
                         <div className="flex items-center gap-3">
-                            <Button variant="outline" onClick={loadData} disabled={loading}>
+                            <Button variant="outline" size="sm" onClick={loadData} disabled={loading}>
                                 <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                                 Aggiorna
                             </Button>
-                            <Button variant="default" onClick={() => navigate('/configuration')}>
+                            <Button variant="default" size="sm" onClick={() => navigate('/configuration')}>
                                 Torna a Configurazione
                             </Button>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Stats Cards - flex-shrink-0 */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-shrink-0">
                         <Card className="bg-white/80 border-slate-200">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                            <CardHeader className="pb-2 py-2">
+                                <CardTitle className="text-xs font-semibold flex items-center gap-2">
                                     <Layers className="h-4 w-4 text-blue-600" />
                                     Preset totali
                                 </CardTitle>
-                                <CardDescription className="text-xs text-slate-500">Suddivisi per categoria tech</CardDescription>
+                                <CardDescription className="text-[10px] text-slate-500">Suddivisi per categoria tech</CardDescription>
                             </CardHeader>
-                            <CardContent className="flex items-end gap-4">
-                                <div className="text-3xl font-bold text-slate-900">{presets.length}</div>
-                                <div className="flex flex-wrap gap-2 text-xs text-slate-700">
+                            <CardContent className="flex items-end gap-4 py-2">
+                                <div className="text-2xl font-bold text-slate-900">{presets.length}</div>
+                                <div className="flex flex-wrap gap-1 text-xs text-slate-700">
                                     {Object.entries(stats.perCategory).map(([cat, count]) => (
-                                        <Badge key={cat} variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+                                        <Badge key={cat} variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px]">
                                             {cat}: {count}
                                         </Badge>
                                     ))}
@@ -170,58 +173,59 @@ export default function Presets() {
                         </Card>
 
                         <Card className="bg-white/80 border-slate-200">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                            <CardHeader className="pb-2 py-2">
+                                <CardTitle className="text-xs font-semibold flex items-center gap-2">
                                     <LayoutList className="h-4 w-4 text-emerald-600" />
                                     Attività default (media)
                                 </CardTitle>
-                                <CardDescription className="text-xs text-slate-500">Per preset tecnologico</CardDescription>
+                                <CardDescription className="text-[10px] text-slate-500">Per preset tecnologico</CardDescription>
                             </CardHeader>
-                            <CardContent className="text-3xl font-bold text-slate-900">
-                                {stats.avgActivities} <span className="text-sm text-slate-500 font-medium">per preset</span>
+                            <CardContent className="text-2xl font-bold text-slate-900 py-2">
+                                {stats.avgActivities} <span className="text-xs text-slate-500 font-medium">per preset</span>
                             </CardContent>
                         </Card>
 
                         {error ? (
                             <Card className="bg-white/80 border-amber-200">
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm font-semibold flex items-center gap-2 text-amber-700">
+                                <CardHeader className="pb-2 py-2">
+                                    <CardTitle className="text-xs font-semibold flex items-center gap-2 text-amber-700">
                                         <AlertTriangle className="h-4 w-4" />
                                         Errore
                                     </CardTitle>
                                 </CardHeader>
-                                <CardContent className="text-sm text-amber-800">{error}</CardContent>
+                                <CardContent className="text-xs text-amber-800 py-2">{error}</CardContent>
                             </Card>
                         ) : (
                             <Card className="bg-white/80 border-slate-200">
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                                <CardHeader className="pb-2 py-2">
+                                    <CardTitle className="text-xs font-semibold flex items-center gap-2">
                                         <Info className="h-4 w-4 text-slate-600" />
                                         Stato caricamento
                                     </CardTitle>
-                                    <CardDescription className="text-xs text-slate-500">
+                                    <CardDescription className="text-[10px] text-slate-500">
                                         {loading ? 'Caricamento in corso...' : 'Dati aggiornati'}
                                     </CardDescription>
                                 </CardHeader>
-                                <CardContent>
+                                <CardContent className="py-2">
                                     <div className={`w-3 h-3 rounded-full ${loading ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`} />
                                 </CardContent>
                             </Card>
                         )}
                     </div>
 
-                    <Card className="bg-white/85 border-slate-200 shadow-sm">
-                        <CardHeader>
-                            <CardTitle className="text-lg font-semibold text-slate-900">Elenco preset</CardTitle>
-                            <CardDescription className="text-sm text-slate-600">
+                    {/* Table Card - flex-1 with internal scroll */}
+                    <Card className="bg-white/85 border-slate-200 shadow-sm flex-1 overflow-hidden flex flex-col min-h-0">
+                        <CardHeader className="flex-shrink-0 py-3 bg-white/50 border-b border-slate-100">
+                            <CardTitle className="text-base font-semibold text-slate-900">Elenco preset</CardTitle>
+                            <CardDescription className="text-xs text-slate-600">
                                 Dettagli sulle attività di default e driver/rischi ereditati.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="overflow-x-auto pb-6">
-                            <div className="max-h-[60vh] overflow-y-auto">
+                        <CardContent className="overflow-hidden flex-1 p-0 flex flex-col">
+                            <div className="flex-1 overflow-auto">
                                 <Table>
-                                    <TableHeader>
-                                        <TableRow>
+                                    <TableHeader className="sticky top-0 bg-white z-10 shadow-sm">
+                                        <TableRow className="hover:bg-white">
                                             <TableHead>Nome</TableHead>
                                             <TableHead>Categoria</TableHead>
                                             <TableHead>Attività default</TableHead>

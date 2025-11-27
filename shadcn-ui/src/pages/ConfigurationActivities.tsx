@@ -377,11 +377,13 @@ export default function ConfigurationActivities() {
         </div>
       </div>
 
-      {/* Main Content - flex-1 with internal scroll */}
-      <div className="relative flex-1 overflow-y-auto z-10">
-        <div className="container mx-auto px-6 py-4 space-y-4">
-          <div className="grid lg:grid-cols-3 gap-2">
-            <Card className="bg-white/80 backdrop-blur-md border-slate-200/70 shadow-lg">
+      {/* Main Content - NO SCROLL, flex layout */}
+      <div className="relative flex-1 overflow-hidden z-10 flex flex-col">
+        <div className="container mx-auto px-6 py-4 h-full flex flex-col gap-4">
+
+          {/* Stats Cards - Fixed height */}
+          <div className="grid lg:grid-cols-3 gap-2 flex-shrink-0">
+            <Card className="bg-white/80 backdrop-blur-md border-slate-200/70 shadow-sm">
               <CardHeader className="pb-1 py-2">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-purple-600" />
@@ -399,7 +401,7 @@ export default function ConfigurationActivities() {
               </CardContent>
             </Card>
 
-            <Card className="bg-white/80 backdrop-blur-md border-slate-200/70 shadow-lg">
+            <Card className="bg-white/80 backdrop-blur-md border-slate-200/70 shadow-sm">
               <CardHeader className="pb-1 py-2">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <Wrench className="h-4 w-4 text-blue-600" />
@@ -419,7 +421,7 @@ export default function ConfigurationActivities() {
               </CardContent>
             </Card>
 
-            <Card className="bg-white/80 backdrop-blur-md border-slate-200/70 shadow-lg">
+            <Card className="bg-white/80 backdrop-blur-md border-slate-200/70 shadow-sm">
               <CardHeader className="pb-1 py-2">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-amber-600" />
@@ -434,9 +436,12 @@ export default function ConfigurationActivities() {
             </Card>
           </div>
 
-          <div className="grid xl:grid-cols-3 gap-4">
-            <Card className="xl:col-span-1 bg-white/85 backdrop-blur-md border-slate-200/70 shadow-xl">
-              <CardHeader className="py-3">
+          {/* Main Grid - Fills remaining space */}
+          <div className="grid xl:grid-cols-3 gap-4 flex-1 min-h-0 pb-2">
+
+            {/* Left Col: Create Form - Scrollable */}
+            <Card className="xl:col-span-1 bg-white/85 backdrop-blur-md border-slate-200/70 shadow-xl flex flex-col h-full overflow-hidden">
+              <CardHeader className="py-3 flex-shrink-0 bg-white/50 border-b border-slate-100">
                 <CardTitle className="flex items-center gap-2 text-sm font-semibold">
                   <Plus className="h-4 w-4 text-emerald-600" />
                   Crea attività custom
@@ -445,7 +450,7 @@ export default function ConfigurationActivities() {
                   Definisci codice, peso e tecnologia.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="max-h-[calc(100vh-420px)] overflow-y-auto">
+              <CardContent className="flex-1 overflow-y-auto p-4">
                 <form className="space-y-3" onSubmit={handleCreate}>
                   <div className="space-y-2">
                     <Label htmlFor="name">Nome</Label>
@@ -536,9 +541,10 @@ export default function ConfigurationActivities() {
               </CardContent>
             </Card>
 
-            <div className="xl:col-span-2 space-y-4">
-              <Card className="bg-white/85 backdrop-blur-md border-slate-200/70 shadow-xl">
-                <CardHeader className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between py-3">
+            {/* Right Col: Catalog Table - Scrollable */}
+            <div className="xl:col-span-2 h-full flex flex-col overflow-hidden">
+              <Card className="bg-white/85 backdrop-blur-md border-slate-200/70 shadow-xl flex flex-col h-full overflow-hidden">
+                <CardHeader className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between py-3 flex-shrink-0 bg-white/50 border-b border-slate-100">
                   <div>
                     <CardTitle className="flex items-center gap-2 text-sm font-semibold">
                       <Wrench className="h-4 w-4 text-slate-700" />
@@ -560,7 +566,7 @@ export default function ConfigurationActivities() {
                     </div>
 
                     <Select value={filterTech} onValueChange={setFilterTech}>
-                      <SelectTrigger className="w-[180px]">
+                      <SelectTrigger className="w-[180px] h-8">
                         <SelectValue placeholder="Tecnologia" />
                       </SelectTrigger>
                       <SelectContent>
@@ -627,11 +633,11 @@ export default function ConfigurationActivities() {
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto max-h-[360px] overflow-y-auto">
+                <CardContent className="p-0 flex-1 overflow-hidden flex flex-col">
+                  <div className="flex-1 overflow-auto">
                     <Table>
-                      <TableHeader>
-                        <TableRow className="bg-slate-50/80">
+                      <TableHeader className="sticky top-0 bg-white z-10 shadow-sm">
+                        <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
                           {visibleColumns.codice && <TableHead>Codice</TableHead>}
                           {visibleColumns.nome && <TableHead>Nome</TableHead>}
                           {visibleColumns.tecnologia && <TableHead className="hidden lg:table-cell">Tecnologia</TableHead>}
