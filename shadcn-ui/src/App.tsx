@@ -11,8 +11,8 @@ import Lists from './pages/Lists';
 import Requirements from './pages/Requirements';
 import RequirementDetail from './pages/RequirementDetail';
 import NotFound from './pages/NotFound';
-import Admin from './pages/Admin';
-import AdminActivities from './pages/AdminActivities';
+import Configuration from './pages/Configuration';
+import ConfigurationActivities from './pages/ConfigurationActivities';
 import Presets from './pages/Presets';
 import HowItWorks from './pages/HowItWorks';
 import Profile from './pages/Profile';
@@ -55,23 +55,23 @@ const App = () => (
             }
           />
           <Route
-            path="/admin"
+            path="/configuration"
             element={
               <AuthGuard>
-                <Admin />
+                <Configuration />
               </AuthGuard>
             }
           />
           <Route
-            path="/admin/activities"
+            path="/configuration/activities"
             element={
               <AuthGuard>
-                <AdminActivities />
+                <ConfigurationActivities />
               </AuthGuard>
             }
           />
           <Route
-            path="/presets"
+            path="/configuration/presets"
             element={
               <AuthGuard>
                 <Presets />
@@ -86,6 +86,10 @@ const App = () => (
               </AuthGuard>
             }
           />
+          {/* Backward compatibility redirects */}
+          <Route path="/admin" element={<Navigate to="/configuration" replace />} />
+          <Route path="/admin/activities" element={<Navigate to="/configuration/activities" replace />} />
+          <Route path="/presets" element={<Navigate to="/configuration/presets" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

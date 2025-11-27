@@ -47,15 +47,20 @@ CREATE TABLE risks (
 -- Technology presets
 CREATE TABLE technology_presets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    code VARCHAR(50) UNIQUE NOT NULL,
+    code VARCHAR(50) NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     tech_category VARCHAR(50) NOT NULL,
     default_driver_values JSONB, -- {COMPLEXITY: "MEDIUM", ...}
     default_risks JSONB, -- Array of risk codes
     default_activity_codes JSONB, -- Array of activity codes
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    is_custom BOOLEAN DEFAULT false,
+    created_by UUID REFERENCES auth.users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(code, created_by)
 );
+
+CREATE UNIQUE INDEX idx_tech_presets_system_code ON technology_presets(code) WHERE created_by IS NULL;
 
 -- Pivot: default activities per technology preset (ordered)
 CREATE TABLE technology_preset_activities (
@@ -182,11 +187,50 @@ ALTER TABLE risks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE technology_presets ENABLE ROW LEVEL SECURITY;
 
 -- Policies for catalog tables (public read)
-CREATE POLICY "Allow public read on activities" ON activities FOR SELECT USING (true);
+CREATE POLICY "Allow read on system and own activities" ON activities FOR SELECT USING (
+    is_custom = false OR created_by = auth.uid()
+);
 CREATE POLICY "Allow public read on drivers" ON drivers FOR SELECT USING (true);
 CREATE POLICY "Allow public read on risks" ON risks FOR SELECT USING (true);
-CREATE POLICY "Allow public read on technology_presets" ON technology_presets FOR SELECT USING (true);
-CREATE POLICY "Allow public read on technology_preset_activities" ON technology_preset_activities FOR SELECT USING (true);
+-- Technology Presets Policies
+CREATE POLICY "Users can view system and own presets" ON technology_presets
+    FOR SELECT USING (
+        created_by IS NULL OR created_by = auth.uid()
+    );
+
+CREATE POLICY "Users can insert own presets" ON technology_presets
+    FOR INSERT WITH CHECK (
+        auth.role() = 'authenticated' AND created_by = auth.uid()
+    );
+
+CREATE POLICY "Users can update own presets" ON technology_presets
+    FOR UPDATE USING (
+        created_by = auth.uid()
+    );
+
+CREATE POLICY "Users can delete own presets" ON technology_presets
+    FOR DELETE USING (
+        created_by = auth.uid()
+    );
+
+-- Technology Preset Activities Policies
+CREATE POLICY "Users can view preset activities" ON technology_preset_activities
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM technology_presets tp
+            WHERE tp.id = technology_preset_activities.tech_preset_id
+            AND (tp.created_by IS NULL OR tp.created_by = auth.uid())
+        )
+    );
+
+CREATE POLICY "Users can manage activities for own presets" ON technology_preset_activities
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM technology_presets tp
+            WHERE tp.id = technology_preset_activities.tech_preset_id
+            AND tp.created_by = auth.uid()
+        )
+    );
 CREATE POLICY "Users can insert custom activities" ON activities
     FOR INSERT
     WITH CHECK (

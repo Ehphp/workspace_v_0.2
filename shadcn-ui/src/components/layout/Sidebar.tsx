@@ -52,10 +52,10 @@ export function Sidebar({ className }: SidebarProps) {
                     </Button>
                 </Link>
 
-                <Link to="/settings">
+                <Link to="/configuration">
                     <Button variant="ghost" className="w-full justify-start gap-3 hover:bg-white/60 hover:translate-x-1 transition-all duration-200">
                         <Settings className="h-5 w-5" />
-                        <span className="font-medium">Settings</span>
+                        <span className="font-medium">Configuration</span>
                     </Button>
                 </Link>
             </nav>

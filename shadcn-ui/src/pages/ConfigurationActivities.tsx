@@ -94,7 +94,7 @@ const initialForm = {
 
 type ViewFilter = 'ALL' | 'OOTB' | 'CUSTOM';
 
-export default function AdminActivities() {
+export default function ConfigurationActivities() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -327,12 +327,17 @@ export default function AdminActivities() {
   }
 
   return (
-    <div className="relative h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/40 to-slate-50 overflow-hidden">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/40 to-slate-50 overflow-hidden">
+      {/* Background pattern - fixed layer */}
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgxNDgsMTYzLDE4NCwwLjA1KSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-30 pointer-events-none"></div>
 
-      <Header />
+      {/* Header - flex-shrink-0 */}
+      <div className="flex-shrink-0 relative z-10">
+        <Header />
+      </div>
 
-      <div className="relative border-b border-white/30 bg-white/60 backdrop-blur-lg flex-shrink-0">
+      {/* Page Header Section - flex-shrink-0 */}
+      <div className="relative border-b border-white/30 bg-white/60 backdrop-blur-lg flex-shrink-0 z-10">
         <div className="container mx-auto px-6 py-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-0.5">
             <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200">
@@ -362,17 +367,18 @@ export default function AdminActivities() {
             </Button>
             <Button
               variant="ghost"
-              onClick={() => navigate('/admin')}
+              onClick={() => navigate('/configuration')}
               className="hover:bg-slate-100"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Torna ad Admin
+              Torna a Configurazione
             </Button>
           </div>
         </div>
       </div>
 
-      <div className="relative flex-1 overflow-y-auto">
+      {/* Main Content - flex-1 with internal scroll */}
+      <div className="relative flex-1 overflow-y-auto z-10">
         <div className="container mx-auto px-6 py-4 space-y-4">
           <div className="grid lg:grid-cols-3 gap-2">
             <Card className="bg-white/80 backdrop-blur-md border-slate-200/70 shadow-lg">
@@ -824,6 +830,6 @@ export default function AdminActivities() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }

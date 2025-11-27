@@ -13,7 +13,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { User, LogOut, Shield, List, Layers, BookOpen } from 'lucide-react';
+import { User, LogOut, Shield, List, Layers, BookOpen, Settings } from 'lucide-react';
 import { SynteroMark } from './SynteroMark';
 
 export function Header() {
@@ -159,23 +159,13 @@ export function Header() {
                                 </Button>
                             </Link>
 
-                            <Link to="/admin">
+                            <Link to="/configuration">
                                 <Button
                                     variant="ghost"
-                                    className={`hover:bg-amber-50 hover:text-amber-700 transition-colors font-medium flex items-center gap-1 ${isActive(['/admin']) ? 'bg-amber-50 text-amber-700' : ''}`}
+                                    className={`hover:bg-slate-100 hover:text-slate-900 transition-colors font-medium flex items-center gap-1 ${isActive(['/configuration']) ? 'bg-slate-100 text-slate-900' : ''}`}
                                 >
-                                    <Shield className="h-4 w-4" />
-                                    Admin
-                                </Button>
-                            </Link>
-
-                            <Link to="/presets">
-                                <Button
-                                    variant="ghost"
-                                    className={`hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium flex items-center gap-1 ${isActive('/presets') ? 'bg-blue-50 text-blue-700' : ''}`}
-                                >
-                                    <Layers className="h-4 w-4" />
-                                    Presets
+                                    <Settings className="h-4 w-4" />
+                                    Configuration
                                 </Button>
                             </Link>
 
