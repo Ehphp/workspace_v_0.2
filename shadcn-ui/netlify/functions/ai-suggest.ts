@@ -274,6 +274,13 @@ export const handler: Handler = async (
         'Content-Type': 'application/json',
     };
 
+    // Debug: print presence of important environment variables (mask actual values)
+    console.log('DEBUG ENV - SUPABASE_URL present:', !!process.env.SUPABASE_URL);
+    console.log('DEBUG ENV - SUPABASE_ANON_KEY present:', !!process.env.SUPABASE_ANON_KEY);
+    console.log('DEBUG ENV - OPENAI_API_KEY present:', !!process.env.OPENAI_API_KEY);
+    console.log('DEBUG ENV - AI_REQUIRE_AUTH:', process.env.AI_REQUIRE_AUTH ?? 'undefined');
+    console.log('DEBUG ENV - supabaseServer configured:', !!supabaseServer);
+
     // Handle preflight requests
     if (event.httpMethod === 'OPTIONS') {
         return {
