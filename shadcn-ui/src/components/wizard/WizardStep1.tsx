@@ -23,12 +23,16 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
   const [isFocused, setIsFocused] = useState(false);
   const { normalize, isNormalizing, normalizationResult, resetNormalization } = useRequirementNormalization();
   const normalizationCardRef = useRef<HTMLDivElement>(null);
+  const [editedNormalizedDescription, setEditedNormalizedDescription] = useState<string>('');
 
   const handleNormalize = async () => {
     if (!data.description) return;
     console.log('Starting normalization for description:', data.description.substring(0, 50));
     const result = await normalize(data.description);
     console.log('Normalization result:', result);
+    if (result?.normalizedDescription) {
+      setEditedNormalizedDescription(result.normalizedDescription);
+    }
   };
 
   // Auto-scroll to normalization result when it appears
@@ -38,16 +42,21 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
         behavior: 'smooth',
         block: 'nearest'
       });
+      // Initialize edited version with AI result
+      if (normalizationResult.normalizedDescription) {
+        setEditedNormalizedDescription(normalizationResult.normalizedDescription);
+      }
     }
   }, [normalizationResult]);
 
   const applyNormalization = () => {
-    if (normalizationResult?.normalizedDescription) {
+    if (editedNormalizedDescription) {
       onUpdate({
-        description: normalizationResult.normalizedDescription,
+        description: editedNormalizedDescription,
         normalizationResult: normalizationResult
       });
       resetNormalization();
+      setEditedNormalizedDescription('');
     }
   };
 
@@ -266,11 +275,14 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
                 <div className="space-y-1.5">
                   <Label className="text-[11px] text-indigo-700 font-semibold flex items-center gap-1">
                     <Wand2 className="w-3 h-3" />
-                    AI-Improved
+                    AI-Improved (Editable)
                   </Label>
-                  <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-2.5 rounded-lg border-2 border-indigo-200 text-xs text-slate-800 leading-relaxed font-medium max-h-24 overflow-y-auto shadow-sm">
-                    {normalizationResult.normalizedDescription}
-                  </div>
+                  <textarea
+                    value={editedNormalizedDescription}
+                    onChange={(e) => setEditedNormalizedDescription(e.target.value)}
+                    className="w-full bg-gradient-to-br from-indigo-50 to-purple-50 p-2.5 rounded-lg border-2 border-indigo-200 text-xs text-slate-800 leading-relaxed font-medium max-h-24 overflow-y-auto shadow-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    rows={3}
+                  />
                 </div>
               </div>
 

@@ -56,6 +56,14 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
 
     // Normalization hook
     const { normalize, isNormalizing, normalizationResult, resetNormalization } = useRequirementNormalization();
+    const [editedNormalizedDescription, setEditedNormalizedDescription] = useState<string>('');
+
+    // Initialize edited description when normalization result changes
+    useEffect(() => {
+        if (normalizationResult?.normalizedDescription) {
+            setEditedNormalizedDescription(normalizationResult.normalizedDescription);
+        }
+    }, [normalizationResult]);
 
     useEffect(() => {
         if (open) {
@@ -357,8 +365,8 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                                             <span className="text-xs font-bold text-white">AI Analysis</span>
                                         </div>
                                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${normalizationResult.isValidRequirement
-                                                ? 'bg-green-500 text-white'
-                                                : 'bg-red-500 text-white'
+                                            ? 'bg-green-500 text-white'
+                                            : 'bg-red-500 text-white'
                                             }`}>
                                             {normalizationResult.isValidRequirement ? '✓ Valid' : '⚠ Issues'}
                                         </span>
@@ -366,10 +374,13 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
 
                                     <div className="p-3 space-y-3">
                                         <div className="space-y-1.5">
-                                            <Label className="text-[11px] text-indigo-700 font-semibold">AI-Improved Version</Label>
-                                            <div className="bg-white p-2.5 rounded border border-indigo-200 text-xs text-slate-800 leading-relaxed max-h-32 overflow-y-auto">
-                                                {normalizationResult.normalizedDescription}
-                                            </div>
+                                            <Label className="text-[11px] text-indigo-700 font-semibold">AI-Improved Version (Editable)</Label>
+                                            <textarea
+                                                value={editedNormalizedDescription}
+                                                onChange={(e) => setEditedNormalizedDescription(e.target.value)}
+                                                className="w-full bg-white p-2.5 rounded border-2 border-indigo-200 text-xs text-slate-800 leading-relaxed max-h-32 overflow-y-auto resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                                rows={4}
+                                            />
                                         </div>
 
                                         {normalizationResult.validationIssues?.length > 0 && (
@@ -401,8 +412,9 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                                             <Button
                                                 size="sm"
                                                 onClick={() => {
-                                                    setDescription(normalizationResult.normalizedDescription);
+                                                    setDescription(editedNormalizedDescription);
                                                     resetNormalization();
+                                                    setEditedNormalizedDescription('');
                                                 }}
                                                 className="text-xs h-7 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
                                             >
