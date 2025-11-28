@@ -41,7 +41,6 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
         setPresets(MOCK_TECHNOLOGY_PRESETS);
         setIsDemoMode(true);
       } else {
-        // Normalize default activities from pivot if available
         type PivotRow = { tech_preset_id: string; position: number | null; activities?: { code: string | null } };
         const grouped: Record<string, { code: string | null; position: number | null }[]> = {};
         (pivotData as PivotRow[] | null || []).forEach((row) => {
@@ -84,11 +83,10 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
   const canProceed = data.techPresetId !== '';
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Fixed Header */}
-      <div className="flex-shrink-0 space-y-1 mb-3">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg">
+    <div className="flex flex-col h-full gap-3">
+      <div className="flex items-start justify-between gap-3 pb-2 border-b border-slate-200">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
             <svg
               className="w-5 h-5 text-white"
               fill="none"
@@ -103,95 +101,83 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
               />
             </svg>
           </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-slate-900">Select Technology</h2>
-              {isDemoMode && (
-                <Badge variant="secondary" className="text-xs">
-                  Demo Mode
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-slate-600 mt-0.5">
-              Choose the technology stack that best matches your requirement
-            </p>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 leading-tight">Select Technology</h2>
+            <p className="text-xs text-slate-600">Pick the closest preset to keep activities relevant</p>
           </div>
         </div>
-
         {isDemoMode && (
-          <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start gap-2">
-            <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fillRule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <span>
-              <strong>Demo Mode:</strong> Using sample data. Configure Supabase to use real database.
-            </span>
-          </div>
+          <Badge variant="secondary" className="text-[11px]">
+            Demo mode
+          </Badge>
         )}
       </div>
 
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+      <div className="flex-1 overflow-y-auto pr-1">
         {loading ? (
           <div className="text-center py-12">
-            <div className="relative w-16 h-16 mx-auto">
-              <div className="w-16 h-16 border-4 border-indigo-100 rounded-full"></div>
-              <div className="w-16 h-16 border-4 border-t-indigo-600 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-            </div>
-            <p className="text-sm text-slate-600 mt-4 font-medium">Loading technologies...</p>
+            <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mx-auto"></div>
+            <p className="text-sm text-slate-600 mt-3 font-medium">Loading technologies...</p>
           </div>
         ) : (
           <RadioGroup
             value={data.techPresetId}
             onValueChange={(value) => onUpdate({ techPresetId: value })}
           >
-            <div className="grid gap-3">
+            <div className="grid gap-3 md:grid-cols-2">
               {presets.map((preset) => {
                 const isSelected = data.techPresetId === preset.id;
+                const defaultCount = preset.default_activity_codes?.length || 0;
                 return (
                   <div
                     key={preset.id}
-                    className={`group relative p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${isSelected
-                        ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 via-purple-50 to-indigo-50 shadow-xl shadow-indigo-100 ring-4 ring-indigo-100'
-                        : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-lg hover:scale-[1.02]'
+                    className={`group relative p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${isSelected
+                      ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 via-purple-50 to-indigo-50 shadow-md ring-2 ring-indigo-100'
+                      : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm'
                       }`}
                     onClick={() => onUpdate({ techPresetId: preset.id })}
                   >
-                    {/* Selection Indicator */}
-                    <div className={`absolute top-4 left-4 w-6 h-6 rounded-full border-2 transition-all duration-300 flex items-center justify-center ${isSelected
-                        ? 'border-indigo-500 bg-gradient-to-br from-indigo-600 to-purple-600'
-                        : 'border-slate-300 group-hover:border-indigo-400'
-                      }`}>
-                      {isSelected && (
-                        <svg className="w-4 h-4 text-white animate-scale-in" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
+                    <div className="flex items-start gap-3">
+                      <div className={`flex-shrink-0 w-9 h-9 rounded-lg border-2 flex items-center justify-center ${isSelected
+                        ? 'border-indigo-500 bg-gradient-to-br from-indigo-600 to-purple-600 text-white'
+                        : 'border-slate-300 text-slate-500 bg-white'
+                        }`}>
+                        {isSelected ? (
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <Label htmlFor={preset.id} className="cursor-pointer">
+                          <div className={`font-semibold text-base mb-1 transition-colors ${isSelected ? 'text-indigo-900' : 'text-slate-900 group-hover:text-indigo-700'
+                            }`}>
+                            {preset.name}
+                          </div>
+                          <div className={`text-sm leading-relaxed transition-colors ${isSelected ? 'text-indigo-700' : 'text-slate-600'
+                            }`}>
+                            {preset.description}
+                          </div>
+                        </Label>
+                        <div className="mt-2 text-[11px] text-slate-500 flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">
+                            {preset.tech_category}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold">
+                            {defaultCount} default activities
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Content */}
-                    <div className="ml-10">
-                      <Label htmlFor={preset.id} className="cursor-pointer">
-                        <div className={`font-bold text-base mb-1 transition-colors ${isSelected ? 'text-indigo-900' : 'text-slate-900 group-hover:text-indigo-700'
-                          }`}>
-                          {preset.name}
-                        </div>
-                        <div className={`text-sm leading-relaxed transition-colors ${isSelected ? 'text-indigo-700' : 'text-slate-600'
-                          }`}>
-                          {preset.description}
-                        </div>
-                      </Label>
-                    </div>
-
-                    {/* Hover Effect Gradient */}
-                    <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500/0 to-purple-500/0 transition-opacity duration-300 pointer-events-none ${!isSelected ? 'group-hover:from-indigo-500/5 group-hover:to-purple-500/5' : ''
+                    <div className={`absolute inset-0 rounded-xl bg-gradient-to-br from-indigo-500/0 to-purple-500/0 transition-opacity duration-200 pointer-events-none ${!isSelected ? 'group-hover:from-indigo-500/5 group-hover:to-purple-500/5' : ''
                       }`} />
 
-                    {/* Hidden RadioGroupItem for accessibility */}
                     <RadioGroupItem value={preset.id} id={preset.id} className="sr-only" />
                   </div>
                 );
@@ -201,27 +187,27 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
         )}
       </div>
 
-      <div className="flex-shrink-0 border-t border-slate-200 pt-4 mt-4 bg-white">
+      <div className="flex-shrink-0 border-t border-slate-200 pt-3 mt-1 bg-white">
         <div className="flex justify-between">
           <Button
             variant="outline"
             onClick={onBack}
             size="lg"
-            className="hover:bg-slate-50 border-slate-300 group"
+            className="h-11 hover:bg-slate-50 border-slate-300 group"
           >
             <svg className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            <span className="font-semibold">Back</span>
+            <span className="font-semibold text-sm">Back</span>
           </Button>
 
           <Button
             onClick={onNext}
             disabled={!canProceed}
             size="lg"
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group"
+            className="h-11 px-5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed group"
           >
-            <span className="font-semibold">Next: Select Activities</span>
+            <span className="font-semibold text-sm">Next: Select Activities</span>
             <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>

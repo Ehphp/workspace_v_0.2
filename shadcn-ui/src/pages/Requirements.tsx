@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, ArrowLeft, Search, FileText, Upload, Trash2, MoreVertical, Zap, ArrowUpDown } from 'lucide-react';
+import { Plus, ArrowLeft, Search, FileText, Upload, Trash2, MoreVertical, Zap, ArrowUpDown, Cpu } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -24,6 +24,7 @@ import { ClearListDialog } from '@/components/lists/ClearListDialog';
 import { DeleteRequirementDialog } from '@/components/requirements/DeleteRequirementDialog';
 import { BulkEstimateDialog } from '@/components/requirements/BulkEstimateDialog';
 import { Header } from '@/components/layout/Header';
+import { ListTechnologyDialog } from '@/components/lists/ListTechnologyDialog';
 
 export default function Requirements() {
     const navigate = useNavigate();
@@ -40,6 +41,7 @@ export default function Requirements() {
     const [sortBy, setSortBy] = useState<string>('updated-desc');
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [showImportDialog, setShowImportDialog] = useState(false);
+    const [showTechDialog, setShowTechDialog] = useState(false);
     const [showClearDialog, setShowClearDialog] = useState(false);
     const [showBulkEstimate, setShowBulkEstimate] = useState(false);
     const [deleteRequirement, setDeleteRequirement] = useState<Requirement | null>(null);
@@ -483,6 +485,15 @@ export default function Requirements() {
 
                         {/* Right side: Actions */}
                         <div className="flex items-center gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowTechDialog(true)}
+                                disabled={!list}
+                                className="border-slate-300 text-slate-800 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50/60 shadow-sm"
+                            >
+                                <Cpu className="mr-2 h-4 w-4" />
+                                Set Technology
+                            </Button>
                             <Button
                                 onClick={() => setShowBulkEstimate(true)}
                                 disabled={filteredRequirements.length === 0}
@@ -957,6 +968,13 @@ export default function Requirements() {
                 listName={list?.name || ''}
                 requirementCount={requirements.length}
                 onSuccess={loadData}
+            />
+
+            <ListTechnologyDialog
+                open={showTechDialog}
+                onOpenChange={setShowTechDialog}
+                list={list}
+                onSaved={loadData}
             />
 
             {

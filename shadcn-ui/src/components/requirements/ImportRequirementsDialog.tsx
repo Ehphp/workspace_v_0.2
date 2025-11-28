@@ -373,7 +373,7 @@ export function ImportRequirementsDialog({
                     label: 'Description',
                     required: false,
                     multiSelect: true,
-                    helpText: 'Select multiple columns to merge into description'
+                    helpText: 'Select multiple columns to merge into a labeled description (each value keeps its column name for AI context)'
                 },
                 { key: 'priority', label: 'Priority', required: false },
                 { key: 'state', label: 'State', required: false },
@@ -442,7 +442,7 @@ export function ImportRequirementsDialog({
                                     })}
                                     {getDescriptionColumns().length > 0 && (
                                         <p className="text-xs text-muted-foreground pt-2 border-t">
-                                            Selected {getDescriptionColumns().length} column(s). They will be merged with line breaks.
+                                            Selected {getDescriptionColumns().length} column(s). They will be merged and labeled with the column name to keep context.
                                         </p>
                                     )}
                                 </div>

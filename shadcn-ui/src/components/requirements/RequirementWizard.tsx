@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useWizardState } from '@/hooks/useWizardState';
 import { WizardStep1 } from '@/components/wizard/WizardStep1';
 import { WizardStep2 } from '@/components/wizard/WizardStep2';
@@ -9,20 +9,22 @@ import { createRequirement, saveEstimation } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import type { EstimationResult } from '@/types/estimation';
 
 interface RequirementWizardProps {
     listId: string;
     onSuccess: () => void;
     onCancel: () => void;
+    isOpen?: boolean;
 }
 
-export function RequirementWizard({ listId, onSuccess, onCancel }: RequirementWizardProps) {
+export function RequirementWizard({ listId, onSuccess, onCancel, isOpen }: RequirementWizardProps) {
     const [currentStep, setCurrentStep] = useState(0);
     const { data, updateData, resetData } = useWizardState();
     const { user } = useAuth();
     const { toast } = useToast();
     const [saving, setSaving] = useState(false);
-
     const steps = [
         { title: 'Requirement', component: WizardStep1 },
         { title: 'Technology', component: WizardStep2 },
@@ -30,6 +32,18 @@ export function RequirementWizard({ listId, onSuccess, onCancel }: RequirementWi
         { title: 'Drivers & Risks', component: WizardStep4 },
         { title: 'Results', component: WizardStep5 },
     ];
+    const progress = ((currentStep + 1) / steps.length) * 100;
+
+    // Clear persisted wizard data when the dialog closes
+    useEffect(() => {
+        if (isOpen === false) {
+            resetData();
+            setCurrentStep(0);
+        }
+    }, [isOpen, resetData]);
+
+    // Cleanup on unmount to avoid stale data on next open
+    useEffect(() => resetData, [resetData]);
 
     const handleNext = () => {
         if (currentStep < steps.length - 1) {
@@ -43,7 +57,7 @@ export function RequirementWizard({ listId, onSuccess, onCancel }: RequirementWi
         }
     };
 
-    const handleSave = async (estimationResult: any) => {
+    const handleSave = async (estimationResult: EstimationResult) => {
         if (!user) return;
         setSaving(true);
 
@@ -100,57 +114,73 @@ export function RequirementWizard({ listId, onSuccess, onCancel }: RequirementWi
 
     const CurrentStepComponent = steps[currentStep].component;
 
+    const handleCancel = () => {
+        resetData();
+        setCurrentStep(0);
+        onCancel();
+    };
+
     if (saving) {
         return (
-            <div className="h-[600px] flex flex-col items-center justify-center space-y-4">
-                <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
-                <p className="text-slate-600 font-medium">Saving requirement and estimation...</p>
+            <div className="h-[600px] flex flex-col items-center justify-center space-y-3 rounded-xl border border-slate-200 bg-white/80">
+                <Loader2 className="h-11 w-11 animate-spin text-blue-600" />
+                <p className="text-sm text-slate-700 font-medium">Saving requirement and estimation...</p>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col h-full">
-            {/* Progress Steps - Compact */}
-            <div className="mb-4 flex-shrink-0">
-                <div className="flex items-center justify-between px-2 relative">
-                    {steps.map((step, index) => (
-                        <div key={index} className="flex flex-col items-center relative z-10">
-                            <div
-                                className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-300 ${index <= currentStep
-                                    ? 'bg-blue-600 text-white shadow-md scale-110'
-                                    : 'bg-slate-100 text-slate-400'
-                                    }`}
-                            >
-                                {index + 1}
-                            </div>
-                            <span className={`text-[9px] mt-1 font-medium ${index <= currentStep ? 'text-blue-700' : 'text-slate-400'
-                                }`}>
-                                {step.title}
-                            </span>
-                        </div>
-                    ))}
-                    {/* Progress Bar Background */}
-                    <div className="absolute top-3 left-0 w-full h-0.5 bg-slate-100 -z-0" />
-                    {/* Active Progress Bar */}
-                    <div
-                        className="absolute top-3 left-0 h-0.5 bg-blue-600 transition-all duration-300 -z-0"
-                        style={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}
-                    />
+        <div className="flex flex-col h-full gap-3">
+            <div className="flex items-center gap-3 px-3 py-2 rounded-xl border border-slate-200 bg-white/90 shadow-sm">
+                <div className="flex items-center gap-2 min-w-[190px]">
+                    <span className="px-2 py-1 rounded-md bg-blue-50 text-[11px] font-semibold text-blue-700">
+                        Step {currentStep + 1} / {steps.length}
+                    </span>
+                    <span className="text-sm font-semibold text-slate-800">{steps[currentStep].title}</span>
                 </div>
+                <div className="flex-1 flex items-center gap-2">
+                    <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                        <div
+                            className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-300"
+                            style={{ width: `${progress}%` }}
+                        />
+                    </div>
+                    <div className="flex items-center gap-1">
+                        {steps.map((step, index) => (
+                            <div
+                                key={step.title}
+                                className={`w-2.5 h-2.5 rounded-full border transition-all duration-200 ${index <= currentStep
+                                    ? 'bg-blue-600 border-blue-600 shadow-sm shadow-blue-100'
+                                    : 'bg-white border-slate-300'
+                                    }`}
+                            />
+                        ))}
+                    </div>
+                </div>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCancel}
+                    className="text-slate-600 hover:text-slate-900"
+                >
+                    Close
+                </Button>
             </div>
 
-            {/* Step Content */}
-            <div className="flex-1 overflow-y-auto px-1">
-                <CurrentStepComponent
-                    data={data}
-                    onUpdate={updateData}
-                    onNext={handleNext}
-                    onBack={handleBack}
-                    onReset={resetData}
-                    // @ts-ignore - onSave is only for Step 5
-                    onSave={handleSave}
-                />
+            <div className="flex-1 min-h-0 overflow-hidden">
+                <div className="h-full rounded-xl border border-slate-200 bg-white/90 shadow-sm">
+                    <div className="h-full overflow-hidden px-3 py-2">
+                        <CurrentStepComponent
+                            data={data}
+                            onUpdate={updateData}
+                            onNext={handleNext}
+                            onBack={handleBack}
+                            onReset={resetData}
+                            // @ts-expect-error onSave is only passed to the final step
+                            onSave={handleSave}
+                        />
+                    </div>
+                </div>
             </div>
         </div>
     );

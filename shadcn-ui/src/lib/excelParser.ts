@@ -12,7 +12,7 @@ export interface ParsedRequirement {
 export interface ColumnMapping {
     req_id?: string;
     title?: string;
-    description?: string | string[]; // Can be single column or multiple columns to merge
+    description?: string | string[]; // Can be single column or multiple columns to merge (with column labels)
     priority?: string;
     state?: string;
     business_owner?: string;
@@ -223,33 +223,57 @@ export function mapDataToRequirements(
     });
 
     return data.map((row, rowIndex) => {
-        const getCell = (field: keyof ColumnMapping): string => {
-            const headerName = mapping[field];
+        const readCell = (headerName?: string): string => {
             if (!headerName) return '';
-
-            // Handle array of columns (for description)
-            if (Array.isArray(headerName)) {
-                console.log(`[ROW ${rowIndex + 1}] Description is ARRAY:`, headerName);
-                const values = headerName.map(h => {
-                    const index = headerIndexMap[h];
-                    if (index === undefined) {
-                        console.log(`  - Column "${h}" not found in headers`);
-                        return '';
-                    }
-                    const value = row[index];
-                    const stringValue = value !== null && value !== undefined ? String(value).trim() : '';
-                    console.log(`  - Column "${h}" [index ${index}] = "${stringValue}"`);
-                    return stringValue;
-                }).filter(v => v !== '');
-                const result = values.join('\n\n');
-                console.log(`  → Final concatenated description: "${result}"`);
-                return result;
-            }
-
             const index = headerIndexMap[headerName];
             if (index === undefined) return '';
             const value = row[index];
             return value !== null && value !== undefined ? String(value).trim() : '';
+        };
+
+        const getDescription = (): string => {
+            const descriptionMapping = mapping.description;
+            if (!descriptionMapping) return '';
+
+            if (Array.isArray(descriptionMapping)) {
+                console.log(`[ROW ${rowIndex + 1}] Description uses multiple columns:`, descriptionMapping);
+                const labeledChunks = descriptionMapping
+                    .map((header) => {
+                        const index = headerIndexMap[header];
+                        if (index === undefined) {
+                            console.log(`  - Column "${header}" not found in headers`);
+                            return null;
+                        }
+                        const value = row[index];
+                        const stringValue = value !== null && value !== undefined ? String(value).trim() : '';
+                        if (stringValue === '') return null;
+
+                        console.log(`  - Column "${header}" [index ${index}] = "${stringValue}"`);
+                        return { header, value: stringValue };
+                    })
+                    .filter((chunk): chunk is { header: string; value: string } => chunk !== null);
+
+                if (labeledChunks.length === 0) return '';
+
+                const structured = labeledChunks
+                    .map(({ header, value }) => `- ${header}: ${value}`)
+                    .join('\n');
+
+                console.log('  -> Structured description with column labels:', structured);
+                return structured;
+            }
+
+            return readCell(descriptionMapping);
+        };
+
+        const getCell = (field: keyof ColumnMapping): string => {
+            if (field === 'description') {
+                return getDescription();
+            }
+
+            const headerName = mapping[field];
+            if (!headerName || Array.isArray(headerName)) return '';
+            return readCell(headerName);
         };
 
         const req_id = getCell('req_id');

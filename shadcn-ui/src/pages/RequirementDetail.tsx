@@ -98,17 +98,40 @@ export default function RequirementDetail() {
     const [showQuickEstimateError, setShowQuickEstimateError] = useState(false);
     const [quickEstimateErrorData, setQuickEstimateErrorData] = useState<{ title: string; message: string; reasoning?: string } | null>(null);
 
+    const fallbackPresetId = requirement?.tech_preset_id || list?.tech_preset_id || '';
+    const activePresetId = selectedPresetId || fallbackPresetId;
+    const activePreset = useMemo(
+        () => presets.find((p) => p.id === activePresetId) || null,
+        [presets, activePresetId]
+    );
+
+    const filterActivitiesForPreset = useCallback((presetToFilter: typeof activePreset) => {
+        if (!presetToFilter) return activities;
+        return activities.filter(
+            (activity) =>
+                activity.tech_category === presetToFilter.tech_category ||
+                activity.tech_category === 'MULTI'
+        );
+    }, [activities]);
+
+    const filteredActivities = useMemo(
+        () => filterActivitiesForPreset(activePreset),
+        [filterActivitiesForPreset, activePreset]
+    );
+
     // Initialize preset when requirement loads
     useEffect(() => {
-        if (requirement?.tech_preset_id && !selectedPresetId && presets.length > 0) {
-            setSelectedPresetId(requirement.tech_preset_id);
+        if (!fallbackPresetId || selectedPresetId || presets.length === 0) return;
+
+        setSelectedPresetId(fallbackPresetId);
+        if (requirement?.tech_preset_id) {
             // Optionally apply defaults if no selections made yet
             const hasRequirementDrivers = (requirementDriverValues?.length || 0) > 0;
             if (!hasSelections && !hasRequirementDrivers) {
-                applyPresetDefaults(requirement.tech_preset_id);
+                applyPresetDefaults(fallbackPresetId);
             }
         }
-    }, [requirement, presets, selectedPresetId, hasSelections, setSelectedPresetId, applyPresetDefaults, requirementDriverValues]);
+    }, [fallbackPresetId, presets, selectedPresetId, hasSelections, applyPresetDefaults, requirementDriverValues, requirement?.tech_preset_id, setSelectedPresetId]);
 
     // Apply requirement-scoped driver defaults when available
     useEffect(() => {
@@ -131,23 +154,43 @@ export default function RequirementDetail() {
 
     // AI Suggestion Handler
     const handleAiSuggest = async () => {
-        if (!requirement?.description || !selectedPresetId) return;
+        if (!requirement?.description) return;
+        if (!activePreset) {
+            toast.error('Seleziona una tecnologia per richiedere suggerimenti AI');
+            return;
+        }
 
         setIsAiLoading(true);
         try {
-            const selectedPreset = presets.find(p => p.id === selectedPresetId);
-            if (!selectedPreset) throw new Error('Preset not found');
-
             const suggestion = await suggestActivities({
                 description: requirement.description,
-                preset: selectedPreset,
-                activities: activities,
+                preset: activePreset,
+                activities: filteredActivities,
             });
 
+            if (!selectedPresetId && activePreset.id) {
+                setSelectedPresetId(activePreset.id);
+            }
+
             if (suggestion.isValidRequirement) {
-                applyAiSuggestions(suggestion.activityCodes, undefined, undefined); // Drivers/Risks handled manually or by defaults
+                const suggestedActivityIds = (suggestion.activityCodes || [])
+                    .map((code) => filteredActivities.find((a) => a.code === code)?.id)
+                    .filter((id): id is string => Boolean(id));
+
+                const fallbackActivityIds = (activePreset.default_activity_codes || [])
+                    .map((code) => filteredActivities.find((a) => a.code === code)?.id)
+                    .filter((id): id is string => Boolean(id));
+
+                const activityIdsToApply = suggestedActivityIds.length > 0 ? suggestedActivityIds : fallbackActivityIds;
+
+                if (activityIdsToApply.length === 0) {
+                    toast.error('Nessuna attivita compatibile trovata per la tecnologia selezionata.');
+                    return;
+                }
+
+                applyAiSuggestions(activityIdsToApply, undefined, undefined); // Drivers/Risks handled manually or by defaults
                 toast.success('AI suggestions applied', {
-                    description: `Added ${suggestion.activityCodes.length} activities based on description.`
+                    description: `Added ${activityIdsToApply.length} activities based on description.`
                 });
             } else {
                 toast.warning('AI Suggestion', {
@@ -187,11 +230,16 @@ export default function RequirementDetail() {
             const selectedPreset = presets.find(p => p.id === presetIdToUse);
             if (!selectedPreset) throw new Error('Invalid preset selected.');
 
+            const activitiesForPreset = filterActivitiesForPreset(selectedPreset);
+            if (activitiesForPreset.length === 0) {
+                throw new Error('No activities available for the selected technology preset.');
+            }
+
             // 2. Call AI
             const suggestion = await suggestActivities({
                 description: requirement.description,
                 preset: selectedPreset,
-                activities: activities,
+                activities: activitiesForPreset,
             });
 
             if (!suggestion.isValidRequirement) {
@@ -206,7 +254,21 @@ export default function RequirementDetail() {
 
             // 3. Apply selections
             setSelectedPresetId(presetIdToUse);
-            applyAiSuggestions(suggestion.activityCodes); // This triggers calculation via useEffect/useMemo in hook
+            const suggestedActivityIds = (suggestion.activityCodes || [])
+                .map((code) => activitiesForPreset.find((a) => a.code === code)?.id)
+                .filter((id): id is string => Boolean(id));
+
+            const fallbackActivityIds = (selectedPreset.default_activity_codes || [])
+                .map((code) => activitiesForPreset.find((a) => a.code === code)?.id)
+                .filter((id): id is string => Boolean(id));
+
+            const activityIdsToApply = suggestedActivityIds.length > 0 ? suggestedActivityIds : fallbackActivityIds;
+
+            if (activityIdsToApply.length === 0) {
+                throw new Error('No compatible activities found for the selected technology preset.');
+            }
+
+            applyAiSuggestions(activityIdsToApply); // This triggers calculation via useEffect/useMemo in hook
 
             // 4. Switch to Estimation tab
             setActiveTab('estimation');
@@ -426,7 +488,7 @@ export default function RequirementDetail() {
                         <div className="container mx-auto px-6 py-6">
                             <RequirementEstimation
                                 estimationState={estimationState}
-                                data={{ presets, activities, drivers, risks }}
+                                data={{ presets, activities: filteredActivities, drivers, risks }}
                                 onSave={handleSaveEstimation}
                                 isSaving={isSaving}
                                 hasUnsavedChanges={hasUnsavedChanges}

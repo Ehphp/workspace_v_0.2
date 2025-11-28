@@ -95,11 +95,10 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Fixed Header */}
-      <div className="flex-shrink-0 mb-3">
+    <div className="flex flex-col h-full gap-3">
+      <div className="flex-shrink-0 pb-2 border-b border-slate-200">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-lg">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-lg">
             <svg
               className="w-5 h-5 text-white"
               fill="none"
@@ -115,18 +114,23 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
             </svg>
           </div>
           <div className="flex-1">
-            <h2 className="text-lg font-bold text-slate-900">Configure Drivers & Risks</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-slate-900">Configure Drivers & Risks</h2>
+              {isDemoMode && (
+                <Badge variant="secondary" className="text-[11px]">
+                  Demo mode
+                </Badge>
+              )}
+            </div>
             <p className="text-xs text-slate-600 mt-0.5">
-              Select the multipliers and risk factors that apply to this requirement
+              Tune multipliers and account for uncertainties
             </p>
           </div>
         </div>
       </div>
 
-      {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="grid md:grid-cols-2 gap-4">
-          {/* Drivers Section */}
           <div className="space-y-2">
             <div className="flex items-center gap-2 mb-1">
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
@@ -141,7 +145,7 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
               const selectedOption = driver.options.find((opt) => opt.value === selectedValue);
 
               return (
-                <div key={driver.code} className="space-y-1.5 p-3 rounded-xl border-2 border-slate-200 bg-white/50 hover:border-blue-300 transition-all duration-300">
+                <div key={driver.code} className="space-y-1.5 p-3 rounded-xl border border-slate-200 bg-white/80 hover:border-blue-300 transition-colors duration-200">
                   <div className="flex justify-between items-center">
                     <Label htmlFor={driver.code} className="text-xs font-bold text-slate-900">{driver.name}</Label>
                     {selectedOption && (
@@ -154,7 +158,7 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
                     value={selectedValue}
                     onValueChange={(value) => updateDriverValue(driver.code, value)}
                   >
-                    <SelectTrigger id={driver.code} className="h-8 border-slate-300 focus:border-blue-500 text-xs">
+                    <SelectTrigger id={driver.code} className="h-9 border-slate-300 focus:border-blue-500 text-xs">
                       <SelectValue placeholder="Select value" />
                     </SelectTrigger>
                     <SelectContent className="bg-white/95 backdrop-blur-md">
@@ -170,7 +174,6 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
             })}
           </div>
 
-          {/* Risks Section */}
           <div className="space-y-2">
             <div className="flex items-center gap-2 mb-1">
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-rose-500 to-red-500 flex items-center justify-center">
@@ -187,8 +190,8 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
                 return (
                   <div
                     key={risk.code}
-                    className={`group flex items-start space-x-2 p-2 border-2 rounded-xl transition-all duration-300 cursor-pointer ${isSelected
-                      ? 'border-rose-300 bg-gradient-to-r from-rose-50 to-red-50 shadow-md'
+                    className={`group flex items-start space-x-2 p-2 border rounded-xl transition-all duration-200 cursor-pointer ${isSelected
+                      ? 'border-rose-300 bg-gradient-to-r from-rose-50 to-red-50 shadow-sm'
                       : 'border-slate-200 hover:border-rose-200 hover:bg-rose-50/30'
                       }`}
                     onClick={() => toggleRisk(risk.code)}
@@ -215,11 +218,11 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
               })}
             </div>
 
-            <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl">
+            <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-slate-900 mb-1">Risk Assessment</p>
-                  <div className="flex items-baseline gap-2">
+                  <p className="text-xs font-bold text-slate-900 mb-1">Risk assessment</p>
+                  <div className="flex items-baseline gap-3">
                     <div>
                       <span className="text-[10px] text-slate-600">Score: </span>
                       <span className="text-base font-bold text-amber-700">{riskScore}</span>
@@ -241,9 +244,9 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
         </div>
       </div>
 
-      <div className="flex-shrink-0 border-t border-slate-200 pt-4 mt-4 bg-white">
+      <div className="flex-shrink-0 border-t border-slate-200 pt-3 mt-1 bg-white">
         <div className="flex justify-between">
-          <Button variant="outline" onClick={onBack} className="hover:bg-slate-50">
+          <Button variant="outline" onClick={onBack} className="h-11 hover:bg-slate-50">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
@@ -251,9 +254,9 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
           </Button>
           <Button
             onClick={onNext}
-            className="bg-gradient-to-r from-rose-600 to-orange-600 hover:from-rose-700 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-300"
+            className="h-11 px-5 bg-gradient-to-r from-rose-600 to-orange-600 hover:from-rose-700 hover:to-orange-700 shadow-md hover:shadow-lg transition-all duration-300"
           >
-            <span>View Results</span>
+            <span className="text-sm font-semibold">View Results</span>
             <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>

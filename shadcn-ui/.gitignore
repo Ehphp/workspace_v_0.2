@@ -30,3 +30,6 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Ignore generated snapshots / archive copies
+.storage/

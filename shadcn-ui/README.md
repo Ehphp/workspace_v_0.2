@@ -87,6 +87,6 @@ Enterprise-grade requirements estimation with AI-assisted activity selection, a 
 - Follow `docs/deployment/deployment.md` for environment variables, history rollout checks, and monitoring.
 
 ## Troubleshooting
-- Verify Supabase tables/seed are applied.
-- Ensure `OPENAI_API_KEY` is server-side only.
+Ensure `OPENAI_API_KEY` is server-side only. See `docs/ai/KEY_POLICY.md` for migration guidance.
+Note: This repository includes a GitHub Action that scans for obvious secrets (e.g., `sk-` tokens) and patterns such as `VITE_OPENAI_API_KEY` or `dangerouslyAllowBrowser` to prevent accidental key leakage.
 - Use `pnpm run dev:netlify` if AI suggestions fail locally; check Netlify function logs for errors.

@@ -346,4 +346,4 @@ curl -X POST http://localhost:8888/.netlify/functions/ai-suggest \
 
 **Generated:** Manual Testing Guide for AI Structured Outputs  
 **Version:** Phase 2 Complete  
-**Last Updated:** 2024
+**Last Updated:** 2025-11-28

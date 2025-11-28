@@ -47,6 +47,10 @@ Questa cartella contiene la documentazione completa del sistema AI per suggerime
 - ✅ **Sanitizzazione**: Protezione da injection attacks
 - ✅ **Uniformazione**: Tutte le chiamate AI usano la stessa logica
 - ✅ **Temperature 0.0**: Massimo determinismo
+### Key Policy
+All OpenAI integrations are protected by `netlify/functions/ai-suggest.ts` and use a server-only environment variable `OPENAI_API_KEY`. For full guidance, read `workspace/shadcn-ui/docs/ai/KEY_POLICY.md`.
+CI Secret Checks: This repository includes a GitHub Action (`.github/workflows/secret-scan.yml`) to scan for accidental commits of secrets (e.g., `sk-`) and patterns such as `VITE_OPENAI_API_KEY` or `dangerouslyAllowBrowser`.
+
 - ✅ **Caching**: 24h TTL per performance
 - ✅ **isValidRequirement**: GPT valida la validità dei requisiti
 
@@ -104,5 +108,5 @@ I test AI sono in `src/test/`:
 ---
 
 **Maintainer**: Development Team  
-**Last Update**: 2025-11-21  
+**Last Update**: 2025-11-28  
 **Next Review**: 2025-12-21

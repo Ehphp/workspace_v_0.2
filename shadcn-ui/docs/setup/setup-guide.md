@@ -18,15 +18,25 @@ Follow these steps to get the Requirements Estimation System running locally wit
 Optional performance add-ons: run `estimation_history_optimizations.sql` for indexes, helper views, and functions that speed up the history feature.
 
 ## 2) Configure Environment
-Create `.env` in the project root:
+Create `.env` in the project root (local development):
 ```env
+# Supabase client-side values (browser safe)
 VITE_SUPABASE_URL=https://<project>.supabase.co
 VITE_SUPABASE_ANON_KEY=<anon-public-key>
+
+# OpenAI key: server-side only. Do NOT put the production OpenAI key in any VITE_ variable.
+# In production, set `OPENAI_API_KEY` in Netlify/Vercel environment variables.
+# For local Netlify dev, set `OPENAI_API_KEY` under `netlify/.env` and run `pnpm run dev:netlify` to ensure serverless functions are used locally.
 OPENAI_API_KEY=sk-<your-openai-key>   # server-side only
 ```
 Notes:
 - Keep `.env` out of version control (already in `.gitignore`).
-- Use the non-VITE `OPENAI_API_KEY`; it is only read server-side by Netlify Functions.
+- Use the non-VITE `OPENAI_API_KEY` server-side; do not expose it to the browser.
+- If you still have a `VITE_OPENAI_API_KEY` for legacy/local demo flow, ensure it uses a limited or placeholder key and never commit it. Prefer running local dev with `netlify dev` and `OPENAI_API_KEY` in `netlify/.env` instead of client-exposed keys.
+
+> ⚠️ Note: Some legacy demo code may check `VITE_OPENAI_API_KEY` to enable demo mode — ensure that this is never a real key and is used only for local demos.
+
+See `workspace/shadcn-ui/docs/ai/KEY_POLICY.md` for full guidance on key usage and migration.
 
 ## 3) Install and Run
 ```bash
@@ -34,6 +44,13 @@ pnpm install
 pnpm run dev          # or pnpm run dev:netlify to include Netlify Functions locally
 ```
 Visit `http://localhost:5173`.
+
+Optional cleanup: if you want to remove generated snapshots or duplicates from the workspace, run the cleanup script at the repository root:
+
+PowerShell:
+```
+./scripts/cleanup_storage.ps1
+```
 
 ## 4) Quick Smoke Tests
 - Start the public 5-step wizard and complete a run.

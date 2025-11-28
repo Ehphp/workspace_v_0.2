@@ -28,6 +28,7 @@ export function CreateRequirementDialog({
 
                 <div className="flex-1 overflow-hidden p-6 bg-slate-50/30">
                     <RequirementWizard
+                        isOpen={open}
                         listId={listId}
                         onSuccess={() => {
                             onSuccess();
