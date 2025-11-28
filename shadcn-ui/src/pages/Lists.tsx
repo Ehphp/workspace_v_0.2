@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import type React from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, FolderOpen, Archive, Trash2, MoreVertical, Edit, Search, ArrowUpDown, BarChart3 } from 'lucide-react';
+import { Plus, FolderOpen, Archive, Trash2, MoreVertical, Edit, Search, ArrowUpDown, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +39,12 @@ export default function Lists() {
   const [sortBy, setSortBy] = useState('updated-desc');
   const [editList, setEditList] = useState<List | null>(null);
   const [deleteList, setDeleteList] = useState<List | null>(null);
+  const horizontalScrollRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragStartScrollRef = useRef(0);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
   const [projectStats, setProjectStats] = useState<Array<{
     id: string;
     name: string;
@@ -153,6 +160,89 @@ export default function Lists() {
     setProjectStats(stats);
   };
 
+  const updateScrollHints = useCallback(() => {
+    const el = horizontalScrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollLeft(scrollLeft > 4);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 4);
+  }, []);
+
+  const filteredLists = lists
+    .filter((list) => {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        list.name.toLowerCase().includes(searchLower) ||
+        (list.description && list.description.toLowerCase().includes(searchLower))
+      );
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'updated-desc':
+          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+        case 'updated-asc':
+          return new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+        case 'name-asc':
+          return a.name.localeCompare(b.name);
+        case 'name-desc':
+          return b.name.localeCompare(a.name);
+        default:
+          return 0;
+      }
+    });
+
+  useEffect(() => {
+    updateScrollHints();
+    const handleResize = () => updateScrollHints();
+    const el = horizontalScrollRef.current;
+
+    window.addEventListener('resize', handleResize);
+    el?.addEventListener('scroll', updateScrollHints);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      el?.removeEventListener('scroll', updateScrollHints);
+    };
+  }, [updateScrollHints]);
+
+  useEffect(() => {
+    updateScrollHints();
+  }, [filteredLists, updateScrollHints]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDraggingRef.current || !horizontalScrollRef.current) return;
+      e.preventDefault();
+      const delta = e.clientX - dragStartXRef.current;
+      horizontalScrollRef.current.scrollLeft = dragStartScrollRef.current - delta;
+      updateScrollHints();
+    };
+
+    const handleMouseUp = () => {
+      isDraggingRef.current = false;
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [updateScrollHints]);
+
+  const handleDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0 || !horizontalScrollRef.current) return;
+    isDraggingRef.current = true;
+    dragStartXRef.current = e.clientX;
+    dragStartScrollRef.current = horizontalScrollRef.current.scrollLeft;
+  };
+
+  const handleScrollBy = (delta: number) => {
+    if (!horizontalScrollRef.current) return;
+    horizontalScrollRef.current.scrollBy({ left: delta, behavior: 'smooth' });
+  };
+
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       DRAFT: {
@@ -210,29 +300,6 @@ export default function Lists() {
       </div>
     );
   };
-
-  const filteredLists = lists
-    .filter((list) => {
-      const searchLower = searchTerm.toLowerCase();
-      return (
-        list.name.toLowerCase().includes(searchLower) ||
-        (list.description && list.description.toLowerCase().includes(searchLower))
-      );
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'updated-desc':
-          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-        case 'updated-asc':
-          return new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
-        case 'name-asc':
-          return a.name.localeCompare(b.name);
-        case 'name-desc':
-          return b.name.localeCompare(a.name);
-        default:
-          return 0;
-      }
-    });
 
   if (loading) {
     return (
@@ -327,159 +394,189 @@ export default function Lists() {
 
         {/* Top Section: Projects Row - Takes 45% of available height */}
         <div className="flex-[0_0_45%] flex flex-col justify-center border-b border-slate-200/60 bg-slate-50/30 relative overflow-hidden">
-          <div className="w-full h-full overflow-x-auto overflow-y-hidden pb-4 pt-4 px-6 custom-scrollbar">
-            <div className="flex gap-6 mx-auto w-max min-w-full justify-center items-center h-full p-2">
-              {filteredLists.length === 0 ? (
-                <div className="flex items-center justify-center w-full">
-                  <Card className="max-w-md border-slate-200/50 bg-white/60 backdrop-blur-md shadow-xl hover:shadow-2xl transition-all duration-300">
-                    <CardContent className="flex flex-col items-center py-12 px-8">
-                      {searchTerm ? (
-                        <>
-                          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-gray-100 flex items-center justify-center mb-4 shadow-lg">
-                            <Search className="h-10 w-10 text-slate-400" />
-                          </div>
-                          <h3 className="text-xl font-bold mb-2 text-slate-900">No results found</h3>
-                          <p className="text-slate-600 text-center">
-                            No projects match your search "{searchTerm}"
-                          </p>
-                          <Button
-                            variant="outline"
-                            onClick={() => setSearchTerm('')}
-                            className="mt-6"
-                          >
-                            Clear Search
-                          </Button>
-                        </>
-                      ) : showArchived ? (
-                        <>
-                          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-gray-100 flex items-center justify-center mb-4 shadow-lg">
-                            <Archive className="h-10 w-10 text-slate-600" />
-                          </div>
-                          <h3 className="text-xl font-bold mb-2 text-slate-900">No archived projects</h3>
-                          <p className="text-slate-600 text-center">
-                            You don't have any archived projects yet
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center mb-4 shadow-lg">
-                            <FolderOpen className="h-10 w-10 text-blue-600" />
-                          </div>
-                          <h3 className="text-xl font-bold mb-2 text-slate-900">No projects yet</h3>
-                          <p className="text-slate-600 text-center mb-6">
-                            Create your first project to start estimating requirements
-                          </p>
-                          <Button
-                            onClick={() => setShowCreateDialog(true)}
-                            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                          >
-                            <Plus className="mr-2 h-4 w-4" />
-                            Create Project
-                          </Button>
-                        </>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              ) : (
-                filteredLists.map((list) => (
-                  <Card
-                    key={list.id}
-                    className="group w-[320px] flex-shrink-0 border-slate-200/50 bg-white/80 backdrop-blur-sm hover:bg-white hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col"
-                    onClick={() => navigate(`/lists/${list.id}/requirements`)}
-                  >
-                    {/* Colored top border based on status */}
-                    <div className={`h-1 flex-shrink-0 bg-gradient-to-r ${list.status === 'ACTIVE' ? 'from-emerald-400 to-teal-500' :
-                      list.status === 'DRAFT' ? 'from-amber-400 to-orange-500' :
-                        'from-slate-400 to-gray-500'
-                      }`}></div>
-
-                    <CardHeader className="pb-2 pt-4 px-4 flex-shrink-0">
-                      <div className="flex items-start gap-3">
-                        {/* Status Icon with gradient */}
-                        <div className="transform scale-90">
-                          {getStatusIcon(list.status)}
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-start mb-1">
-                            <CardTitle
-                              className="text-base font-bold text-slate-900 group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-indigo-600 group-hover:bg-clip-text group-hover:text-transparent transition-all duration-300 truncate"
-                            >
-                              {list.name}
-                            </CardTitle>
-                            <div className="flex items-center gap-1 flex-shrink-0 ml-1">
-                              <div className="transform scale-90 origin-right">
-                                {getStatusBadge(list.status)}
+          <div className="container mx-auto h-full px-6">
+            <div className="relative h-full">
+              <div
+                ref={horizontalScrollRef}
+                className="w-full h-full overflow-x-auto overflow-y-hidden pb-4 pt-4 custom-scrollbar no-scrollbar cursor-grab active:cursor-grabbing select-none"
+                onMouseDown={handleDragStart}
+              >
+                <div className="flex gap-6 mx-auto w-max min-w-full justify-center items-center h-full p-2">
+                  {filteredLists.length === 0 ? (
+                    <div className="flex items-center justify-center w-full">
+                      <Card className="max-w-md border-slate-200/50 bg-white/60 backdrop-blur-md shadow-xl hover:shadow-2xl transition-all duration-300">
+                        <CardContent className="flex flex-col items-center py-12 px-8">
+                          {searchTerm ? (
+                            <>
+                              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-gray-100 flex items-center justify-center mb-4 shadow-lg">
+                                <Search className="h-10 w-10 text-slate-400" />
                               </div>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-white/80 transition-all duration-300">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-md border-slate-200/50 shadow-xl">
-                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditList(list); }} className="cursor-pointer hover:bg-blue-50 transition-colors">
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Edit Project
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="text-destructive focus:text-destructive cursor-pointer hover:bg-red-50 transition-colors"
-                                    onClick={(e) => { e.stopPropagation(); setDeleteList(list); }}
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete Project
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              <h3 className="text-xl font-bold mb-2 text-slate-900">No results found</h3>
+                              <p className="text-slate-600 text-center">
+                                No projects match your search "{searchTerm}"
+                              </p>
+                              <Button
+                                variant="outline"
+                                onClick={() => setSearchTerm('')}
+                                className="mt-6"
+                              >
+                                Clear Search
+                              </Button>
+                            </>
+                          ) : showArchived ? (
+                            <>
+                              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-gray-100 flex items-center justify-center mb-4 shadow-lg">
+                                <Archive className="h-10 w-10 text-slate-600" />
+                              </div>
+                              <h3 className="text-xl font-bold mb-2 text-slate-900">No archived projects</h3>
+                              <p className="text-slate-600 text-center">
+                                You don't have any archived projects yet
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center mb-4 shadow-lg">
+                                <FolderOpen className="h-10 w-10 text-blue-600" />
+                              </div>
+                              <h3 className="text-xl font-bold mb-2 text-slate-900">No projects yet</h3>
+                              <p className="text-slate-600 text-center mb-6">
+                                Create your first project to start estimating requirements
+                              </p>
+                              <Button
+                                onClick={() => setShowCreateDialog(true)}
+                                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                              >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Create Project
+                              </Button>
+                            </>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  ) : (
+                    filteredLists.map((list) => (
+                      <Card
+                        key={list.id}
+                        className="group w-[320px] flex-shrink-0 border-slate-200/50 bg-white/80 backdrop-blur-sm hover:bg-white hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col"
+                        onClick={() => navigate(`/lists/${list.id}/requirements`)}
+                      >
+                        {/* Colored top border based on status */}
+                        <div className={`h-1 flex-shrink-0 bg-gradient-to-r ${list.status === 'ACTIVE' ? 'from-emerald-400 to-teal-500' :
+                          list.status === 'DRAFT' ? 'from-amber-400 to-orange-500' :
+                            'from-slate-400 to-gray-500'
+                          }`}></div>
+
+                        <CardHeader className="pb-2 pt-4 px-4 flex-shrink-0">
+                          <div className="flex items-start gap-3">
+                            {/* Status Icon with gradient */}
+                            <div className="transform scale-90">
+                              {getStatusIcon(list.status)}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-start mb-1">
+                                <CardTitle
+                                  className="text-base font-bold text-slate-900 group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-indigo-600 group-hover:bg-clip-text group-hover:text-transparent transition-all duration-300 truncate"
+                                >
+                                  {list.name}
+                                </CardTitle>
+                                <div className="flex items-center gap-1 flex-shrink-0 ml-1">
+                                  <div className="transform scale-90 origin-right">
+                                    {getStatusBadge(list.status)}
+                                  </div>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-white/80 transition-all duration-300">
+                                        <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-md border-slate-200/50 shadow-xl">
+                                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditList(list); }} className="cursor-pointer hover:bg-blue-50 transition-colors">
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        Edit Project
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        className="text-destructive focus:text-destructive cursor-pointer hover:bg-red-50 transition-colors"
+                                        onClick={(e) => { e.stopPropagation(); setDeleteList(list); }}
+                                      >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete Project
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                              </div>
+                              <CardDescription className="line-clamp-2 text-xs text-slate-600 h-8">
+                                {list.description || 'No description'}
+                              </CardDescription>
                             </div>
                           </div>
-                          <CardDescription className="line-clamp-2 text-xs text-slate-600 h-8">
-                            {list.description || 'No description'}
-                          </CardDescription>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-4 pt-0 flex-1 flex flex-col justify-end">
-                      <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                        <div className="flex items-center gap-1.5 truncate max-w-[50%]">
-                          <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                            <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
+                        </CardHeader>
+                        <CardContent className="px-4 pb-4 pt-0 flex-1 flex flex-col justify-end">
+                          <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                            <div className="flex items-center gap-1.5 truncate max-w-[50%]">
+                              <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                              </div>
+                              <span className="truncate font-medium">{list.owner || 'N/A'}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              <span>{new Date(list.updated_at).toLocaleDateString()}</span>
+                            </div>
                           </div>
-                          <span className="truncate font-medium">{list.owner || 'N/A'}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          <span>{new Date(list.updated_at).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </div>
+              {canScrollLeft && (
+                <button
+                  type="button"
+                  onClick={() => handleScrollBy(-320)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white/70 backdrop-blur-md shadow-sm border border-slate-200/60 text-slate-600 flex items-center justify-center opacity-60 hover:opacity-100 transition"
+                  aria-label="Scroll left"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+              )}
+              {canScrollRight && (
+                <button
+                  type="button"
+                  onClick={() => handleScrollBy(320)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white/70 backdrop-blur-md shadow-sm border border-slate-200/60 text-slate-600 flex items-center justify-center opacity-60 hover:opacity-100 transition"
+                  aria-label="Scroll right"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
               )}
             </div>
           </div>
         </div>
 
         {/* Bottom Section: Progress Overview Chart - Takes 55% of available height */}
-        <div className="flex-[0_0_55%] bg-gradient-to-br from-slate-50/50 to-white/60 backdrop-blur-sm p-4 flex flex-col overflow-hidden">
-          <div className="h-full w-full rounded-xl border border-slate-200/60 bg-white/80 shadow-sm flex flex-col overflow-hidden">
-            {/* Minimalist inline title */}
-            <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
-              <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-blue-600" />
-                Progress Overview
-              </h3>
-              <span className="text-xs text-slate-500">{projectStats.length} project{projectStats.length !== 1 ? 's' : ''}</span>
-            </div>
+        <div className="flex-[0_0_55%] bg-gradient-to-br from-slate-50/50 to-white/60 backdrop-blur-sm flex flex-col overflow-hidden">
+          <div className="container mx-auto h-full px-6 py-4">
+            <div className="h-full w-full rounded-xl border border-slate-200/60 bg-white/80 shadow-sm flex flex-col overflow-hidden">
+              {/* Minimalist inline title */}
+              <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+                <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-blue-600" />
+                  Progress Overview
+                </h3>
+                <span className="text-xs text-slate-500">{projectStats.length} project{projectStats.length !== 1 ? 's' : ''}</span>
+              </div>
 
-            {/* Chart Content - Maximized */}
-            <div className="flex-1 p-6 overflow-hidden">
-              <ProgressOverviewChart projectStats={projectStats} showArchived={showArchived} />
+              {/* Chart Content - Maximized */}
+              <div className="flex-1 p-6 overflow-hidden">
+                <ProgressOverviewChart projectStats={projectStats} showArchived={showArchived} />
+              </div>
             </div>
           </div>
         </div>

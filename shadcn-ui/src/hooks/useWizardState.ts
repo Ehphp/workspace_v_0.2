@@ -9,6 +9,10 @@ export interface WizardData {
   aiSuggestedActivityCodes: string[];
   selectedDriverValues: Record<string, string>;
   selectedRiskCodes: string[];
+  // New fields for creation
+  business_owner?: string;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  state: 'PROPOSED' | 'SELECTED' | 'SCHEDULED' | 'DONE';
 }
 
 const STORAGE_KEY = 'estimation_wizard_data';
@@ -50,5 +54,8 @@ function getInitialData(): WizardData {
     aiSuggestedActivityCodes: [],
     selectedDriverValues: {},
     selectedRiskCodes: [],
+    priority: 'MEDIUM',
+    state: 'PROPOSED',
+    business_owner: '',
   };
 }

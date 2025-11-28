@@ -238,3 +238,104 @@ export async function fetchRequirementBundle(listId: string, reqId: string, user
 
   return { list, requirement, preset, driverValues: (driverValues || []) as RequirementDriverValue[] };
 }
+export interface SaveEstimationInput {
+  requirementId: string;
+  userId: string;
+  totalDays: number;
+  baseDays: number;
+  driverMultiplier: number;
+  riskScore: number;
+  contingencyPercent: number;
+  activities: {
+    code: string;
+    isAiSuggested: boolean;
+  }[];
+  drivers: {
+    code: string;
+    value: string;
+  }[];
+  risks: {
+    code: string;
+  }[];
+}
+
+export async function saveEstimation(input: SaveEstimationInput): Promise<void> {
+  // 1. Create estimation record
+  const { data: estimation, error: estError } = await supabase
+    .from('estimations')
+    .insert({
+      requirement_id: input.requirementId,
+      user_id: input.userId,
+      total_days: input.totalDays,
+      base_days: input.baseDays,
+      driver_multiplier: input.driverMultiplier,
+      risk_score: input.riskScore,
+      contingency_percent: input.contingencyPercent,
+      scenario_name: 'Initial Estimation',
+    })
+    .select()
+    .single();
+
+  if (estError) throw new ApiError(estError.message, parseInt(estError.code), estError);
+
+  // 2. Get master data to map codes to IDs
+  const masterData = await fetchEstimationMasterData();
+
+  // 3. Prepare activities
+  const activityInserts = input.activities.map((a) => {
+    const activity = masterData.activities.find((ma) => ma.code === a.code);
+    if (!activity) return null;
+    return {
+      estimation_id: estimation.id,
+      activity_id: activity.id,
+      is_ai_suggested: a.isAiSuggested,
+    };
+  }).filter((i): i is NonNullable<typeof i> => i !== null);
+
+  // 4. Prepare drivers
+  const driverInserts = input.drivers.map((d) => {
+    const driver = masterData.drivers.find((md) => md.code === d.code);
+    if (!driver) return null;
+    return {
+      estimation_id: estimation.id,
+      driver_id: driver.id,
+      selected_value: d.value,
+    };
+  }).filter((i): i is NonNullable<typeof i> => i !== null);
+
+  // 5. Prepare risks
+  const riskInserts = input.risks.map((r) => {
+    const risk = masterData.risks.find((mr) => mr.code === r.code);
+    if (!risk) return null;
+    return {
+      estimation_id: estimation.id,
+      risk_id: risk.id,
+    };
+  }).filter((i): i is NonNullable<typeof i> => i !== null);
+
+  // 6. Insert details in parallel
+  await Promise.all([
+    activityInserts.length > 0 ? supabase.from('estimation_activities').insert(activityInserts) : Promise.resolve(),
+    driverInserts.length > 0 ? supabase.from('estimation_drivers').insert(driverInserts) : Promise.resolve(),
+    riskInserts.length > 0 ? supabase.from('estimation_risks').insert(riskInserts) : Promise.resolve(),
+  ]);
+
+  // 7. Also update requirement_driver_values for persistence across sessions if needed
+  // (Optional, but good for consistency)
+  const reqDriverInserts = input.drivers.map((d) => {
+    const driver = masterData.drivers.find((md) => md.code === d.code);
+    if (!driver) return null;
+    return {
+      requirement_id: input.requirementId,
+      driver_id: driver.id,
+      selected_value: d.value,
+      source: 'USER',
+    };
+  }).filter((i): i is NonNullable<typeof i> => i !== null);
+
+  if (reqDriverInserts.length > 0) {
+    // First delete existing to avoid duplicates/conflicts
+    await supabase.from('requirement_driver_values').delete().eq('requirement_id', input.requirementId);
+    await supabase.from('requirement_driver_values').insert(reqDriverInserts);
+  }
+}

@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import type React from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { PRIORITY_VARIANTS, STATE_VARIANTS } from '@/lib/constants';
@@ -44,6 +45,10 @@ export default function Requirements() {
     const [deleteRequirement, setDeleteRequirement] = useState<Requirement | null>(null);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
+    const requirementsScrollRef = useRef<HTMLDivElement>(null);
+    const requirementsDraggingRef = useRef(false);
+    const requirementsDragStartXRef = useRef(0);
+    const requirementsDragStartScrollRef = useRef(0);
 
     const loadData = useCallback(async (signal?: AbortSignal) => {
         if (!user || !listId) return;
@@ -392,6 +397,34 @@ export default function Requirements() {
         </Card>
     ));
 
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!requirementsDraggingRef.current || !requirementsScrollRef.current) return;
+            e.preventDefault();
+            const delta = e.clientX - requirementsDragStartXRef.current;
+            requirementsScrollRef.current.scrollLeft = requirementsDragStartScrollRef.current - delta;
+        };
+
+        const handleMouseUp = () => {
+            requirementsDraggingRef.current = false;
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, []);
+
+    const handleRequirementsDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (e.button !== 0 || !requirementsScrollRef.current) return;
+        requirementsDraggingRef.current = true;
+        requirementsDragStartXRef.current = e.clientX;
+        requirementsDragStartScrollRef.current = requirementsScrollRef.current.scrollLeft;
+    };
+
     if (loading) {
         return (
             <div className="h-screen flex items-center justify-center">
@@ -399,6 +432,8 @@ export default function Requirements() {
             </div>
         );
     }
+
+
 
     return (
         <div className="h-screen flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
@@ -757,138 +792,144 @@ export default function Requirements() {
                             </div>
 
                             {/* Requirements Grid */}
-                            <div className="grid gap-5">
-                                {loading ? (
-                                    skeletonCards
-                                ) : isEmpty ? (
-                                    <div className="text-center py-10 bg-white/70 border border-dashed border-slate-200 rounded-xl">
-                                        <p className="text-slate-600">No requirements yet.</p>
-                                        <div className="mt-4 flex gap-3 justify-center">
-                                            <Button onClick={() => setShowCreateDialog(true)}>Create requirement</Button>
-                                            <Button variant="outline" onClick={() => setShowImportDialog(true)}>Import from Excel</Button>
+                            <div
+                                ref={requirementsScrollRef}
+                                className="overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing select-none"
+                                onMouseDown={handleRequirementsDragStart}
+                            >
+                                <div className="grid gap-5">
+                                    {loading ? (
+                                        skeletonCards
+                                    ) : isEmpty ? (
+                                        <div className="text-center py-10 bg-white/70 border border-dashed border-slate-200 rounded-xl">
+                                            <p className="text-slate-600">No requirements yet.</p>
+                                            <div className="mt-4 flex gap-3 justify-center">
+                                                <Button onClick={() => setShowCreateDialog(true)}>Create requirement</Button>
+                                                <Button variant="outline" onClick={() => setShowImportDialog(true)}>Import from Excel</Button>
+                                            </div>
                                         </div>
-                                    </div>
-                                ) : paginatedRequirements.map((req) => {
-                                    const estimation = req.latest_estimation;
-                                    const hasEstimation = !!estimation;
-                                    const priorityConfig = getPriorityConfig(req.priority);
+                                    ) : paginatedRequirements.map((req) => {
+                                        const estimation = req.latest_estimation;
+                                        const hasEstimation = !!estimation;
+                                        const priorityConfig = getPriorityConfig(req.priority);
 
-                                    return (
-                                        <Card
-                                            key={req.id}
-                                            className={`group relative overflow-hidden border-slate-200/60 bg-white/90 backdrop-blur-md hover:bg-white hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-500 ease-out cursor-pointer border-l-4 ${priorityConfig.leftBorder}`}
-                                            onClick={() => navigate(`/lists/${listId}/requirements/${req.id}`)}
-                                            role="button"
-                                            tabIndex={0}
-                                            aria-label={`View requirement ${req.req_id}: ${req.title}`}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter' || e.key === ' ') {
-                                                    e.preventDefault();
-                                                    navigate(`/lists/${listId}/requirements/${req.id}`);
-                                                }
-                                            }}
-                                        >
-                                            {/* Subtle gradient overlay on hover */}
-                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-50/0 to-indigo-50/0 group-hover:via-blue-50/30 group-hover:to-indigo-50/20 transition-all duration-500 pointer-events-none" />
+                                        return (
+                                            <Card
+                                                key={req.id}
+                                                className={`group relative overflow-hidden border-slate-200/60 bg-white/90 backdrop-blur-md hover:bg-white hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-500 ease-out cursor-pointer border-l-4 ${priorityConfig.leftBorder}`}
+                                                onClick={() => navigate(`/lists/${listId}/requirements/${req.id}`)}
+                                                role="button"
+                                                tabIndex={0}
+                                                aria-label={`View requirement ${req.req_id}: ${req.title}`}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' || e.key === ' ') {
+                                                        e.preventDefault();
+                                                        navigate(`/lists/${listId}/requirements/${req.id}`);
+                                                    }
+                                                }}
+                                            >
+                                                {/* Subtle gradient overlay on hover */}
+                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-50/0 to-indigo-50/0 group-hover:via-blue-50/30 group-hover:to-indigo-50/20 transition-all duration-500 pointer-events-none" />
 
-                                            <CardHeader className="pb-4 pt-5 px-5 relative">
-                                                <div className="flex items-start gap-4">
-                                                    <div
-                                                        className="flex-1 min-w-0 cursor-pointer space-y-3"
-                                                        onClick={() => navigate(`/lists/${listId}/requirements/${req.id}`)}
-                                                    >
-                                                        {/* Top row: ID and badges */}
-                                                        <div className="flex items-center gap-2 flex-wrap">
-                                                            <span className="font-mono text-xs font-semibold text-slate-500 bg-slate-100/80 px-2 py-1 rounded">{req.req_id}</span>
-                                                            {getPriorityBadge(req.priority)}
-                                                            {getStateBadge(req.state)}
-                                                        </div>
-
-                                                        {/* Title - more prominent */}
-                                                        <h3
-                                                            className="font-bold text-lg text-slate-900 group-hover:text-blue-700 transition-colors duration-300 line-clamp-2 leading-snug"
-                                                            title={req.title}
+                                                <CardHeader className="pb-4 pt-5 px-5 relative">
+                                                    <div className="flex items-start gap-4">
+                                                        <div
+                                                            className="flex-1 min-w-0 cursor-pointer space-y-3"
+                                                            onClick={() => navigate(`/lists/${listId}/requirements/${req.id}`)}
                                                         >
-                                                            {req.title}
-                                                        </h3>
+                                                            {/* Top row: ID and badges */}
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="font-mono text-xs font-semibold text-slate-500 bg-slate-100/80 px-2 py-1 rounded">{req.req_id}</span>
+                                                                {getPriorityBadge(req.priority)}
+                                                                {getStateBadge(req.state)}
+                                                            </div>
 
-                                                        {/* Description - better spacing */}
-                                                        <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
-                                                            {req.description || 'No description provided'}
-                                                        </p>
+                                                            {/* Title - more prominent */}
+                                                            <h3
+                                                                className="font-bold text-lg text-slate-900 group-hover:text-blue-700 transition-colors duration-300 line-clamp-2 leading-snug"
+                                                                title={req.title}
+                                                            >
+                                                                {req.title}
+                                                            </h3>
 
-                                                        {/* Metadata row - refined styling */}
-                                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500">
-                                                            {req.business_owner && (
+                                                            {/* Description - better spacing */}
+                                                            <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
+                                                                {req.description || 'No description provided'}
+                                                            </p>
+
+                                                            {/* Metadata row - refined styling */}
+                                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500">
+                                                                {req.business_owner && (
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                                        </svg>
+                                                                        <span className="font-medium text-slate-700">{req.business_owner}</span>
+                                                                    </div>
+                                                                )}
+                                                                {req.labels && req.labels.length > 0 && (
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                                                        </svg>
+                                                                        <span>{req.labels.length} label{req.labels.length !== 1 ? 's' : ''}</span>
+                                                                    </div>
+                                                                )}
                                                                 <div className="flex items-center gap-1.5">
                                                                     <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                                     </svg>
-                                                                    <span className="font-medium text-slate-700">{req.business_owner}</span>
+                                                                    <span>{new Date(req.updated_at).toLocaleDateString()}</span>
                                                                 </div>
-                                                            )}
-                                                            {req.labels && req.labels.length > 0 && (
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                                                                    </svg>
-                                                                    <span>{req.labels.length} label{req.labels.length !== 1 ? 's' : ''}</span>
-                                                                </div>
-                                                            )}
-                                                            <div className="flex items-center gap-1.5">
-                                                                <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                </svg>
-                                                                <span>{new Date(req.updated_at).toLocaleDateString()}</span>
                                                             </div>
                                                         </div>
-                                                    </div>
 
-                                                    {/* Right side: Estimation and Actions */}
-                                                    <div className="flex items-start gap-3 flex-shrink-0">
-                                                        {hasEstimation ? (
-                                                            <div className="text-center bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200/60 px-4 py-2.5 rounded-xl shadow-sm group-hover:shadow-md group-hover:border-blue-300/70 transition-all duration-300">
-                                                                <div className="text-2xl font-bold bg-gradient-to-br from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                                                                    {estimation.total_days.toFixed(1)}
+                                                        {/* Right side: Estimation and Actions */}
+                                                        <div className="flex items-start gap-3 flex-shrink-0">
+                                                            {hasEstimation ? (
+                                                                <div className="text-center bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200/60 px-4 py-2.5 rounded-xl shadow-sm group-hover:shadow-md group-hover:border-blue-300/70 transition-all duration-300">
+                                                                    <div className="text-2xl font-bold bg-gradient-to-br from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                                                        {estimation.total_days.toFixed(1)}
+                                                                    </div>
+                                                                    <div className="text-xs text-slate-600 font-medium mt-0.5">days</div>
                                                                 </div>
-                                                                <div className="text-xs text-slate-600 font-medium mt-0.5">days</div>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="text-center bg-slate-50 border-2 border-slate-200/60 px-4 py-2.5 rounded-xl shadow-sm">
-                                                                <div className="text-sm font-semibold text-slate-500">Not</div>
-                                                                <div className="text-xs text-slate-400 mt-0.5">estimated</div>
-                                                            </div>
-                                                        )}
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="h-9 w-9 p-0 hover:bg-slate-100 rounded-lg transition-colors duration-200"
-                                                                    aria-label={`Options for requirement ${req.title}`}
-                                                                >
-                                                                    <MoreVertical className="h-4 w-4 text-slate-600" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-lg border-slate-200/60">
-                                                                <DropdownMenuItem
-                                                                    className="text-destructive focus:text-destructive cursor-pointer"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setDeleteRequirement(req);
-                                                                    }}
-                                                                >
-                                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                                    Delete
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
+                                                            ) : (
+                                                                <div className="text-center bg-slate-50 border-2 border-slate-200/60 px-4 py-2.5 rounded-xl shadow-sm">
+                                                                    <div className="text-sm font-semibold text-slate-500">Not</div>
+                                                                    <div className="text-xs text-slate-400 mt-0.5">estimated</div>
+                                                                </div>
+                                                            )}
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-9 w-9 p-0 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                                                                        aria-label={`Options for requirement ${req.title}`}
+                                                                    >
+                                                                        <MoreVertical className="h-4 w-4 text-slate-600" />
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-lg border-slate-200/60">
+                                                                    <DropdownMenuItem
+                                                                        className="text-destructive focus:text-destructive cursor-pointer"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setDeleteRequirement(req);
+                                                                        }}
+                                                                    >
+                                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                                        Delete
+                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </CardHeader>
-                                        </Card>
-                                    );
-                                })}
+                                                </CardHeader>
+                                            </Card>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         </div>
                     )}

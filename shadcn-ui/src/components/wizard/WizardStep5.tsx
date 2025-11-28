@@ -15,9 +15,10 @@ interface WizardStep5Props {
   data: WizardData;
   onBack: () => void;
   onReset: () => void;
+  onSave?: (result: EstimationResult) => void;
 }
 
-export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
+export function WizardStep5({ data, onBack, onReset, onSave }: WizardStep5Props) {
   const navigate = useNavigate();
   const [result, setResult] = useState<EstimationResult | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -371,29 +372,27 @@ export function WizardStep5({ data, onBack, onReset }: WizardStep5Props) {
           </Button>
         </div>
 
-        {isDemoMode && (
-          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl">
-            <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-blue-900 mb-1">Save Your Estimation</p>
-                <p className="text-xs text-blue-700">Configure Supabase to enable authentication and save estimations to your account.</p>
-              </div>
-            </div>
-          </div>
+        {onSave ? (
+          <Button
+            onClick={() => result && onSave(result)}
+            className="w-full h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+            </svg>
+            <span className="font-semibold">Save Requirement</span>
+          </Button>
+        ) : (
+          <Button
+            onClick={() => navigate('/register')}
+            className="w-full h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+            </svg>
+            <span className="font-semibold">Create Account to Save Estimation</span>
+          </Button>
         )}
-
-        <Button
-          onClick={() => navigate('/register')}
-          className="w-full h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all duration-300"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-          </svg>
-          <span className="font-semibold">Create Account to Save Estimation</span>
-        </Button>
 
         <div className="grid grid-cols-2 gap-3">
           <Button variant="outline" onClick={onBack} className="border-2 hover:bg-slate-50">

@@ -121,7 +121,7 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, onQ
     };
 
     return (
-        <div className="flex flex-col gap-6 mb-8">
+        <div className="flex flex-col gap-3 mb-2">
             <div className="flex items-start gap-4">
                 <Button
                     variant="ghost"
@@ -200,7 +200,7 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, onQ
                     ) : (
                         <div className="group relative rounded-xl -ml-2 p-2 hover:bg-slate-50/80 transition-all duration-200 border border-transparent hover:border-slate-200/50">
                             <div className="flex items-start justify-between gap-4">
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     <div className="flex items-center gap-3">
                                         <h1 className="text-3xl font-bold text-slate-900 tracking-tight leading-tight">
                                             {requirement.title}

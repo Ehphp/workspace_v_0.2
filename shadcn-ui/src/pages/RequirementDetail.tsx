@@ -280,7 +280,11 @@ export default function RequirementDetail() {
     };
 
     const handleBack = () => {
-        navigate(`/lists/${listId}`);
+        if (listId) {
+            navigate(`/lists/${listId}/requirements`);
+            return;
+        }
+        navigate('/lists');
     };
 
     if (requirementLoading || dataLoading) {

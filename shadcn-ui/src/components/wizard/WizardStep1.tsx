@@ -1,5 +1,14 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import type { WizardData } from '@/hooks/useWizardState';
 
 interface WizardStep1Props {
@@ -10,7 +19,7 @@ interface WizardStep1Props {
 
 export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
   const [isFocused, setIsFocused] = useState(false);
-  const canProceed = data.description;
+  const canProceed = data.title && data.description;
   const charCount = data.description.length;
   const maxChars = 2000;
   const charPercentage = (charCount / maxChars) * 100;
@@ -34,23 +43,34 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
       </div>
 
       <div className="space-y-4">
-        {/* Modern Card-style Textarea */}
+        {/* Title Input */}
+        <div className="space-y-2">
+          <Label htmlFor="title">Title *</Label>
+          <Input
+            id="title"
+            placeholder="Brief requirement title"
+            value={data.title || ''}
+            onChange={(e) => onUpdate({ title: e.target.value })}
+            className="bg-white/50 backdrop-blur-sm"
+            autoFocus
+          />
+        </div>
+
+        {/* Description Input */}
         <div className={`relative group bg-white rounded-2xl border-2 transition-all duration-300 ${isFocused
-            ? 'border-blue-500 shadow-xl shadow-blue-100 ring-4 ring-blue-50'
-            : 'border-slate-200 shadow-md hover:border-slate-300 hover:shadow-lg'
+          ? 'border-blue-500 shadow-xl shadow-blue-100 ring-4 ring-blue-50'
+          : 'border-slate-200 shadow-md hover:border-slate-300 hover:shadow-lg'
           }`}>
-          {/* Floating Label */}
           <label
             htmlFor="description"
             className={`absolute left-4 transition-all duration-200 pointer-events-none ${isFocused || data.description
-                ? '-top-2.5 text-xs font-semibold bg-white px-2 text-blue-600'
-                : 'top-4 text-sm text-slate-400'
+              ? '-top-2.5 text-xs font-semibold bg-white px-2 text-blue-600'
+              : 'top-4 text-sm text-slate-400'
               }`}
           >
-            Requirement Description
+            Requirement Description *
           </label>
 
-          {/* Icon */}
           <div className={`absolute right-4 top-4 transition-colors duration-200 ${isFocused ? 'text-blue-500' : 'text-slate-300'
             }`}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -64,13 +84,12 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
             onChange={(e) => onUpdate({ description: e.target.value })}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            rows={12}
+            rows={8}
             maxLength={maxChars}
             className="w-full px-4 pt-6 pb-4 pr-12 bg-transparent border-0 rounded-2xl resize-none focus:outline-none focus:ring-0 text-slate-900 placeholder-slate-400 text-sm leading-relaxed"
-            placeholder="e.g., Implement a user authentication system with login, registration, password reset, and 2FA. The system should integrate with our existing API and support OAuth providers..."
+            placeholder="e.g., Implement a user authentication system with login, registration, password reset, and 2FA..."
           />
 
-          {/* Character Counter */}
           <div className="px-4 pb-3 flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs">
               <div className={`w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden ${charPercentage > 90 ? 'ring-2 ring-amber-500' : ''
@@ -86,6 +105,55 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
                 {charCount} / {maxChars}
               </span>
             </div>
+          </div>
+        </div>
+
+        {/* Metadata Fields */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="business_owner">Business Owner</Label>
+            <Input
+              id="business_owner"
+              placeholder="John Doe"
+              value={data.business_owner || ''}
+              onChange={(e) => onUpdate({ business_owner: e.target.value })}
+              className="bg-white/50 backdrop-blur-sm"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="priority">Priority</Label>
+            <Select
+              value={data.priority}
+              onValueChange={(value: any) => onUpdate({ priority: value })}
+            >
+              <SelectTrigger id="priority" className="bg-white/50 backdrop-blur-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="LOW">Low</SelectItem>
+                <SelectItem value="MEDIUM">Medium</SelectItem>
+                <SelectItem value="HIGH">High</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="state">State</Label>
+            <Select
+              value={data.state}
+              onValueChange={(value: any) => onUpdate({ state: value })}
+            >
+              <SelectTrigger id="state" className="bg-white/50 backdrop-blur-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PROPOSED">Proposed</SelectItem>
+                <SelectItem value="SELECTED">Selected</SelectItem>
+                <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+                <SelectItem value="DONE">Done</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
