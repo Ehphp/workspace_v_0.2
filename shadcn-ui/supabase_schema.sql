@@ -106,6 +106,18 @@ CREATE TABLE requirements (
     UNIQUE(list_id, req_id)
 );
 
+-- Requirement-level driver values (baseline per requirement)
+CREATE TABLE requirement_driver_values (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    requirement_id UUID NOT NULL REFERENCES requirements(id) ON DELETE CASCADE,
+    driver_id UUID NOT NULL REFERENCES drivers(id),
+    selected_value VARCHAR(50) NOT NULL,
+    source VARCHAR(20) DEFAULT 'USER', -- USER | PRESET
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(requirement_id, driver_id)
+);
+
 -- Estimations
 CREATE TABLE estimations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -157,6 +169,8 @@ CREATE INDEX idx_requirements_list_id ON requirements(list_id);
 CREATE INDEX idx_requirements_tech_preset ON requirements(tech_preset_id);
 CREATE INDEX idx_requirements_priority ON requirements(priority);
 CREATE INDEX idx_requirements_state ON requirements(state);
+CREATE INDEX idx_requirement_driver_values_req ON requirement_driver_values(requirement_id);
+CREATE INDEX idx_requirement_driver_values_driver ON requirement_driver_values(driver_id);
 CREATE INDEX idx_estimations_requirement_id ON estimations(requirement_id);
 CREATE INDEX idx_estimations_user_id ON estimations(user_id);
 CREATE INDEX idx_activities_tech_category ON activities(tech_category);
@@ -174,6 +188,7 @@ CREATE INDEX idx_tech_preset_activities_position ON technology_preset_activities
 -- Enable RLS on user data tables
 ALTER TABLE lists ENABLE ROW LEVEL SECURITY;
 ALTER TABLE requirements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE requirement_driver_values ENABLE ROW LEVEL SECURITY;
 ALTER TABLE estimations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE estimation_activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE estimation_drivers ENABLE ROW LEVEL SECURITY;
@@ -302,6 +317,47 @@ CREATE POLICY "Users can delete requirements in their lists" ON requirements
         )
     );
 
+-- Policies for requirement driver baselines (scope = requirement ownership)
+CREATE POLICY "Users can view requirement driver values" ON requirement_driver_values
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM requirements r
+            JOIN lists l ON l.id = r.list_id
+            WHERE r.id = requirement_driver_values.requirement_id
+            AND l.user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Users can upsert requirement driver values" ON requirement_driver_values
+    FOR INSERT WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM requirements r
+            JOIN lists l ON l.id = r.list_id
+            WHERE r.id = requirement_driver_values.requirement_id
+            AND l.user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Users can update requirement driver values" ON requirement_driver_values
+    FOR UPDATE USING (
+        EXISTS (
+            SELECT 1 FROM requirements r
+            JOIN lists l ON l.id = r.list_id
+            WHERE r.id = requirement_driver_values.requirement_id
+            AND l.user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Users can delete requirement driver values" ON requirement_driver_values
+    FOR DELETE USING (
+        EXISTS (
+            SELECT 1 FROM requirements r
+            JOIN lists l ON l.id = r.list_id
+            WHERE r.id = requirement_driver_values.requirement_id
+            AND l.user_id = auth.uid()
+        )
+    );
+
 -- Policies for estimations
 CREATE POLICY "Users can view estimations for their requirements" ON estimations
     FOR SELECT USING (
@@ -408,4 +464,6 @@ CREATE TRIGGER update_lists_updated_at BEFORE UPDATE ON lists
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_requirements_updated_at BEFORE UPDATE ON requirements
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_requirement_driver_values_updated_at BEFORE UPDATE ON requirement_driver_values
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

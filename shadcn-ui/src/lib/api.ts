@@ -4,6 +4,7 @@ import type {
   Driver,
   List,
   Requirement,
+  RequirementDriverValue,
   TechnologyPreset,
   Risk,
 } from '@/types/database';
@@ -227,5 +228,13 @@ export async function fetchRequirementBundle(listId: string, reqId: string, user
   const techPresetId = requirement.tech_preset_id || list.tech_preset_id;
   const preset = techPresetId ? await fetchTechnologyPreset(techPresetId) : null;
 
-  return { list, requirement, preset };
+  const { data: driverValues, error: driverErr } = await supabase
+    .from('requirement_driver_values')
+    .select('*')
+    .eq('requirement_id', requirement.id);
+  if (driverErr) {
+    console.warn('Failed to load requirement driver values', driverErr);
+  }
+
+  return { list, requirement, preset, driverValues: (driverValues || []) as RequirementDriverValue[] };
 }

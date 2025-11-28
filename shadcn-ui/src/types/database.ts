@@ -112,6 +112,16 @@ export interface EstimationRisk {
   risk_id: string;
 }
 
+export interface RequirementDriverValue {
+  id: string;
+  requirement_id: string;
+  driver_id: string;
+  selected_value: string;
+  source?: 'PRESET' | 'USER';
+  created_at: string;
+  updated_at: string;
+}
+
 // Extended types with joins
 export interface RequirementWithEstimation extends Requirement {
   latest_estimation: Estimation | null;

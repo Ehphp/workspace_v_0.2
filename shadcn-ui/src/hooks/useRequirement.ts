@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchRequirementBundle } from '@/lib/api';
 import { toast } from 'sonner';
-import type { Requirement, TechnologyPreset, List } from '@/types/database';
+import type { Requirement, TechnologyPreset, List, RequirementDriverValue } from '@/types/database';
 
 interface UseRequirementReturn {
     requirement: Requirement | null;
     list: List | null;
     preset: TechnologyPreset | null;
+    driverValues: RequirementDriverValue[];
     loading: boolean;
     error: Error | null;
     refetch: () => Promise<void>;
@@ -52,6 +53,7 @@ export function useRequirement(
     const requirement = useMemo(() => query.data?.requirement ?? null, [query.data]);
     const list = useMemo(() => query.data?.list ?? null, [query.data]);
     const preset = useMemo(() => query.data?.preset ?? null, [query.data]);
+    const driverValues = useMemo(() => query.data?.driverValues ?? [], [query.data]);
     const loading = query.isLoading || query.isFetching || !enabled;
     const error = (query.error as Error) || null;
 
@@ -59,6 +61,7 @@ export function useRequirement(
         requirement,
         list,
         preset,
+        driverValues,
         loading,
         error,
         refetch: async () => { await query.refetch(); }

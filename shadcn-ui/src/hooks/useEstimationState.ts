@@ -23,6 +23,7 @@ export interface UseEstimationStateReturn {
     setSelectedPresetId: (id: string) => void;
     toggleActivity: (id: string) => void;
     setDriverValue: (driverId: string, value: string) => void; // Use ID instead of code
+    setDriverValues: (values: Record<string, string>) => void;
     toggleRisk: (id: string) => void;
     applyPreset: (presetId: string) => void;
     applyPresetDefaults: (presetId: string) => void;
@@ -84,6 +85,10 @@ export function useEstimationState({
             ...prev,
             [driverId]: value, // Use ID as key
         }));
+    }, []);
+
+    const setDriverValues = useCallback((values: Record<string, string>) => {
+        setSelectedDriverValues(values);
     }, []);
 
     const toggleRisk = useCallback((riskId: string) => {
@@ -288,6 +293,7 @@ export function useEstimationState({
         setSelectedPresetId,
         toggleActivity,
         setDriverValue,
+        setDriverValues,
         toggleRisk,
         applyPreset,
         applyPresetDefaults,

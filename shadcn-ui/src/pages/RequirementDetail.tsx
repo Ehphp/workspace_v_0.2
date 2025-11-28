@@ -25,6 +25,7 @@ import { RequirementHeader } from '@/components/requirements/detail/RequirementH
 import { RequirementDescription } from '@/components/requirements/detail/RequirementDescription';
 import { RequirementInfo } from '@/components/requirements/detail/RequirementInfo';
 import { RequirementEstimation } from '@/components/requirements/detail/RequirementEstimation';
+import { RequirementDriversCard } from '@/components/requirements/detail/RequirementDriversCard';
 
 const HISTORY_PAGE_SIZE = 5;
 
@@ -38,6 +39,7 @@ export default function RequirementDetail() {
         requirement,
         list,
         preset,
+        driverValues: requirementDriverValues,
         loading: requirementLoading,
         error: requirementError,
         refetch: refetchRequirement
@@ -66,6 +68,7 @@ export default function RequirementDetail() {
         setSelectedPresetId,
         applyPresetDefaults,
         applyAiSuggestions,
+        setDriverValues,
         estimationResult,
         hasSelections,
         isValid: isEstimationValid
@@ -100,11 +103,23 @@ export default function RequirementDetail() {
         if (requirement?.tech_preset_id && !selectedPresetId && presets.length > 0) {
             setSelectedPresetId(requirement.tech_preset_id);
             // Optionally apply defaults if no selections made yet
-            if (!hasSelections) {
+            const hasRequirementDrivers = (requirementDriverValues?.length || 0) > 0;
+            if (!hasSelections && !hasRequirementDrivers) {
                 applyPresetDefaults(requirement.tech_preset_id);
             }
         }
-    }, [requirement, presets, selectedPresetId, hasSelections, setSelectedPresetId, applyPresetDefaults]);
+    }, [requirement, presets, selectedPresetId, hasSelections, setSelectedPresetId, applyPresetDefaults, requirementDriverValues]);
+
+    // Apply requirement-scoped driver defaults when available
+    useEffect(() => {
+        if (!requirementDriverValues || requirementDriverValues.length === 0) return;
+        if (Object.keys(selectedDriverValues).length > 0) return;
+        const map: Record<string, string> = {};
+        requirementDriverValues.forEach((rv) => {
+            map[rv.driver_id] = rv.selected_value;
+        });
+        setDriverValues(map);
+    }, [requirementDriverValues, selectedDriverValues, setDriverValues]);
 
     // Check for unsaved changes
     const hasUnsavedChanges = useMemo(() => {
@@ -388,6 +403,13 @@ export default function RequirementDetail() {
                                             requirement={requirement}
                                             presets={presets}
                                             refetchRequirement={refetchRequirement}
+                                        />
+                                        <RequirementDriversCard
+                                            requirementId={requirement.id}
+                                            drivers={drivers}
+                                            driverValues={requirementDriverValues}
+                                            onSaved={refetchRequirement}
+                                            onApplyToEstimate={(map) => setDriverValues(map)}
                                         />
                                     </div>
                                 </div>
