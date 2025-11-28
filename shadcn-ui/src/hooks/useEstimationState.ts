@@ -11,7 +11,7 @@ interface UseEstimationStateProps {
     presets: TechnologyPreset[];
 }
 
-interface UseEstimationStateReturn {
+export interface UseEstimationStateReturn {
     // Selections
     selectedPresetId: string;
     selectedActivityIds: string[];
