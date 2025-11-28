@@ -4,10 +4,10 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthGuard } from '@/components/auth/AuthGuard';
-import Home from './pages/Index';
+import RootPage from './pages/RootPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Lists from './pages/Lists';
+import Dashboard from './pages/Dashboard';
 import Requirements from './pages/Requirements';
 import RequirementDetail from './pages/RequirementDetail';
 import NotFound from './pages/NotFound';
@@ -26,20 +26,20 @@ const App = () => (
       <ToastToaster />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<RootPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route
-            path="/lists"
+            path="/dashboard"
             element={
               <AuthGuard>
-                <Lists />
+                <Dashboard />
               </AuthGuard>
             }
           />
           <Route
-            path="/lists/:listId/requirements"
+            path="/dashboard/:listId/requirements"
             element={
               <AuthGuard>
                 <Requirements />
@@ -47,7 +47,7 @@ const App = () => (
             }
           />
           <Route
-            path="/lists/:listId/requirements/:reqId"
+            path="/dashboard/:listId/requirements/:reqId"
             element={
               <AuthGuard>
                 <RequirementDetail />
@@ -87,6 +87,9 @@ const App = () => (
             }
           />
           {/* Backward compatibility redirects */}
+          <Route path="/lists" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/lists/:listId/requirements" element={<Navigate to="/dashboard/:listId/requirements" replace />} />
+          <Route path="/lists/:listId/requirements/:reqId" element={<Navigate to="/dashboard/:listId/requirements/:reqId" replace />} />
           <Route path="/admin" element={<Navigate to="/configuration" replace />} />
           <Route path="/admin/activities" element={<Navigate to="/configuration/activities" replace />} />
           <Route path="/presets" element={<Navigate to="/configuration/presets" replace />} />

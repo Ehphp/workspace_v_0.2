@@ -45,7 +45,7 @@ export function useRequirement(
             query.error instanceof Error ? query.error.message : 'Failed to load requirement';
         toast.error('Failed to load requirement', { description: message });
         const timer = setTimeout(() => {
-            navigate(`/lists/${listId}/requirements`);
+            navigate(`/dashboard/${listId}/requirements`);
         }, 2000);
         return () => clearTimeout(timer);
     }, [query.error, enabled, navigate, listId]);

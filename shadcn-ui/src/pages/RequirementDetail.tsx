@@ -343,10 +343,10 @@ export default function RequirementDetail() {
 
     const handleBack = () => {
         if (listId) {
-            navigate(`/lists/${listId}/requirements`);
+            navigate(`/dashboard/${listId}/requirements`);
             return;
         }
-        navigate('/lists');
+        navigate('/dashboard');
     };
 
     if (requirementLoading || dataLoading) {

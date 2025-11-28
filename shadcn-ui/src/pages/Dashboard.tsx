@@ -28,7 +28,7 @@ import { DeleteListDialog } from '@/components/lists/DeleteListDialog';
 import { Header } from '@/components/layout/Header';
 import { ProgressOverviewChart } from '@/components/charts/ProgressOverviewChart';
 
-export default function Lists() {
+export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [lists, setLists] = useState<List[]>([]);
@@ -321,8 +321,8 @@ export default function Lists() {
         <div className="container mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">My Projects</h1>
-              <p className="text-sm text-slate-600 mt-1">Manage your estimation projects</p>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">Dashboard</h1>
+              <p className="text-sm text-slate-600 mt-1">Welcome back! Manage your estimation projects</p>
             </div>
             <Button
               onClick={() => setShowCreateDialog(true)}
@@ -459,7 +459,7 @@ export default function Lists() {
                       <Card
                         key={list.id}
                         className="group w-[320px] flex-shrink-0 border-slate-200/50 bg-white/80 backdrop-blur-sm hover:bg-white hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col"
-                        onClick={() => navigate(`/lists/${list.id}/requirements`)}
+                        onClick={() => navigate(`/dashboard/${list.id}/requirements`)}
                       >
                         {/* Colored top border based on status */}
                         <div className={`h-1 flex-shrink-0 bg-gradient-to-r ${list.status === 'ACTIVE' ? 'from-emerald-400 to-teal-500' :

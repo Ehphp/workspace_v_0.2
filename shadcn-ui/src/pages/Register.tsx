@@ -39,7 +39,7 @@ export default function Register() {
       setError(error.message);
       setLoading(false);
     } else {
-      navigate('/lists');
+      navigate('/dashboard');
     }
   };
 

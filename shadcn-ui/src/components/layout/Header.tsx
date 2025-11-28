@@ -76,18 +76,18 @@ export function Header() {
     const getBreadcrumb = () => {
         const pathParts = location.pathname.split('/').filter(Boolean);
 
-        if (pathParts[0] === 'lists' && params.listId) {
+        if (pathParts[0] === 'dashboard' && params.listId) {
             if (pathParts[2] === 'requirements') {
                 if (params.reqId) {
                     // On requirement detail page
                     return (
                         <div className="flex items-center gap-1 text-sm">
-                            <Link to="/lists" className="text-slate-600 hover:text-blue-600 transition-colors">
-                                My Lists
+                            <Link to="/dashboard" className="text-slate-600 hover:text-blue-600 transition-colors">
+                                Dashboard
                             </Link>
                             <ChevronRight className="h-4 w-4 text-slate-400" />
                             <Link
-                                to={`/lists/${params.listId}/requirements`}
+                                to={`/dashboard/${params.listId}/requirements`}
                                 className="text-slate-600 hover:text-blue-600 transition-colors max-w-[150px] truncate"
                             >
                                 {listName || 'Project'}
@@ -102,8 +102,8 @@ export function Header() {
                     // On requirements list page
                     return (
                         <div className="flex items-center gap-1 text-sm">
-                            <Link to="/lists" className="text-slate-600 hover:text-blue-600 transition-colors">
-                                My Lists
+                            <Link to="/dashboard" className="text-slate-600 hover:text-blue-600 transition-colors">
+                                Dashboard
                             </Link>
                             <ChevronRight className="h-4 w-4 text-slate-400" />
                             <span className="text-slate-900 font-medium max-w-[200px] truncate">
@@ -140,22 +140,13 @@ export function Header() {
                 <nav className="flex items-center gap-2 flex-shrink-0">
                     {user ? (
                         <>
-                            <Link to="/">
+                            <Link to="/dashboard">
                                 <Button
                                     variant="ghost"
-                                    className={`hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium ${isActive('/') ? 'bg-blue-50 text-blue-700' : ''}`}
-                                >
-                                    Home
-                                </Button>
-                            </Link>
-
-                            <Link to="/lists">
-                                <Button
-                                    variant="ghost"
-                                    className={`hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium flex items-center gap-1 ${isActive('/lists') ? 'bg-blue-50 text-blue-700' : ''}`}
+                                    className={`hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium flex items-center gap-1 ${isActive('/dashboard') ? 'bg-blue-50 text-blue-700' : ''}`}
                                 >
                                     <List className="h-4 w-4" />
-                                    Lists
+                                    Dashboard
                                 </Button>
                             </Link>
 

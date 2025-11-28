@@ -81,7 +81,7 @@ export default function Requirements() {
                     variant: 'destructive',
                 });
                 setErrorMessage('Failed to load project details');
-                navigate('/lists');
+                navigate('/dashboard');
                 return;
             }
 
@@ -828,14 +828,14 @@ export default function Requirements() {
                                             <Card
                                                 key={req.id}
                                                 className={`group relative overflow-hidden border-slate-200/60 bg-white/90 backdrop-blur-md hover:bg-white hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-500 ease-out cursor-pointer border-l-4 ${priorityConfig.leftBorder}`}
-                                                onClick={() => navigate(`/lists/${listId}/requirements/${req.id}`)}
+                                                onClick={() => navigate(`/dashboard/${listId}/requirements/${req.id}`)}
                                                 role="button"
                                                 tabIndex={0}
                                                 aria-label={`View requirement ${req.req_id}: ${req.title}`}
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter' || e.key === ' ') {
                                                         e.preventDefault();
-                                                        navigate(`/lists/${listId}/requirements/${req.id}`);
+                                                        navigate(`/dashboard/${listId}/requirements/${req.id}`);
                                                     }
                                                 }}
                                             >
@@ -846,7 +846,7 @@ export default function Requirements() {
                                                     <div className="flex items-start gap-4">
                                                         <div
                                                             className="flex-1 min-w-0 cursor-pointer space-y-3"
-                                                            onClick={() => navigate(`/lists/${listId}/requirements/${req.id}`)}
+                                                            onClick={() => navigate(`/dashboard/${listId}/requirements/${req.id}`)}
                                                         >
                                                             {/* Top row: ID and badges */}
                                                             <div className="flex items-center gap-2 flex-wrap">

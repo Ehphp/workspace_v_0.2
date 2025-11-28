@@ -16,7 +16,7 @@ export function Sidebar({ className }: SidebarProps) {
 
     const navItems = [
         { icon: Home, label: 'Home', path: '/' },
-        { icon: FolderOpen, label: 'My Lists', path: '/lists' },
+        { icon: FolderOpen, label: 'Dashboard', path: '/dashboard' },
     ];
 
     return (

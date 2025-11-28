@@ -53,7 +53,7 @@ export default function Home() {
                 <span className="text-sm text-slate-600 mr-2">
                   {user.email}
                 </span>
-                <Link to="/lists">
+                <Link to="/dashboard">
                   <Button variant="ghost" size="sm" className="hover:bg-white/50">
                     My Lists
                   </Button>

@@ -130,7 +130,7 @@ export function ProgressOverviewChart({ projectStats, showArchived }: ProgressOv
                             dataKey="totalDays"
                             radius={[0, 8, 8, 0]}
                             cursor="pointer"
-                            onClick={(data: ProjectStat) => navigate(`/lists/${data.id}/requirements`)}
+                            onClick={(data: ProjectStat) => navigate(`/dashboard/${data.id}/requirements`)}
                         >
                             {projectStats.map((entry, index) => (
                                 <Cell
