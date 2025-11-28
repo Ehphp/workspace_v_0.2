@@ -22,9 +22,10 @@ import { supabase } from '@/lib/supabase';
 import { MOCK_TECHNOLOGY_PRESETS, MOCK_ACTIVITIES, MOCK_DRIVERS, MOCK_RISKS } from '@/lib/mockData';
 import { calculateEstimation } from '@/lib/estimationEngine';
 import { suggestActivities } from '@/lib/openai';
+import { useRequirementNormalization } from '@/hooks/useRequirementNormalization';
 import type { TechnologyPreset, Activity, Driver, Risk } from '@/types/database';
 import type { EstimationResult, SelectedDriver, SelectedRisk } from '@/types/estimation';
-import { ArrowLeft, Calculator, CheckCircle2, AlertTriangle, Sparkles, ListChecks, FileText, Zap } from 'lucide-react';
+import { ArrowLeft, Calculator, CheckCircle2, AlertTriangle, Sparkles, ListChecks, FileText, Zap, Wand2 } from 'lucide-react';
 
 interface QuickEstimateProps {
     open: boolean;
@@ -52,6 +53,9 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
     const [error, setError] = useState<string | null>(null);
     const [selectedActivities, setSelectedActivities] = useState<Array<{ code: string; name: string; baseDays: number }>>([]);
     const [aiReasoning, setAiReasoning] = useState<string>('');
+
+    // Normalization hook
+    const { normalize, isNormalizing, normalizationResult, resetNormalization } = useRequirementNormalization();
 
     useEffect(() => {
         if (open) {
@@ -323,7 +327,92 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                                 <p className="text-xs text-slate-500">
                                     Be as specific as possible for better accuracy
                                 </p>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => normalize(description)}
+                                    disabled={isNormalizing || !description || description.length < 10}
+                                    className="mt-2 w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300"
+                                >
+                                    {isNormalizing ? (
+                                        <>
+                                            <Sparkles className="w-4 h-4 mr-2 animate-spin" />
+                                            Analyzing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Wand2 className="w-4 h-4 mr-2" />
+                                            Analyze & Improve with AI
+                                        </>
+                                    )}
+                                </Button>
                             </div>
+
+                            {/* Normalization Result */}
+                            {normalizationResult && (
+                                <div className="rounded-lg border-2 border-indigo-300 bg-gradient-to-br from-indigo-50 to-purple-50 overflow-hidden shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <div className="px-3 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Wand2 className="w-4 h-4 text-white" />
+                                            <span className="text-xs font-bold text-white">AI Analysis</span>
+                                        </div>
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${normalizationResult.isValidRequirement
+                                                ? 'bg-green-500 text-white'
+                                                : 'bg-red-500 text-white'
+                                            }`}>
+                                            {normalizationResult.isValidRequirement ? '✓ Valid' : '⚠ Issues'}
+                                        </span>
+                                    </div>
+
+                                    <div className="p-3 space-y-3">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[11px] text-indigo-700 font-semibold">AI-Improved Version</Label>
+                                            <div className="bg-white p-2.5 rounded border border-indigo-200 text-xs text-slate-800 leading-relaxed max-h-32 overflow-y-auto">
+                                                {normalizationResult.normalizedDescription}
+                                            </div>
+                                        </div>
+
+                                        {normalizationResult.validationIssues?.length > 0 && (
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[11px] text-amber-700 font-semibold flex items-center gap-1">
+                                                    <AlertTriangle className="w-3 h-3" />
+                                                    Issues ({normalizationResult.validationIssues.length})
+                                                </Label>
+                                                <ul className="bg-amber-50 rounded border border-amber-200 p-2 text-[10px] text-amber-900 space-y-1">
+                                                    {normalizationResult.validationIssues.slice(0, 3).map((issue, i) => (
+                                                        <li key={i} className="flex items-start gap-1.5">
+                                                            <span className="mt-0.5 w-1 h-1 rounded-full bg-amber-500 flex-shrink-0" />
+                                                            {issue}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                        <div className="flex justify-end gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={resetNormalization}
+                                                className="text-xs h-7 text-slate-600 hover:text-slate-800"
+                                            >
+                                                Dismiss
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                onClick={() => {
+                                                    setDescription(normalizationResult.normalizedDescription);
+                                                    resetNormalization();
+                                                }}
+                                                className="text-xs h-7 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                                            >
+                                                <CheckCircle2 className="w-3 h-3 mr-1" />
+                                                Use This
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="space-y-3">
                                 <Label htmlFor="technology" className="text-sm font-semibold text-slate-700">

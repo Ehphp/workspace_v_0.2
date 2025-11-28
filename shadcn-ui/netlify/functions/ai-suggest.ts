@@ -231,7 +231,7 @@ function createCompactPrompt(activities: any[], drivers: any[], risks: any[]): s
 }
 
 interface RequestBody {
-    action?: 'suggest-activities' | 'generate-title';
+    action?: 'suggest-activities' | 'generate-title' | 'normalize-requirement';
     description: string;
     preset?: {
         id: string;
@@ -391,17 +391,16 @@ export const handler: Handler = async (
                 messages: [
                     {
                         role: 'system',
-                        content: 'Create concise requirement titles (max 10 words). Return only the title.',
+                        content: 'Create concise requirement titles (max 10 words). The description may include bullet lines formatted as "- ColumnName: value" coming from Excel columns; use the values and their labels as context but do not repeat the label prefix in the title. Return only the title.',
                     },
                     {
                         role: 'user',
-                        content: sanitizedDescription.substring(0, 500), // Limit input length
+                        content: sanitizedDescription.substring(0, 500),
                     },
                 ],
-                temperature: 0.3, // More deterministic
+                temperature: 0.3,
                 max_tokens: 30, // Reduced from 50
             });
-
             const title = completion.choices[0]?.message?.content?.trim() || description.substring(0, 100);
 
             // Cache the result
@@ -412,6 +411,112 @@ export const handler: Handler = async (
                 statusCode: 200,
                 headers,
                 body: JSON.stringify({ title }),
+            };
+        }
+
+        // Handle requirement normalization
+        if (action === 'normalize-requirement') {
+            const { description } = body;
+
+            if (!description) {
+                return {
+                    statusCode: 400,
+                    headers,
+                    body: JSON.stringify({ error: 'Missing description' }),
+                };
+            }
+
+            const sanitizedDescription = sanitizePromptInput(description);
+            console.log('Normalizing requirement:', sanitizedDescription.substring(0, 100));
+
+            // Check cache first
+            const cacheKey = `normalize:${sanitizedDescription.substring(0, 200)}`;
+            if (!body.testMode) {
+                const cached = getCachedResponse(cacheKey);
+                if (cached) {
+                    console.log('Using cached normalization');
+                    return {
+                        statusCode: 200,
+                        headers,
+                        body: JSON.stringify(cached),
+                    };
+                }
+            }
+
+            const systemPrompt = `You are an expert Business Analyst. Your goal is to normalize and validate a requirement description.
+
+INPUT: A raw requirement description (which may be messy, vague, or structured as key-value pairs from Excel).
+
+OUTPUT: A structured JSON object with the following fields:
+- isValidRequirement: boolean (true if it's a valid technical requirement, false if gibberish/test/question)
+- confidence: number (0.0 to 1.0, how confident you are in the interpretation)
+- originalDescription: string (the input text)
+- normalizedDescription: string (a clear, professional, concise rewrite of the requirement. DO NOT invent new details. DO NOT add systems/APIs not mentioned. Merge scattered info into a cohesive paragraph.)
+- validationIssues: array of strings (list of missing info, ambiguities, or contradictions. If none, empty array.)
+- transformNotes: array of strings (brief notes on what you changed/interpreted, e.g., "Merged 'Notes' column into description", "Clarified user role")
+
+RULES:
+1. DO NOT invent new constraints, numbers, or systems.
+2. If the input is vague, mark it in validationIssues, don't guess.
+3. Keep the normalizedDescription technical but readable.
+4. If the input is just a title, expand it slightly into a sentence if possible, but don't hallucinate.`;
+
+            const userPrompt = sanitizedDescription.substring(0, 2000);
+
+            const responseSchema = {
+                type: "json_schema" as const,
+                json_schema: {
+                    name: "normalization_response",
+                    strict: true,
+                    schema: {
+                        type: "object",
+                        properties: {
+                            isValidRequirement: { type: "boolean" },
+                            confidence: { type: "number" },
+                            originalDescription: { type: "string" },
+                            normalizedDescription: { type: "string" },
+                            validationIssues: {
+                                type: "array",
+                                items: { type: "string" }
+                            },
+                            transformNotes: {
+                                type: "array",
+                                items: { type: "string" }
+                            }
+                        },
+                        required: ["isValidRequirement", "confidence", "originalDescription", "normalizedDescription", "validationIssues", "transformNotes"],
+                        additionalProperties: false
+                    }
+                }
+            };
+
+            const completion = await openai.chat.completions.create({
+                model: 'gpt-4o-mini',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt },
+                ],
+                response_format: responseSchema,
+                temperature: 0.2, // Low temperature for consistency
+                max_tokens: 1000,
+            });
+
+            const parsedContent = completion.choices[0]?.message?.content;
+            if (!parsedContent) {
+                throw new Error('No response from OpenAI for normalization');
+            }
+
+            const result = JSON.parse(parsedContent);
+
+            // Cache the result
+            if (!body.testMode) {
+                aiCache.set(cacheKey, { response: result, timestamp: Date.now() });
+            }
+
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify(result),
             };
         }
 
@@ -489,6 +594,11 @@ export const handler: Handler = async (
         }
 
         const systemPrompt = `You are an expert software estimation assistant for ${preset.name} (${preset.tech_category}).
+
+DESCRIPTION FORMAT (READ CAREFULLY):
+- The requirement description may include bullet lines formatted as "- ColumnName: value" coming from Excel column names selected by the user.
+- Treat the column names as signals of the data type/context (e.g., "Feature", "Problem", "Goal", "AcceptanceCriteria").
+- Consider every labeled line; do NOT drop or ignore any labeled segment when evaluating scope.
 
 STEP 1: Validate the requirement description.
 - If it is invalid or unclear, set isValidRequirement to false, return activityCodes as an empty array, and explain why in reasoning.

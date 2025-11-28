@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Zap, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { buildFunctionUrl } from '@/lib/netlify';
 
 interface Requirement {
     id: string;
@@ -81,9 +82,13 @@ export function BulkEstimateDialog({
         const results: RequirementStatus[] = [...initialStatuses];
 
         // Fetch current user once
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        const userId = userData?.user?.id;
-        if (userError || !userId) {
+        const {
+            data: sessionData,
+            error: sessionError,
+        } = await supabase.auth.getSession();
+        const userId = sessionData?.session?.user?.id;
+        const accessToken = sessionData?.session?.access_token;
+        if (sessionError || !userId) {
             const errorStatuses = estimableRequirements.map((req) => ({
                 requirement: req,
                 status: 'error' as EstimateStatus,
@@ -93,6 +98,8 @@ export function BulkEstimateDialog({
             setStep('complete');
             return;
         }
+        const authHeader = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+        const aiFunctionUrl = buildFunctionUrl('ai-suggest');
 
         // PRE-LOAD all data once (huge performance boost for bulk)
         console.log('Pre-loading catalogs for bulk processing...');
@@ -206,9 +213,12 @@ export function BulkEstimateDialog({
                     console.log('  - Preset:', preset.name);
                     console.log('  - Activities:', activities?.length);
 
-                    const response = await fetch('/.netlify/functions/ai-suggest', {
+                    const response = await fetch(aiFunctionUrl, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...authHeader,
+                        },
                         body: JSON.stringify({
                             description: sanitizedDescription,
                             preset,

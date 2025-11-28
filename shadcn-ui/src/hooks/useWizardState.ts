@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import type { NormalizationResult } from '@/lib/openai';
 
 export interface WizardData {
   reqId?: string;
@@ -13,6 +14,7 @@ export interface WizardData {
   business_owner?: string;
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
   state: 'PROPOSED' | 'SELECTED' | 'SCHEDULED' | 'DONE';
+  normalizationResult?: NormalizationResult | null;
 }
 
 const STORAGE_KEY = 'estimation_wizard_data';
@@ -34,14 +36,14 @@ export function useWizardState() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }, [data]);
 
-  const updateData = (updates: Partial<WizardData>) => {
+  const updateData = useCallback((updates: Partial<WizardData>) => {
     setData((prev) => ({ ...prev, ...updates }));
-  };
+  }, []);
 
-  const resetData = () => {
+  const resetData = useCallback(() => {
     setData(getInitialData());
     localStorage.removeItem(STORAGE_KEY);
-  };
+  }, []);
 
   return { data, updateData, resetData };
 }
@@ -57,5 +59,6 @@ function getInitialData(): WizardData {
     priority: 'MEDIUM',
     state: 'PROPOSED',
     business_owner: '',
+    normalizationResult: null,
   };
 }

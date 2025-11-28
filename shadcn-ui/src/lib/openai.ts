@@ -2,6 +2,7 @@ import type { Activity, Driver, Risk, TechnologyPreset } from '@/types/database'
 import type { AIActivitySuggestion } from '@/types/estimation';
 import { sanitizePromptInput } from '@/types/ai-validation';
 import { supabase } from '@/lib/supabase';
+import { buildFunctionUrl } from '@/lib/netlify';
 
 interface SuggestActivitiesInput {
   description: string;
@@ -9,6 +10,15 @@ interface SuggestActivitiesInput {
   activities: Activity[];
   baseUrl?: string; // Optional base URL for testing
   testMode?: boolean; // Disable cache and increase temperature for variance testing
+}
+
+export interface NormalizationResult {
+  isValidRequirement: boolean;
+  confidence: number;
+  originalDescription: string;
+  normalizedDescription: string;
+  validationIssues: string[];
+  transformNotes: string[];
 }
 
 /**
@@ -34,7 +44,7 @@ export async function suggestActivities(
     const sanitizedDescription = sanitizePromptInput(description);
 
     // Call Netlify function instead of OpenAI directly
-    const apiUrl = `${baseUrl}/.netlify/functions/ai-suggest`;
+    const apiUrl = buildFunctionUrl('ai-suggest', baseUrl);
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -83,7 +93,7 @@ export async function generateTitleFromDescription(description: string): Promise
     // Sanitize input
     const sanitizedDescription = sanitizePromptInput(description);
 
-    const response = await fetch('/.netlify/functions/ai-suggest', {
+    const response = await fetch(buildFunctionUrl('ai-suggest'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -105,5 +115,43 @@ export async function generateTitleFromDescription(description: string): Promise
     console.error('Error generating title with AI:', error);
     // Fallback: use first 100 chars of description
     return description.substring(0, 100).trim() + (description.length > 100 ? '...' : '');
+  }
+}
+
+
+/**
+ * Normalize and validate a requirement description using AI
+ */
+export async function normalizeRequirement(description: string): Promise<NormalizationResult> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const authHeader = session?.access_token
+      ? { Authorization: `Bearer ${session.access_token}` }
+      : {};
+
+    const sanitizedDescription = sanitizePromptInput(description);
+
+    const response = await fetch(buildFunctionUrl('ai-suggest'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader,
+      },
+      body: JSON.stringify({
+        action: 'normalize-requirement',
+        description: sanitizedDescription,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error normalizing requirement:', error);
+    throw error;
   }
 }

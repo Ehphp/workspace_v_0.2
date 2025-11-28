@@ -43,7 +43,9 @@ export function RequirementWizard({ listId, onSuccess, onCancel, isOpen }: Requi
     }, [isOpen, resetData]);
 
     // Cleanup on unmount to avoid stale data on next open
-    useEffect(() => resetData, [resetData]);
+    useEffect(() => {
+        return () => resetData();
+    }, [resetData]);
 
     const handleNext = () => {
         if (currentStep < steps.length - 1) {
@@ -176,7 +178,6 @@ export function RequirementWizard({ listId, onSuccess, onCancel, isOpen }: Requi
                             onNext={handleNext}
                             onBack={handleBack}
                             onReset={resetData}
-                            // @ts-expect-error onSave is only passed to the final step
                             onSave={handleSave}
                         />
                     </div>
