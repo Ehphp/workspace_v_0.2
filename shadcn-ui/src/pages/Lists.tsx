@@ -25,6 +25,7 @@ import { CreateListDialog } from '@/components/lists/CreateListDialog';
 import { EditListDialog } from '@/components/lists/EditListDialog';
 import { DeleteListDialog } from '@/components/lists/DeleteListDialog';
 import { Header } from '@/components/layout/Header';
+import { ProgressOverviewChart } from '@/components/charts/ProgressOverviewChart';
 
 export default function Lists() {
   const navigate = useNavigate();
@@ -37,6 +38,15 @@ export default function Lists() {
   const [sortBy, setSortBy] = useState('updated-desc');
   const [editList, setEditList] = useState<List | null>(null);
   const [deleteList, setDeleteList] = useState<List | null>(null);
+  const [projectStats, setProjectStats] = useState<Array<{
+    id: string;
+    name: string;
+    status: string;
+    totalRequirements: number;
+    estimatedRequirements: number;
+    totalDays: number;
+    progress: number;
+  }>>([]);
 
   useEffect(() => {
     if (user) {
@@ -65,8 +75,82 @@ export default function Lists() {
       console.error('Error loading lists:', error);
     } else {
       setLists(data || []);
+      loadProjectStats(data || []);
     }
     setLoading(false);
+  };
+
+  const loadProjectStats = async (projectLists: List[]) => {
+    if (!user || projectLists.length === 0) {
+      setProjectStats([]);
+      return;
+    }
+
+    const stats = await Promise.all(
+      projectLists.map(async (list) => {
+        // Get requirements for this list
+        const { data: requirements, error: reqError } = await supabase
+          .from('requirements')
+          .select('id')
+          .eq('list_id', list.id);
+
+        if (reqError) {
+          console.error(`Error loading requirements for list ${list.id}:`, reqError);
+          return {
+            id: list.id,
+            name: list.name,
+            status: list.status,
+            totalRequirements: 0,
+            estimatedRequirements: 0,
+            totalDays: 0,
+            progress: 0,
+          };
+        }
+
+        const totalRequirements = requirements?.length || 0;
+
+        if (totalRequirements === 0) {
+          return {
+            id: list.id,
+            name: list.name,
+            status: list.status,
+            totalRequirements: 0,
+            estimatedRequirements: 0,
+            totalDays: 0,
+            progress: 0,
+          };
+        }
+
+        // Get estimations for these requirements
+        const requirementIds = requirements.map(r => r.id);
+        const { data: estimations, error: estError } = await supabase
+          .from('estimations')
+          .select('requirement_id, total_days')
+          .in('requirement_id', requirementIds);
+
+        if (estError) {
+          console.error(`Error loading estimations for list ${list.id}:`, estError);
+        }
+
+        // Count unique requirements that have estimations
+        const estimatedRequirementIds = new Set(estimations?.map(e => e.requirement_id) || []);
+        const estimatedRequirements = estimatedRequirementIds.size;
+        const totalDays = estimations?.reduce((sum, e) => sum + (e.total_days || 0), 0) || 0;
+        const progress = totalRequirements > 0 ? (estimatedRequirements / totalRequirements) * 100 : 0;
+
+        return {
+          id: list.id,
+          name: list.name,
+          status: list.status,
+          totalRequirements,
+          estimatedRequirements,
+          totalDays,
+          progress: Math.round(progress),
+        };
+      })
+    );
+
+    setProjectStats(stats);
   };
 
   const getStatusBadge = (status: string) => {
@@ -241,9 +325,9 @@ export default function Lists() {
       {/* Main Content Area - Split into Cards (Top) and Chart (Bottom) */}
       <div className="flex-1 flex flex-col overflow-hidden relative z-0">
 
-        {/* Top Section: Projects Row */}
-        <div className="flex-shrink-0 min-h-[400px] flex flex-col justify-center border-b border-slate-200/60 bg-slate-50/30 relative">
-          <div className="w-full overflow-x-auto overflow-y-hidden pb-8 pt-4 px-6 custom-scrollbar">
+        {/* Top Section: Projects Row - Takes 45% of available height */}
+        <div className="flex-[0_0_45%] flex flex-col justify-center border-b border-slate-200/60 bg-slate-50/30 relative overflow-hidden">
+          <div className="w-full h-full overflow-x-auto overflow-y-hidden pb-4 pt-4 px-6 custom-scrollbar">
             <div className="flex gap-6 mx-auto w-max min-w-full justify-center items-center h-full p-2">
               {filteredLists.length === 0 ? (
                 <div className="flex items-center justify-center w-full">
@@ -381,15 +465,21 @@ export default function Lists() {
           </div>
         </div>
 
-        {/* Bottom Section: Chart Placeholder */}
-        <div className="flex-1 bg-white/40 backdrop-blur-sm p-6 flex flex-col">
-          <div className="h-full w-full rounded-2xl border-2 border-dashed border-slate-200/60 bg-white/40 flex items-center justify-center group hover:border-blue-300/50 hover:bg-blue-50/30 transition-all duration-500">
-            <div className="text-center text-slate-400 group-hover:text-blue-500/70 transition-colors duration-300">
-              <div className="w-16 h-16 rounded-full bg-slate-100 group-hover:bg-blue-100/50 flex items-center justify-center mx-auto mb-4 transition-colors duration-300">
-                <BarChart3 className="w-8 h-8" />
-              </div>
-              <h3 className="text-lg font-semibold mb-1">Project Analytics</h3>
-              <p className="text-sm text-slate-400/80">Detailed insights and charts coming soon</p>
+        {/* Bottom Section: Progress Overview Chart - Takes 55% of available height */}
+        <div className="flex-[0_0_55%] bg-gradient-to-br from-slate-50/50 to-white/60 backdrop-blur-sm p-4 flex flex-col overflow-hidden">
+          <div className="h-full w-full rounded-xl border border-slate-200/60 bg-white/80 shadow-sm flex flex-col overflow-hidden">
+            {/* Minimalist inline title */}
+            <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+              <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-blue-600" />
+                Progress Overview
+              </h3>
+              <span className="text-xs text-slate-500">{projectStats.length} project{projectStats.length !== 1 ? 's' : ''}</span>
+            </div>
+
+            {/* Chart Content - Maximized */}
+            <div className="flex-1 p-6 overflow-hidden">
+              <ProgressOverviewChart projectStats={projectStats} showArchived={showArchived} />
             </div>
           </div>
         </div>
