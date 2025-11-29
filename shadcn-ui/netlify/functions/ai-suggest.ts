@@ -204,9 +204,10 @@ function validateRequirementDescription(description: string): { isValid: boolean
         return { isValid: false, reason: 'Missing technical target (API, form, table, workflow, etc.)' };
     }
 
-    if (/[?]{2,}$/.test(normalized) || /\?$/.test(normalized)) {
-        return { isValid: false, reason: 'Description is a question, not a requirement' };
+    if (/[?]{2,}$/.test(normalized)) {
+        return { isValid: false, reason: 'Description contains too many question marks' };
     }
+    // REMOVED: check for single '?' at end. We now allow it and let AI decide.
 
     return { isValid: true };
 }
@@ -602,7 +603,8 @@ DESCRIPTION FORMAT (READ CAREFULLY):
 
 STEP 1: Validate the requirement description.
 - If it is invalid or unclear, set isValidRequirement to false, return activityCodes as an empty array, and explain why in reasoning.
-- Invalid means: too vague, placeholder/test text, no action verb, no clear technical target (API, form, table, workflow, report, page, endpoint, etc.), gibberish, or a question.
+- Invalid means: too vague, placeholder/test text, no action verb, no clear technical target (API, form, table, workflow, report, page, endpoint, etc.), gibberish.
+- SPECIAL CASE: If the description is a QUESTION or a DOUBT (e.g., ends with "?", "Check if...", "Verify..."), treat it as a VALID requirement that needs ANALYSIS. Do NOT reject it. Instead, suggest ANALYSIS activities to resolve the doubt.
 
 STEP 2: When valid, suggest ONLY the relevant activity codes needed to implement it.
 
@@ -623,18 +625,19 @@ ACCEPT if requirement describes:
 - Integration or API work
 - Documentation or configuration changes
 - ANY action verb + technical context (update, add, modify, create, fix, change, implement)
+- Questions, doubts, or requests for verification (Treat as ANALYSIS tasks)
 
 REJECT only if:
 - Extremely vague with no technical context (e.g., "make it better", "fix things")
 - Pure test input (e.g., "test", "aaa", "123", "qwerty")
 - No action or technical element
-- No clear technical target (API, form, table, workflow, report, page, endpoint, etc.)
 - Random characters or gibberish
-- Is a question rather than a requirement
 
 EXAMPLES:
 "Aggiornare la lettera con aggiunta frase" -> accept (action: aggiornare, target: lettera)
 "Add field to profile" -> accept (action: add, target: field)
+"Is this feasible?" -> accept (needs analysis)
+"Check if API exists" -> accept (needs analysis)
 "Make better" -> reject (no specific target or action)
 "test" -> reject (test input)
 

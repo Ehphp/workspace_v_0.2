@@ -1,12 +1,23 @@
 // Database types matching Supabase schema
 
+export interface Technology {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  color: string | null;
+  icon: string | null;
+  sort_order: number;
+  created_at: string;
+}
+
 export interface Activity {
   id: string;
   code: string;
   name: string;
   description: string;
   base_days: number;
-  tech_category: 'POWER_PLATFORM' | 'BACKEND' | 'FRONTEND' | 'MULTI';
+  tech_category: string;
   group: 'ANALYSIS' | 'DEV' | 'TEST' | 'OPS' | 'GOVERNANCE';
   active: boolean;
   is_custom?: boolean;

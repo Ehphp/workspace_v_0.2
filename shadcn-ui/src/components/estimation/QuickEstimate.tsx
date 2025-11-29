@@ -373,21 +373,32 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                                     </div>
 
                                     <div className="p-3 space-y-3">
-                                        <div className="space-y-1.5">
-                                            <Label className="text-[11px] text-indigo-700 font-semibold">AI-Improved Version (Editable)</Label>
-                                            <textarea
-                                                value={editedNormalizedDescription}
-                                                onChange={(e) => setEditedNormalizedDescription(e.target.value)}
-                                                className="w-full bg-white p-2.5 rounded border-2 border-indigo-200 text-xs text-slate-800 leading-relaxed max-h-32 overflow-y-auto resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                                                rows={4}
-                                            />
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <div className="space-y-1.5 opacity-70 hover:opacity-100 transition-opacity">
+                                                <Label className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Originale</Label>
+                                                <div className="w-full bg-slate-50 p-2.5 rounded border border-slate-200 text-xs text-slate-600 leading-relaxed max-h-32 overflow-y-auto">
+                                                    {normalizationResult.originalDescription}
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[10px] text-indigo-700 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                    <Sparkles className="w-3 h-3" />
+                                                    Suggerimento AI
+                                                </Label>
+                                                <textarea
+                                                    value={editedNormalizedDescription}
+                                                    onChange={(e) => setEditedNormalizedDescription(e.target.value)}
+                                                    className="w-full bg-white p-2.5 rounded border-2 border-indigo-200 text-xs text-slate-800 leading-relaxed max-h-32 overflow-y-auto resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm"
+                                                    rows={4}
+                                                />
+                                            </div>
                                         </div>
 
                                         {normalizationResult.validationIssues?.length > 0 && (
                                             <div className="space-y-1.5">
                                                 <Label className="text-[11px] text-amber-700 font-semibold flex items-center gap-1">
                                                     <AlertTriangle className="w-3 h-3" />
-                                                    Issues ({normalizationResult.validationIssues.length})
+                                                    Attenzione ({normalizationResult.validationIssues.length})
                                                 </Label>
                                                 <ul className="bg-amber-50 rounded border border-amber-200 p-2 text-[10px] text-amber-900 space-y-1">
                                                     {normalizationResult.validationIssues.slice(0, 3).map((issue, i) => (
@@ -400,14 +411,14 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                                             </div>
                                         )}
 
-                                        <div className="flex justify-end gap-2">
+                                        <div className="flex justify-end gap-2 pt-1">
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={resetNormalization}
-                                                className="text-xs h-7 text-slate-600 hover:text-slate-800"
+                                                className="text-xs h-8 text-slate-500 hover:text-slate-800 hover:bg-slate-100"
                                             >
-                                                Dismiss
+                                                Mantieni originale
                                             </Button>
                                             <Button
                                                 size="sm"
@@ -416,10 +427,10 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                                                     resetNormalization();
                                                     setEditedNormalizedDescription('');
                                                 }}
-                                                className="text-xs h-7 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                                                className="text-xs h-8 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200"
                                             >
-                                                <CheckCircle2 className="w-3 h-3 mr-1" />
-                                                Use This
+                                                <CheckCircle2 className="w-3 h-3 mr-1.5" />
+                                                Applica miglioramento
                                             </Button>
                                         </div>
                                     </div>

@@ -827,11 +827,10 @@ export default function Requirements() {
                                         return (
                                             <Card
                                                 key={req.id}
-                                                className={`group relative overflow-hidden border-slate-200/60 bg-white/90 backdrop-blur-md hover:bg-white hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-500 ease-out cursor-pointer border-l-4 ${priorityConfig.leftBorder}`}
+                                                className="group relative overflow-hidden border-slate-200/60 bg-white/90 backdrop-blur-md hover:bg-white hover:shadow-md transition-all duration-300 ease-out cursor-pointer"
                                                 onClick={() => navigate(`/dashboard/${listId}/requirements/${req.id}`)}
                                                 role="button"
                                                 tabIndex={0}
-                                                aria-label={`View requirement ${req.req_id}: ${req.title}`}
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter' || e.key === ' ') {
                                                         e.preventDefault();
@@ -839,104 +838,87 @@ export default function Requirements() {
                                                     }
                                                 }}
                                             >
-                                                {/* Subtle gradient overlay on hover */}
-                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-50/0 to-indigo-50/0 group-hover:via-blue-50/30 group-hover:to-indigo-50/20 transition-all duration-500 pointer-events-none" />
+                                                <div className="flex items-center p-3 gap-4">
+                                                    {/* Priority Indicator Strip */}
+                                                    <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${priorityConfig.gradient}`} />
 
-                                                <CardHeader className="pb-4 pt-5 px-5 relative">
-                                                    <div className="flex items-start gap-4">
-                                                        <div
-                                                            className="flex-1 min-w-0 cursor-pointer space-y-3"
-                                                            onClick={() => navigate(`/dashboard/${listId}/requirements/${req.id}`)}
-                                                        >
-                                                            {/* Top row: ID and badges */}
-                                                            <div className="flex items-center gap-2 flex-wrap">
-                                                                <span className="font-mono text-xs font-semibold text-slate-500 bg-slate-100/80 px-2 py-1 rounded">{req.req_id}</span>
-                                                                {getPriorityBadge(req.priority)}
-                                                                {getStateBadge(req.state)}
-                                                            </div>
-
-                                                            {/* Title - more prominent */}
-                                                            <h3
-                                                                className="font-bold text-lg text-slate-900 group-hover:text-blue-700 transition-colors duration-300 line-clamp-2 leading-snug"
-                                                                title={req.title}
-                                                            >
-                                                                {req.title}
-                                                            </h3>
-
-                                                            {/* Description - better spacing */}
-                                                            <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
-                                                                {req.description || 'No description provided'}
-                                                            </p>
-
-                                                            {/* Metadata row - refined styling */}
-                                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500">
-                                                                {req.business_owner && (
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                                        </svg>
-                                                                        <span className="font-medium text-slate-700">{req.business_owner}</span>
-                                                                    </div>
-                                                                )}
-                                                                {req.labels && req.labels.length > 0 && (
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                                                                        </svg>
-                                                                        <span>{req.labels.length} label{req.labels.length !== 1 ? 's' : ''}</span>
-                                                                    </div>
-                                                                )}
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                    </svg>
-                                                                    <span>{new Date(req.updated_at).toLocaleDateString()}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Right side: Estimation and Actions */}
-                                                        <div className="flex items-start gap-3 flex-shrink-0">
-                                                            {hasEstimation ? (
-                                                                <div className="text-center bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200/60 px-4 py-2.5 rounded-xl shadow-sm group-hover:shadow-md group-hover:border-blue-300/70 transition-all duration-300">
-                                                                    <div className="text-2xl font-bold bg-gradient-to-br from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                                                                        {estimation.total_days.toFixed(1)}
-                                                                    </div>
-                                                                    <div className="text-xs text-slate-600 font-medium mt-0.5">days</div>
-                                                                </div>
-                                                            ) : (
-                                                                <div className="text-center bg-slate-50 border-2 border-slate-200/60 px-4 py-2.5 rounded-xl shadow-sm">
-                                                                    <div className="text-sm font-semibold text-slate-500">Not</div>
-                                                                    <div className="text-xs text-slate-400 mt-0.5">estimated</div>
-                                                                </div>
-                                                            )}
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        className="h-9 w-9 p-0 hover:bg-slate-100 rounded-lg transition-colors duration-200"
-                                                                        aria-label={`Options for requirement ${req.title}`}
-                                                                    >
-                                                                        <MoreVertical className="h-4 w-4 text-slate-600" />
-                                                                    </Button>
-                                                                </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-lg border-slate-200/60">
-                                                                    <DropdownMenuItem
-                                                                        className="text-destructive focus:text-destructive cursor-pointer"
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setDeleteRequirement(req);
-                                                                        }}
-                                                                    >
-                                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                                        Delete
-                                                                    </DropdownMenuItem>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
+                                                    {/* ID & Priority Icon */}
+                                                    <div className="flex items-center gap-3 w-[100px] shrink-0 pl-2">
+                                                        <span className="font-mono text-xs font-semibold text-slate-500">{req.req_id}</span>
+                                                        <div className="text-xs" title={`Priority: ${req.priority}`}>
+                                                            {priorityConfig.icon}
                                                         </div>
                                                     </div>
-                                                </CardHeader>
+
+                                                    {/* Main Content: Title & State */}
+                                                    <div className="flex-1 min-w-0 flex items-center gap-3">
+                                                        <span
+                                                            className="font-semibold text-sm text-slate-900 truncate group-hover:text-blue-700 transition-colors"
+                                                            title={req.title}
+                                                        >
+                                                            {req.title}
+                                                        </span>
+                                                        <div className="scale-90 origin-left shrink-0">
+                                                            {getStateBadge(req.state)}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Metadata (Hidden on small screens) */}
+                                                    <div className="hidden md:flex items-center gap-6 text-xs text-slate-500 shrink-0">
+                                                        {req.business_owner && (
+                                                            <div className="flex items-center gap-1.5" title="Business Owner">
+                                                                <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                                </svg>
+                                                                <span className="font-medium text-slate-700 max-w-[100px] truncate">{req.business_owner}</span>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex items-center gap-1.5" title="Last Updated">
+                                                            <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                            <span>{new Date(req.updated_at).toLocaleDateString()}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Estimation */}
+                                                    <div className="w-[80px] text-right shrink-0">
+                                                        {hasEstimation ? (
+                                                            <div className="flex flex-col items-end">
+                                                                <span className="font-bold text-sm text-blue-600">{estimation.total_days.toFixed(1)}d</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-slate-400 text-xs">-</span>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Actions */}
+                                                    <div className="shrink-0">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-8 w-8 p-0 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                                                                >
+                                                                    <MoreVertical className="h-4 w-4 text-slate-500" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-lg border-slate-200/60">
+                                                                <DropdownMenuItem
+                                                                    className="text-destructive focus:text-destructive cursor-pointer"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setDeleteRequirement(req);
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                                    Delete
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+                                                </div>
                                             </Card>
                                         );
                                     })}

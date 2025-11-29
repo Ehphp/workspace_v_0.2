@@ -51,12 +51,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-const techOptions = [
-  { value: 'POWER_PLATFORM', label: 'Power Platform' },
-  { value: 'BACKEND', label: 'Backend API' },
-  { value: 'FRONTEND', label: 'Frontend' },
-  { value: 'MULTI', label: 'Multi-stack' },
-];
+// techOptions removed, using dynamic state
+
 
 const groupOptions = [
   { value: 'ANALYSIS', label: 'Analysis' },
@@ -67,9 +63,8 @@ const groupOptions = [
 ];
 
 const generateActivityCode = (name: string, techCategory: string): string => {
-  const techPrefix = techCategory === 'POWER_PLATFORM' ? 'PP' :
-    techCategory === 'BACKEND' ? 'BE' :
-      techCategory === 'FRONTEND' ? 'FE' : 'MULTI';
+  // Simple heuristic for prefix: first 2 chars of each word in category, or first 3 chars
+  const techPrefix = techCategory.split('_').map(w => w[0]).join('').substring(0, 3).toUpperCase();
 
   const sanitized = name
     .toUpperCase()
@@ -98,11 +93,12 @@ export default function ConfigurationActivities() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [technologies, setTechnologies] = useState<{ value: string; label: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [form, setForm] = useState(initialForm);
   const [editActivity, setEditActivity] = useState<Activity | null>(null);
-  const [editForm, setEditForm] = useState(initialForm);
+
   const [filterTech, setFilterTech] = useState<string>('ALL');
   const [viewFilter, setViewFilter] = useState<ViewFilter>('ALL');
   const [visibleColumns, setVisibleColumns] = useState({
@@ -117,8 +113,28 @@ export default function ConfigurationActivities() {
   useEffect(() => {
     if (user) {
       loadActivities();
+      loadTechnologies();
     }
   }, [user]);
+
+  const loadTechnologies = async () => {
+    const { data, error } = await supabase
+      .from('technologies')
+      .select('code, name')
+      .order('sort_order');
+
+    if (data && data.length > 0) {
+      setTechnologies(data.map(t => ({ value: t.code, label: t.name })));
+    } else {
+      // Fallback if table doesn't exist yet or is empty
+      setTechnologies([
+        { value: 'POWER_PLATFORM', label: 'Power Platform' },
+        { value: 'BACKEND', label: 'Backend API' },
+        { value: 'FRONTEND', label: 'Frontend' },
+        { value: 'MULTI', label: 'Multi-stack' },
+      ]);
+    }
+  };
 
   const loadActivities = async () => {
     setFetching(true);
@@ -160,7 +176,7 @@ export default function ConfigurationActivities() {
     return activity.created_by === user.id;
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const baseDays = Number(form.baseDays);
 
@@ -176,30 +192,55 @@ export default function ConfigurationActivities() {
       return;
     }
 
-    const generatedCode = generateActivityCode(form.name, form.techCategory);
-
     setSaving(true);
     try {
-      const { error } = await supabase.from('activities').insert({
-        code: generatedCode,
-        name: form.name,
-        description: form.description,
-        base_days: baseDays,
-        tech_category: form.techCategory,
-        group: form.group,
-        active: form.active,
-        is_custom: true,
-        base_activity_id: form.baseActivityId,
-        created_by: user?.id || null,
-      });
+      if (editActivity) {
+        // UPDATE MODE
+        if (!canEdit(editActivity)) {
+          throw new Error('Non hai i permessi per modificare questa attività');
+        }
 
-      if (error) {
-        throw new Error(error.message);
+        const { error } = await supabase
+          .from('activities')
+          .update({
+            name: form.name,
+            description: form.description,
+            base_days: baseDays,
+            tech_category: form.techCategory,
+            group: form.group,
+            active: form.active,
+          })
+          .eq('id', editActivity.id);
+
+        if (error) throw error;
+
+        toast.success('Attività aggiornata', {
+          description: `${form.name} • ${baseDays.toFixed(2)} giorni`,
+        });
+        setEditActivity(null);
+      } else {
+        // CREATE MODE
+        const generatedCode = generateActivityCode(form.name, form.techCategory);
+        const { error } = await supabase.from('activities').insert({
+          code: generatedCode,
+          name: form.name,
+          description: form.description,
+          base_days: baseDays,
+          tech_category: form.techCategory,
+          group: form.group,
+          active: form.active,
+          is_custom: true,
+          base_activity_id: form.baseActivityId,
+          created_by: user?.id || null,
+        });
+
+        if (error) throw error;
+
+        toast.success('Attività creata', {
+          description: `${generatedCode} • ${baseDays.toFixed(2)} giorni`,
+        });
       }
 
-      toast.success('Attività creata', {
-        description: `${generatedCode} • ${baseDays.toFixed(2)} giorni`,
-      });
       setForm(initialForm);
       await loadActivities();
     } catch (err) {
@@ -214,7 +255,7 @@ export default function ConfigurationActivities() {
 
   const openEdit = (activity: Activity) => {
     setEditActivity(activity);
-    setEditForm({
+    setForm({
       name: activity.name,
       description: activity.description || '',
       baseDays: activity.base_days.toString(),
@@ -225,9 +266,15 @@ export default function ConfigurationActivities() {
     });
   };
 
+  const handleCancelEdit = () => {
+    setEditActivity(null);
+    setForm(initialForm);
+  };
+
   const handleDuplicate = (activity: Activity) => {
+    setEditActivity(null); // Ensure we are in create mode
     setForm({
-      name: activity.name,
+      name: activity.name + ' (Copy)',
       description: activity.description || '',
       baseDays: activity.base_days.toString(),
       techCategory: activity.tech_category,
@@ -235,59 +282,9 @@ export default function ConfigurationActivities() {
       active: true,
       baseActivityId: activity.id,
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
     toast.message('Duplicazione pronta', {
-      description: 'Modifica e salva come attività custom.',
+      description: 'Modifica e salva come nuova attività custom.',
     });
-  };
-
-  const handleUpdate = async () => {
-    if (!editActivity) return;
-    const baseDays = Number(editForm.baseDays);
-
-    if (!Number.isFinite(baseDays) || baseDays <= 0) {
-      toast.error('Peso non valido', {
-        description: 'Inserisci un numero di giorni maggiore di zero',
-      });
-      return;
-    }
-
-    if (!canEdit(editActivity)) {
-      toast.error('Puoi modificare solo le attività che hai creato');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from('activities')
-        .update({
-          name: editForm.name,
-          description: editForm.description,
-          base_days: baseDays,
-          tech_category: editForm.techCategory,
-          group: editForm.group,
-          active: editForm.active,
-        })
-        .eq('id', editActivity.id)
-        .eq('created_by', user?.id || '');
-
-      if (error) {
-        throw new Error(error.message);
-      }
-      toast.success('Attività aggiornata', {
-        description: `${editForm.name} • ${baseDays.toFixed(2)} giorni`,
-      });
-      setEditActivity(null);
-      await loadActivities();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Riprovare tra qualche secondo';
-      toast.error('Aggiornamento non riuscito', {
-        description: message,
-      });
-    } finally {
-      setSaving(false);
-    }
   };
 
   const toggleActive = async (activity: Activity) => {
@@ -443,15 +440,24 @@ export default function ConfigurationActivities() {
             <Card className="xl:col-span-1 bg-white/85 backdrop-blur-md border-slate-200/70 shadow-xl flex flex-col h-full overflow-hidden">
               <CardHeader className="py-3 flex-shrink-0 bg-white/50 border-b border-slate-100">
                 <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <Plus className="h-4 w-4 text-emerald-600" />
-                  Crea attività custom
+                  {editActivity ? (
+                    <>
+                      <Edit3 className="h-4 w-4 text-blue-600" />
+                      Modifica attività
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 text-emerald-600" />
+                      Crea attività custom
+                    </>
+                  )}
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Definisci codice, peso e tecnologia.
+                  {editActivity ? 'Modifica i dettagli dell\'attività esistente.' : 'Definisci codice, peso e tecnologia.'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex-1 overflow-y-auto p-4">
-                <form className="space-y-3" onSubmit={handleCreate}>
+                <form className="space-y-3" onSubmit={handleSubmit}>
                   <div className="space-y-2">
                     <Label htmlFor="name">Nome</Label>
                     <Input
@@ -461,7 +467,9 @@ export default function ConfigurationActivities() {
                       placeholder="API hardening & security review"
                       required
                     />
-                    <p className="text-xs text-slate-500">Il codice sarà generato automaticamente dal nome e dalla tecnologia.</p>
+                    {!editActivity && (
+                      <p className="text-xs text-slate-500">Il codice sarà generato automaticamente dal nome e dalla tecnologia.</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -486,7 +494,7 @@ export default function ConfigurationActivities() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {techOptions.map((opt) => (
+                          {technologies.map((opt) => (
                             <SelectItem key={opt.value} value={opt.value}>
                               {opt.label}
                             </SelectItem>
@@ -530,13 +538,25 @@ export default function ConfigurationActivities() {
                     </p>
                   </div>
 
-                  <Button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
-                    disabled={saving}
-                  >
-                    {saving ? 'Salvataggio...' : 'Crea attività'}
-                  </Button>
+                  <div className="flex gap-2">
+                    {editActivity && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={handleCancelEdit}
+                      >
+                        Annulla
+                      </Button>
+                    )}
+                    <Button
+                      type="submit"
+                      className={`flex-1 ${editActivity ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700'}`}
+                      disabled={saving}
+                    >
+                      {saving ? 'Salvataggio...' : editActivity ? 'Salva modifica' : 'Crea attività'}
+                    </Button>
+                  </div>
                 </form>
               </CardContent>
             </Card>
@@ -571,7 +591,7 @@ export default function ConfigurationActivities() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="ALL">Tutte le tecnologie</SelectItem>
-                        {techOptions.map((opt) => (
+                        {technologies.map((opt) => (
                           <SelectItem key={opt.value} value={opt.value}>
                             {opt.label}
                           </SelectItem>
@@ -690,7 +710,7 @@ export default function ConfigurationActivities() {
                                 )}
                                 {visibleColumns.tecnologia && (
                                   <TableCell className="hidden lg:table-cell text-xs text-slate-600">
-                                    {techOptions.find((t) => t.value === activity.tech_category)?.label || activity.tech_category}
+                                    {technologies.find((t) => t.value === activity.tech_category)?.label || activity.tech_category}
                                   </TableCell>
                                 )}
                                 {visibleColumns.fase && (
@@ -716,19 +736,43 @@ export default function ConfigurationActivities() {
                                 <TableCell className="text-right">
                                   {isCustom ? (
                                     <>
-                                      <Button variant="ghost" size="sm" onClick={() => openEdit(activity)} disabled={!editable}>
-                                        <Edit3 className="h-4 w-4 mr-1" />
-                                        Modifica
-                                      </Button>
+                                      <div className="flex justify-end gap-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                          onClick={() => openEdit(activity)}
+                                          disabled={!editable}
+                                          title="Modifica"
+                                        >
+                                          <Edit3 className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50"
+                                          onClick={() => handleDuplicate(activity)}
+                                          title="Duplica in custom"
+                                        >
+                                          <Sparkles className="h-4 w-4" />
+                                        </Button>
+                                      </div>
                                       {!editable && (
                                         <div className="text-[10px] text-slate-500 mt-1">Creato da altro utente</div>
                                       )}
                                     </>
                                   ) : (
-                                    <Button variant="ghost" size="sm" onClick={() => handleDuplicate(activity)}>
-                                      <Sparkles className="h-4 w-4 mr-1" />
-                                      Duplica in custom
-                                    </Button>
+                                    <div className="flex justify-end">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50"
+                                        onClick={() => handleDuplicate(activity)}
+                                        title="Duplica in custom"
+                                      >
+                                        <Sparkles className="h-4 w-4" />
+                                      </Button>
+                                    </div>
                                   )}
                                 </TableCell>
                               </TableRow>
@@ -745,97 +789,7 @@ export default function ConfigurationActivities() {
         </div>
       </div>
 
-      <Dialog open={!!editActivity} onOpenChange={(open) => !open && setEditActivity(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Modifica attività custom</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Nome</Label>
-              <Input
-                id="edit-name"
-                value={editForm.name}
-                onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
-                required
-              />
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-description">Descrizione</Label>
-              <Textarea
-                id="edit-description"
-                value={editForm.description}
-                onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
-                rows={3}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Tecnologia</Label>
-                <Select
-                  value={editForm.techCategory}
-                  onValueChange={(value) => setEditForm((prev) => ({ ...prev, techCategory: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {techOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Fase</Label>
-                <Select
-                  value={editForm.group}
-                  onValueChange={(value) => setEditForm((prev) => ({ ...prev, group: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {groupOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-base font-semibold text-slate-900">⚖️ Peso (giorni base)</Label>
-              <Input
-                type="number"
-                step="0.05"
-                min="0.05"
-                value={editForm.baseDays}
-                onChange={(e) => setEditForm((prev) => ({ ...prev, baseDays: e.target.value }))}
-                required
-                className="text-lg font-semibold h-12"
-              />
-              <p className="text-xs text-slate-600 bg-amber-50 border border-amber-200 rounded-md p-2">
-                💡 <strong>Importante:</strong> Questo valore determina l'impatto dell'attività sui calcoli di stima.
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditActivity(null)}>
-              Annulla
-            </Button>
-            <Button onClick={handleUpdate} disabled={saving}>
-              {saving ? 'Salvataggio...' : 'Salva modifiche'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div >
   );
 }

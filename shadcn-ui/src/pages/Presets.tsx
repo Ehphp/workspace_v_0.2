@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { supabase } from '@/lib/supabase';
-import type { TechnologyPreset, Activity, Driver, Risk } from '@/types/database';
+import type { TechnologyPreset, Activity, Driver, Risk, Technology } from '@/types/database';
 import {
     Card,
     CardContent,
@@ -21,7 +21,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { RefreshCw, Info, Layers, LayoutList, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Info, Layers, LayoutList, AlertTriangle, Settings } from 'lucide-react';
 
 interface PresetView extends TechnologyPreset {
     defaultActivities: Activity[];
@@ -34,18 +34,20 @@ export default function Presets() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [presets, setPresets] = useState<PresetView[]>([]);
+    const [technologies, setTechnologies] = useState<Technology[]>([]);
     const [selected, setSelected] = useState<PresetView | null>(null);
 
     const loadData = async () => {
         setLoading(true);
         setError(null);
         try {
-            const [presetsRes, activitiesRes, driversRes, risksRes, pivotRes] = await Promise.all([
+            const [presetsRes, activitiesRes, driversRes, risksRes, pivotRes, techRes] = await Promise.all([
                 supabase.from('technology_presets').select('*').order('name'),
                 supabase.from('activities').select('*').eq('active', true),
                 supabase.from('drivers').select('*'),
                 supabase.from('risks').select('*'),
                 supabase.from('technology_preset_activities').select('tech_preset_id, activity_id, position'),
+                supabase.from('technologies').select('*').order('sort_order'),
             ]);
 
             if (presetsRes.error) throw presetsRes.error;
@@ -53,10 +55,15 @@ export default function Presets() {
             if (driversRes.error) throw driversRes.error;
             if (risksRes.error) throw risksRes.error;
             if (pivotRes.error) throw pivotRes.error;
+            // techRes might fail if table doesn't exist yet, handle gracefully
+            if (techRes.error) throw techRes.error;
 
             const activities = activitiesRes.data || [];
             const risks = risksRes.data || [];
             const drivers = driversRes.data || [];
+            const loadedTechnologies = techRes.data || [];
+            setTechnologies(loadedTechnologies);
+
             const activityById = new Map<string, Activity>();
             activities.forEach((a) => activityById.set(a.id, a));
 
@@ -121,6 +128,11 @@ export default function Presets() {
         return { perCategory, avgActivities };
     }, [presets]);
 
+    const getTechLabel = (code: string) => {
+        const tech = technologies.find(t => t.code === code);
+        return tech ? tech.name : code;
+    };
+
     return (
         <div className="min-h-screen h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/40 to-slate-50 overflow-hidden">
             {/* Header - flex-shrink-0 */}
@@ -140,6 +152,10 @@ export default function Presets() {
                             <p className="text-xs text-slate-600">Consulta e applica i preset tecnologici.</p>
                         </div>
                         <div className="flex items-center gap-3">
+                            <Button variant="outline" size="sm" onClick={() => navigate('/configuration/technologies')}>
+                                <Settings className="h-4 w-4 mr-2" />
+                                Gestisci Tecnologie
+                            </Button>
                             <Button variant="outline" size="sm" onClick={loadData} disabled={loading}>
                                 <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                                 Aggiorna
@@ -165,7 +181,7 @@ export default function Presets() {
                                 <div className="flex flex-wrap gap-1 text-xs text-slate-700">
                                     {Object.entries(stats.perCategory).map(([cat, count]) => (
                                         <Badge key={cat} variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px]">
-                                            {cat}: {count}
+                                            {getTechLabel(cat)}: {count}
                                         </Badge>
                                     ))}
                                 </div>
@@ -242,7 +258,7 @@ export default function Presets() {
                                                 <TableRow key={preset.id}>
                                                     <TableCell className="font-semibold text-slate-900">{preset.name}</TableCell>
                                                     <TableCell>
-                                                        <Badge variant="outline" className="text-xs">{preset.tech_category}</Badge>
+                                                        <Badge variant="outline" className="text-xs">{getTechLabel(preset.tech_category)}</Badge>
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="flex flex-wrap gap-1">
@@ -306,7 +322,7 @@ export default function Presets() {
                         {selected && (
                             <div className="space-y-4">
                                 <div className="flex items-center gap-2">
-                                    <Badge variant="outline">{selected.tech_category}</Badge>
+                                    <Badge variant="outline">{getTechLabel(selected.tech_category)}</Badge>
                                     <span className="text-xs text-slate-500">Preset code: {selected.code}</span>
                                 </div>
 
