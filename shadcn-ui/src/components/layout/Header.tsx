@@ -120,7 +120,8 @@ export function Header() {
     const breadcrumb = getBreadcrumb();
 
     return (
-        <header className="border-b border-slate-200/60 backdrop-blur-xl bg-white/90 shadow-sm sticky top-0 z-50">
+        <header className="backdrop-blur-xl bg-white/80 sticky top-0 z-50">
+            <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-blue-600/20 via-indigo-600/20 to-fuchsia-500/20"></div>
             <div className="container mx-auto px-6 h-16 flex items-center justify-between gap-4">
                 {/* Logo & Brand */}
                 <Link to="/" className="flex items-center gap-3 group flex-shrink-0">
@@ -238,6 +239,6 @@ export function Header() {
                     )}
                 </nav>
             </div>
-        </header>
+        </header >
     );
 }

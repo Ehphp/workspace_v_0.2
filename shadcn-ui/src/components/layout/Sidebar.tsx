@@ -20,7 +20,7 @@ export function Sidebar({ className }: SidebarProps) {
     ];
 
     return (
-        <aside className={cn('w-64 border-r border-white/20 bg-white/40 backdrop-blur-sm', className)}>
+        <aside className={cn('w-64 border-r border-white/20 bg-white/50 backdrop-blur-md', className)}>
             <nav className="flex flex-col gap-1 p-4">
                 {navItems.map((item) => {
                     const Icon = item.icon;

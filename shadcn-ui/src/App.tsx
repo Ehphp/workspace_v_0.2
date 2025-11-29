@@ -14,7 +14,7 @@ import NotFound from './pages/NotFound';
 import Configuration from './pages/Configuration';
 import ConfigurationActivities from './pages/ConfigurationActivities';
 import ConfigurationTechnologies from './pages/ConfigurationTechnologies';
-import Presets from './pages/Presets';
+import ConfigurationPresets from './pages/ConfigurationPresets';
 import HowItWorks from './pages/HowItWorks';
 import Profile from './pages/Profile';
 
@@ -79,11 +79,15 @@ const App = () => (
               </AuthGuard>
             }
           />
+          import ConfigurationPresets from './pages/ConfigurationPresets';
+
+          // ... (inside Routes)
+
           <Route
             path="/configuration/presets"
             element={
               <AuthGuard>
-                <Presets />
+                <ConfigurationPresets />
               </AuthGuard>
             }
           />

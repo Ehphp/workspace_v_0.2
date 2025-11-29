@@ -438,7 +438,7 @@ export default function Requirements() {
 
 
     return (
-        <div className="h-screen flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+        <div className="h-screen flex flex-col overflow-hidden bg-syntero-gradient">
             {/* Header - flex-shrink-0 */}
             <div className="flex-shrink-0">
                 <Header />

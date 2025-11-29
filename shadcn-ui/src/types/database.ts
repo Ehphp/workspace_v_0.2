@@ -60,6 +60,8 @@ export interface TechnologyPreset {
   default_risks: string[];
   default_activity_codes: string[];
   created_at: string;
+  is_custom?: boolean;
+  created_by?: string | null;
 }
 
 export interface List {

@@ -170,7 +170,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-slate-50">
+    <div className="h-screen flex flex-col overflow-hidden bg-syntero-gradient">
       {/* Header - Fixed */}
       <div className="flex-shrink-0 bg-white border-b border-slate-200 z-20">
         <Header />
@@ -180,13 +180,13 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col overflow-hidden">
 
         {/* Top Bar: KPIs & Actions - Fixed Height */}
-        <div className="flex-shrink-0 px-6 py-4 bg-white border-b border-slate-200 shadow-sm z-10">
+        <div className="flex-shrink-0 px-6 py-4 bg-white/60 backdrop-blur-md border-b border-slate-200/50 shadow-sm z-10">
           <div className="container mx-auto max-w-7xl">
             <div className="flex flex-col gap-4">
               {/* Welcome & Actions */}
               <div className="flex justify-between items-center">
                 <div>
-                  <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-500 bg-clip-text text-transparent">Dashboard</h1>
                   <p className="text-sm text-slate-500">Welcome back, {user?.email}</p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -250,7 +250,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-12 gap-6 h-full">
 
               {/* Left Column: Projects List - Scrollable */}
-              <div className="col-span-8 flex flex-col h-full min-h-0 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="col-span-8 flex flex-col h-full min-h-0 bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-sm overflow-hidden hover:border-blue-300/30 transition-colors duration-300">
                 <div className="flex-shrink-0 px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                   <div className="flex items-center gap-2">
                     <Layers className="w-4 h-4 text-slate-500" />
@@ -312,7 +312,7 @@ export default function Dashboard() {
               <div className="col-span-4 flex flex-col gap-4 h-full min-h-0 overflow-y-auto custom-scrollbar pr-1">
 
                 {/* Recent Activity */}
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-shrink-0">
+                <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-sm overflow-hidden flex-shrink-0 hover:border-blue-300/30 transition-colors duration-300">
                   <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <h3 className="font-semibold text-slate-700 text-sm">Recent Activity</h3>
                   </div>
@@ -322,7 +322,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Charts Tabs */}
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-1 min-h-[300px]">
+                <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-sm overflow-hidden flex-1 min-h-[300px] hover:border-blue-300/30 transition-colors duration-300">
                   <Tabs defaultValue="status" className="h-full flex flex-col">
                     <div className="px-4 py-2 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                       <h3 className="font-semibold text-slate-700 text-sm">Analytics</h3>

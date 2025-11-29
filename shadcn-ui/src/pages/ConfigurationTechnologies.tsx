@@ -181,7 +181,7 @@ export default function ConfigurationTechnologies() {
     }
 
     return (
-        <div className="min-h-screen h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/40 to-slate-50 overflow-hidden relative">
+        <div className="min-h-screen h-screen flex flex-col bg-syntero-gradient overflow-hidden relative">
             <div className="flex-shrink-0 relative z-10">
                 <Header />
             </div>
@@ -193,7 +193,7 @@ export default function ConfigurationTechnologies() {
                             <Shield className="h-3 w-3 text-indigo-600" />
                             <span className="text-xs font-semibold text-indigo-700">Configurazione</span>
                         </div>
-                        <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+                        <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-500 bg-clip-text text-transparent">
                             Tecnologie
                         </h1>
                         <p className="text-xs text-slate-600">

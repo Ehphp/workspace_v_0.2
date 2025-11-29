@@ -324,9 +324,7 @@ export default function ConfigurationActivities() {
   }
 
   return (
-    <div className="min-h-screen h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/40 to-slate-50 overflow-hidden relative">
-      {/* Background pattern - fixed layer */}
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgxNDgsMTYzLDE4NCwwLjA1KSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-30 pointer-events-none"></div>
+    <div className="min-h-screen h-screen flex flex-col bg-syntero-gradient overflow-hidden relative">
 
       {/* Header - flex-shrink-0 */}
       <div className="flex-shrink-0 relative z-10">
@@ -341,7 +339,7 @@ export default function ConfigurationActivities() {
               <Shield className="h-3 w-3 text-amber-600" />
               <span className="text-xs font-semibold text-amber-700">Catalogo custom</span>
             </div>
-            <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-500 bg-clip-text text-transparent">
               Attività personalizzate
             </h1>
             <p className="text-xs text-slate-600">
