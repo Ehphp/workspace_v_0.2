@@ -1,313 +1,319 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import {
+  FileText,
+  Layers,
+  Sparkles,
+  Settings2,
+  CheckCircle2,
+  Zap,
+  Wand2,
+  ArrowRight
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { useRef } from 'react';
 
-const quickActions = [
-  { title: 'Stima rapida', desc: 'Descrizione + stack e ottieni subito giorni stimati', cta: 'Prova la stima rapida', state: { openQuick: true } },
-  { title: 'Wizard avanzato', desc: 'Configura attivita, driver e rischi in 5 step', cta: 'Apri il wizard avanzato', state: { openWizard: true } },
+const steps = [
+  {
+    icon: FileText,
+    title: 'Descrivi il Requisito',
+    description: 'Inserisci un titolo e una descrizione dettagliata della funzionalità che vuoi stimare.',
+    color: 'text-blue-600',
+    bg: 'bg-blue-100',
+    border: 'border-blue-200',
+  },
+  {
+    icon: Layers,
+    title: 'Seleziona Tecnologia',
+    description: 'Scegli lo stack tecnologico dai preset o personalizzalo secondo le tue esigenze.',
+    color: 'text-indigo-600',
+    bg: 'bg-indigo-100',
+    border: 'border-indigo-200',
+  },
+  {
+    icon: Sparkles,
+    title: 'Analisi AI',
+    description: 'La nostra AI analizza il requisito e suggerisce le attività necessarie per l\'implementazione.',
+    color: 'text-purple-600',
+    bg: 'bg-purple-100',
+    border: 'border-purple-200',
+  },
+  {
+    icon: Settings2,
+    title: 'Configura Driver & Rischi',
+    description: 'Affina la stima regolando i driver di complessità e identificando potenziali rischi.',
+    color: 'text-pink-600',
+    bg: 'bg-pink-100',
+    border: 'border-pink-200',
+  },
+  {
+    icon: CheckCircle2,
+    title: 'Risultato Finale',
+    description: 'Ottieni una stima dettagliata in giorni uomo, pronta per essere condivisa.',
+    color: 'text-emerald-600',
+    bg: 'bg-emerald-100',
+    border: 'border-emerald-200',
+  },
 ];
 
-const pillars = [
-  { title: 'Velocita', desc: 'Stima iniziale in pochi minuti con input minimi', badge: 'Fast' },
-  { title: 'Trasparenza', desc: 'Formula visibile e breakdown per attivita e driver', badge: 'Clear' },
-  { title: 'Flessibilita', desc: 'Passa dal quick al wizard completo quando serve', badge: 'Flexible' },
-];
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2
+    }
+  }
+};
 
-const carouselSteps = [
-  {
-    num: '1',
-    title: 'Describe Requirement',
-    desc: 'Inserisci titolo e descrizione dettagliata del requisito da stimare',
-    icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />,
-    color: 'from-blue-500 to-cyan-500',
-    bg: 'from-blue-50 to-cyan-50',
-  },
-  {
-    num: '2',
-    title: 'Select Technology',
-    desc: 'Scegli tra 20+ preset tecnologici o personalizza il tuo stack',
-    icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />,
-    color: 'from-indigo-500 to-purple-500',
-    bg: 'from-indigo-50 to-purple-50',
-  },
-  {
-    num: '3',
-    title: 'AI Suggestions',
-    desc: 'Ricevi suggerimenti intelligenti sulle attivita da OpenAI (temperature 0)',
-    icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />,
-    color: 'from-purple-500 to-pink-500',
-    bg: 'from-purple-50 to-pink-50',
-  },
-  {
-    num: '4',
-    title: 'Configure Drivers & Risks',
-    desc: 'Affina i moltiplicatori di complessita e i fattori di rischio',
-    icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />,
-    color: 'from-pink-500 to-rose-500',
-    bg: 'from-pink-50 to-rose-50',
-  },
-  {
-    num: '5',
-    title: 'View Results',
-    desc: 'Ottieni la stima dettagliata con calcoli trasparenti e breakdown completo',
-    icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
-    color: 'from-rose-500 to-orange-500',
-    bg: 'from-rose-50 to-orange-50',
-  },
-];
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 }
+};
 
 export default function HowItWorks() {
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const { user } = useAuth();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "end start"]
+  });
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % carouselSteps.length);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % carouselSteps.length);
-  };
-
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + carouselSteps.length) % carouselSteps.length);
-  };
-
-  const currentStep = carouselSteps[currentSlide];
+  const lineHeight = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
 
   return (
-    <div className="relative h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 overflow-hidden">
+    <div className="min-h-screen bg-slate-50 font-sans overflow-hidden relative">
       {/* Background Pattern */}
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgxNDgsMTYzLDE4NCwwLjA1KSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-30 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+
+      {/* Animated Background Blobs */}
+      <motion.div
+        animate={{
+          x: [0, 100, 0],
+          y: [0, -50, 0],
+          scale: [1, 1.1, 1],
+        }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        className="absolute top-0 -left-20 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+      />
+      <motion.div
+        animate={{
+          x: [0, -100, 0],
+          y: [0, 50, 0],
+          scale: [1, 1.2, 1],
+        }}
+        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+        className="absolute top-1/3 -right-20 w-[30rem] h-[30rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+      />
+      <motion.div
+        animate={{
+          x: [0, 50, 0],
+          y: [0, 100, 0],
+          scale: [1, 1.1, 1],
+        }}
+        transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
+        className="absolute bottom-0 left-1/3 w-[25rem] h-[25rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+      />
 
       <Header />
 
-      <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
+      <main className="container mx-auto px-4 py-16 md:py-24 max-w-5xl relative z-10">
         {/* Hero Section */}
-        <div className="relative border-b border-white/30 bg-white/60 backdrop-blur-lg flex-shrink-0">
-          <div className="container mx-auto px-6 py-8 relative">
-            <div className="max-w-4xl mx-auto space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200">
-                <Sparkles className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-semibold text-blue-700">Come funziona</span>
-              </div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 bg-clip-text text-transparent">
-                Stima rapida o wizard avanzato
-              </h1>
-              <p className="text-slate-600 text-lg">
-                Usa la stima rapida con AI e preset tecnologici, o passa al wizard completo per controllare ogni dettaglio
-              </p>
-            </div>
-          </div>
+        <div className="text-center space-y-6 mb-24">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Badge variant="secondary" className="mb-4 px-4 py-1.5 text-sm font-medium bg-white/80 backdrop-blur-sm border-slate-200 text-slate-700 shadow-sm">
+              <Sparkles className="w-3 h-3 mr-2 text-blue-500 inline" />
+              Come funziona
+            </Badge>
+            <h1 className="text-4xl md:text-7xl font-bold tracking-tight text-slate-900 mb-6 drop-shadow-sm">
+              Dall'idea alla stima <br className="hidden md:block" />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 animate-gradient-x">
+                in pochi minuti
+              </span>
+            </h1>
+            <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed font-medium">
+              Un processo fluido e trasparente che combina la potenza dell'AI con il tuo controllo esperto.
+            </p>
+          </motion.div>
         </div>
 
-        {/* Main Content - inside scroll, no outer scrollbar */}
-        <div className="flex-1 min-h-0">
-          <div className="container mx-auto px-4 py-4 h-full">
-            <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-4 h-full items-stretch">
-              {/* Left Column - Info Cards */}
-              <div className="space-y-3 flex flex-col h-full min-h-0">
-                <div className="space-y-3 overflow-y-auto pr-2 no-scrollbar">
-                  {/* Quick Actions Card */}
-                  <Card className="border-slate-200/70 bg-white/80 backdrop-blur-xl shadow-lg min-h-[110px]">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-xl">Azioni rapide</CardTitle>
-                      <CardDescription>Apri subito la modalita che ti serve</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {quickActions.map((item) => (
-                        <div key={item.title} className="p-3 rounded-xl border border-slate-100 flex items-start justify-between gap-3 hover:bg-slate-50/50 transition-colors">
-                          <div>
-                            <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                            <p className="text-xs text-slate-600 mt-0.5">{item.desc}</p>
-                          </div>
-                          <Link to="/" state={item.state}>
-                            <Button size="sm" variant="ghost" className="text-blue-700 hover:bg-blue-50 flex-shrink-0">
-                              Apri
-                            </Button>
-                          </Link>
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-
-                  {/* Pillars Card */}
-                  <Card className="border-slate-200/70 bg-white/80 backdrop-blur-xl shadow-lg min-h-[110px]">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-xl">Perche Synntero</CardTitle>
-                      <CardDescription>I pilastri del nostro sistema di stima</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {pillars.map((pillar) => (
-                        <div key={pillar.title} className="p-3 rounded-xl border border-slate-100 bg-slate-50/70">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="bg-slate-900 text-white">{pillar.badge}</Badge>
-                            <p className="text-sm font-semibold text-slate-900">{pillar.title}</p>
-                          </div>
-                          <p className="text-xs text-slate-600 mt-1 leading-relaxed">{pillar.desc}</p>
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-
-                  {/* Example Card */}
-                  <Card className="border-slate-200/70 bg-gradient-to-br from-blue-50 via-white to-emerald-50 backdrop-blur shadow-lg min-h-[110px]">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-xl">Esempio rapido</CardTitle>
-                      <CardDescription>Portale utenti con login e reset password</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4 text-sm text-slate-700">
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="secondary">AI: Auth + UI + Email</Badge>
-                        <Badge variant="secondary">12.5 gg</Badge>
-                        <Badge variant="secondary">React + Node</Badge>
-                      </div>
-                      <p className="text-xs leading-relaxed">
-                        Scrivi il requisito, scegli il preset e il sistema propone attivita e calcola i giorni.
-                        Per rischi o driver passa al wizard avanzato.
-                      </p>
-                      <div className="grid sm:grid-cols-2 gap-3 pt-1">
-                        <Link to="/" state={{ openQuick: true }}>
-                          <Button size="sm" className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 w-full">
-                            Prova ora
-                          </Button>
-                        </Link>
-                        <Link to="/register">
-                          <Button size="sm" variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-50 w-full">
-                            Registrati
-                          </Button>
-                        </Link>
-                      </div>
-                    </CardContent>
-                  </Card>
+        {/* Timeline Section */}
+        <div ref={containerRef} className="relative mb-32">
+          <div className="space-y-0">
+            {steps.map((step, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="grid md:grid-cols-[1fr_auto_1fr] grid-cols-[auto_1fr] gap-x-4 md:gap-x-0"
+              >
+                {/* Left Side (Desktop) */}
+                <div className={`hidden md:flex flex-col justify-center ${index % 2 !== 0 ? 'items-end pr-16' : ''}`}>
+                  {index % 2 !== 0 && (
+                    <div className="p-6 rounded-2xl bg-white/60 backdrop-blur-md border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 group w-full max-w-md">
+                      <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-blue-700 transition-colors">{step.title}</h3>
+                      <p className="text-slate-600 leading-relaxed">{step.description}</p>
+                    </div>
+                  )}
                 </div>
-              </div>
 
-              {/* Right Column - Carousel */}
-              <div className="h-full min-h-0">
-                <Card className="border-slate-200/70 bg-white/80 backdrop-blur-xl shadow-xl overflow-hidden flex flex-col h-full min-h-0">
-                  <CardHeader className="pb-4 border-b border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-2xl">Wizard in 5 step</CardTitle>
-                        <CardDescription className="mt-1">Processo guidato per stime dettagliate</CardDescription>
-                      </div>
-                      <Badge className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-0">
-                        Advanced
-                      </Badge>
+                {/* Center Column (Line + Icon) */}
+                <div className="flex flex-col items-center relative">
+                  {/* Top Line Segment */}
+                  <div className={`w-[2px] flex-1 ${index === 0 ? 'opacity-0' : ''} mb-3 rounded-full bg-gradient-to-b from-slate-200 to-slate-300`} />
+
+                  {/* Icon */}
+                  <div className="relative z-10">
+                    <div className={`w-14 h-14 rounded-full bg-white border-2 ${step.border} shadow-lg flex items-center justify-center relative overflow-hidden group`}>
+                      <div className={`absolute inset-0 ${step.bg} opacity-20 group-hover:opacity-40 transition-opacity`} />
+                      <step.icon className={`w-6 h-6 ${step.color} relative z-10 transform group-hover:scale-110 transition-transform`} />
                     </div>
-                  </CardHeader>
-                  <CardContent className="p-0 flex-1 flex flex-col min-h-0">
-                    {/* Carousel Container */}
-                    <div className="relative flex-1 min-h-0 flex flex-col">
-                      {/* Main Slide */}
-                      <div className={`bg-gradient-to-br ${currentStep.bg} p-4 flex-1 min-h-0 flex flex-col justify-between gap-6 transition-all duration-500`}>
-                        <div className="space-y-6">
-                          {/* Step Header */}
-                          <div className="flex items-start gap-4">
-                            <div className={`flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br ${currentStep.color} shadow-lg flex items-center justify-center transform hover:scale-110 transition-transform duration-300`}>
-                              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                {currentStep.icon}
-                              </svg>
-                            </div>
-                            <div className="flex-1">
-                              <div className="text-sm font-bold text-slate-500 mb-1">Step {currentStep.num} di 5</div>
-                              <h3 className="text-2xl font-bold text-slate-900 mb-2">{currentStep.title}</h3>
-                              <p className="text-sm text-slate-700 leading-relaxed">{currentStep.desc}</p>
-                            </div>
-                          </div>
+                  </div>
 
-                          {/* Progress Dots */}
-                          <div className="flex items-center gap-2 pt-4">
-                            {carouselSteps.map((_, idx) => (
-                              <button
-                                key={idx}
-                                onClick={() => setCurrentSlide(idx)}
-                                className={`h-2 rounded-full transition-all duration-300 ${idx === currentSlide
-                                  ? `w-8 bg-gradient-to-r ${currentStep.color}`
-                                  : 'w-2 bg-slate-300 hover:bg-slate-400'
-                                  }`}
-                                aria-label={`Vai allo step ${idx + 1}`}
-                              />
-                            ))}
-                          </div>
-                        </div>
+                  {/* Bottom Line Segment */}
+                  <div className={`w-[2px] flex-1 ${index === steps.length - 1 ? 'opacity-0' : ''} mt-3 rounded-full bg-gradient-to-b from-slate-300 to-slate-200`} />
+                </div>
 
-                        {/* Navigation Buttons */}
-                        <div className="flex items-center justify-between pt-2">
-                          <Button
-                            onClick={prevSlide}
-                            variant="outline"
-                            size="sm"
-                            className="border-slate-300 hover:bg-white/80"
-                          >
-                            <ChevronLeft className="h-4 w-4 mr-1" />
-                            Precedente
-                          </Button>
-                          <div className="text-xs text-slate-500 font-medium">
-                            Auto-play ogni 4s
-                          </div>
-                          <Button
-                            onClick={nextSlide}
-                            variant="outline"
-                            size="sm"
-                            className="border-slate-300 hover:bg-white/80"
-                          >
-                            Successivo
-                            <ChevronRight className="h-4 w-4 ml-1" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Quick Steps Overview */}
-                      <div className="p-2 bg-slate-50/50 border-t border-slate-100 flex-shrink-0">
-                        <div className="flex items-center justify-between text-xs">
-                          {carouselSteps.map((step, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => setCurrentSlide(idx)}
-                              className={`flex flex-col items-center gap-1.5 transition-all duration-300 ${idx === currentSlide ? 'opacity-100' : 'opacity-40 hover:opacity-70'
-                                }`}
-                            >
-                              <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${step.color} flex items-center justify-center shadow ${idx === currentSlide ? 'ring-2 ring-offset-2 ring-slate-300' : ''
-                                }`}>
-                                <span className="text-white font-bold text-xs">{step.num}</span>
-                              </div>
-                              <span className="text-[10px] font-medium text-slate-600 max-w-[60px] text-center leading-tight">
-                                {step.title.split(' ')[0]}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                {/* Right Side (Desktop & Mobile Content) */}
+                <div className={`flex flex-col justify-center pb-12 md:pb-24 ${index % 2 === 0 ? 'md:pl-16' : ''}`}>
+                  {/* Desktop Content (Even) */}
+                  <div className={`hidden md:block ${index % 2 === 0 ? '' : 'invisible'}`}>
+                    <div className="p-6 rounded-2xl bg-white/60 backdrop-blur-md border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 group w-full max-w-md">
+                      <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-blue-700 transition-colors">{step.title}</h3>
+                      <p className="text-slate-600 leading-relaxed">{step.description}</p>
                     </div>
+                  </div>
 
-                    {/* CTA Section */}
-                    <div className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex-shrink-0">
-                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div>
-                          <p className="font-bold text-lg">Pronto a iniziare?</p>
-                          <p className="text-sm text-blue-100">Prova il wizard completo con tutti i 5 step</p>
-                        </div>
-                        <Link to="/" state={{ openWizard: true }}>
-                          <Button size="lg" className="bg-white text-blue-700 hover:bg-blue-50 shadow-lg">
-                            Apri Wizard
-                          </Button>
-                        </Link>
-                      </div>
+                  {/* Mobile Content (Always visible on mobile) */}
+                  <div className="md:hidden pt-2">
+                    <div className="p-5 rounded-2xl bg-white/60 backdrop-blur-md border border-white/50 shadow-md">
+                      <h3 className="text-lg font-bold text-slate-900 mb-2">{step.title}</h3>
+                      <p className="text-sm text-slate-600 leading-relaxed">{step.description}</p>
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
-      </div>
+
+        {/* Dual Mode Section */}
+        <div className="grid md:grid-cols-2 gap-6 mb-24">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            whileHover={{ scale: 1.02 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="group relative p-8 rounded-3xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-blue-900/5 transition-all duration-300 overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500">
+              <Zap className="w-32 h-32 text-blue-600" />
+            </div>
+            <div className="relative z-10 space-y-4">
+              <div className="w-14 h-14 rounded-2xl bg-blue-100/80 flex items-center justify-center shadow-inner">
+                <Zap className="w-7 h-7 text-blue-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900">Stima Rapida</h3>
+              <p className="text-slate-600 font-medium">
+                Ideale per stime veloci. Inserisci il requisito, scegli lo stack e ottieni subito una stima basata su AI.
+              </p>
+              <ul className="space-y-3 pt-4">
+                <li className="flex items-center text-sm text-slate-700 font-medium">
+                  <div className="p-1 rounded-full bg-blue-100 mr-3">
+                    <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                  </div>
+                  Input minimo richiesto
+                </li>
+                <li className="flex items-center text-sm text-slate-700 font-medium">
+                  <div className="p-1 rounded-full bg-blue-100 mr-3">
+                    <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                  </div>
+                  Risultato immediato
+                </li>
+              </ul>
+              <div className="pt-6">
+                <Link to="/" state={{ openQuick: true }}>
+                  <Button variant="outline" className="w-full h-11 border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 hover:border-blue-300 transition-all">
+                    Prova Stima Rapida
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            whileHover={{ scale: 1.02 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+            className="group relative p-8 rounded-3xl bg-slate-900 text-white shadow-2xl shadow-slate-900/20 hover:shadow-slate-900/30 transition-all duration-300 overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 to-slate-900" />
+            <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500">
+              <Wand2 className="w-32 h-32 text-indigo-400" />
+            </div>
+            <div className="relative z-10 space-y-4">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
+                <Wand2 className="w-7 h-7 text-indigo-400" />
+              </div>
+              <h3 className="text-2xl font-bold">Wizard Avanzato</h3>
+              <p className="text-indigo-100/90 font-medium">
+                Controllo totale. Un processo guidato in 5 step per configurare ogni dettaglio, dai driver ai rischi specifici.
+              </p>
+              <ul className="space-y-3 pt-4">
+                <li className="flex items-center text-sm text-indigo-100">
+                  <div className="p-1 rounded-full bg-indigo-500/30 mr-3">
+                    <CheckCircle2 className="w-3 h-3 text-indigo-300" />
+                  </div>
+                  Massima precisione
+                </li>
+                <li className="flex items-center text-sm text-indigo-100">
+                  <div className="p-1 rounded-full bg-indigo-500/30 mr-3">
+                    <CheckCircle2 className="w-3 h-3 text-indigo-300" />
+                  </div>
+                  Configurazione granulare
+                </li>
+              </ul>
+              <div className="pt-6">
+                <Link to="/" state={{ openWizard: true }}>
+                  <Button className="w-full h-11 bg-indigo-600 hover:bg-indigo-500 text-white border-0 shadow-lg shadow-indigo-900/50 transition-all">
+                    Avvia Wizard
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* CTA Footer */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center space-y-8 py-12 border-t border-slate-200/60"
+        >
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-900">
+            {user ? "Pronto a stimare?" : "Inizia a stimare oggi"}
+          </h2>
+          <Link to={user ? "/dashboard" : "/"}>
+            <Button size="lg" className="rounded-full px-10 h-14 text-lg bg-slate-900 hover:bg-slate-800 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+              {user ? "Vai alla Dashboard" : "Vai alla Home Page"} <ArrowRight className="ml-2 w-5 h-5" />
+            </Button>
+          </Link>
+        </motion.div>
+      </main>
     </div>
   );
 }
