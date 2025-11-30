@@ -12,7 +12,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { User, LogOut, Settings, Terminal, Command, Sparkles } from 'lucide-react';
+import { User, LogOut, Settings, Command, Sparkles } from 'lucide-react';
 import { SynteroMark } from './SynteroMark';
 
 export function Header() {
@@ -143,7 +143,6 @@ export function Header() {
                                     size="sm"
                                     className={`h-9 px-3 text-sm font-medium hover:bg-slate-100/50 transition-all ${isActive('/dashboard') ? 'text-blue-600 bg-blue-50/50' : 'text-slate-600'}`}
                                 >
-                                    <Terminal className="h-3.5 w-3.5 mr-2" />
                                     Dashboard
                                 </Button>
                             </Link>
