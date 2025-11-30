@@ -503,7 +503,7 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                                                 </Badge>
                                             </div>
                                             <span className="font-bold text-slate-700 text-sm whitespace-nowrap bg-slate-50 px-2 py-1 rounded-lg">
-                                                {activity.baseDays.toFixed(1)} d
+                                                {activity.baseDays.toFixed(1)} h
                                             </span>
                                         </div>
                                     ))}

@@ -114,11 +114,16 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 min-h-0 relative z-10 overflow-y-auto">
-        <div className="container mx-auto px-6 py-6 min-h-full flex items-center">
-          <div className="grid lg:grid-cols-2 gap-8 max-w-7xl mx-auto items-center h-full">
+      <main className="flex-1 min-h-0 relative z-10 overflow-hidden">
+        <div className="container mx-auto px-6 py-4 min-h-full flex items-center">
+          <div className="grid lg:grid-cols-2 gap-6 max-w-7xl mx-auto items-center h-full">
             {/* Left: Hero */}
-            <div className="space-y-4 relative">
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="space-y-4 relative"
+            >
               <div className="space-y-3">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100/80 border border-blue-200/50 backdrop-blur-sm">
                   <span className="relative flex h-2 w-2">
@@ -128,14 +133,14 @@ export default function Home() {
                   <span className="text-xs font-medium text-blue-900">AI-Powered Estimation</span>
                 </div>
 
-                <h2 className="text-4xl lg:text-5xl font-bold text-slate-900 leading-tight">
+                <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 leading-tight">
                   Syntero
                   <span className="block bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-500 bg-clip-text text-transparent">
                     AI-crafted requirements estimation
                   </span>
                 </h2>
 
-                <p className="text-base lg:text-lg text-slate-600 leading-relaxed">
+                <p className="text-sm lg:text-base text-slate-600 leading-relaxed max-w-lg">
                   Il nuovo spazio di lavoro per raccogliere requisiti, stimare e condividere risultati in pochi minuti, con automazioni AI e trasparenza delle formule.
                 </p>
               </div>
@@ -195,10 +200,15 @@ export default function Home() {
                   <p className="text-[10px] text-slate-500 mt-0.5">All major tech</p>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Right: Process Steps - Compatto */}
-            <div className="space-y-4">
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+              className="space-y-4"
+            >
               <Card className="border-slate-200/50 bg-white/60 backdrop-blur-md shadow-xl">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
@@ -208,12 +218,12 @@ export default function Home() {
                       </svg>
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-slate-900">Advanced 5-Step Wizard</h3>
-                      <p className="text-[10px] text-slate-500">For detailed control</p>
+                      <h3 className="text-lg font-bold text-slate-900">Smart Estimation Workflow</h3>
+                      <p className="text-[10px] text-slate-500">AI-powered precision</p>
                     </div>
                   </div>
                   <p className="text-xs text-slate-600 mb-3 leading-relaxed">
-                    Usa il processo completo in 5 step quando hai bisogno di configurare attività, driver e rischi nel dettaglio.
+                    Il processo guidato dall'AI per stime precise, dettagliate e trasparenti, dal requisito al risultato finale.
                   </p>
 
                   <div className="space-y-2">
@@ -294,7 +304,7 @@ export default function Home() {
                   <span className="font-medium">Accurate</span>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </main>

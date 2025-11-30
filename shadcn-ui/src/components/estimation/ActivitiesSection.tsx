@@ -87,8 +87,8 @@ export function ActivitiesSection({
                                                 <div
                                                     key={activity.id}
                                                     className={`group flex items-start space-x-3 p-3 border-2 rounded-xl transition-all duration-300 cursor-pointer ${isSelected
-                                                            ? 'border-purple-300 bg-gradient-to-r from-purple-50 to-pink-50 shadow-md'
-                                                            : 'border-slate-200 hover:border-purple-200 hover:bg-purple-50/30'
+                                                        ? 'border-purple-300 bg-gradient-to-r from-purple-50 to-pink-50 shadow-md'
+                                                        : 'border-slate-200 hover:border-purple-200 hover:bg-purple-50/30'
                                                         }`}
                                                     onClick={() => onActivityToggle(activity.id)}
                                                 >
@@ -105,7 +105,7 @@ export function ActivitiesSection({
                                                                     {activity.name}
                                                                 </span>
                                                                 <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                                                                    {activity.base_days}d
+                                                                    {activity.base_days}h
                                                                 </span>
                                                                 {isAiSuggested && (
                                                                     <Badge className="text-xs bg-gradient-to-r from-purple-600 to-pink-600 border-0">

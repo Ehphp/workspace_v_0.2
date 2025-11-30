@@ -16,7 +16,8 @@ import type { EstimationInput, EstimationResult, SelectedActivity } from '@/type
  */
 
 export function calculateBaseDays(activities: SelectedActivity[]): number {
-  return activities.reduce((sum, activity) => sum + activity.baseDays, 0);
+  const totalHours = activities.reduce((sum, activity) => sum + activity.baseDays, 0);
+  return totalHours / 8.0;
 }
 
 export function calculateDriverMultiplier(drivers: { multiplier: number }[]): number {

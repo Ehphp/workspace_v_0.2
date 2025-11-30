@@ -160,7 +160,7 @@ export default function ConfigurationActivities() {
 
     if (!Number.isFinite(baseDays) || baseDays <= 0) {
       toast.error('Peso non valido', {
-        description: 'Inserisci un numero di giorni maggiore di zero',
+        description: 'Inserisci un numero di ore maggiore di zero',
       });
       return;
     }
@@ -187,7 +187,7 @@ export default function ConfigurationActivities() {
         if (error) throw error;
 
         toast.success('Attivita aggiornata', {
-          description: `${form.name} - ${baseDays.toFixed(2)} giorni`,
+          description: `${form.name} - ${baseDays.toFixed(2)} ore`,
         });
         setEditActivity(null);
       } else {
@@ -212,7 +212,7 @@ export default function ConfigurationActivities() {
         if (error) throw error;
 
         toast.success('Attivita creata', {
-          description: `${generatedCode} - ${baseDays.toFixed(2)} giorni`,
+          description: `${generatedCode} - ${baseDays.toFixed(2)} ore`,
         });
       }
 
@@ -470,7 +470,7 @@ export default function ConfigurationActivities() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label className="text-white/90">Peso (giorni base)</Label>
+                        <Label className="text-white/90">Peso (ore)</Label>
                         <Input
                           type="number"
                           step="0.05"
@@ -678,46 +678,46 @@ export default function ConfigurationActivities() {
                               : 'OOTB';
                             return (
                               <TableRow key={activity.id} className="hover:bg-white/5">
-                                  {visibleColumns.codice && (
-                                    <TableCell className="font-semibold text-white/90 truncate">{activity.code}</TableCell>
-                                  )}
-                                  {visibleColumns.nome && (
-                                    <TableCell className="max-w-[360px] whitespace-normal break-words">
-                                      <div className="text-white font-medium">{activity.name}</div>
-                                      <div className="text-xs text-indigo-100/80">{activity.description}</div>
-                                      {baseRef && (
-                                        <div className="text-[10px] text-indigo-100/70 mt-0.5">
-                                          Deriva da {baseRef.code}
-                                        </div>
-                                      )}
-                                    </TableCell>
-                                  )}
-                                  {visibleColumns.tecnologia && (
-                                    <TableCell className="hidden lg:table-cell text-xs text-indigo-100/80 truncate">
-                                      {technologies.find((t) => t.value === activity.tech_category)?.label || activity.tech_category}
-                                    </TableCell>
-                                  )}
-                                  {visibleColumns.fase && (
-                                    <TableCell className="hidden lg:table-cell text-xs text-indigo-100/80 truncate">
-                                      {groupOptions.find((g) => g.value === activity.group)?.label || activity.group}
-                                    </TableCell>
-                                  )}
-                                  {visibleColumns.origine && (
-                                    <TableCell className="truncate">
-                                      <Badge variant={isCustom ? 'default' : 'outline'} className={isCustom ? 'bg-amber-200/90 text-amber-900 border-amber-200' : 'border-white/30 text-white'}>
-                                        {originLabel}
-                                      </Badge>
-                                    </TableCell>
-                                  )}
-                                  {visibleColumns.peso && (
-                                    <TableCell className="truncate">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-2xl font-bold text-white">{activity.base_days.toFixed(1)}</span>
-                                        <span className="text-xs text-indigo-100/80 font-medium">giorni</span>
+                                {visibleColumns.codice && (
+                                  <TableCell className="font-semibold text-white/90 truncate">{activity.code}</TableCell>
+                                )}
+                                {visibleColumns.nome && (
+                                  <TableCell className="max-w-[360px] whitespace-normal break-words">
+                                    <div className="text-white font-medium">{activity.name}</div>
+                                    <div className="text-xs text-indigo-100/80">{activity.description}</div>
+                                    {baseRef && (
+                                      <div className="text-[10px] text-indigo-100/70 mt-0.5">
+                                        Deriva da {baseRef.code}
                                       </div>
-                                    </TableCell>
-                                  )}
-                                  <TableCell className="text-right truncate">
+                                    )}
+                                  </TableCell>
+                                )}
+                                {visibleColumns.tecnologia && (
+                                  <TableCell className="hidden lg:table-cell text-xs text-indigo-100/80 truncate">
+                                    {technologies.find((t) => t.value === activity.tech_category)?.label || activity.tech_category}
+                                  </TableCell>
+                                )}
+                                {visibleColumns.fase && (
+                                  <TableCell className="hidden lg:table-cell text-xs text-indigo-100/80 truncate">
+                                    {groupOptions.find((g) => g.value === activity.group)?.label || activity.group}
+                                  </TableCell>
+                                )}
+                                {visibleColumns.origine && (
+                                  <TableCell className="truncate">
+                                    <Badge variant={isCustom ? 'default' : 'outline'} className={isCustom ? 'bg-amber-200/90 text-amber-900 border-amber-200' : 'border-white/30 text-white'}>
+                                      {originLabel}
+                                    </Badge>
+                                  </TableCell>
+                                )}
+                                {visibleColumns.peso && (
+                                  <TableCell className="truncate">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-2xl font-bold text-white">{activity.base_days.toFixed(1)}</span>
+                                      <span className="text-xs text-indigo-100/80 font-medium">ore</span>
+                                    </div>
+                                  </TableCell>
+                                )}
+                                <TableCell className="text-right truncate">
                                   {isCustom ? (
                                     <>
                                       <div className="flex justify-end gap-1">

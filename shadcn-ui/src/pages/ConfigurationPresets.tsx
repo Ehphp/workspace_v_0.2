@@ -5,21 +5,6 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import type { TechnologyPreset, Activity, Driver, Risk, Technology } from '@/types/database';
 import { toast } from 'sonner';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -49,10 +34,27 @@ import {
     X,
     ArrowUp,
     ArrowDown,
-    CheckCircle2
+    CheckCircle2,
+    Shield
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import {
+    DropdownMenu,
+    DropdownMenuCheckboxItem,
+    DropdownMenuContent,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface PresetView extends TechnologyPreset {
     defaultActivities: Activity[];
@@ -186,19 +188,6 @@ export default function ConfigurationPresets() {
         if (viewFilter === 'CUSTOM') list = list.filter(p => p.is_custom);
         return list;
     }, [presets, viewFilter]);
-
-    const stats = useMemo(() => {
-        const perCategory = presets.reduce<Record<string, number>>((acc, p) => {
-            acc[p.tech_category] = (acc[p.tech_category] || 0) + 1;
-            return acc;
-        }, {});
-        const avgActivities = presets.length
-            ? Math.round(
-                presets.reduce((sum, p) => sum + (p.defaultActivities?.length || 0), 0) / presets.length
-            )
-            : 0;
-        return { perCategory, avgActivities };
-    }, [presets]);
 
     const getTechLabel = (code: string) => {
         const tech = technologies.find(t => t.code === code);
@@ -390,6 +379,14 @@ export default function ConfigurationPresets() {
         });
     };
 
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-slate-50 font-sans overflow-hidden relative">
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
@@ -409,154 +406,212 @@ export default function ConfigurationPresets() {
                 className="absolute bottom-0 left-1/3 w-[24rem] h-[24rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
             />
 
-            <div className="flex-shrink-0 relative z-10">
-                <Header />
-            </div>
+            <Header />
 
-            <div className="flex-1 min-h-0 overflow-hidden flex flex-col relative z-10">
-                <div className="container mx-auto px-6 py-4 h-full flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto">
-
-                    {/* Header */}
-                    <div className="flex items-center justify-between gap-4 flex-shrink-0">
-                        <div>
-                            <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 mb-1">
-                                <Layers className="h-3 w-3 text-blue-600" />
-                                <span className="text-xs font-semibold text-blue-700">Configurazione</span>
+            <main className="container mx-auto px-4 pt-6 pb-4 max-w-6xl relative z-10">
+                <div className="flex flex-col lg:flex-row gap-6 items-start">
+                    {/* Hero Section */}
+                    <motion.div
+                        initial={{ opacity: 0, x: -30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.35, ease: 'easeOut' }}
+                        className="space-y-5 relative lg:flex-1"
+                    >
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => navigate('/configuration')}
+                            className="absolute -left-2 -top-2 h-9 w-9 rounded-full hover:bg-slate-200/70"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                        </Button>
+                        <Badge variant="secondary" className="w-fit px-4 py-1.5 text-sm font-semibold bg-white/80 backdrop-blur-sm border-slate-200 text-slate-700 shadow-sm">
+                            <Layers className="w-4 h-4 mr-2 text-blue-600" />
+                            Configurazione
+                        </Badge>
+                        <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900">
+                            Preset Tecnologici
+                            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">
+                                standardizza il lavoro
+                            </span>
+                        </h1>
+                        <p className="text-lg text-slate-600 max-w-2xl leading-relaxed font-medium">
+                            Gestisci i template di stima per le diverse tecnologie. Un punto di partenza solido per ogni nuovo progetto.
+                        </p>
+                        <div className="flex flex-wrap gap-3">
+                            <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/80 border border-slate-200 shadow-sm text-sm font-semibold text-slate-700">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                {presets.length} preset totali
                             </div>
-                            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-500 bg-clip-text text-transparent">Preset Tecnologici</h1>
-                            <p className="text-xs text-slate-600">Gestisci i template di stima per le diverse tecnologie.</p>
+                            <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/80 border border-slate-200 shadow-sm text-sm font-semibold text-slate-700">
+                                <Sparkles className="w-4 h-4 text-amber-500" />
+                                {presets.filter(p => p.is_custom).length} custom
+                            </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <Button variant="outline" size="sm" onClick={() => navigate('/configuration/technologies')}>
-                                <Settings className="h-4 w-4 mr-2" />
-                                Tecnologie
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={loadData} disabled={loading}>
-                                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                                Aggiorna
-                            </Button>
-                            <Button variant="default" size="sm" onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700">
-                                <Plus className="h-4 w-4 mr-2" />
-                                Crea Preset
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => navigate('/configuration')}>
-                                <ArrowLeft className="h-4 w-4 mr-2" />
-                                Indietro
+                        <div className="flex flex-wrap gap-3 pt-2">
+                            <Button
+                                className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+                                onClick={handleCreate}
+                            >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Crea nuovo preset
                             </Button>
                         </div>
-                    </div>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 0.12, rotate: [0, 4, -3, 0] }}
+                            transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+                            className="hidden lg:block absolute -right-10 -top-10 w-56 h-56 rounded-[32px] bg-gradient-to-br from-indigo-400/60 via-blue-400/50 to-purple-500/40 blur-3xl"
+                        />
+                    </motion.div>
 
-                    {/* Stats */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-shrink-0">
-                        <Card className="bg-white/80 backdrop-blur-md border-white/60 shadow-md hover:shadow-xl transition-shadow">
-                            <CardHeader className="pb-2 py-2">
-                                <CardTitle className="text-xs font-semibold flex items-center gap-2">
-                                    <Layers className="h-4 w-4 text-blue-600" />
-                                    Preset totali
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="flex items-end gap-4 py-2">
-                                <div className="text-2xl font-bold text-slate-900">{presets.length}</div>
-                                <div className="flex flex-wrap gap-1 text-xs text-slate-700">
-                                    <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px]">
-                                        Custom: {presets.filter(p => p.is_custom).length}
-                                    </Badge>
-                                </div>
-                            </CardContent>
-                        </Card>
-                        {/* More stats if needed */}
-                    </div>
+                    {/* Main Content Card */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.35, delay: 0.1, ease: 'easeInOut' }}
+                        className="group relative p-5 rounded-3xl bg-slate-900 text-white shadow-2xl shadow-slate-900/30 overflow-hidden w-full lg:flex-[1.5]"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0.12, scale: 1 }}
+                            animate={{ opacity: [0.12, 0.2, 0.12], scale: [1, 1.03, 1] }}
+                            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+                            className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950"
+                        />
+                        <div className="absolute -right-8 -top-8 text-indigo-300/20 group-hover:text-indigo-200/30 transition-colors duration-300">
+                            <Layers className="w-28 h-28" />
+                        </div>
 
-                    {/* Main List */}
-                    <Card className="bg-white/85 backdrop-blur-md border-white/60 shadow-xl flex-1 overflow-hidden flex flex-col min-h-0">
-                        <CardHeader className="flex-shrink-0 py-3 bg-white/60 border-b border-white/70 flex flex-row items-center justify-between">
-                            <div>
-                                <CardTitle className="text-base font-semibold text-slate-900">Elenco Preset</CardTitle>
-                                <CardDescription className="text-xs text-slate-600">
-                                    Visualizza e gestisci i preset disponibili.
-                                </CardDescription>
-                            </div>
-                            <div className="flex gap-2">
-                                <div className="flex gap-1 bg-slate-100/90 rounded-full p-1 shadow-inner">
-                                    <Button size="sm" variant={viewFilter === 'ALL' ? 'default' : 'ghost'} className="h-7 px-3" onClick={() => setViewFilter('ALL')}>Tutti</Button>
-                                    <Button size="sm" variant={viewFilter === 'OOTB' ? 'default' : 'ghost'} className="h-7 px-3" onClick={() => setViewFilter('OOTB')}>Sistema</Button>
-                                    <Button size="sm" variant={viewFilter === 'CUSTOM' ? 'default' : 'ghost'} className="h-7 px-3" onClick={() => setViewFilter('CUSTOM')}>Custom</Button>
+                        <div className="relative z-10 space-y-5 h-full flex flex-col">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[11px] uppercase tracking-[0.2em]">
+                                        Libreria
+                                    </div>
+                                    <h2 className="text-2xl font-bold mt-2 leading-tight">Elenco Preset</h2>
+                                </div>
+                                <div className="flex gap-1 bg-white/10 rounded-full p-1 border border-white/15">
+                                    <Button size="sm" variant={viewFilter === 'ALL' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900" onClick={() => setViewFilter('ALL')}>
+                                        Tutti
+                                    </Button>
+                                    <Button size="sm" variant={viewFilter === 'OOTB' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900" onClick={() => setViewFilter('OOTB')}>
+                                        Sistema
+                                    </Button>
+                                    <Button size="sm" variant={viewFilter === 'CUSTOM' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900" onClick={() => setViewFilter('CUSTOM')}>
+                                        Custom
+                                    </Button>
                                 </div>
                             </div>
-                        </CardHeader>
-                        <CardContent className="overflow-hidden flex-1 p-0 flex flex-col">
-                            <div className="flex-1 overflow-auto">
-                                <Table>
-                                    <TableHeader className="sticky top-0 bg-white/85 backdrop-blur z-10 shadow-sm">
-                                        <TableRow className="hover:bg-white/90">
-                                            <TableHead>Nome</TableHead>
-                                            <TableHead>Categoria</TableHead>
-                                            <TableHead>Attività</TableHead>
-                                            <TableHead>Driver/Rischi</TableHead>
-                                            <TableHead className="text-right">Azioni</TableHead>
+
+                            <div className="rounded-2xl border border-white/10 bg-white/5 max-h-[60vh] overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] min-w-0 flex-1">
+                                <style>
+                                    {`.rounded-2xl::-webkit-scrollbar { display: none; }`}
+                                </style>
+                                <Table className="table-fixed w-full">
+                                    <TableHeader className="sticky top-0 bg-white/10 backdrop-blur z-10">
+                                        <TableRow className="hover:bg-white/5 border-white/10">
+                                            <TableHead className="text-white w-[30%]">Nome</TableHead>
+                                            <TableHead className="text-white w-[20%]">Categoria</TableHead>
+                                            <TableHead className="text-white w-[25%] hidden md:table-cell">Contenuto</TableHead>
+                                            <TableHead className="text-right text-white w-[25%]">Azioni</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {filteredPresets.map((preset) => {
-                                            const isOwner = preset.is_custom && preset.created_by === user?.id;
-                                            return (
-                                                <TableRow key={preset.id}>
-                                                    <TableCell>
-                                                        <div className="font-semibold text-slate-900">{preset.name}</div>
-                                                        <div className="text-xs text-slate-500">{preset.description}</div>
-                                                        {preset.is_custom && (
-                                                            <Badge variant="outline" className="mt-1 bg-amber-50 text-amber-700 border-amber-200 text-[10px]">Custom</Badge>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge variant="outline" className="text-xs">{getTechLabel(preset.tech_category)}</Badge>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex flex-wrap gap-1 max-w-[300px]">
-                                                            {preset.defaultActivities.slice(0, 3).map(a => (
-                                                                <Badge key={a.id} variant="secondary" className="text-[10px]">{a.code}</Badge>
-                                                            ))}
-                                                            {preset.defaultActivities.length > 3 && (
-                                                                <Badge variant="outline" className="text-[10px]">+{preset.defaultActivities.length - 3}</Badge>
+                                        {filteredPresets.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center py-8 text-indigo-100/80">
+                                                    Nessun preset trovato
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            filteredPresets.map((preset) => {
+                                                const isOwner = preset.is_custom && preset.created_by === user?.id;
+                                                return (
+                                                    <TableRow key={preset.id} className="hover:bg-white/5 border-white/10">
+                                                        <TableCell className="align-top">
+                                                            <div className="font-semibold text-white">{preset.name}</div>
+                                                            <div className="text-xs text-indigo-100/70 line-clamp-2">{preset.description}</div>
+                                                            {preset.is_custom && (
+                                                                <Badge variant="outline" className="mt-1 bg-amber-500/20 text-amber-200 border-amber-500/30 text-[10px]">Custom</Badge>
                                                             )}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex flex-col gap-1">
-                                                            <div className="text-[10px] text-slate-500">Drivers: {preset.driverDefaults.length}</div>
-                                                            <div className="text-[10px] text-slate-500">Rischi: {preset.defaultRisks.length}</div>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <div className="flex justify-end gap-1">
-                                                            <Button variant="ghost" size="icon" onClick={() => setSelectedPreview(preset)} title="Dettagli">
-                                                                <Info className="h-4 w-4 text-slate-500" />
-                                                            </Button>
-                                                            <Button variant="ghost" size="icon" onClick={() => handleDuplicate(preset)} title="Duplica">
-                                                                <Sparkles className="h-4 w-4 text-blue-500" />
-                                                            </Button>
-                                                            {isOwner && (
-                                                                <>
-                                                                    <Button variant="ghost" size="icon" onClick={() => handleEdit(preset)} title="Modifica">
-                                                                        <Edit3 className="h-4 w-4 text-emerald-600" />
-                                                                    </Button>
-                                                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(preset)} title="Elimina">
-                                                                        <Trash2 className="h-4 w-4 text-red-500" />
-                                                                    </Button>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
+                                                        </TableCell>
+                                                        <TableCell className="align-top">
+                                                            <Badge variant="outline" className="text-xs border-white/30 text-white bg-white/5">{getTechLabel(preset.tech_category)}</Badge>
+                                                        </TableCell>
+                                                        <TableCell className="align-top hidden md:table-cell">
+                                                            <div className="flex flex-col gap-1">
+                                                                <div className="text-xs text-indigo-100/80">
+                                                                    <span className="font-medium text-white">{preset.defaultActivities.length}</span> attività
+                                                                </div>
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {preset.defaultActivities.slice(0, 2).map(a => (
+                                                                        <span key={a.id} className="inline-block px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-indigo-100 border border-white/10">
+                                                                            {a.code}
+                                                                        </span>
+                                                                    ))}
+                                                                    {preset.defaultActivities.length > 2 && (
+                                                                        <span className="inline-block px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-indigo-100 border border-white/10">
+                                                                            +{preset.defaultActivities.length - 2}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-right align-top">
+                                                            <div className="flex justify-end gap-1">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 text-indigo-100 hover:text-white hover:bg-white/10"
+                                                                    onClick={() => setSelectedPreview(preset)}
+                                                                    title="Dettagli"
+                                                                >
+                                                                    <Info className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 text-indigo-100 hover:text-white hover:bg-white/10"
+                                                                    onClick={() => handleDuplicate(preset)}
+                                                                    title="Duplica"
+                                                                >
+                                                                    <Sparkles className="h-4 w-4" />
+                                                                </Button>
+                                                                {isOwner && (
+                                                                    <>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-8 w-8 text-indigo-100 hover:text-white hover:bg-white/10"
+                                                                            onClick={() => handleEdit(preset)}
+                                                                            title="Modifica"
+                                                                        >
+                                                                            <Edit3 className="h-4 w-4" />
+                                                                        </Button>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-8 w-8 text-red-300 hover:text-red-200 hover:bg-red-500/20"
+                                                                            onClick={() => handleDelete(preset)}
+                                                                            title="Elimina"
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })
+                                        )}
                                     </TableBody>
                                 </Table>
                             </div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </motion.div>
                 </div>
-            </div>
+            </main>
 
             {/* Edit/Create Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -600,7 +655,7 @@ export default function ConfigurationPresets() {
                                         <ScrollArea className="h-[200px]">
                                             {allActivities.map(a => (
                                                 <SelectItem key={a.id} value={a.id} disabled={!!form.activities.find(fa => fa.id === a.id)}>
-                                                    {a.name} ({a.base_days}d)
+                                                    {a.name} ({a.base_days}h)
                                                 </SelectItem>
                                             ))}
                                         </ScrollArea>
@@ -618,7 +673,7 @@ export default function ConfigurationPresets() {
                                                 <Badge variant="outline" className="w-6 h-6 flex items-center justify-center rounded-full p-0">{idx + 1}</Badge>
                                                 <div>
                                                     <div className="text-sm font-medium">{act.name}</div>
-                                                    <div className="text-[10px] text-slate-500">{act.code} • {act.base_days} giorni</div>
+                                                    <div className="text-[10px] text-slate-500">{act.code} • {act.base_days} ore</div>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-1">
@@ -717,7 +772,7 @@ export default function ConfigurationPresets() {
                                     {selectedPreview.defaultActivities.map((a, i) => (
                                         <div key={i} className="text-sm flex justify-between">
                                             <span>{i + 1}. {a.name}</span>
-                                            <span className="text-slate-500 text-xs">{a.base_days}d</span>
+                                            <span className="text-slate-500 text-xs">{a.base_days}h</span>
                                         </div>
                                     ))}
                                 </div>

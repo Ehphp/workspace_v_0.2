@@ -250,7 +250,7 @@ export function WizardStep5({ data, onBack, onReset, onSave }: WizardStep5Props)
                   return {
                     key: code,
                     left: activity?.name || code,
-                    right: `${activity?.base_days ?? 0}d`,
+                    right: `${activity?.base_days ?? 0}h`,
                     badge: isAi ? 'AI' : undefined,
                   };
                 })}
