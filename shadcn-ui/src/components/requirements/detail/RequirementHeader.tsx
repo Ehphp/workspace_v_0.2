@@ -1,12 +1,12 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { ArrowLeft, Pencil, Save, X, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRequirementActions, type EditedData } from '@/hooks/useRequirementActions';
 import type { Requirement } from '@/types/database';
 import { useAuth } from '@/hooks/useAuth';
+import { PriorityBadge, StateBadge } from '@/components/shared/RequirementBadges';
 
 interface RequirementHeaderProps {
     requirement: Requirement;
@@ -37,87 +37,6 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, onQ
             state: requirement.state,
         });
         setIsEditing(false);
-    };
-
-    const getPriorityBadge = (priority: string) => {
-        const priorityConfig = {
-            HIGH: {
-                gradient: 'from-red-500 to-rose-500',
-                bgGradient: 'from-red-50 to-rose-50',
-                textColor: 'text-red-700',
-                borderColor: 'border-red-200/50'
-            },
-            MEDIUM: {
-                gradient: 'from-amber-500 to-orange-500',
-                bgGradient: 'from-amber-50 to-orange-50',
-                textColor: 'text-amber-700',
-                borderColor: 'border-amber-200/50'
-            },
-            LOW: {
-                gradient: 'from-emerald-500 to-teal-500',
-                bgGradient: 'from-emerald-50 to-teal-50',
-                textColor: 'text-emerald-700',
-                borderColor: 'border-emerald-200/50'
-            },
-        };
-
-        const config = priorityConfig[priority as keyof typeof priorityConfig] || priorityConfig.MEDIUM;
-
-        return (
-            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r ${config.bgGradient} border ${config.borderColor} shadow-sm`}>
-                <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${config.gradient} animate-pulse`}></div>
-                <span className={`text-sm font-semibold ${config.textColor}`}>{priority}</span>
-            </div>
-        );
-    };
-
-    const getStateBadge = (state: string) => {
-        const stateConfig = {
-            PROPOSED: {
-                gradient: 'from-blue-500 to-indigo-500',
-                bgGradient: 'from-blue-50 to-indigo-50',
-                textColor: 'text-blue-700',
-                borderColor: 'border-blue-200/50'
-            },
-            SELECTED: {
-                gradient: 'from-violet-500 to-purple-500',
-                bgGradient: 'from-violet-50 to-purple-50',
-                textColor: 'text-violet-700',
-                borderColor: 'border-violet-200/50'
-            },
-            SCHEDULED: {
-                gradient: 'from-cyan-500 to-sky-500',
-                bgGradient: 'from-cyan-50 to-sky-50',
-                textColor: 'text-cyan-700',
-                borderColor: 'border-cyan-200/50'
-            },
-            IN_PROGRESS: {
-                gradient: 'from-amber-500 to-yellow-500',
-                bgGradient: 'from-amber-50 to-yellow-50',
-                textColor: 'text-amber-700',
-                borderColor: 'border-amber-200/50'
-            },
-            DONE: {
-                gradient: 'from-emerald-500 to-green-500',
-                bgGradient: 'from-emerald-50 to-green-50',
-                textColor: 'text-emerald-700',
-                borderColor: 'border-emerald-200/50'
-            },
-            REJECTED: {
-                gradient: 'from-slate-500 to-gray-500',
-                bgGradient: 'from-slate-50 to-gray-50',
-                textColor: 'text-slate-700',
-                borderColor: 'border-slate-200/50'
-            }
-        };
-
-        const config = stateConfig[state as keyof typeof stateConfig] || stateConfig.PROPOSED;
-
-        return (
-            <Badge variant="outline" className={`bg-gradient-to-r ${config.bgGradient} ${config.borderColor} ${config.textColor} hover:${config.bgGradient}`}>
-                {state}
-            </Badge>
-        );
     };
 
     return (
@@ -215,8 +134,8 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, onQ
                                         </Button>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        {getPriorityBadge(requirement.priority)}
-                                        {getStateBadge(requirement.state)}
+                                        <PriorityBadge priority={requirement.priority} />
+                                        <StateBadge state={requirement.state} />
                                         <span className="text-sm text-slate-400 font-medium px-2 border-l border-slate-200">
                                             {requirement.req_id}
                                         </span>
