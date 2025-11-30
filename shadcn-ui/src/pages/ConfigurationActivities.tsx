@@ -4,15 +4,10 @@ import {
   Shield,
   Sparkles,
   Wrench,
-  Plus,
-  RefreshCw,
   Edit3,
   CheckCircle2,
-  AlertTriangle,
-  ArrowLeft,
   Settings2,
-  Eye,
-  EyeOff,
+  ArrowLeft,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { generateActivityCode } from '@/lib/codeGeneration';
@@ -22,11 +17,9 @@ import type { Activity } from '@/types/database';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Table,
@@ -37,13 +30,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -51,9 +37,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
-// techOptions removed, using dynamic state
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { motion } from 'framer-motion';
 
 const groupOptions = [
   { value: 'ANALYSIS', label: 'Analysis' },
@@ -62,8 +47,6 @@ const groupOptions = [
   { value: 'OPS', label: 'Operations' },
   { value: 'GOVERNANCE', label: 'Governance' },
 ];
-
-
 
 const initialForm = {
   name: '',
@@ -86,6 +69,9 @@ export default function ConfigurationActivities() {
   const [fetching, setFetching] = useState(true);
   const [form, setForm] = useState(initialForm);
   const [editActivity, setEditActivity] = useState<Activity | null>(null);
+  const [activeTab, setActiveTab] = useState<'create' | 'catalog'>('create');
+  const [showDescription, setShowDescription] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [filterTech, setFilterTech] = useState<string>('ALL');
   const [viewFilter, setViewFilter] = useState<ViewFilter>('ALL');
@@ -106,7 +92,7 @@ export default function ConfigurationActivities() {
   }, [user]);
 
   const loadTechnologies = async () => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('technologies')
       .select('code, name')
       .order('sort_order');
@@ -114,7 +100,6 @@ export default function ConfigurationActivities() {
     if (data && data.length > 0) {
       setTechnologies(data.map(t => ({ value: t.code, label: t.name })));
     } else {
-      // Fallback if table doesn't exist yet or is empty
       setTechnologies([
         { value: 'POWER_PLATFORM', label: 'Power Platform' },
         { value: 'BACKEND', label: 'Backend API' },
@@ -133,7 +118,7 @@ export default function ConfigurationActivities() {
 
     if (error) {
       console.error('Error loading activities', error);
-      toast.error('Impossibile caricare le attività');
+      toast.error('Impossibile caricare le attivita');
     } else {
       setActivities(data || []);
     }
@@ -183,9 +168,8 @@ export default function ConfigurationActivities() {
     setSaving(true);
     try {
       if (editActivity) {
-        // UPDATE MODE
         if (!canEdit(editActivity)) {
-          throw new Error('Non hai i permessi per modificare questa attività');
+          throw new Error('Non hai i permessi per modificare questa attivita');
         }
 
         const { error } = await supabase
@@ -202,12 +186,11 @@ export default function ConfigurationActivities() {
 
         if (error) throw error;
 
-        toast.success('Attività aggiornata', {
-          description: `${form.name} • ${baseDays.toFixed(2)} giorni`,
+        toast.success('Attivita aggiornata', {
+          description: `${form.name} - ${baseDays.toFixed(2)} giorni`,
         });
         setEditActivity(null);
       } else {
-        // CREATE MODE
         const generatedCode = generateActivityCode(
           form.name,
           form.techCategory,
@@ -228,12 +211,13 @@ export default function ConfigurationActivities() {
 
         if (error) throw error;
 
-        toast.success('Attività creata', {
-          description: `${generatedCode} • ${baseDays.toFixed(2)} giorni`,
+        toast.success('Attivita creata', {
+          description: `${generatedCode} - ${baseDays.toFixed(2)} giorni`,
         });
       }
 
       setForm(initialForm);
+      setActiveTab('catalog');
       await loadActivities();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Riprovare tra qualche secondo';
@@ -247,6 +231,7 @@ export default function ConfigurationActivities() {
 
   const openEdit = (activity: Activity) => {
     setEditActivity(activity);
+    setActiveTab('create');
     setForm({
       name: activity.name,
       description: activity.description || '',
@@ -264,7 +249,8 @@ export default function ConfigurationActivities() {
   };
 
   const handleDuplicate = (activity: Activity) => {
-    setEditActivity(null); // Ensure we are in create mode
+    setEditActivity(null);
+    setActiveTab('create');
     setForm({
       name: activity.name + ' (Copy)',
       description: activity.description || '',
@@ -275,36 +261,8 @@ export default function ConfigurationActivities() {
       baseActivityId: activity.id,
     });
     toast.message('Duplicazione pronta', {
-      description: 'Modifica e salva come nuova attività custom.',
+      description: 'Modifica e salva come nuova attivita custom.',
     });
-  };
-
-  const toggleActive = async (activity: Activity) => {
-    if (!canEdit(activity)) {
-      toast.error('Puoi modificare solo le attività che hai creato');
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('activities')
-        .update({ active: !activity.active })
-        .eq('id', activity.id)
-        .eq('created_by', user?.id || '');
-
-      if (error) {
-        throw new Error(error.message);
-      }
-      toast.success('Stato aggiornato', {
-        description: `${activity.code} è ora ${!activity.active ? 'attiva' : 'disattivata'}`,
-      });
-      await loadActivities();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : undefined;
-      toast.error('Impossibile aggiornare lo stato', {
-        description: message,
-      });
-    }
   };
 
   if (loading) {
@@ -316,174 +274,293 @@ export default function ConfigurationActivities() {
   }
 
   return (
-    <div className="min-h-screen h-screen flex flex-col bg-syntero-gradient overflow-hidden relative">
+    <div className="min-h-screen bg-slate-50 font-sans overflow-hidden relative">
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+      <motion.div
+        animate={{ x: [0, 100, 0], y: [0, -60, 0], scale: [1, 1.08, 1] }}
+        transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
+        className="absolute top-0 -left-24 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+      />
+      <motion.div
+        animate={{ x: [0, -90, 0], y: [0, 60, 0], scale: [1, 1.15, 1] }}
+        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+        className="absolute top-1/3 -right-24 w-[28rem] h-[28rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+      />
+      <motion.div
+        animate={{ x: [0, 60, 0], y: [0, 90, 0], scale: [1, 1.1, 1] }}
+        transition={{ duration: 24, repeat: Infinity, ease: "linear" }}
+        className="absolute bottom-0 left-1/3 w-[24rem] h-[24rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+      />
 
-      {/* Header - flex-shrink-0 */}
-      <div className="flex-shrink-0 relative z-10">
-        <Header />
-      </div>
+      <Header />
 
-      {/* Page Header Section - flex-shrink-0 */}
-      <div className="relative border-b border-white/30 bg-white/60 backdrop-blur-lg flex-shrink-0 z-10">
-        <div className="container mx-auto px-6 py-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-0.5">
-            <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200">
-              <Shield className="h-3 w-3 text-amber-600" />
-              <span className="text-xs font-semibold text-amber-700">Catalogo custom</span>
-            </div>
-            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-500 bg-clip-text text-transparent">
-              Attività personalizzate
-            </h1>
-            <p className="text-xs text-slate-600">
-              Crea o aggiorna attività custom e pesa il loro impatto sui giorni base.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0 shadow-md">
-              <CheckCircle2 className="h-4 w-4 mr-1" />
-              {customActivities.length} custom
-            </Badge>
-            <Button
-              variant="outline"
-              onClick={loadActivities}
-              disabled={fetching}
-              className="bg-white/70 backdrop-blur-sm border-slate-200 hover:bg-white"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${fetching ? 'animate-spin' : ''}`} />
-              Aggiorna
-            </Button>
+      <main className="container mx-auto px-4 pt-6 pb-4 max-w-6xl relative z-10">
+        <div className="grid lg:grid-cols-2 gap-6 items-start">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="space-y-5 relative"
+          >
             <Button
               variant="ghost"
+              size="icon"
               onClick={() => navigate('/configuration')}
-              className="hover:bg-slate-100"
+              className="absolute -left-2 -top-2 h-9 w-9 rounded-full hover:bg-slate-200/70"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Torna a Configurazione
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-          </div>
-        </div>
-      </div>
+            <Badge variant="secondary" className="w-fit px-4 py-1.5 text-sm font-semibold bg-white/80 backdrop-blur-sm border-slate-200 text-slate-700 shadow-sm">
+              <Shield className="w-4 h-4 mr-2 text-amber-600" />
+              Catalogo custom
+            </Badge>
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900">
+              Attivita personalizzate
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">
+                in un colpo d'occhio
+              </span>
+            </h1>
+            <p className="text-lg text-slate-600 max-w-2xl leading-relaxed font-medium">
+              Crea, duplica o consulta le attivita custom e le OOTB in un unico pannello, con tutto visibile in viewport.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/80 border border-slate-200 shadow-sm text-sm font-semibold text-slate-700">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                {customActivities.length} custom
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/80 border border-slate-200 shadow-sm text-sm font-semibold text-slate-700">
+                <Wrench className="w-4 h-4 text-blue-600" />
+                {Array.from(new Set(customActivities.map((a) => a.group))).length} gruppi
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/80 border border-slate-200 shadow-sm text-sm font-semibold text-slate-700">
+                <Sparkles className="w-4 h-4 text-indigo-500" />
+                {customActivities.filter((a) => a.active).length} attive
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button variant="ghost" onClick={() => setActiveTab('catalog')} className="hover:bg-slate-100">
+                Apri catalogo
+              </Button>
+            </div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.12, rotate: [0, 4, -3, 0] }}
+              transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+              className="hidden lg:block absolute -right-10 -top-10 w-56 h-56 rounded-[32px] bg-gradient-to-br from-indigo-400/60 via-blue-400/50 to-purple-500/40 blur-3xl"
+            />
+          </motion.div>
 
-      {/* Main Content */}
-      <div className="relative flex-1 min-h-0 overflow-hidden z-10 flex flex-col">
-        <div className="container mx-auto px-6 py-4 h-full flex-1 min-h-0 flex flex-col gap-4 overflow-y-auto">
-
-          {/* Stats Cards - Fixed height */}
-          <div className="grid lg:grid-cols-3 gap-2 flex-shrink-0">
-            <Card className="bg-white/80 backdrop-blur-md border-slate-200/70 shadow-sm">
-              <CardHeader className="pb-1 py-2">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-purple-600" />
-                  Custom attive
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex items-end justify-between py-2">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            whileHover={{ scale: 1.005 }}
+            className="group relative p-5 rounded-3xl bg-slate-900 text-white shadow-2xl shadow-slate-900/30 overflow-hidden"
+          >
+            <motion.div
+              initial={{ opacity: 0.12, scale: 1 }}
+              animate={{ opacity: [0.12, 0.2, 0.12], scale: [1, 1.03, 1] }}
+              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950"
+            />
+            <div className="absolute -right-8 -top-8 text-indigo-300/20 group-hover:text-indigo-200/30 transition-colors duration-300">
+              <Sparkles className="w-28 h-28" />
+            </div>
+            <div className="relative z-10 space-y-5 h-full">
+              <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-xl font-bold text-slate-900">{customActivities.filter((a) => a.active).length}</div>
-                  <p className="text-xs text-slate-500">su {customActivities.length} totali</p>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[11px] uppercase tracking-[0.2em]">
+                    Workspace
+                  </div>
+                  <h2 className="text-2xl font-bold mt-2 leading-tight">Centro attivita</h2>
+                  <p className="text-sm text-indigo-100/80">
+                    Crea/duplica e consulta il catalogo OOTB + custom senza lasciare la schermata.
+                  </p>
                 </div>
-                <Badge variant="secondary" className="text-emerald-700 bg-emerald-50 border-emerald-200">
-                  Live
+                <Badge className="bg-white/15 text-white border-white/20 text-xs">
+                  {activities.length} totali
                 </Badge>
-              </CardContent>
-            </Card>
+              </div>
 
-            <Card className="bg-white/80 backdrop-blur-md border-slate-200/70 shadow-sm">
-              <CardHeader className="pb-1 py-2">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Wrench className="h-4 w-4 text-blue-600" />
-                  Gruppi coperti
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex items-end justify-between py-2">
-                <div>
-                  <div className="text-xl font-bold text-slate-900">
-                    {Array.from(new Set(customActivities.map((a) => a.group))).length}
-                  </div>
-                  <p className="text-xs text-slate-500">fasi con custom</p>
-                </div>
-                <Badge variant="secondary" className="text-blue-700 bg-blue-50 border-blue-200">
-                  Ready
-                </Badge>
-              </CardContent>
-            </Card>
+              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'create' | 'catalog')} className="w-full h-full">
+                <TabsList className="grid grid-cols-2 bg-white/10 border border-white/15 rounded-2xl p-1">
+                  <TabsTrigger value="create" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-sm font-semibold rounded-xl">
+                    Crea / Modifica
+                  </TabsTrigger>
+                  <TabsTrigger value="catalog" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-sm font-semibold rounded-xl">
+                    Catalogo
+                  </TabsTrigger>
+                </TabsList>
 
-            <Card className="bg-white/80 backdrop-blur-md border-slate-200/70 shadow-sm">
-              <CardHeader className="pb-1 py-2">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-600" />
-                  Impatto calcoli
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="py-2">
-                <div className="text-xs text-slate-700">
-                  Il peso modifica i giorni base. Aggiorna con cautela.
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                <TabsContent value="create" className="mt-3 space-y-3">
+                  <form className="space-y-3" onSubmit={handleSubmit}>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5 col-span-2">
+                        <Label htmlFor="name" className="text-white/90">Nome</Label>
+                        <Input
+                          id="name"
+                          value={form.name}
+                          onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                          placeholder="API hardening & security review"
+                          required
+                          className="bg-white text-slate-900 h-10"
+                        />
+                      </div>
 
-          {/* Main Grid - Fills remaining space */}
-          <div className="grid xl:grid-cols-3 gap-4 flex-1 min-h-0 pb-2">
+                      {showDescription && (
+                        <div className="space-y-1.5 col-span-2">
+                          <Label htmlFor="description" className="text-white/90">Descrizione</Label>
+                          <Textarea
+                            id="description"
+                            value={form.description}
+                            onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                            placeholder="Dettaglia cosa include l'attivita e eventuali vincoli."
+                            rows={2}
+                            className="bg-white text-slate-900"
+                          />
+                        </div>
+                      )}
 
-            {/* Left Col: Create Form - Scrollable */}
-            <Card className="xl:col-span-1 bg-white/85 backdrop-blur-md border-slate-200/70 shadow-xl flex flex-col h-full overflow-hidden">
-              <CardHeader className="py-3 flex-shrink-0 bg-white/50 border-b border-slate-100">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                  {editActivity ? (
-                    <>
-                      <Edit3 className="h-4 w-4 text-blue-600" />
-                      Modifica attività
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="h-4 w-4 text-emerald-600" />
-                      Crea attività custom
-                    </>
-                  )}
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  {editActivity ? 'Modifica i dettagli dell\'attività esistente.' : 'Definisci codice, peso e tecnologia.'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-y-auto p-4">
-                <form className="space-y-3" onSubmit={handleSubmit}>
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nome</Label>
-                    <Input
-                      id="name"
-                      value={form.name}
-                      onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                      placeholder="API hardening & security review"
-                      required
-                    />
-                    {!editActivity && (
-                      <p className="text-xs text-slate-500">Il codice sarà generato automaticamente dal nome e dalla tecnologia.</p>
-                    )}
-                  </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-white/90">Tecnologia</Label>
+                        <Select
+                          value={form.techCategory}
+                          onValueChange={(value) => setForm((prev) => ({ ...prev, techCategory: value }))}
+                        >
+                          <SelectTrigger className="bg-white text-slate-900">
+                            <SelectValue placeholder="Seleziona tecnologia" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {technologies.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-white/90">Fase</Label>
+                        <Select
+                          value={form.group}
+                          onValueChange={(value) => setForm((prev) => ({ ...prev, group: value }))}
+                        >
+                          <SelectTrigger className="bg-white text-slate-900">
+                            <SelectValue placeholder="Seleziona fase" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {groupOptions.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Descrizione</Label>
-                    <Textarea
-                      id="description"
-                      value={form.description}
-                      onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                      placeholder="Dettaglia cosa include l'attivita e eventuali vincoli."
-                      rows={3}
-                    />
-                  </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-white/90">Peso (giorni base)</Label>
+                        <Input
+                          type="number"
+                          step="0.05"
+                          min="0.05"
+                          value={form.baseDays}
+                          onChange={(e) => setForm((prev) => ({ ...prev, baseDays: e.target.value }))}
+                          required
+                          className="text-lg font-semibold h-10 bg-white text-slate-900"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-white/90">Stato</Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={`w-full h-10 justify-between ${form.active ? 'bg-emerald-500/20 border-emerald-200 text-white' : 'bg-white/10 text-white border-white/20'}`}
+                          onClick={() => setForm((prev) => ({ ...prev, active: !prev.active }))}
+                        >
+                          {form.active ? 'Attiva subito' : 'Mantieni bozza'}
+                          <span className="text-xs opacity-80">{form.active ? 'ON' : 'OFF'}</span>
+                        </Button>
+                      </div>
+                    </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label>Tecnologia</Label>
-                      <Select
-                        value={form.techCategory}
-                        onValueChange={(value) => setForm((prev) => ({ ...prev, techCategory: value }))}
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-indigo-100 hover:bg-white/10"
+                        onClick={() => setShowDescription((prev) => !prev)}
                       >
-                        <SelectTrigger>
-                          <SelectValue />
+                        {showDescription ? 'Nascondi descrizione' : 'Aggiungi descrizione'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-indigo-100 hover:bg-white/10"
+                        onClick={() => setShowAdvanced((prev) => !prev)}
+                      >
+                        {showAdvanced ? 'Chiudi extra' : 'Impostazioni avanzate'}
+                      </Button>
+                    </div>
+
+                    {showAdvanced && (
+                      <div className="grid grid-cols-2 gap-3 bg-white/5 border border-white/10 rounded-2xl p-3">
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-white">Codice generato</p>
+                          <p className="text-xs text-indigo-100/80">Viene proposto automaticamente da nome e tecnologia.</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-white">Suggerimento</p>
+                          <p className="text-xs text-indigo-100/80">Imposta il peso base in funzione dello sforzo minimo.</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 pt-1">
+                      {editActivity && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="flex-1 border-white/30 text-white hover:bg-white/10"
+                          onClick={handleCancelEdit}
+                        >
+                          Annulla
+                        </Button>
+                      )}
+                      <Button
+                        type="submit"
+                        className={`flex-1 ${editActivity ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600'} border-0 shadow-md`}
+                        disabled={saving}
+                      >
+                        {saving ? 'Salvataggio...' : editActivity ? 'Salva modifica' : 'Crea attivita'}
+                      </Button>
+                    </div>
+                  </form>
+                </TabsContent>
+
+                <TabsContent value="catalog" className="mt-3 space-y-2">
+                  <div className="flex flex-wrap gap-2 items-center justify-between">
+                    <div className="flex gap-1 bg-white/10 rounded-full p-1 border border-white/15">
+                      <Button size="sm" variant={viewFilter === 'ALL' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900" onClick={() => setViewFilter('ALL')}>
+                        Tutte
+                      </Button>
+                      <Button size="sm" variant={viewFilter === 'OOTB' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900" onClick={() => setViewFilter('OOTB')}>
+                        Di sistema
+                      </Button>
+                      <Button size="sm" variant={viewFilter === 'CUSTOM' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900" onClick={() => setViewFilter('CUSTOM')}>
+                        Custom
+                      </Button>
+                    </div>
+
+                    <div className="flex gap-2 items-center flex-wrap">
+                      <Select value={filterTech} onValueChange={setFilterTech}>
+                        <SelectTrigger className="w-[170px] h-8 bg-white text-slate-900 text-sm">
+                          <SelectValue placeholder="Tecnologia" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="ALL">Tutte le tecnologie</SelectItem>
                           {technologies.map((opt) => (
                             <SelectItem key={opt.value} value={opt.value}>
                               {opt.label}
@@ -491,183 +568,86 @@ export default function ConfigurationActivities() {
                           ))}
                         </SelectContent>
                       </Select>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-8 gap-2 bg-white/10 text-white border-white/20 hover:bg-white/20 text-xs px-3">
+                            <Settings2 className="h-4 w-4" />
+                            Colonne
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[200px]">
+                          <DropdownMenuLabel>Mostra colonne</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuCheckboxItem
+                            checked={visibleColumns.codice}
+                            onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, codice: checked }))}
+                          >
+                            Codice
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={visibleColumns.nome}
+                            onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, nome: checked }))}
+                          >
+                            Nome
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={visibleColumns.tecnologia}
+                            onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, tecnologia: checked }))}
+                          >
+                            Tecnologia
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={visibleColumns.fase}
+                            onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, fase: checked }))}
+                          >
+                            Fase
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={visibleColumns.origine}
+                            onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, origine: checked }))}
+                          >
+                            Origine
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={visibleColumns.peso}
+                            onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, peso: checked }))}
+                          >
+                            Peso
+                          </DropdownMenuCheckboxItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      <Badge variant="secondary" className="bg-white/15 text-white border-white/20 text-xs px-2 py-1">
+                        {activityRows.length} risultati
+                      </Badge>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Fase</Label>
-                      <Select
-                        value={form.group}
-                        onValueChange={(value) => setForm((prev) => ({ ...prev, group: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {groupOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-base font-semibold text-slate-900">⚖️ Peso (giorni base)</Label>
-                    <Input
-                      type="number"
-                      step="0.05"
-                      min="0.05"
-                      value={form.baseDays}
-                      onChange={(e) => setForm((prev) => ({ ...prev, baseDays: e.target.value }))}
-                      required
-                      className="text-lg font-semibold h-12"
-                    />
-                    <p className="text-xs text-slate-600 bg-amber-50 border border-amber-200 rounded-md p-2">
-                      💡 <strong>Importante:</strong> Questo valore determina l'impatto dell'attività sui calcoli di stima. Usato dal motore deterministico come base_days.
-                    </p>
-                  </div>
-
-                  <div className="flex gap-2">
-                    {editActivity && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="flex-1"
-                        onClick={handleCancelEdit}
-                      >
-                        Annulla
-                      </Button>
-                    )}
-                    <Button
-                      type="submit"
-                      className={`flex-1 ${editActivity ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700'}`}
-                      disabled={saving}
-                    >
-                      {saving ? 'Salvataggio...' : editActivity ? 'Salva modifica' : 'Crea attività'}
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-
-            {/* Right Col: Catalog Table - Scrollable */}
-            <div className="xl:col-span-2 h-full flex flex-col overflow-hidden">
-              <Card className="bg-white/85 backdrop-blur-md border-slate-200/70 shadow-xl flex flex-col h-full overflow-hidden">
-                <CardHeader className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between py-3 flex-shrink-0 bg-white/50 border-b border-slate-100">
-                  <div>
-                    <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                      <Wrench className="h-4 w-4 text-slate-700" />
-                      Catalogo attività (OOTB + custom)
-                    </CardTitle>
-                    <CardDescription className="text-xs">Filtra, duplica le OOTB o modifica le tue custom.</CardDescription>
-                  </div>
-                  <div className="flex gap-2 flex-wrap items-center">
-                    <div className="flex gap-1 bg-slate-100 rounded-full p-1">
-                      <Button size="sm" variant={viewFilter === 'ALL' ? 'default' : 'ghost'} className="h-7 px-3" onClick={() => setViewFilter('ALL')}>
-                        Tutte
-                      </Button>
-                      <Button size="sm" variant={viewFilter === 'OOTB' ? 'default' : 'ghost'} className="h-7 px-3" onClick={() => setViewFilter('OOTB')}>
-                        Di sistema
-                      </Button>
-                      <Button size="sm" variant={viewFilter === 'CUSTOM' ? 'default' : 'ghost'} className="h-7 px-3" onClick={() => setViewFilter('CUSTOM')}>
-                        Custom
-                      </Button>
-                    </div>
-
-                    <Select value={filterTech} onValueChange={setFilterTech}>
-                      <SelectTrigger className="w-[180px] h-8">
-                        <SelectValue placeholder="Tecnologia" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ALL">Tutte le tecnologie</SelectItem>
-                        {technologies.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8 gap-2">
-                          <Settings2 className="h-4 w-4" />
-                          Colonne
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-[200px]">
-                        <DropdownMenuLabel>Mostra colonne</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuCheckboxItem
-                          checked={visibleColumns.codice}
-                          onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, codice: checked }))}
-                        >
-                          Codice
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem
-                          checked={visibleColumns.nome}
-                          onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, nome: checked }))}
-                        >
-                          Nome
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem
-                          checked={visibleColumns.tecnologia}
-                          onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, tecnologia: checked }))}
-                        >
-                          Tecnologia
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem
-                          checked={visibleColumns.fase}
-                          onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, fase: checked }))}
-                        >
-                          Fase
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem
-                          checked={visibleColumns.origine}
-                          onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, origine: checked }))}
-                        >
-                          Origine
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem
-                          checked={visibleColumns.peso}
-                          onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, peso: checked }))}
-                        >
-                          Peso
-                        </DropdownMenuCheckboxItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    <Badge variant="secondary" className="bg-slate-100 text-slate-700 border-slate-200">
-                      {activityRows.length} risultati
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-0 flex-1 overflow-hidden flex flex-col">
-                  <div className="flex-1 overflow-auto">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 max-h-[38vh] overflow-auto">
                     <Table>
-                      <TableHeader className="sticky top-0 bg-white z-10 shadow-sm">
-                        <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
-                          {visibleColumns.codice && <TableHead>Codice</TableHead>}
-                          {visibleColumns.nome && <TableHead>Nome</TableHead>}
-                          {visibleColumns.tecnologia && <TableHead className="hidden lg:table-cell">Tecnologia</TableHead>}
-                          {visibleColumns.fase && <TableHead className="hidden lg:table-cell">Fase</TableHead>}
-                          {visibleColumns.origine && <TableHead>Origine</TableHead>}
-                          {visibleColumns.peso && <TableHead className="font-semibold">Peso</TableHead>}
-                          <TableHead className="text-right">Azioni</TableHead>
+                      <TableHeader className="sticky top-0 bg-white/10 backdrop-blur z-10">
+                        <TableRow className="hover:bg-white/5">
+                          {visibleColumns.codice && <TableHead className="text-white">Codice</TableHead>}
+                          {visibleColumns.nome && <TableHead className="text-white">Nome</TableHead>}
+                          {visibleColumns.tecnologia && <TableHead className="hidden lg:table-cell text-white">Tecnologia</TableHead>}
+                          {visibleColumns.fase && <TableHead className="hidden lg:table-cell text-white">Fase</TableHead>}
+                          {visibleColumns.origine && <TableHead className="text-white">Origine</TableHead>}
+                          {visibleColumns.peso && <TableHead className="text-white font-semibold">Peso</TableHead>}
+                          <TableHead className="text-right text-white">Azioni</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {fetching ? (
                           <TableRow>
-                            <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length + 1} className="text-center py-8 text-slate-500">
+                            <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length + 1} className="text-center py-8 text-indigo-100/80">
                               Caricamento...
                             </TableCell>
                           </TableRow>
                         ) : activityRows.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length + 1} className="text-center py-8 text-slate-500">
-                              Nessuna attività trovata
+                            <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length + 1} className="text-center py-8 text-indigo-100/80">
+                              Nessuna attivita trovata
                             </TableCell>
                           </TableRow>
                         ) : (
@@ -683,34 +663,34 @@ export default function ConfigurationActivities() {
                                 : 'Custom'
                               : 'OOTB';
                             return (
-                              <TableRow key={activity.id}>
+                              <TableRow key={activity.id} className="hover:bg-white/5">
                                 {visibleColumns.codice && (
-                                  <TableCell className="font-semibold text-slate-700">{activity.code}</TableCell>
+                                  <TableCell className="font-semibold text-white/90">{activity.code}</TableCell>
                                 )}
                                 {visibleColumns.nome && (
                                   <TableCell className="max-w-[240px]">
-                                    <div className="text-slate-900 font-medium truncate">{activity.name}</div>
-                                    <div className="text-xs text-slate-500 truncate">{activity.description}</div>
+                                    <div className="text-white font-medium truncate">{activity.name}</div>
+                                    <div className="text-xs text-indigo-100/80 truncate">{activity.description}</div>
                                     {baseRef && (
-                                      <div className="text-[10px] text-slate-500 mt-0.5">
+                                      <div className="text-[10px] text-indigo-100/70 mt-0.5">
                                         Deriva da {baseRef.code}
                                       </div>
                                     )}
                                   </TableCell>
                                 )}
                                 {visibleColumns.tecnologia && (
-                                  <TableCell className="hidden lg:table-cell text-xs text-slate-600">
+                                  <TableCell className="hidden lg:table-cell text-xs text-indigo-100/80">
                                     {technologies.find((t) => t.value === activity.tech_category)?.label || activity.tech_category}
                                   </TableCell>
                                 )}
                                 {visibleColumns.fase && (
-                                  <TableCell className="hidden lg:table-cell text-xs text-slate-600">
+                                  <TableCell className="hidden lg:table-cell text-xs text-indigo-100/80">
                                     {groupOptions.find((g) => g.value === activity.group)?.label || activity.group}
                                   </TableCell>
                                 )}
                                 {visibleColumns.origine && (
                                   <TableCell>
-                                    <Badge variant={isCustom ? 'default' : 'outline'} className={isCustom ? 'bg-amber-100 text-amber-800 border-amber-200' : ''}>
+                                    <Badge variant={isCustom ? 'default' : 'outline'} className={isCustom ? 'bg-amber-200/90 text-amber-900 border-amber-200' : 'border-white/30 text-white'}>
                                       {originLabel}
                                     </Badge>
                                   </TableCell>
@@ -718,8 +698,8 @@ export default function ConfigurationActivities() {
                                 {visibleColumns.peso && (
                                   <TableCell>
                                     <div className="flex items-center gap-1.5">
-                                      <span className="text-2xl font-bold text-slate-900">{activity.base_days.toFixed(1)}</span>
-                                      <span className="text-xs text-slate-500 font-medium">giorni</span>
+                                      <span className="text-2xl font-bold text-white">{activity.base_days.toFixed(1)}</span>
+                                      <span className="text-xs text-indigo-100/80 font-medium">giorni</span>
                                     </div>
                                   </TableCell>
                                 )}
@@ -730,7 +710,7 @@ export default function ConfigurationActivities() {
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                          className="h-8 w-8 text-blue-200 hover:text-white hover:bg-white/10"
                                           onClick={() => openEdit(activity)}
                                           disabled={!editable}
                                           title="Modifica"
@@ -740,7 +720,7 @@ export default function ConfigurationActivities() {
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          className="h-8 w-8 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50"
+                                          className="h-8 w-8 text-indigo-100 hover:text-emerald-200 hover:bg-white/10"
                                           onClick={() => handleDuplicate(activity)}
                                           title="Duplica in custom"
                                         >
@@ -748,7 +728,7 @@ export default function ConfigurationActivities() {
                                         </Button>
                                       </div>
                                       {!editable && (
-                                        <div className="text-[10px] text-slate-500 mt-1">Creato da altro utente</div>
+                                        <div className="text-[10px] text-indigo-100/70 mt-1">Creato da altro utente</div>
                                       )}
                                     </>
                                   ) : (
@@ -756,7 +736,7 @@ export default function ConfigurationActivities() {
                                       <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="h-8 w-8 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50"
+                                        className="h-8 w-8 text-indigo-100 hover:text-emerald-200 hover:bg-white/10"
                                         onClick={() => handleDuplicate(activity)}
                                         title="Duplica in custom"
                                       >
@@ -772,14 +752,12 @@ export default function ConfigurationActivities() {
                       </TableBody>
                     </Table>
                   </div>
-                </CardContent>
-              </Card>
+                </TabsContent>
+              </Tabs>
             </div>
-          </div>
+          </motion.div>
         </div>
-      </div>
-
-
-    </div >
+      </main>
+    </div>
   );
 }

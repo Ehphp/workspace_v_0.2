@@ -52,6 +52,7 @@ import {
     CheckCircle2
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { motion } from 'framer-motion';
 
 interface PresetView extends TechnologyPreset {
     defaultActivities: Activity[];
@@ -390,12 +391,29 @@ export default function ConfigurationPresets() {
     };
 
     return (
-        <div className="min-h-screen h-screen flex flex-col bg-syntero-gradient overflow-hidden">
-            <div className="flex-shrink-0">
+        <div className="min-h-screen bg-slate-50 font-sans overflow-hidden relative">
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+            <motion.div
+                animate={{ x: [0, 100, 0], y: [0, -60, 0], scale: [1, 1.08, 1] }}
+                transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
+                className="absolute top-0 -left-24 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+            />
+            <motion.div
+                animate={{ x: [0, -90, 0], y: [0, 60, 0], scale: [1, 1.15, 1] }}
+                transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+                className="absolute top-1/3 -right-24 w-[28rem] h-[28rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+            />
+            <motion.div
+                animate={{ x: [0, 60, 0], y: [0, 90, 0], scale: [1, 1.1, 1] }}
+                transition={{ duration: 24, repeat: Infinity, ease: "linear" }}
+                className="absolute bottom-0 left-1/3 w-[24rem] h-[24rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+            />
+
+            <div className="flex-shrink-0 relative z-10">
                 <Header />
             </div>
 
-            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col relative z-10">
                 <div className="container mx-auto px-6 py-4 h-full flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto">
 
                     {/* Header */}
@@ -430,7 +448,7 @@ export default function ConfigurationPresets() {
 
                     {/* Stats */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-shrink-0">
-                        <Card className="bg-white/80 border-slate-200">
+                        <Card className="bg-white/80 backdrop-blur-md border-white/60 shadow-md hover:shadow-xl transition-shadow">
                             <CardHeader className="pb-2 py-2">
                                 <CardTitle className="text-xs font-semibold flex items-center gap-2">
                                     <Layers className="h-4 w-4 text-blue-600" />
@@ -450,8 +468,8 @@ export default function ConfigurationPresets() {
                     </div>
 
                     {/* Main List */}
-                    <Card className="bg-white/85 border-slate-200 shadow-sm flex-1 overflow-hidden flex flex-col min-h-0">
-                        <CardHeader className="flex-shrink-0 py-3 bg-white/50 border-b border-slate-100 flex flex-row items-center justify-between">
+                    <Card className="bg-white/85 backdrop-blur-md border-white/60 shadow-xl flex-1 overflow-hidden flex flex-col min-h-0">
+                        <CardHeader className="flex-shrink-0 py-3 bg-white/60 border-b border-white/70 flex flex-row items-center justify-between">
                             <div>
                                 <CardTitle className="text-base font-semibold text-slate-900">Elenco Preset</CardTitle>
                                 <CardDescription className="text-xs text-slate-600">
@@ -459,7 +477,7 @@ export default function ConfigurationPresets() {
                                 </CardDescription>
                             </div>
                             <div className="flex gap-2">
-                                <div className="flex gap-1 bg-slate-100 rounded-full p-1">
+                                <div className="flex gap-1 bg-slate-100/90 rounded-full p-1 shadow-inner">
                                     <Button size="sm" variant={viewFilter === 'ALL' ? 'default' : 'ghost'} className="h-7 px-3" onClick={() => setViewFilter('ALL')}>Tutti</Button>
                                     <Button size="sm" variant={viewFilter === 'OOTB' ? 'default' : 'ghost'} className="h-7 px-3" onClick={() => setViewFilter('OOTB')}>Sistema</Button>
                                     <Button size="sm" variant={viewFilter === 'CUSTOM' ? 'default' : 'ghost'} className="h-7 px-3" onClick={() => setViewFilter('CUSTOM')}>Custom</Button>
@@ -469,8 +487,8 @@ export default function ConfigurationPresets() {
                         <CardContent className="overflow-hidden flex-1 p-0 flex flex-col">
                             <div className="flex-1 overflow-auto">
                                 <Table>
-                                    <TableHeader className="sticky top-0 bg-white z-10 shadow-sm">
-                                        <TableRow className="hover:bg-white">
+                                    <TableHeader className="sticky top-0 bg-white/85 backdrop-blur z-10 shadow-sm">
+                                        <TableRow className="hover:bg-white/90">
                                             <TableHead>Nome</TableHead>
                                             <TableHead>Categoria</TableHead>
                                             <TableHead>Attività</TableHead>
