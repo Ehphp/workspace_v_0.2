@@ -38,7 +38,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const groupOptions = [
   { value: 'ANALYSIS', label: 'Analysis' },
@@ -295,67 +295,78 @@ export default function ConfigurationActivities() {
       <Header />
 
       <main className="container mx-auto px-4 pt-6 pb-4 max-w-6xl relative z-10">
-        <div className="grid lg:grid-cols-2 gap-6 items-start">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="space-y-5 relative"
-          >
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate('/configuration')}
-              className="absolute -left-2 -top-2 h-9 w-9 rounded-full hover:bg-slate-200/70"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <Badge variant="secondary" className="w-fit px-4 py-1.5 text-sm font-semibold bg-white/80 backdrop-blur-sm border-slate-200 text-slate-700 shadow-sm">
-              <Shield className="w-4 h-4 mr-2 text-amber-600" />
-              Catalogo custom
-            </Badge>
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900">
-              Attivita personalizzate
-              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">
-                in un colpo d'occhio
-              </span>
-            </h1>
-            <p className="text-lg text-slate-600 max-w-2xl leading-relaxed font-medium">
-              Crea, duplica o consulta le attivita custom e le OOTB in un unico pannello, con tutto visibile in viewport.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/80 border border-slate-200 shadow-sm text-sm font-semibold text-slate-700">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                {customActivities.length} custom
-              </div>
-              <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/80 border border-slate-200 shadow-sm text-sm font-semibold text-slate-700">
-                <Wrench className="w-4 h-4 text-blue-600" />
-                {Array.from(new Set(customActivities.map((a) => a.group))).length} gruppi
-              </div>
-              <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/80 border border-slate-200 shadow-sm text-sm font-semibold text-slate-700">
-                <Sparkles className="w-4 h-4 text-indigo-500" />
-                {customActivities.filter((a) => a.active).length} attive
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="ghost" onClick={() => setActiveTab('catalog')} className="hover:bg-slate-100">
-                Apri catalogo
-              </Button>
-            </div>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.12, rotate: [0, 4, -3, 0] }}
-              transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
-              className="hidden lg:block absolute -right-10 -top-10 w-56 h-56 rounded-[32px] bg-gradient-to-br from-indigo-400/60 via-blue-400/50 to-purple-500/40 blur-3xl"
-            />
-          </motion.div>
+        <div className={`flex flex-col lg:flex-row gap-6 items-start ${activeTab === 'catalog' ? 'lg:justify-center' : ''}`}>
+          <AnimatePresence initial={false}>
+            {activeTab !== 'catalog' && (
+              <motion.div
+                key="hero"
+                initial={{ opacity: 0, x: -30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -120 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+                className="space-y-5 relative lg:flex-1"
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate('/configuration')}
+                  className="absolute -left-2 -top-2 h-9 w-9 rounded-full hover:bg-slate-200/70"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <Badge variant="secondary" className="w-fit px-4 py-1.5 text-sm font-semibold bg-white/80 backdrop-blur-sm border-slate-200 text-slate-700 shadow-sm">
+                  <Shield className="w-4 h-4 mr-2 text-amber-600" />
+                  Catalogo custom
+                </Badge>
+                <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900">
+                  Attivita personalizzate
+                  <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">
+                    in un colpo d'occhio
+                  </span>
+                </h1>
+                <p className="text-lg text-slate-600 max-w-2xl leading-relaxed font-medium">
+                  Crea, duplica o consulta le attivita custom e le OOTB in un unico pannello, con tutto visibile in viewport.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/80 border border-slate-200 shadow-sm text-sm font-semibold text-slate-700">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    {customActivities.length} custom
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/80 border border-slate-200 shadow-sm text-sm font-semibold text-slate-700">
+                    <Wrench className="w-4 h-4 text-blue-600" />
+                    {Array.from(new Set(customActivities.map((a) => a.group))).length} gruppi
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/80 border border-slate-200 shadow-sm text-sm font-semibold text-slate-700">
+                    <Sparkles className="w-4 h-4 text-indigo-500" />
+                    {customActivities.filter((a) => a.active).length} attive
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="ghost" onClick={() => setActiveTab('catalog')} className="hover:bg-slate-100">
+                    Apri catalogo
+                  </Button>
+                </div>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 0.12, rotate: [0, 4, -3, 0] }}
+                  transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+                  className="hidden lg:block absolute -right-10 -top-10 w-56 h-56 rounded-[32px] bg-gradient-to-br from-indigo-400/60 via-blue-400/50 to-purple-500/40 blur-3xl"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            whileHover={{ scale: 1.005 }}
-            className="group relative p-5 rounded-3xl bg-slate-900 text-white shadow-2xl shadow-slate-900/30 overflow-hidden"
+            initial={false}
+            animate={{
+              opacity: 1,
+              y: 0,
+              scale: activeTab === 'catalog' ? 1 : 0.88,
+              alignSelf: activeTab === 'catalog' ? 'center' : 'stretch'
+            }}
+            transition={{ duration: 0.35, ease: 'easeInOut' }}
+            whileHover={{ scale: activeTab === 'catalog' ? 1.002 : 0.89 }}
+            className={`group relative p-5 rounded-3xl bg-slate-900 text-white shadow-2xl shadow-slate-900/30 overflow-hidden w-full max-w-[1300px] ${activeTab !== 'catalog' ? 'lg:flex-1' : ''}`}
           >
             <motion.div
               initial={{ opacity: 0.12, scale: 1 }}
@@ -624,17 +635,20 @@ export default function ConfigurationActivities() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-white/5 max-h-[38vh] overflow-auto">
-                    <Table>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 max-h-[52vh] overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] min-w-0">
+                    <style>
+                      {`.rounded-2xl::-webkit-scrollbar { display: none; }`}
+                    </style>
+                    <Table className="table-fixed w-full">
                       <TableHeader className="sticky top-0 bg-white/10 backdrop-blur z-10">
                         <TableRow className="hover:bg-white/5">
-                          {visibleColumns.codice && <TableHead className="text-white">Codice</TableHead>}
-                          {visibleColumns.nome && <TableHead className="text-white">Nome</TableHead>}
-                          {visibleColumns.tecnologia && <TableHead className="hidden lg:table-cell text-white">Tecnologia</TableHead>}
-                          {visibleColumns.fase && <TableHead className="hidden lg:table-cell text-white">Fase</TableHead>}
-                          {visibleColumns.origine && <TableHead className="text-white">Origine</TableHead>}
-                          {visibleColumns.peso && <TableHead className="text-white font-semibold">Peso</TableHead>}
-                          <TableHead className="text-right text-white">Azioni</TableHead>
+                          {visibleColumns.codice && <TableHead className="text-white w-[10%]">Codice</TableHead>}
+                          {visibleColumns.nome && <TableHead className="text-white w-[34%]">Nome</TableHead>}
+                          {visibleColumns.tecnologia && <TableHead className="hidden lg:table-cell text-white w-[16%]">Tecnologia</TableHead>}
+                          {visibleColumns.fase && <TableHead className="hidden lg:table-cell text-white w-[12%]">Fase</TableHead>}
+                          {visibleColumns.origine && <TableHead className="text-white w-[10%]">Origine</TableHead>}
+                          {visibleColumns.peso && <TableHead className="text-white font-semibold w-[10%]">Peso</TableHead>}
+                          <TableHead className="text-right text-white w-[8%]">Azioni</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -664,46 +678,46 @@ export default function ConfigurationActivities() {
                               : 'OOTB';
                             return (
                               <TableRow key={activity.id} className="hover:bg-white/5">
-                                {visibleColumns.codice && (
-                                  <TableCell className="font-semibold text-white/90">{activity.code}</TableCell>
-                                )}
-                                {visibleColumns.nome && (
-                                  <TableCell className="max-w-[240px]">
-                                    <div className="text-white font-medium truncate">{activity.name}</div>
-                                    <div className="text-xs text-indigo-100/80 truncate">{activity.description}</div>
-                                    {baseRef && (
-                                      <div className="text-[10px] text-indigo-100/70 mt-0.5">
-                                        Deriva da {baseRef.code}
+                                  {visibleColumns.codice && (
+                                    <TableCell className="font-semibold text-white/90 truncate">{activity.code}</TableCell>
+                                  )}
+                                  {visibleColumns.nome && (
+                                    <TableCell className="max-w-[360px] whitespace-normal break-words">
+                                      <div className="text-white font-medium">{activity.name}</div>
+                                      <div className="text-xs text-indigo-100/80">{activity.description}</div>
+                                      {baseRef && (
+                                        <div className="text-[10px] text-indigo-100/70 mt-0.5">
+                                          Deriva da {baseRef.code}
+                                        </div>
+                                      )}
+                                    </TableCell>
+                                  )}
+                                  {visibleColumns.tecnologia && (
+                                    <TableCell className="hidden lg:table-cell text-xs text-indigo-100/80 truncate">
+                                      {technologies.find((t) => t.value === activity.tech_category)?.label || activity.tech_category}
+                                    </TableCell>
+                                  )}
+                                  {visibleColumns.fase && (
+                                    <TableCell className="hidden lg:table-cell text-xs text-indigo-100/80 truncate">
+                                      {groupOptions.find((g) => g.value === activity.group)?.label || activity.group}
+                                    </TableCell>
+                                  )}
+                                  {visibleColumns.origine && (
+                                    <TableCell className="truncate">
+                                      <Badge variant={isCustom ? 'default' : 'outline'} className={isCustom ? 'bg-amber-200/90 text-amber-900 border-amber-200' : 'border-white/30 text-white'}>
+                                        {originLabel}
+                                      </Badge>
+                                    </TableCell>
+                                  )}
+                                  {visibleColumns.peso && (
+                                    <TableCell className="truncate">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-2xl font-bold text-white">{activity.base_days.toFixed(1)}</span>
+                                        <span className="text-xs text-indigo-100/80 font-medium">giorni</span>
                                       </div>
-                                    )}
-                                  </TableCell>
-                                )}
-                                {visibleColumns.tecnologia && (
-                                  <TableCell className="hidden lg:table-cell text-xs text-indigo-100/80">
-                                    {technologies.find((t) => t.value === activity.tech_category)?.label || activity.tech_category}
-                                  </TableCell>
-                                )}
-                                {visibleColumns.fase && (
-                                  <TableCell className="hidden lg:table-cell text-xs text-indigo-100/80">
-                                    {groupOptions.find((g) => g.value === activity.group)?.label || activity.group}
-                                  </TableCell>
-                                )}
-                                {visibleColumns.origine && (
-                                  <TableCell>
-                                    <Badge variant={isCustom ? 'default' : 'outline'} className={isCustom ? 'bg-amber-200/90 text-amber-900 border-amber-200' : 'border-white/30 text-white'}>
-                                      {originLabel}
-                                    </Badge>
-                                  </TableCell>
-                                )}
-                                {visibleColumns.peso && (
-                                  <TableCell>
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-2xl font-bold text-white">{activity.base_days.toFixed(1)}</span>
-                                      <span className="text-xs text-indigo-100/80 font-medium">giorni</span>
-                                    </div>
-                                  </TableCell>
-                                )}
-                                <TableCell className="text-right">
+                                    </TableCell>
+                                  )}
+                                  <TableCell className="text-right truncate">
                                   {isCustom ? (
                                     <>
                                       <div className="flex justify-end gap-1">
