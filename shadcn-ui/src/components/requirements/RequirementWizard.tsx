@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useWizardState } from '@/hooks/useWizardState';
-import { WizardStep1 } from '@/components/wizard/WizardStep1';
-import { WizardStep2 } from '@/components/wizard/WizardStep2';
-import { WizardStep3 } from '@/components/wizard/WizardStep3';
-import { WizardStep4 } from '@/components/wizard/WizardStep4';
-import { WizardStep5 } from '@/components/wizard/WizardStep5';
+import { WizardStep1 } from './wizard/WizardStep1';
+import { WizardStep2 } from './wizard/WizardStep2';
+import { WizardStep3 } from './wizard/WizardStep3';
+import { WizardStep4 } from './wizard/WizardStep4';
+import { WizardStep5 } from './wizard/WizardStep5';
 import { createRequirement, saveEstimation } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
