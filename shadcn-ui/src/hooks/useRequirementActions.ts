@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { toast } from 'sonner';
+import { showApiError, showSuccess } from '@/lib/toastHelpers';
 import type { Requirement } from '@/types/database';
 
 interface UseRequirementActionsProps {
@@ -26,40 +26,26 @@ export function useRequirementActions({ requirement, user, refetchRequirement }:
 
     const isSavingSection = useCallback((section: EditSection) => savingSections.has(section), [savingSections]);
 
-    const parseError = (err: unknown) => {
-        const message =
-            err instanceof Error
-                ? err.message
-                : (err && typeof err === 'object' && 'message' in err && typeof (err as { message?: unknown }).message === 'string'
-                    ? (err as { message: string }).message
-                    : 'An unexpected error occurred');
-        const code =
-            err && typeof err === 'object' && 'code' in err && typeof (err as { code?: unknown }).code === 'string'
-                ? (err as { code: string }).code
-                : undefined;
-        return { message, code };
-    };
-
     const saveHeader = useCallback(async (data: Pick<EditedData, 'title' | 'priority' | 'state'>, stopEditing: () => void) => {
         if (!requirement || !user || isSavingSection('header')) return;
 
         // Validation
         if (!data.title.trim()) {
-            toast.error('Validation failed', { description: 'Title is required' });
+            showApiError('Title is required', 'validazione');
             return;
         }
         if (data.title.length > 200) {
-            toast.error('Validation failed', { description: 'Title is too long (max 200 characters)' });
+            showApiError('Title is too long (max 200 characters)', 'validazione');
             return;
         }
         const validStates = ['PROPOSED', 'SELECTED', 'SCHEDULED', 'IN_PROGRESS', 'DONE', 'REJECTED'];
         if (!validStates.includes(data.state)) {
-            toast.error('Validation failed', { description: 'Invalid state selected' });
+            showApiError('Invalid state selected', 'validazione');
             return;
         }
         const validPriorities = ['LOW', 'MEDIUM', 'HIGH'];
         if (!validPriorities.includes(data.priority)) {
-            toast.error('Validation failed', { description: 'Invalid priority selected' });
+            showApiError('Invalid priority selected', 'validazione');
             return;
         }
 
@@ -80,17 +66,12 @@ export function useRequirementActions({ requirement, user, refetchRequirement }:
 
             if (error) throw error;
 
-            toast.success('Header updated successfully');
+            showSuccess('Header updated successfully');
             stopEditing();
             await refetchRequirement();
         } catch (error) {
             console.error('Error updating header:', error);
-            const { message, code } = parseError(error);
-            let errorMessage = message;
-            if (code === '23505') errorMessage = 'A requirement with this title already exists';
-            else if (message.includes('JWT')) errorMessage = 'Session expired. Please log in again';
-
-            toast.error('Failed to update header', { description: errorMessage });
+            showApiError(error, 'aggiornamento header');
         } finally {
             setSavingSections(prev => {
                 const next = new Set(prev);
@@ -104,7 +85,7 @@ export function useRequirementActions({ requirement, user, refetchRequirement }:
         if (!requirement || !user || isSavingSection('description')) return;
 
         if (description && description.length > 5000) {
-            toast.error('Validation failed', { description: 'Description is too long (max 5000 characters)' });
+            showApiError('Description is too long (max 5000 characters)', 'validazione');
             return;
         }
 
@@ -123,13 +104,12 @@ export function useRequirementActions({ requirement, user, refetchRequirement }:
 
             if (error) throw error;
 
-            toast.success('Description updated successfully');
+            showSuccess('Description updated successfully');
             stopEditing();
             await refetchRequirement();
         } catch (error) {
             console.error('Error updating description:', error);
-            const { message } = parseError(error);
-            toast.error('Failed to update description', { description: message });
+            showApiError(error, 'aggiornamento descrizione');
         } finally {
             setSavingSections(prev => {
                 const next = new Set(prev);
@@ -159,17 +139,12 @@ export function useRequirementActions({ requirement, user, refetchRequirement }:
 
             if (error) throw error;
 
-            toast.success('Details updated successfully');
+            showSuccess('Details updated successfully');
             stopEditing();
             await refetchRequirement();
         } catch (error) {
             console.error('Error updating details:', error);
-            const { message, code } = parseError(error);
-            let errorMessage = message;
-            if (code === '23503') errorMessage = 'Invalid technology preset or foreign key constraint';
-            else if (message.includes('JWT')) errorMessage = 'Session expired. Please log in again';
-
-            toast.error('Failed to update details', { description: errorMessage });
+            showApiError(error, 'aggiornamento dettagli');
         } finally {
             setSavingSections(prev => {
                 const next = new Set(prev);

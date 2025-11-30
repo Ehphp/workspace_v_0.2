@@ -15,6 +15,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
+import { generateActivityCode } from '@/lib/codeGeneration';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import type { Activity } from '@/types/database';
@@ -62,20 +63,7 @@ const groupOptions = [
   { value: 'GOVERNANCE', label: 'Governance' },
 ];
 
-const generateActivityCode = (name: string, techCategory: string): string => {
-  // Simple heuristic for prefix: first 2 chars of each word in category, or first 3 chars
-  const techPrefix = techCategory.split('_').map(w => w[0]).join('').substring(0, 3).toUpperCase();
 
-  const sanitized = name
-    .toUpperCase()
-    .replace(/[^A-Z0-9\s]/g, '')
-    .split(/\s+/)
-    .filter(word => word.length > 2)
-    .slice(0, 3)
-    .join('_');
-
-  return `CSTM_${techPrefix}_${sanitized}`;
-};
 
 const initialForm = {
   name: '',
@@ -220,7 +208,11 @@ export default function ConfigurationActivities() {
         setEditActivity(null);
       } else {
         // CREATE MODE
-        const generatedCode = generateActivityCode(form.name, form.techCategory);
+        const generatedCode = generateActivityCode(
+          form.name,
+          form.techCategory,
+          activities.map(a => a.code)
+        );
         const { error } = await supabase.from('activities').insert({
           code: generatedCode,
           name: form.name,
