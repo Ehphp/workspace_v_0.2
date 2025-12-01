@@ -274,6 +274,7 @@ export default function ConfigurationActivities() {
   }
 
   return (
+
     <div className="min-h-screen bg-slate-50 font-sans overflow-hidden relative">
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
       <motion.div
@@ -294,8 +295,8 @@ export default function ConfigurationActivities() {
 
       <Header />
 
-      <main className="container mx-auto px-4 pt-6 pb-4 max-w-6xl relative z-10">
-        <div className={`flex flex-col lg:flex-row gap-6 items-start ${activeTab === 'catalog' ? 'lg:justify-center' : ''}`}>
+      <main className="container mx-auto px-4 pt-4 pb-4 max-w-7xl relative z-10 h-[calc(100vh-64px)] flex flex-col">
+        <div className={`flex flex-col lg:flex-row gap-6 items-start h-full ${activeTab === 'catalog' ? 'lg:justify-center' : ''}`}>
           <AnimatePresence initial={false}>
             {activeTab !== 'catalog' && (
               <motion.div
@@ -304,7 +305,7 @@ export default function ConfigurationActivities() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -120 }}
                 transition={{ duration: 0.35, ease: 'easeOut' }}
-                className="space-y-5 relative lg:flex-1"
+                className="space-y-5 relative lg:flex-1 pt-4"
               >
                 <Button
                   variant="ghost"
@@ -346,12 +347,6 @@ export default function ConfigurationActivities() {
                     Apri catalogo
                   </Button>
                 </div>
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 0.12, rotate: [0, 4, -3, 0] }}
-                  transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
-                  className="hidden lg:block absolute -right-10 -top-10 w-56 h-56 rounded-[32px] bg-gradient-to-br from-indigo-400/60 via-blue-400/50 to-purple-500/40 blur-3xl"
-                />
               </motion.div>
             )}
           </AnimatePresence>
@@ -361,84 +356,90 @@ export default function ConfigurationActivities() {
             animate={{
               opacity: 1,
               y: 0,
-              scale: activeTab === 'catalog' ? 1 : 0.88,
+              scale: activeTab === 'catalog' ? 1 : 0.98,
               alignSelf: activeTab === 'catalog' ? 'center' : 'stretch'
             }}
             transition={{ duration: 0.35, ease: 'easeInOut' }}
-            whileHover={{ scale: activeTab === 'catalog' ? 1.002 : 0.89 }}
-            className={`group relative p-5 rounded-3xl bg-slate-900 text-white shadow-2xl shadow-slate-900/30 overflow-hidden w-full max-w-[1300px] ${activeTab !== 'catalog' ? 'lg:flex-1' : ''}`}
+            className={`group relative p-6 rounded-3xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl overflow-hidden w-full max-w-[1300px] flex flex-col ${activeTab === 'catalog' ? 'h-[90%]' : 'h-full lg:flex-1'}`}
           >
-            <motion.div
-              initial={{ opacity: 0.12, scale: 1 }}
-              animate={{ opacity: [0.12, 0.2, 0.12], scale: [1, 1.03, 1] }}
-              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950"
-            />
-            <div className="absolute -right-8 -top-8 text-indigo-300/20 group-hover:text-indigo-200/30 transition-colors duration-300">
-              <Sparkles className="w-28 h-28" />
+            <div className="absolute -right-8 -top-8 text-indigo-500/5 pointer-events-none">
+              <Sparkles className="w-40 h-40" />
             </div>
-            <div className="relative z-10 space-y-5 h-full">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[11px] uppercase tracking-[0.2em]">
-                    Workspace
+
+            <div className="relative z-10 flex flex-col h-full">
+              <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  {activeTab === 'catalog' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setActiveTab('create')}
+                      className="h-8 w-8 rounded-full -ml-2 text-slate-500 hover:text-slate-900"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <div>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-[11px] uppercase tracking-[0.2em] text-indigo-700 font-semibold">
+                      Workspace
+                    </div>
+                    <h2 className="text-2xl font-bold mt-2 leading-tight text-slate-900">Centro attivita</h2>
+                    <p className="text-sm text-slate-500">
+                      Crea/duplica e consulta il catalogo OOTB + custom.
+                    </p>
                   </div>
-                  <h2 className="text-2xl font-bold mt-2 leading-tight">Centro attivita</h2>
-                  <p className="text-sm text-indigo-100/80">
-                    Crea/duplica e consulta il catalogo OOTB + custom senza lasciare la schermata.
-                  </p>
                 </div>
-                <Badge className="bg-white/15 text-white border-white/20 text-xs">
+                <Badge variant="secondary" className="bg-slate-100 text-slate-700 border-slate-200">
                   {activities.length} totali
                 </Badge>
               </div>
 
-              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'create' | 'catalog')} className="w-full h-full">
-                <TabsList className="grid grid-cols-2 bg-white/10 border border-white/15 rounded-2xl p-1">
-                  <TabsTrigger value="create" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-sm font-semibold rounded-xl">
+              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'create' | 'catalog')} className="w-full flex-1 flex flex-col min-h-0">
+                <TabsList className="grid grid-cols-2 bg-slate-100/80 border border-slate-200 rounded-xl p-1 flex-shrink-0 mb-4">
+                  <TabsTrigger value="create" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-sm font-semibold rounded-lg">
                     Crea / Modifica
                   </TabsTrigger>
-                  <TabsTrigger value="catalog" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-sm font-semibold rounded-xl">
+                  <TabsTrigger value="catalog" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-sm font-semibold rounded-lg">
                     Catalogo
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="create" className="mt-3 space-y-3">
-                  <form className="space-y-3" onSubmit={handleSubmit}>
-                    <div className="grid grid-cols-2 gap-3">
+                <TabsContent value="create" className="flex-1 overflow-y-auto pr-2 -mr-2 flex-col data-[state=active]:flex">
+                  <form className="flex-1 flex flex-col gap-4" onSubmit={handleSubmit}>
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5 col-span-2">
-                        <Label htmlFor="name" className="text-white/90">Nome</Label>
+                        <Label htmlFor="name" className="text-slate-700">Nome</Label>
                         <Input
                           id="name"
                           value={form.name}
                           onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
                           placeholder="API hardening & security review"
                           required
-                          className="bg-white text-slate-900 h-10"
+                          className="bg-white/50 border-slate-200 focus:bg-white transition-colors"
                         />
                       </div>
 
                       {showDescription && (
                         <div className="space-y-1.5 col-span-2">
-                          <Label htmlFor="description" className="text-white/90">Descrizione</Label>
+                          <Label htmlFor="description" className="text-slate-700">Descrizione</Label>
                           <Textarea
                             id="description"
                             value={form.description}
                             onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
                             placeholder="Dettaglia cosa include l'attivita e eventuali vincoli."
                             rows={2}
-                            className="bg-white text-slate-900"
+                            className="bg-white/50 border-slate-200 focus:bg-white transition-colors"
                           />
                         </div>
                       )}
 
                       <div className="space-y-1.5">
-                        <Label className="text-white/90">Tecnologia</Label>
+                        <Label className="text-slate-700">Tecnologia</Label>
                         <Select
                           value={form.techCategory}
                           onValueChange={(value) => setForm((prev) => ({ ...prev, techCategory: value }))}
                         >
-                          <SelectTrigger className="bg-white text-slate-900">
+                          <SelectTrigger className="bg-white/50 border-slate-200">
                             <SelectValue placeholder="Seleziona tecnologia" />
                           </SelectTrigger>
                           <SelectContent>
@@ -451,12 +452,12 @@ export default function ConfigurationActivities() {
                         </Select>
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-white/90">Fase</Label>
+                        <Label className="text-slate-700">Fase</Label>
                         <Select
                           value={form.group}
                           onValueChange={(value) => setForm((prev) => ({ ...prev, group: value }))}
                         >
-                          <SelectTrigger className="bg-white text-slate-900">
+                          <SelectTrigger className="bg-white/50 border-slate-200">
                             <SelectValue placeholder="Seleziona fase" />
                           </SelectTrigger>
                           <SelectContent>
@@ -470,7 +471,7 @@ export default function ConfigurationActivities() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label className="text-white/90">Peso (ore)</Label>
+                        <Label className="text-slate-700">Peso (ore)</Label>
                         <Input
                           type="number"
                           step="0.05"
@@ -478,19 +479,19 @@ export default function ConfigurationActivities() {
                           value={form.baseDays}
                           onChange={(e) => setForm((prev) => ({ ...prev, baseDays: e.target.value }))}
                           required
-                          className="text-lg font-semibold h-10 bg-white text-slate-900"
+                          className="text-lg font-semibold bg-white/50 border-slate-200 focus:bg-white transition-colors"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-white/90">Stato</Label>
+                        <Label className="text-slate-700">Stato</Label>
                         <Button
                           type="button"
                           variant="outline"
-                          className={`w-full h-10 justify-between ${form.active ? 'bg-emerald-500/20 border-emerald-200 text-white' : 'bg-white/10 text-white border-white/20'}`}
+                          className={`w-full justify-between ${form.active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
                           onClick={() => setForm((prev) => ({ ...prev, active: !prev.active }))}
                         >
                           {form.active ? 'Attiva subito' : 'Mantieni bozza'}
-                          <span className="text-xs opacity-80">{form.active ? 'ON' : 'OFF'}</span>
+                          <span className="text-xs opacity-80 font-semibold">{form.active ? 'ON' : 'OFF'}</span>
                         </Button>
                       </div>
                     </div>
@@ -500,7 +501,7 @@ export default function ConfigurationActivities() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="text-indigo-100 hover:bg-white/10"
+                        className="text-slate-600 hover:bg-slate-100"
                         onClick={() => setShowDescription((prev) => !prev)}
                       >
                         {showDescription ? 'Nascondi descrizione' : 'Aggiungi descrizione'}
@@ -509,7 +510,7 @@ export default function ConfigurationActivities() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="text-indigo-100 hover:bg-white/10"
+                        className="text-slate-600 hover:bg-slate-100"
                         onClick={() => setShowAdvanced((prev) => !prev)}
                       >
                         {showAdvanced ? 'Chiudi extra' : 'Impostazioni avanzate'}
@@ -517,24 +518,24 @@ export default function ConfigurationActivities() {
                     </div>
 
                     {showAdvanced && (
-                      <div className="grid grid-cols-2 gap-3 bg-white/5 border border-white/10 rounded-2xl p-3">
+                      <div className="grid grid-cols-2 gap-3 bg-slate-50 border border-slate-200 rounded-xl p-3">
                         <div className="space-y-1">
-                          <p className="text-sm font-semibold text-white">Codice generato</p>
-                          <p className="text-xs text-indigo-100/80">Viene proposto automaticamente da nome e tecnologia.</p>
+                          <p className="text-sm font-semibold text-slate-900">Codice generato</p>
+                          <p className="text-xs text-slate-500">Viene proposto automaticamente da nome e tecnologia.</p>
                         </div>
                         <div className="space-y-1">
-                          <p className="text-sm font-semibold text-white">Suggerimento</p>
-                          <p className="text-xs text-indigo-100/80">Imposta il peso base in funzione dello sforzo minimo.</p>
+                          <p className="text-sm font-semibold text-slate-900">Suggerimento</p>
+                          <p className="text-xs text-slate-500">Imposta il peso base in funzione dello sforzo minimo.</p>
                         </div>
                       </div>
                     )}
 
-                    <div className="flex gap-2 pt-1">
+                    <div className="flex gap-2 pt-2 mt-auto">
                       {editActivity && (
                         <Button
                           type="button"
                           variant="outline"
-                          className="flex-1 border-white/30 text-white hover:bg-white/10"
+                          className="flex-1 border-slate-200 text-slate-700 hover:bg-slate-50"
                           onClick={handleCancelEdit}
                         >
                           Annulla
@@ -542,7 +543,7 @@ export default function ConfigurationActivities() {
                       )}
                       <Button
                         type="submit"
-                        className={`flex-1 ${editActivity ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600'} border-0 shadow-md`}
+                        className={`flex-1 ${editActivity ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600'} text-white shadow-md border-0`}
                         disabled={saving}
                       >
                         {saving ? 'Salvataggio...' : editActivity ? 'Salva modifica' : 'Crea attivita'}
@@ -551,23 +552,23 @@ export default function ConfigurationActivities() {
                   </form>
                 </TabsContent>
 
-                <TabsContent value="catalog" className="mt-3 space-y-2">
-                  <div className="flex flex-wrap gap-2 items-center justify-between">
-                    <div className="flex gap-1 bg-white/10 rounded-full p-1 border border-white/15">
-                      <Button size="sm" variant={viewFilter === 'ALL' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900" onClick={() => setViewFilter('ALL')}>
+                <TabsContent value="catalog" className="flex-1 flex-col min-h-0 mt-0 data-[state=active]:flex">
+                  <div className="flex flex-wrap gap-2 items-center justify-between mb-3 flex-shrink-0">
+                    <div className="flex gap-1 bg-slate-100 rounded-full p-1 border border-slate-200">
+                      <Button size="sm" variant={viewFilter === 'ALL' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600" onClick={() => setViewFilter('ALL')}>
                         Tutte
                       </Button>
-                      <Button size="sm" variant={viewFilter === 'OOTB' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900" onClick={() => setViewFilter('OOTB')}>
+                      <Button size="sm" variant={viewFilter === 'OOTB' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600" onClick={() => setViewFilter('OOTB')}>
                         Di sistema
                       </Button>
-                      <Button size="sm" variant={viewFilter === 'CUSTOM' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900" onClick={() => setViewFilter('CUSTOM')}>
+                      <Button size="sm" variant={viewFilter === 'CUSTOM' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600" onClick={() => setViewFilter('CUSTOM')}>
                         Custom
                       </Button>
                     </div>
 
                     <div className="flex gap-2 items-center flex-wrap">
                       <Select value={filterTech} onValueChange={setFilterTech}>
-                        <SelectTrigger className="w-[170px] h-8 bg-white text-slate-900 text-sm">
+                        <SelectTrigger className="w-[170px] h-8 bg-white border-slate-200 text-slate-700 text-sm">
                           <SelectValue placeholder="Tecnologia" />
                         </SelectTrigger>
                         <SelectContent>
@@ -582,7 +583,7 @@ export default function ConfigurationActivities() {
 
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="h-8 gap-2 bg-white/10 text-white border-white/20 hover:bg-white/20 text-xs px-3">
+                          <Button variant="outline" size="sm" className="h-8 gap-2 bg-white border-slate-200 text-slate-700 hover:bg-slate-50 text-xs px-3">
                             <Settings2 className="h-4 w-4" />
                             Colonne
                           </Button>
@@ -629,142 +630,141 @@ export default function ConfigurationActivities() {
                         </DropdownMenuContent>
                       </DropdownMenu>
 
-                      <Badge variant="secondary" className="bg-white/15 text-white border-white/20 text-xs px-2 py-1">
+                      <Badge variant="secondary" className="bg-slate-100 text-slate-700 border-slate-200 text-xs px-2 py-1">
                         {activityRows.length} risultati
                       </Badge>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-white/5 max-h-[52vh] overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] min-w-0">
-                    <style>
-                      {`.rounded-2xl::-webkit-scrollbar { display: none; }`}
-                    </style>
-                    <Table className="table-fixed w-full">
-                      <TableHeader className="sticky top-0 bg-white/10 backdrop-blur z-10">
-                        <TableRow className="hover:bg-white/5">
-                          {visibleColumns.codice && <TableHead className="text-white w-[10%]">Codice</TableHead>}
-                          {visibleColumns.nome && <TableHead className="text-white w-[34%]">Nome</TableHead>}
-                          {visibleColumns.tecnologia && <TableHead className="hidden lg:table-cell text-white w-[16%]">Tecnologia</TableHead>}
-                          {visibleColumns.fase && <TableHead className="hidden lg:table-cell text-white w-[12%]">Fase</TableHead>}
-                          {visibleColumns.origine && <TableHead className="text-white w-[10%]">Origine</TableHead>}
-                          {visibleColumns.peso && <TableHead className="text-white font-semibold w-[10%]">Peso</TableHead>}
-                          <TableHead className="text-right text-white w-[8%]">Azioni</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {fetching ? (
-                          <TableRow>
-                            <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length + 1} className="text-center py-8 text-indigo-100/80">
-                              Caricamento...
-                            </TableCell>
+                  <div className="rounded-2xl border border-slate-200 bg-white/50 flex-1 overflow-hidden flex flex-col min-h-0">
+                    <div className="overflow-y-auto overflow-x-hidden flex-1 [scrollbar-width:thin]">
+                      <Table className="table-fixed w-full">
+                        <TableHeader className="sticky top-0 bg-slate-50/90 backdrop-blur z-10 shadow-sm">
+                          <TableRow className="hover:bg-slate-100/50 border-slate-200">
+                            {visibleColumns.codice && <TableHead className="text-slate-700 font-semibold w-[10%]">Codice</TableHead>}
+                            {visibleColumns.nome && <TableHead className="text-slate-700 font-semibold w-[34%]">Nome</TableHead>}
+                            {visibleColumns.tecnologia && <TableHead className="hidden lg:table-cell text-slate-700 font-semibold w-[16%]">Tecnologia</TableHead>}
+                            {visibleColumns.fase && <TableHead className="hidden lg:table-cell text-slate-700 font-semibold w-[12%]">Fase</TableHead>}
+                            {visibleColumns.origine && <TableHead className="text-slate-700 font-semibold w-[10%]">Origine</TableHead>}
+                            {visibleColumns.peso && <TableHead className="text-slate-700 font-semibold w-[10%]">Peso</TableHead>}
+                            <TableHead className="text-right text-slate-700 font-semibold w-[8%]">Azioni</TableHead>
                           </TableRow>
-                        ) : activityRows.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length + 1} className="text-center py-8 text-indigo-100/80">
-                              Nessuna attivita trovata
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          activityRows.map((activity) => {
-                            const editable = canEdit(activity);
-                            const isCustom = !!activity.is_custom;
-                            const baseRef = activity.base_activity_id
-                              ? activities.find((a) => a.id === activity.base_activity_id)
-                              : null;
-                            const originLabel = isCustom
-                              ? baseRef
-                                ? 'Custom (override)'
-                                : 'Custom'
-                              : 'OOTB';
-                            return (
-                              <TableRow key={activity.id} className="hover:bg-white/5">
-                                {visibleColumns.codice && (
-                                  <TableCell className="font-semibold text-white/90 truncate">{activity.code}</TableCell>
-                                )}
-                                {visibleColumns.nome && (
-                                  <TableCell className="max-w-[360px] whitespace-normal break-words">
-                                    <div className="text-white font-medium">{activity.name}</div>
-                                    <div className="text-xs text-indigo-100/80">{activity.description}</div>
-                                    {baseRef && (
-                                      <div className="text-[10px] text-indigo-100/70 mt-0.5">
-                                        Deriva da {baseRef.code}
+                        </TableHeader>
+                        <TableBody>
+                          {fetching ? (
+                            <TableRow>
+                              <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length + 1} className="text-center py-8 text-slate-500">
+                                Caricamento...
+                              </TableCell>
+                            </TableRow>
+                          ) : activityRows.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length + 1} className="text-center py-8 text-slate-500">
+                                Nessuna attivita trovata
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            activityRows.map((activity) => {
+                              const editable = canEdit(activity);
+                              const isCustom = !!activity.is_custom;
+                              const baseRef = activity.base_activity_id
+                                ? activities.find((a) => a.id === activity.base_activity_id)
+                                : null;
+                              const originLabel = isCustom
+                                ? baseRef
+                                  ? 'Custom (override)'
+                                  : 'Custom'
+                                : 'OOTB';
+                              return (
+                                <TableRow key={activity.id} className="hover:bg-slate-50/80 border-slate-100">
+                                  {visibleColumns.codice && (
+                                    <TableCell className="font-semibold text-slate-700 truncate">{activity.code}</TableCell>
+                                  )}
+                                  {visibleColumns.nome && (
+                                    <TableCell className="max-w-[360px] whitespace-normal break-words">
+                                      <div className="text-slate-900 font-medium">{activity.name}</div>
+                                      <div className="text-xs text-slate-500">{activity.description}</div>
+                                      {baseRef && (
+                                        <div className="text-[10px] text-slate-400 mt-0.5">
+                                          Deriva da {baseRef.code}
+                                        </div>
+                                      )}
+                                    </TableCell>
+                                  )}
+                                  {visibleColumns.tecnologia && (
+                                    <TableCell className="hidden lg:table-cell text-xs text-slate-600 truncate">
+                                      {technologies.find((t) => t.value === activity.tech_category)?.label || activity.tech_category}
+                                    </TableCell>
+                                  )}
+                                  {visibleColumns.fase && (
+                                    <TableCell className="hidden lg:table-cell text-xs text-slate-600 truncate">
+                                      {groupOptions.find((g) => g.value === activity.group)?.label || activity.group}
+                                    </TableCell>
+                                  )}
+                                  {visibleColumns.origine && (
+                                    <TableCell className="truncate">
+                                      <Badge variant={isCustom ? 'default' : 'outline'} className={isCustom ? 'bg-amber-100 text-amber-800 border-amber-200' : 'border-slate-300 text-slate-600'}>
+                                        {originLabel}
+                                      </Badge>
+                                    </TableCell>
+                                  )}
+                                  {visibleColumns.peso && (
+                                    <TableCell className="truncate">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-xl font-bold text-slate-700">{activity.base_days.toFixed(1)}</span>
+                                        <span className="text-xs text-slate-500 font-medium">ore</span>
                                       </div>
-                                    )}
-                                  </TableCell>
-                                )}
-                                {visibleColumns.tecnologia && (
-                                  <TableCell className="hidden lg:table-cell text-xs text-indigo-100/80 truncate">
-                                    {technologies.find((t) => t.value === activity.tech_category)?.label || activity.tech_category}
-                                  </TableCell>
-                                )}
-                                {visibleColumns.fase && (
-                                  <TableCell className="hidden lg:table-cell text-xs text-indigo-100/80 truncate">
-                                    {groupOptions.find((g) => g.value === activity.group)?.label || activity.group}
-                                  </TableCell>
-                                )}
-                                {visibleColumns.origine && (
-                                  <TableCell className="truncate">
-                                    <Badge variant={isCustom ? 'default' : 'outline'} className={isCustom ? 'bg-amber-200/90 text-amber-900 border-amber-200' : 'border-white/30 text-white'}>
-                                      {originLabel}
-                                    </Badge>
-                                  </TableCell>
-                                )}
-                                {visibleColumns.peso && (
-                                  <TableCell className="truncate">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-2xl font-bold text-white">{activity.base_days.toFixed(1)}</span>
-                                      <span className="text-xs text-indigo-100/80 font-medium">ore</span>
-                                    </div>
-                                  </TableCell>
-                                )}
-                                <TableCell className="text-right truncate">
-                                  {isCustom ? (
-                                    <>
-                                      <div className="flex justify-end gap-1">
+                                    </TableCell>
+                                  )}
+                                  <TableCell className="text-right truncate">
+                                    {isCustom ? (
+                                      <>
+                                        <div className="flex justify-end gap-1">
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                            onClick={() => openEdit(activity)}
+                                            disabled={!editable}
+                                            title="Modifica"
+                                          >
+                                            <Edit3 className="h-4 w-4" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50"
+                                            onClick={() => handleDuplicate(activity)}
+                                            title="Duplica in custom"
+                                          >
+                                            <Sparkles className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                        {!editable && (
+                                          <div className="text-[10px] text-slate-400 mt-1">Creato da altro utente</div>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <div className="flex justify-end">
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          className="h-8 w-8 text-blue-200 hover:text-white hover:bg-white/10"
-                                          onClick={() => openEdit(activity)}
-                                          disabled={!editable}
-                                          title="Modifica"
-                                        >
-                                          <Edit3 className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8 text-indigo-100 hover:text-emerald-200 hover:bg-white/10"
+                                          className="h-8 w-8 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50"
                                           onClick={() => handleDuplicate(activity)}
                                           title="Duplica in custom"
                                         >
                                           <Sparkles className="h-4 w-4" />
                                         </Button>
                                       </div>
-                                      {!editable && (
-                                        <div className="text-[10px] text-indigo-100/70 mt-1">Creato da altro utente</div>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <div className="flex justify-end">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-indigo-100 hover:text-emerald-200 hover:bg-white/10"
-                                        onClick={() => handleDuplicate(activity)}
-                                        title="Duplica in custom"
-                                      >
-                                        <Sparkles className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })
-                        )}
-                      </TableBody>
-                    </Table>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 </TabsContent>
               </Tabs>

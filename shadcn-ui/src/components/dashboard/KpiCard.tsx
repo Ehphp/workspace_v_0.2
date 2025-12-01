@@ -22,9 +22,9 @@ export function KpiCard({ icon: Icon, label, value, trend, gradient, iconGradien
                     <Icon className="w-4 h-4 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-medium text-slate-600 mb-0">{label}</p>
-                    <div className="flex items-baseline gap-1">
-                        <p className="text-lg font-bold text-slate-900">{value}</p>
+                    <p className="text-[10px] font-medium text-slate-600 mb-0 leading-none">{label}</p>
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                        <p className="text-lg font-bold text-slate-900 leading-none">{value}</p>
                         {trend && (
                             <span className={`text-[10px] font-semibold ${trend.isPositive ? 'text-emerald-600' : 'text-red-600'}`}>
                                 {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%

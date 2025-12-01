@@ -97,55 +97,55 @@ export default function Configuration() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6, delay: 0.1 }}
                         whileHover={{ scale: 1.01 }}
-                        className="group relative p-8 rounded-3xl bg-slate-900 text-white shadow-2xl shadow-slate-900/30 overflow-hidden min-h-[320px] flex"
+                        className="group relative p-8 rounded-3xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl overflow-hidden min-h-[320px] flex"
                     >
-                        <motion.div
-                            initial={{ opacity: 0.12, scale: 1 }}
-                            animate={{ opacity: [0.12, 0.2, 0.12], scale: [1, 1.03, 1] }}
-                            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                            className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950"
-                        />
-                        <div className="absolute -right-8 -top-6 text-indigo-300/15 group-hover:text-indigo-200/25 transition-colors duration-300">
+                        <div className="absolute -right-8 -top-6 text-indigo-500/5 group-hover:text-indigo-500/10 transition-colors duration-300">
                             <Settings className="w-36 h-36" />
                         </div>
                         <div className="relative z-10 space-y-5 flex flex-col justify-between w-full">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-xs font-semibold uppercase tracking-[0.2em]">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-xs font-semibold uppercase tracking-[0.2em] text-indigo-700">
                                 Hub
                             </div>
                             <div className="space-y-2">
-                                <h2 className="text-3xl font-bold leading-tight">Centro di configurazione</h2>
-                                <p className="text-indigo-100/80 text-base leading-relaxed max-w-2xl">
+                                <h2 className="text-3xl font-bold leading-tight text-slate-900">Centro di configurazione</h2>
+                                <p className="text-slate-600 text-base leading-relaxed max-w-2xl">
                                     Personalizza l'esperienza di stima, crea template riutilizzabili e porta coerenza su attivita e preset.
                                 </p>
                             </div>
-                            <ul className="space-y-3 text-sm text-indigo-100/90">
+                            <ul className="space-y-3 text-sm text-slate-600">
                                 <li className="flex items-center gap-2">
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                                     <span>Unifica preset e attivita in standard condivisi</span>
                                 </li>
                                 <li className="flex items-center gap-2">
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                                     <span>Crea modelli riutilizzabili per le stime</span>
                                 </li>
                                 <li className="flex items-center gap-2">
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                                     <span>Controllo granulare su driver, rischi e tecnologie</span>
                                 </li>
                             </ul>
                             <div className="flex flex-wrap gap-3 pt-2">
                                 <Button
-                                    className="bg-white text-slate-900 hover:bg-slate-100 border-0 shadow-md"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-md border-0 flex-1"
                                     onClick={() => navigate('/configuration/activities')}
                                 >
-                                    Apri attivita
+                                    Attività
                                     <ArrowRight className="w-4 h-4 ml-2" />
                                 </Button>
                                 <Button
-                                    variant="outline"
-                                    className="border-indigo-300 text-white hover:bg-indigo-800/60 hover:text-white"
+                                    className="bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm flex-1"
                                     onClick={() => navigate('/configuration/presets')}
                                 >
-                                    Vai ai preset
+                                    Preset
+                                    <ArrowRight className="w-4 h-4 ml-2" />
+                                </Button>
+                                <Button
+                                    className="bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm flex-1"
+                                    onClick={() => navigate('/configuration/technologies')}
+                                >
+                                    Tecnologie
                                     <ArrowRight className="w-4 h-4 ml-2" />
                                 </Button>
                             </div>

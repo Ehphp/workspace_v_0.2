@@ -62,18 +62,10 @@ export function RequirementEstimation({
     };
 
     return (
-        <div className="container mx-auto px-6 py-12 h-full">
-            {/* Header Sezione */}
-            <div className="mb-6 px-4 py-3 rounded-xl bg-white/60 backdrop-blur-sm border border-white/50 shadow-md">
-                <h2 className="text-lg font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-                    Configure Estimation
-                </h2>
-                <p className="text-xs text-slate-600 mt-1">Select technology, activities, drivers and risks to calculate the estimation</p>
-            </div>
-
-            <div className="grid lg:grid-cols-[1fr_360px] gap-6 pb-12 h-full min-h-0">
+        <div className="h-full flex flex-col">
+            <div className="flex-1 min-h-0 grid lg:grid-cols-[1fr_320px] gap-3">
                 {/* Left Column - Configuration */}
-                <div className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-2">
+                <div className="space-y-2 overflow-y-auto">
                     <TechnologySection
                         presets={presets}
                         selectedPresetId={selectedPresetId}
@@ -114,14 +106,16 @@ export function RequirementEstimation({
                     />
                 </div>
 
-                {/* Right Column - Summary (Sticky) */}
-                <div className="lg:sticky lg:top-6 lg:self-start lg:h-fit">
-                    <CalculationSummary
-                        result={estimationResult}
-                        onSave={onSave}
-                        isSaving={isSaving}
-                        hasUnsavedChanges={hasUnsavedChanges}
-                    />
+                {/* Right Column - Summary */}
+                <div className="overflow-y-auto">
+                    <div className="sticky top-0">
+                        <CalculationSummary
+                            result={estimationResult}
+                            onSave={onSave}
+                            isSaving={isSaving}
+                            hasUnsavedChanges={hasUnsavedChanges}
+                        />
+                    </div>
                 </div>
             </div>
         </div>

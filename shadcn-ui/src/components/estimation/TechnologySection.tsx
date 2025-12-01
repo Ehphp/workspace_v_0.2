@@ -32,90 +32,78 @@ export function TechnologySection({
     const selectedPreset = presets.find((p) => p.id === selectedPresetId);
 
     return (
-        <Card className="rounded-xl shadow-lg border-white/50 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
+        <Card className="rounded-lg shadow-sm border-slate-200 bg-white">
             <CardHeader
-                className="pb-3 bg-gradient-to-r from-blue-50 to-cyan-50 cursor-pointer border-b border-blue-100"
+                className="pb-2 pt-3 px-3 cursor-pointer hover:bg-slate-50/50 transition-colors"
                 onClick={onToggle}
             >
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-md">
-                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="w-6 h-6 rounded bg-blue-100 flex items-center justify-center flex-shrink-0">
+                            <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                             </svg>
                         </div>
                         <div>
-                            <CardTitle className="text-sm font-semibold text-slate-900">Technology Stack</CardTitle>
-                            <CardDescription className="text-xs">
-                                {selectedPreset ? selectedPreset.name : 'Select technology preset'}
-                            </CardDescription>
+                            <CardTitle className="text-xs font-semibold text-slate-900">Technology</CardTitle>
+                            {selectedPreset && (
+                                <CardDescription className="text-[10px]">{selectedPreset.name}</CardDescription>
+                            )}
                         </div>
                     </div>
-                    {isExpanded ? <ChevronUp className="h-4 w-4 text-blue-600" /> : <ChevronDown className="h-4 w-4 text-blue-600" />}
+                    {isExpanded ? <ChevronUp className="h-3 w-3 text-slate-500" /> : <ChevronDown className="h-3 w-3 text-slate-500" />}
                 </div>
             </CardHeader>
             {isExpanded && (
-                <CardContent className="space-y-2">
-                    <div className="space-y-2">
-                        <div className="flex gap-2 items-end">
-                            <div className="flex-1">
-                                <label className="text-xs font-medium mb-1 block">
-                                    Technology
-                                </label>
-                                <Select value={selectedPresetId} onValueChange={onPresetChange}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select technology..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {presets.map((preset) => (
-                                            <SelectItem key={preset.id} value={preset.id}>
-                                                {preset.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <Button
-                                onClick={onApplyTemplate}
-                                disabled={!selectedPresetId}
-                                variant="outline"
-                                size="default"
-                                className="gap-2"
-                            >
-                                Apply Template
-                            </Button>
+                <CardContent className="px-3 pb-3 pt-0 space-y-2">
+                    <div className="flex gap-2">
+                        <div className="flex-1">
+                            <Select value={selectedPresetId} onValueChange={onPresetChange}>
+                                <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue placeholder="Select..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {presets.map((preset) => (
+                                        <SelectItem key={preset.id} value={preset.id} className="text-xs">
+                                            {preset.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         <Button
-                            onClick={onAiRecalculate}
-                            disabled={isAiLoading || !requirementDescription || !selectedPresetId}
-                            variant="default"
-                            className="gap-2 w-full"
+                            onClick={onApplyTemplate}
+                            disabled={!selectedPresetId}
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs px-2"
                         >
-                            {isAiLoading ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    AI Analyzing...
-                                </>
-                            ) : (
-                                <>
-                                    <Sparkles className="h-4 w-4" />
-                                    AI Suggest
-                                </>
-                            )}
+                            Apply
                         </Button>
                     </div>
 
-                    {selectedPreset && (
-                        <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-xs">{selectedPreset.tech_category}</Badge>
-                                <span className="text-xs text-muted-foreground">
-                                    {selectedPreset.description}
-                                </span>
-                            </div>
-                        </div>
+                    <Button
+                        onClick={onAiRecalculate}
+                        disabled={isAiLoading || !requirementDescription || !selectedPresetId}
+                        size="sm"
+                        className="w-full h-8 text-xs"
+                    >
+                        {isAiLoading ? (
+                            <>
+                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                Analyzing...
+                            </>
+                        ) : (
+                            <>
+                                <Sparkles className="h-3 w-3 mr-1" />
+                                AI Suggest
+                            </>
+                        )}
+                    </Button>
+
+                    {selectedPreset && selectedPreset.description && (
+                        <p className="text-[10px] text-slate-500 leading-tight">{selectedPreset.description}</p>
                     )}
                 </CardContent>
             )}

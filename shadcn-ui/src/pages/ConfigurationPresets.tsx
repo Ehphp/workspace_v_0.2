@@ -381,8 +381,8 @@ export default function ConfigurationPresets() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
         );
     }
@@ -408,14 +408,14 @@ export default function ConfigurationPresets() {
 
             <Header />
 
-            <main className="container mx-auto px-4 pt-6 pb-4 max-w-6xl relative z-10">
-                <div className="flex flex-col lg:flex-row gap-6 items-start">
+            <main className="container mx-auto px-4 pt-4 pb-4 max-w-7xl relative z-10 h-[calc(100vh-64px)] flex flex-col">
+                <div className="flex flex-col lg:flex-row gap-6 items-start h-full">
                     {/* Hero Section */}
                     <motion.div
                         initial={{ opacity: 0, x: -30 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.35, ease: 'easeOut' }}
-                        className="space-y-5 relative lg:flex-1"
+                        className="space-y-5 relative lg:flex-1 pt-4"
                     >
                         <Button
                             variant="ghost"
@@ -450,19 +450,13 @@ export default function ConfigurationPresets() {
                         </div>
                         <div className="flex flex-wrap gap-3 pt-2">
                             <Button
-                                className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+                                className="bg-blue-600 hover:bg-blue-700 text-white shadow-md border-0"
                                 onClick={handleCreate}
                             >
                                 <Plus className="w-4 h-4 mr-2" />
                                 Crea nuovo preset
                             </Button>
                         </div>
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 0.12, rotate: [0, 4, -3, 0] }}
-                            transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
-                            className="hidden lg:block absolute -right-10 -top-10 w-56 h-56 rounded-[32px] bg-gradient-to-br from-indigo-400/60 via-blue-400/50 to-purple-500/40 blur-3xl"
-                        />
                     </motion.div>
 
                     {/* Main Content Card */}
@@ -470,143 +464,136 @@ export default function ConfigurationPresets() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.35, delay: 0.1, ease: 'easeInOut' }}
-                        className="group relative p-5 rounded-3xl bg-slate-900 text-white shadow-2xl shadow-slate-900/30 overflow-hidden w-full lg:flex-[1.5]"
+                        className="group relative p-6 rounded-3xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl overflow-hidden w-full lg:flex-[1.5] h-full flex flex-col"
                     >
-                        <motion.div
-                            initial={{ opacity: 0.12, scale: 1 }}
-                            animate={{ opacity: [0.12, 0.2, 0.12], scale: [1, 1.03, 1] }}
-                            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                            className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950"
-                        />
-                        <div className="absolute -right-8 -top-8 text-indigo-300/20 group-hover:text-indigo-200/30 transition-colors duration-300">
-                            <Layers className="w-28 h-28" />
+                        <div className="absolute -right-8 -top-8 text-indigo-500/5 pointer-events-none">
+                            <Layers className="w-40 h-40" />
                         </div>
 
-                        <div className="relative z-10 space-y-5 h-full flex flex-col">
-                            <div className="flex items-center justify-between">
+                        <div className="relative z-10 flex flex-col h-full">
+                            <div className="flex items-center justify-between mb-4 flex-shrink-0">
                                 <div>
-                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[11px] uppercase tracking-[0.2em]">
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-[11px] uppercase tracking-[0.2em] text-indigo-700 font-semibold">
                                         Libreria
                                     </div>
-                                    <h2 className="text-2xl font-bold mt-2 leading-tight">Elenco Preset</h2>
+                                    <h2 className="text-2xl font-bold mt-2 leading-tight text-slate-900">Elenco Preset</h2>
                                 </div>
-                                <div className="flex gap-1 bg-white/10 rounded-full p-1 border border-white/15">
-                                    <Button size="sm" variant={viewFilter === 'ALL' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900" onClick={() => setViewFilter('ALL')}>
+                                <div className="flex gap-1 bg-slate-100 rounded-full p-1 border border-slate-200">
+                                    <Button size="sm" variant={viewFilter === 'ALL' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600" onClick={() => setViewFilter('ALL')}>
                                         Tutti
                                     </Button>
-                                    <Button size="sm" variant={viewFilter === 'OOTB' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900" onClick={() => setViewFilter('OOTB')}>
+                                    <Button size="sm" variant={viewFilter === 'OOTB' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600" onClick={() => setViewFilter('OOTB')}>
                                         Sistema
                                     </Button>
-                                    <Button size="sm" variant={viewFilter === 'CUSTOM' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900" onClick={() => setViewFilter('CUSTOM')}>
+                                    <Button size="sm" variant={viewFilter === 'CUSTOM' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600" onClick={() => setViewFilter('CUSTOM')}>
                                         Custom
                                     </Button>
                                 </div>
                             </div>
 
-                            <div className="rounded-2xl border border-white/10 bg-white/5 max-h-[60vh] overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] min-w-0 flex-1">
-                                <style>
-                                    {`.rounded-2xl::-webkit-scrollbar { display: none; }`}
-                                </style>
-                                <Table className="table-fixed w-full">
-                                    <TableHeader className="sticky top-0 bg-white/10 backdrop-blur z-10">
-                                        <TableRow className="hover:bg-white/5 border-white/10">
-                                            <TableHead className="text-white w-[30%]">Nome</TableHead>
-                                            <TableHead className="text-white w-[20%]">Categoria</TableHead>
-                                            <TableHead className="text-white w-[25%] hidden md:table-cell">Contenuto</TableHead>
-                                            <TableHead className="text-right text-white w-[25%]">Azioni</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {filteredPresets.length === 0 ? (
-                                            <TableRow>
-                                                <TableCell colSpan={4} className="text-center py-8 text-indigo-100/80">
-                                                    Nessun preset trovato
-                                                </TableCell>
+                            <div className="rounded-2xl border border-slate-200 bg-white/50 flex-1 overflow-hidden flex flex-col min-h-0">
+                                <div className="overflow-y-auto overflow-x-hidden flex-1 [scrollbar-width:thin]">
+                                    <Table className="table-fixed w-full">
+                                        <TableHeader className="sticky top-0 bg-slate-50/90 backdrop-blur z-10 shadow-sm">
+                                            <TableRow className="hover:bg-slate-100/50 border-slate-200">
+                                                <TableHead className="text-slate-700 font-semibold w-[30%]">Nome</TableHead>
+                                                <TableHead className="text-slate-700 font-semibold w-[20%]">Categoria</TableHead>
+                                                <TableHead className="text-slate-700 font-semibold w-[25%] hidden md:table-cell">Contenuto</TableHead>
+                                                <TableHead className="text-right text-slate-700 font-semibold w-[25%]">Azioni</TableHead>
                                             </TableRow>
-                                        ) : (
-                                            filteredPresets.map((preset) => {
-                                                const isOwner = preset.is_custom && preset.created_by === user?.id;
-                                                return (
-                                                    <TableRow key={preset.id} className="hover:bg-white/5 border-white/10">
-                                                        <TableCell className="align-top">
-                                                            <div className="font-semibold text-white">{preset.name}</div>
-                                                            <div className="text-xs text-indigo-100/70 line-clamp-2">{preset.description}</div>
-                                                            {preset.is_custom && (
-                                                                <Badge variant="outline" className="mt-1 bg-amber-500/20 text-amber-200 border-amber-500/30 text-[10px]">Custom</Badge>
-                                                            )}
-                                                        </TableCell>
-                                                        <TableCell className="align-top">
-                                                            <Badge variant="outline" className="text-xs border-white/30 text-white bg-white/5">{getTechLabel(preset.tech_category)}</Badge>
-                                                        </TableCell>
-                                                        <TableCell className="align-top hidden md:table-cell">
-                                                            <div className="flex flex-col gap-1">
-                                                                <div className="text-xs text-indigo-100/80">
-                                                                    <span className="font-medium text-white">{preset.defaultActivities.length}</span> attività
+                                        </TableHeader>
+                                        <TableBody>
+                                            {filteredPresets.length === 0 ? (
+                                                <TableRow>
+                                                    <TableCell colSpan={4} className="text-center py-8 text-slate-500">
+                                                        Nessun preset trovato
+                                                    </TableCell>
+                                                </TableRow>
+                                            ) : (
+                                                filteredPresets.map((preset) => {
+                                                    const isOwner = preset.is_custom && preset.created_by === user?.id;
+                                                    return (
+                                                        <TableRow key={preset.id} className="hover:bg-slate-50/80 border-slate-100">
+                                                            <TableCell className="align-top">
+                                                                <div className="font-semibold text-slate-900">{preset.name}</div>
+                                                                <div className="text-xs text-slate-500 line-clamp-2">{preset.description}</div>
+                                                                {preset.is_custom && (
+                                                                    <Badge variant="outline" className="mt-1 bg-amber-50 text-amber-700 border-amber-200 text-[10px]">Custom</Badge>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="align-top">
+                                                                <Badge variant="outline" className="text-xs border-slate-200 text-slate-600 bg-white">{getTechLabel(preset.tech_category)}</Badge>
+                                                            </TableCell>
+                                                            <TableCell className="align-top hidden md:table-cell">
+                                                                <div className="flex flex-col gap-1">
+                                                                    <div className="text-xs text-slate-500">
+                                                                        <span className="font-medium text-slate-700">{preset.defaultActivities.length}</span> attività
+                                                                    </div>
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                        {preset.defaultActivities.slice(0, 2).map(a => (
+                                                                            <span key={a.id} className="inline-block px-1.5 py-0.5 rounded bg-slate-100 text-[10px] text-slate-600 border border-slate-200">
+                                                                                {a.code}
+                                                                            </span>
+                                                                        ))}
+                                                                        {preset.defaultActivities.length > 2 && (
+                                                                            <span className="inline-block px-1.5 py-0.5 rounded bg-slate-100 text-[10px] text-slate-600 border border-slate-200">
+                                                                                +{preset.defaultActivities.length - 2}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
-                                                                <div className="flex flex-wrap gap-1">
-                                                                    {preset.defaultActivities.slice(0, 2).map(a => (
-                                                                        <span key={a.id} className="inline-block px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-indigo-100 border border-white/10">
-                                                                            {a.code}
-                                                                        </span>
-                                                                    ))}
-                                                                    {preset.defaultActivities.length > 2 && (
-                                                                        <span className="inline-block px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-indigo-100 border border-white/10">
-                                                                            +{preset.defaultActivities.length - 2}
-                                                                        </span>
+                                                            </TableCell>
+                                                            <TableCell className="text-right align-top">
+                                                                <div className="flex justify-end gap-1">
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+                                                                        onClick={() => setSelectedPreview(preset)}
+                                                                        title="Dettagli"
+                                                                    >
+                                                                        <Info className="h-4 w-4" />
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-8 w-8 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50"
+                                                                        onClick={() => handleDuplicate(preset)}
+                                                                        title="Duplica"
+                                                                    >
+                                                                        <Sparkles className="h-4 w-4" />
+                                                                    </Button>
+                                                                    {isOwner && (
+                                                                        <>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+                                                                                onClick={() => handleEdit(preset)}
+                                                                                title="Modifica"
+                                                                            >
+                                                                                <Edit3 className="h-4 w-4" />
+                                                                            </Button>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                                                                                onClick={() => handleDelete(preset)}
+                                                                                title="Elimina"
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </>
                                                                     )}
                                                                 </div>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="text-right align-top">
-                                                            <div className="flex justify-end gap-1">
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-8 w-8 text-indigo-100 hover:text-white hover:bg-white/10"
-                                                                    onClick={() => setSelectedPreview(preset)}
-                                                                    title="Dettagli"
-                                                                >
-                                                                    <Info className="h-4 w-4" />
-                                                                </Button>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-8 w-8 text-indigo-100 hover:text-white hover:bg-white/10"
-                                                                    onClick={() => handleDuplicate(preset)}
-                                                                    title="Duplica"
-                                                                >
-                                                                    <Sparkles className="h-4 w-4" />
-                                                                </Button>
-                                                                {isOwner && (
-                                                                    <>
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-8 w-8 text-indigo-100 hover:text-white hover:bg-white/10"
-                                                                            onClick={() => handleEdit(preset)}
-                                                                            title="Modifica"
-                                                                        >
-                                                                            <Edit3 className="h-4 w-4" />
-                                                                        </Button>
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-8 w-8 text-red-300 hover:text-red-200 hover:bg-red-500/20"
-                                                                            onClick={() => handleDelete(preset)}
-                                                                            title="Elimina"
-                                                                        >
-                                                                            <Trash2 className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                );
-                                            })
-                                        )}
-                                    </TableBody>
-                                </Table>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
                             </div>
                         </div>
                     </motion.div>
@@ -615,40 +602,51 @@ export default function ConfigurationPresets() {
 
             {/* Edit/Create Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+                <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden bg-white/95 backdrop-blur-xl border-slate-200 shadow-2xl">
                     <DialogHeader>
-                        <DialogTitle>{editingId ? 'Modifica Preset' : 'Crea Nuovo Preset'}</DialogTitle>
-                        <DialogDescription>Configura i dettagli, le attività e i parametri di default.</DialogDescription>
+                        <DialogTitle className="text-slate-900">{editingId ? 'Modifica Preset' : 'Crea Nuovo Preset'}</DialogTitle>
+                        <DialogDescription className="text-slate-500">Configura i dettagli, le attività e i parametri di default.</DialogDescription>
                     </DialogHeader>
 
                     <div className="flex-1 overflow-y-auto pr-2 space-y-6 py-4">
                         {/* Basic Info */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Nome</Label>
-                                <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Es. Sviluppo Backend Standard" />
+                                <Label className="text-slate-700">Nome</Label>
+                                <Input
+                                    value={form.name}
+                                    onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                                    placeholder="Es. Sviluppo Backend Standard"
+                                    className="bg-white border-slate-200 focus:bg-white"
+                                />
                             </div>
                             <div className="space-y-2">
-                                <Label>Tecnologia</Label>
+                                <Label className="text-slate-700">Tecnologia</Label>
                                 <Select value={form.techCategory} onValueChange={v => setForm(p => ({ ...p, techCategory: v }))}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="bg-white border-slate-200"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         {technologies.map(t => <SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="col-span-2 space-y-2">
-                                <Label>Descrizione</Label>
-                                <Textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="Descrizione del preset..." rows={2} />
+                                <Label className="text-slate-700">Descrizione</Label>
+                                <Textarea
+                                    value={form.description}
+                                    onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                                    placeholder="Descrizione del preset..."
+                                    rows={2}
+                                    className="bg-white border-slate-200 focus:bg-white"
+                                />
                             </div>
                         </div>
 
                         {/* Activities Configuration */}
-                        <div className="space-y-3 border-t pt-4">
+                        <div className="space-y-3 border-t border-slate-100 pt-4">
                             <div className="flex items-center justify-between">
-                                <Label className="text-base font-semibold">Attività Default</Label>
+                                <Label className="text-base font-semibold text-slate-900">Attività Default</Label>
                                 <Select onValueChange={addActivity}>
-                                    <SelectTrigger className="w-[250px]">
+                                    <SelectTrigger className="w-[250px] bg-white border-slate-200">
                                         <SelectValue placeholder="Aggiungi attività..." />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -663,27 +661,27 @@ export default function ConfigurationPresets() {
                                 </Select>
                             </div>
 
-                            <div className="bg-slate-50 rounded-md border p-2 min-h-[100px] space-y-2">
+                            <div className="bg-slate-50 rounded-xl border border-slate-200 p-2 min-h-[100px] space-y-2">
                                 {form.activities.length === 0 ? (
                                     <div className="text-center text-sm text-slate-400 py-8">Nessuna attività selezionata</div>
                                 ) : (
                                     form.activities.map((act, idx) => (
-                                        <div key={act.id} className="flex items-center justify-between bg-white p-2 rounded border shadow-sm">
+                                        <div key={act.id} className="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
                                             <div className="flex items-center gap-2">
-                                                <Badge variant="outline" className="w-6 h-6 flex items-center justify-center rounded-full p-0">{idx + 1}</Badge>
+                                                <Badge variant="outline" className="w-6 h-6 flex items-center justify-center rounded-full p-0 bg-slate-50 border-slate-200 text-slate-600">{idx + 1}</Badge>
                                                 <div>
-                                                    <div className="text-sm font-medium">{act.name}</div>
+                                                    <div className="text-sm font-medium text-slate-900">{act.name}</div>
                                                     <div className="text-[10px] text-slate-500">{act.code} • {act.base_days} ore</div>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-1">
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => moveActivity(idx, 'up')} disabled={idx === 0}>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600" onClick={() => moveActivity(idx, 'up')} disabled={idx === 0}>
                                                     <ArrowUp className="h-3 w-3" />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => moveActivity(idx, 'down')} disabled={idx === form.activities.length - 1}>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600" onClick={() => moveActivity(idx, 'down')} disabled={idx === form.activities.length - 1}>
                                                     <ArrowDown className="h-3 w-3" />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500 hover:bg-red-50" onClick={() => removeActivity(idx)}>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => removeActivity(idx)}>
                                                     <X className="h-3 w-3" />
                                                 </Button>
                                             </div>
@@ -694,18 +692,18 @@ export default function ConfigurationPresets() {
                         </div>
 
                         {/* Drivers & Risks */}
-                        <div className="grid md:grid-cols-2 gap-6 border-t pt-4">
+                        <div className="grid md:grid-cols-2 gap-6 border-t border-slate-100 pt-4">
                             <div className="space-y-3">
-                                <Label className="text-base font-semibold">Driver Default</Label>
+                                <Label className="text-base font-semibold text-slate-900">Driver Default</Label>
                                 <div className="space-y-2">
                                     {allDrivers.map(d => (
-                                        <div key={d.id} className="flex items-center justify-between text-sm border-b pb-2">
+                                        <div key={d.id} className="flex items-center justify-between text-sm border-b border-slate-100 pb-2 last:border-0">
                                             <span className="font-medium text-slate-700">{d.name}</span>
                                             <Select
                                                 value={form.driverValues[d.code] || '_REMOVE_'}
                                                 onValueChange={(v) => updateDriverValue(d.code, v)}
                                             >
-                                                <SelectTrigger className="w-[140px] h-8 text-xs">
+                                                <SelectTrigger className="w-[140px] h-8 text-xs bg-white border-slate-200">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -721,14 +719,14 @@ export default function ConfigurationPresets() {
                             </div>
 
                             <div className="space-y-3">
-                                <Label className="text-base font-semibold">Rischi Default</Label>
+                                <Label className="text-base font-semibold text-slate-900">Rischi Default</Label>
                                 <div className="grid grid-cols-2 gap-2">
                                     {allRisks.map(r => {
                                         const isSelected = form.riskCodes.includes(r.code);
                                         return (
                                             <div
                                                 key={r.id}
-                                                className={`cursor-pointer border rounded p-2 text-xs flex items-center gap-2 transition-colors ${isSelected ? 'bg-orange-50 border-orange-200' : 'hover:bg-slate-50'}`}
+                                                className={`cursor-pointer border rounded-lg p-2 text-xs flex items-center gap-2 transition-colors ${isSelected ? 'bg-orange-50 border-orange-200' : 'bg-white border-slate-200 hover:bg-slate-50'}`}
                                                 onClick={() => toggleRisk(r.code)}
                                             >
                                                 <div className={`w-3 h-3 rounded-full border flex items-center justify-center ${isSelected ? 'bg-orange-500 border-orange-500' : 'border-slate-300'}`}>
@@ -743,9 +741,9 @@ export default function ConfigurationPresets() {
                         </div>
                     </div>
 
-                    <DialogFooter className="pt-4 border-t">
-                        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Annulla</Button>
-                        <Button onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
+                    <DialogFooter className="pt-4 border-t border-slate-100">
+                        <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="border-slate-200 text-slate-700">Annulla</Button>
+                        <Button onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white shadow-md">
                             {saving ? 'Salvataggio...' : 'Salva Preset'}
                         </Button>
                     </DialogFooter>
@@ -754,23 +752,23 @@ export default function ConfigurationPresets() {
 
             {/* Preview Dialog */}
             <Dialog open={!!selectedPreview} onOpenChange={(open) => !open && setSelectedPreview(null)}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl bg-white/95 backdrop-blur-xl border-slate-200 shadow-2xl">
                     <DialogHeader>
-                        <DialogTitle>{selectedPreview?.name}</DialogTitle>
-                        <DialogDescription>{selectedPreview?.description}</DialogDescription>
+                        <DialogTitle className="text-slate-900">{selectedPreview?.name}</DialogTitle>
+                        <DialogDescription className="text-slate-500">{selectedPreview?.description}</DialogDescription>
                     </DialogHeader>
                     {selectedPreview && (
                         <div className="space-y-4">
                             <div className="flex gap-2">
-                                <Badge variant="outline">{getTechLabel(selectedPreview.tech_category)}</Badge>
-                                {selectedPreview.is_custom && <Badge className="bg-amber-100 text-amber-800">Custom</Badge>}
+                                <Badge variant="outline" className="border-slate-200 text-slate-600">{getTechLabel(selectedPreview.tech_category)}</Badge>
+                                {selectedPreview.is_custom && <Badge className="bg-amber-100 text-amber-800 border-amber-200">Custom</Badge>}
                             </div>
 
                             <div className="space-y-2">
-                                <h4 className="font-semibold text-sm">Attività ({selectedPreview.defaultActivities.length})</h4>
-                                <div className="bg-slate-50 p-2 rounded border max-h-[200px] overflow-y-auto space-y-1">
+                                <h4 className="font-semibold text-sm text-slate-900">Attività ({selectedPreview.defaultActivities.length})</h4>
+                                <div className="bg-slate-50 p-2 rounded-xl border border-slate-200 max-h-[200px] overflow-y-auto space-y-1">
                                     {selectedPreview.defaultActivities.map((a, i) => (
-                                        <div key={i} className="text-sm flex justify-between">
+                                        <div key={i} className="text-sm flex justify-between text-slate-700">
                                             <span>{i + 1}. {a.name}</span>
                                             <span className="text-slate-500 text-xs">{a.base_days}h</span>
                                         </div>
@@ -780,19 +778,19 @@ export default function ConfigurationPresets() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <h4 className="font-semibold text-sm mb-2">Drivers</h4>
+                                    <h4 className="font-semibold text-sm mb-2 text-slate-900">Drivers</h4>
                                     <div className="flex flex-wrap gap-1">
                                         {selectedPreview.driverDefaults.map(d => (
-                                            <Badge key={d.code} variant="outline" className="text-xs">{d.code}: {d.value}</Badge>
+                                            <Badge key={d.code} variant="outline" className="text-xs border-slate-200 text-slate-600">{d.code}: {d.value}</Badge>
                                         ))}
                                         {selectedPreview.driverDefaults.length === 0 && <span className="text-xs text-slate-500">-</span>}
                                     </div>
                                 </div>
                                 <div>
-                                    <h4 className="font-semibold text-sm mb-2">Rischi</h4>
+                                    <h4 className="font-semibold text-sm mb-2 text-slate-900">Rischi</h4>
                                     <div className="flex flex-wrap gap-1">
                                         {selectedPreview.defaultRisks.map(r => (
-                                            <Badge key={r.code} variant="secondary" className="text-xs bg-orange-50 text-orange-800">{r.code}</Badge>
+                                            <Badge key={r.code} variant="secondary" className="text-xs bg-orange-50 text-orange-800 border border-orange-100">{r.code}</Badge>
                                         ))}
                                         {selectedPreview.defaultRisks.length === 0 && <span className="text-xs text-slate-500">-</span>}
                                     </div>

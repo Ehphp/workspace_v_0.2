@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,6 +27,11 @@ import { RequirementDescription } from '@/components/requirements/detail/Require
 import { RequirementInfo } from '@/components/requirements/detail/RequirementInfo';
 import { RequirementEstimation } from '@/components/requirements/detail/RequirementEstimation';
 import { RequirementDriversCard } from '@/components/requirements/detail/RequirementDriversCard';
+
+// Tab Components
+import { OverviewTab } from '@/components/requirements/detail/tabs/OverviewTab';
+import { EstimationTab } from '@/components/requirements/detail/tabs/EstimationTab';
+import { HistoryTab } from '@/components/requirements/detail/tabs/HistoryTab';
 
 const HISTORY_PAGE_SIZE = 5;
 
@@ -368,14 +374,46 @@ export default function RequirementDetail() {
     }
 
     return (
-        <div className="h-screen flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+        <div className="h-screen flex flex-col overflow-hidden bg-slate-50 relative">
+            {/* Background Pattern */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+
+            {/* Animated Background Blobs */}
+            <motion.div
+                animate={{
+                    x: [0, 100, 0],
+                    y: [0, -50, 0],
+                    scale: [1, 1.1, 1],
+                }}
+                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                className="absolute top-0 -left-20 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+            />
+            <motion.div
+                animate={{
+                    x: [0, -100, 0],
+                    y: [0, 50, 0],
+                    scale: [1, 1.2, 1],
+                }}
+                transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+                className="absolute top-1/3 -right-20 w-[30rem] h-[30rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+            />
+            <motion.div
+                animate={{
+                    x: [0, 50, 0],
+                    y: [0, 100, 0],
+                    scale: [1, 1.1, 1],
+                }}
+                transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
+                className="absolute bottom-0 left-1/3 w-[25rem] h-[25rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+            />
+
             {/* Header - flex-shrink-0 */}
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 relative z-20 bg-white/70 backdrop-blur-xl border-b border-white/50">
                 <Header />
             </div>
 
             {/* Page specific info bar - flex-shrink-0 */}
-            <div className="flex-shrink-0 relative border-b border-slate-200/60 bg-white/95 backdrop-blur-sm shadow-sm">
+            <div className="flex-shrink-0 relative z-10 border-b border-white/50 bg-white/40 backdrop-blur-md shadow-sm">
                 <div className="container mx-auto px-6 py-3">
                     <RequirementHeader
                         requirement={requirement}
@@ -387,126 +425,81 @@ export default function RequirementDetail() {
                 </div>
             </div>
 
-            {/* Content Area - Dashboard Layout */}
-            <div className="flex-1 min-h-0 overflow-y-auto bg-slate-50/50">
-                <div className="container mx-auto px-6 py-6 space-y-6">
-
-                    {/* Top Section: Context & Estimation */}
-                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-
-                        {/* Left Column: Context (Description, Drivers, Info) */}
-                        <div className="xl:col-span-4 space-y-6">
-                            <RequirementDescription
-                                requirement={requirement}
-                                refetchRequirement={refetchRequirement}
-                            />
-
-                            <RequirementInfo
-                                requirement={requirement}
-                                presets={presets}
-                                refetchRequirement={refetchRequirement}
-                            />
-
-                            <RequirementDriversCard
-                                requirementId={requirement.id}
-                                drivers={drivers}
-                                driverValues={requirementDriverValues}
-                                onSaved={refetchRequirement}
-                                onApplyToEstimate={(map) => setDriverValues(map)}
-                            />
-                        </div>
-
-                        {/* Right Column: Estimation Workspace */}
-                        <div className="xl:col-span-8 space-y-6">
-                            {/* KPI Cards */}
-                            {estimationHistory.length > 0 && (
-                                <div className="grid grid-cols-3 gap-4">
-                                    <Card className="rounded-xl shadow-sm border-slate-200 bg-white">
-                                        <CardContent className="p-4 flex items-center gap-4">
-                                            <div className="p-3 bg-blue-50 rounded-lg">
-                                                <History className="w-6 h-6 text-blue-600" />
-                                            </div>
-                                            <div>
-                                                <div className="text-2xl font-bold text-slate-900">{estimationHistory.length}</div>
-                                                <div className="text-xs text-slate-500 font-medium uppercase">Estimations</div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                    <Card className="rounded-xl shadow-sm border-slate-200 bg-white">
-                                        <CardContent className="p-4 flex items-center gap-4">
-                                            <div className="p-3 bg-indigo-50 rounded-lg">
-                                                <Calculator className="w-6 h-6 text-indigo-600" />
-                                            </div>
-                                            <div>
-                                                <div className="text-2xl font-bold text-slate-900">{estimationHistory[0]?.total_days.toFixed(1)}d</div>
-                                                <div className="text-xs text-slate-500 font-medium uppercase">Latest Estimate</div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                    <Card className="rounded-xl shadow-sm border-slate-200 bg-white">
-                                        <CardContent className="p-4 flex items-center gap-4">
-                                            <div className="p-3 bg-emerald-50 rounded-lg">
-                                                <FileText className="w-6 h-6 text-emerald-600" />
-                                            </div>
-                                            <div>
-                                                <div className="text-2xl font-bold text-slate-900">
-                                                    {(estimationHistory.reduce((sum, est) => sum + est.total_days, 0) / estimationHistory.length).toFixed(1)}d
-                                                </div>
-                                                <div className="text-xs text-slate-500 font-medium uppercase">Average</div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </div>
-                            )}
-
-                            <RequirementEstimation
-                                estimationState={estimationState}
-                                data={{ presets, activities: filteredActivities, drivers, risks }}
-                                onSave={handleSaveEstimation}
-                                isSaving={isSaving}
-                                hasUnsavedChanges={hasUnsavedChanges}
-                                onAiSuggest={handleAiSuggest}
-                                isAiLoading={isAiLoading}
-                                requirementDescription={requirement.description || ''}
-                            />
+            {/* Content Area - Tab-based Layout (No Global Scroll) */}
+            <div className="flex-1 min-h-0 relative z-10 flex flex-col">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+                    {/* Tab Navigation */}
+                    <div className="flex-shrink-0 border-b border-slate-200 bg-white/40 backdrop-blur-sm">
+                        <div className="container mx-auto px-6">
+                            <TabsList className="h-12 bg-transparent border-0 gap-1">
+                                <TabsTrigger
+                                    value="info"
+                                    className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-t-lg border-b-2 border-transparent data-[state=active]:border-blue-600"
+                                >
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    Overview
+                                </TabsTrigger>
+                                <TabsTrigger
+                                    value="estimation"
+                                    className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-t-lg border-b-2 border-transparent data-[state=active]:border-blue-600"
+                                >
+                                    <Calculator className="w-4 h-4 mr-2" />
+                                    Estimation
+                                </TabsTrigger>
+                                <TabsTrigger
+                                    value="history"
+                                    className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-t-lg border-b-2 border-transparent data-[state=active]:border-blue-600"
+                                >
+                                    <History className="w-4 h-4 mr-2" />
+                                    History
+                                </TabsTrigger>
+                            </TabsList>
                         </div>
                     </div>
 
-                    {/* Bottom Section: History & Comparison */}
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pt-6 border-t border-slate-200">
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                <History className="w-5 h-5 text-slate-500" />
-                                Estimation History
-                            </h3>
-                            <HistorySection
-                                history={estimationHistory}
-                                loading={historyLoading}
-                                totalCount={historyTotalCount}
-                                page={historyPage}
-                                pageSize={HISTORY_PAGE_SIZE}
-                                onPageChange={setHistoryPage}
-                            />
-                        </div>
+                    {/* Tab Content - Each tab manages its own scroll */}
+                    <TabsContent value="info" className="flex-1 min-h-0 m-0 focus-visible:outline-none">
+                        <OverviewTab
+                            requirement={requirement}
+                            presets={presets}
+                            refetchRequirement={refetchRequirement}
+                            latestEstimation={estimationHistory[0] || null}
+                        />
+                    </TabsContent>
 
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                <Calculator className="w-5 h-5 text-slate-500" />
-                                Compare Scenarios
-                            </h3>
-                            <Card className="rounded-xl shadow-sm border-slate-200 bg-white h-full">
-                                <CardContent className="p-0">
-                                    <EstimationComparison
-                                        estimations={estimationHistory}
-                                        activities={activities}
-                                        drivers={drivers}
-                                        risks={risks}
-                                    />
-                                </CardContent>
-                            </Card>
-                        </div>
-                    </div>
-                </div>
+                    <TabsContent value="estimation" className="flex-1 min-h-0 m-0 focus-visible:outline-none">
+                        <EstimationTab
+                            requirement={requirement}
+                            estimationState={estimationState}
+                            data={{ presets, activities: filteredActivities, drivers, risks }}
+                            drivers={drivers}
+                            driverValues={requirementDriverValues}
+                            onSave={handleSaveEstimation}
+                            isSaving={isSaving}
+                            hasUnsavedChanges={hasUnsavedChanges}
+                            onAiSuggest={handleAiSuggest}
+                            isAiLoading={isAiLoading}
+                            requirementDescription={requirement.description || ''}
+                            refetchRequirement={refetchRequirement}
+                            setDriverValues={setDriverValues}
+                            estimationHistory={estimationHistory}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="history" className="flex-1 min-h-0 m-0 focus-visible:outline-none">
+                        <HistoryTab
+                            history={estimationHistory}
+                            loading={historyLoading}
+                            totalCount={historyTotalCount}
+                            page={historyPage}
+                            pageSize={HISTORY_PAGE_SIZE}
+                            onPageChange={setHistoryPage}
+                            activities={activities}
+                            drivers={drivers}
+                            risks={risks}
+                        />
+                    </TabsContent>
+                </Tabs>
             </div>
 
             {/* Sheet Drawer for Full Estimation Details (History) */}

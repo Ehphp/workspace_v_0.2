@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboardData } from '@/hooks/useDashboardData';
@@ -170,47 +171,80 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-syntero-gradient">
+    <div className="h-screen flex flex-col overflow-hidden bg-slate-50 relative">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+
+      {/* Animated Background Blobs */}
+      <motion.div
+        animate={{
+          x: [0, 100, 0],
+          y: [0, -50, 0],
+          scale: [1, 1.1, 1],
+        }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        className="absolute top-0 -left-20 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+      />
+      <motion.div
+        animate={{
+          x: [0, -100, 0],
+          y: [0, 50, 0],
+          scale: [1, 1.2, 1],
+        }}
+        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+        className="absolute top-1/3 -right-20 w-[30rem] h-[30rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+      />
+      <motion.div
+        animate={{
+          x: [0, 50, 0],
+          y: [0, 100, 0],
+          scale: [1, 1.1, 1],
+        }}
+        transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
+        className="absolute bottom-0 left-1/3 w-[25rem] h-[25rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+      />
+
       {/* Header - Fixed */}
-      <div className="flex-shrink-0 bg-white border-b border-slate-200 z-20">
+      <div className="flex-shrink-0 bg-white border-b border-slate-200 z-20 relative">
         <Header />
       </div>
 
       {/* Main Content Area - Flex 1 with no scroll on parent */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden relative z-10">
 
         {/* Top Bar: KPIs & Actions - Fixed Height */}
-        <div className="flex-shrink-0 px-6 py-4 bg-white/60 backdrop-blur-md border-b border-slate-200/50 shadow-sm z-10">
+        <div className="flex-shrink-0 px-6 py-2 bg-white/70 backdrop-blur-xl border-b border-white/50 shadow-sm z-10">
           <div className="container mx-auto max-w-7xl">
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
               {/* Welcome & Actions */}
               <div className="flex justify-between items-center">
                 <div>
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-500 bg-clip-text text-transparent">Dashboard</h1>
-                  <p className="text-sm text-slate-500">Welcome back, {user?.email}</p>
+                  <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-500 bg-clip-text text-transparent">Dashboard</h1>
+                  <p className="text-xs text-slate-500">Welcome back, {user?.email}</p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="relative w-64">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <div className="flex items-center gap-2">
+                  <div className="relative w-56">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                     <Input
                       placeholder="Search projects..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9 h-9 text-sm bg-slate-50 border-slate-200"
+                      className="pl-8 h-8 text-xs bg-slate-50 border-slate-200"
                     />
                   </div>
                   <Button
                     onClick={() => setShowCreateDialog(true)}
-                    className="bg-blue-600 hover:bg-blue-700 shadow-sm"
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 shadow-sm h-8 text-xs"
                   >
-                    <Plus className="mr-2 h-4 w-4" />
+                    <Plus className="mr-1.5 h-3.5 w-3.5" />
                     New Project
                   </Button>
                 </div>
               </div>
 
               {/* KPI Cards */}
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-4 gap-3">
                 <KpiCard
                   icon={Layers}
                   label="Total Projects"
@@ -246,22 +280,22 @@ export default function Dashboard() {
 
         {/* Content Grid - Flex 1 with internal scrolling */}
         <div className="flex-1 overflow-hidden">
-          <div className="container mx-auto max-w-7xl h-full px-6 py-4">
-            <div className="grid grid-cols-12 gap-6 h-full">
+          <div className="container mx-auto max-w-7xl h-full px-6 py-3">
+            <div className="grid grid-cols-12 gap-4 h-full">
 
               {/* Left Column: Projects List - Scrollable */}
               <div className="col-span-8 flex flex-col h-full min-h-0 bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-sm overflow-hidden hover:border-blue-300/30 transition-colors duration-300">
-                <div className="flex-shrink-0 px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div className="flex-shrink-0 px-3 py-2 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                   <div className="flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-slate-500" />
-                    <h2 className="font-semibold text-slate-700">Projects</h2>
-                    <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-xs font-medium border border-slate-200">
+                    <Layers className="w-3.5 h-3.5 text-slate-500" />
+                    <h2 className="font-semibold text-slate-700 text-sm">Projects</h2>
+                    <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full text-[10px] font-medium border border-slate-200">
                       {filteredLists.length}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger className="w-32 h-8 text-xs border-slate-200 bg-white">
+                      <SelectTrigger className="w-28 h-7 text-[10px] border-slate-200 bg-white">
                         <SelectValue placeholder="Sort" />
                       </SelectTrigger>
                       <SelectContent>
@@ -274,26 +308,26 @@ export default function Dashboard() {
                         onClick={() => setViewMode('grid')}
                         className={`p-1 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
                       >
-                        <LayoutGrid className="w-4 h-4" />
+                        <LayoutGrid className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => setViewMode('list')}
                         className={`p-1 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
                       >
-                        <ListIcon className="w-4 h-4" />
+                        <ListIcon className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
                   {filteredLists.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-slate-400">
                       <Layers className="w-12 h-12 mb-2 opacity-20" />
                       <p>No projects found</p>
                     </div>
                   ) : (
-                    <div className={viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-3 gap-4" : "flex flex-col gap-3"}>
+                    <div className={viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-3 gap-3" : "flex flex-col gap-2"}>
                       {filteredLists.map((list) => (
                         <ProjectCard
                           key={list.id}
@@ -309,37 +343,16 @@ export default function Dashboard() {
               </div>
 
               {/* Right Column: Sidebar - Scrollable */}
-              <div className="col-span-4 flex flex-col gap-4 h-full min-h-0 overflow-y-auto custom-scrollbar pr-1">
+              <div className="col-span-4 flex flex-col gap-3 h-full min-h-0 overflow-y-auto custom-scrollbar pr-1">
 
                 {/* Recent Activity */}
-                <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-sm overflow-hidden flex-shrink-0 hover:border-blue-300/30 transition-colors duration-300">
-                  <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <h3 className="font-semibold text-slate-700 text-sm">Recent Activity</h3>
+                <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-sm overflow-hidden flex-1 hover:border-blue-300/30 transition-colors duration-300">
+                  <div className="px-3 py-2 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h3 className="font-semibold text-slate-700 text-xs">Recent Activity</h3>
                   </div>
                   <div className="p-2">
                     <RecentRequirements />
                   </div>
-                </div>
-
-                {/* Charts Tabs */}
-                <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-sm overflow-hidden flex-1 min-h-[300px] hover:border-blue-300/30 transition-colors duration-300">
-                  <Tabs defaultValue="status" className="h-full flex flex-col">
-                    <div className="px-4 py-2 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                      <h3 className="font-semibold text-slate-700 text-sm">Analytics</h3>
-                      <TabsList className="h-7 bg-slate-200/50">
-                        <TabsTrigger value="status" className="text-xs h-5 px-2">Status</TabsTrigger>
-                        <TabsTrigger value="tech" className="text-xs h-5 px-2">Tech</TabsTrigger>
-                      </TabsList>
-                    </div>
-                    <div className="flex-1 p-4">
-                      <TabsContent value="status" className="h-full mt-0">
-                        <StatusDistributionChart statusData={statusData} />
-                      </TabsContent>
-                      <TabsContent value="tech" className="h-full mt-0">
-                        <TechStackUsageChart techData={techData} />
-                      </TabsContent>
-                    </div>
-                  </Tabs>
                 </div>
 
               </div>
