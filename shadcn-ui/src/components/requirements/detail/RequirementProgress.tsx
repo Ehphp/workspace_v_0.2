@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { CheckCircle2, Circle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Progress } from '@/components/ui/progress';
@@ -14,27 +14,61 @@ interface RequirementProgressProps {
 
 export function RequirementProgress({ estimation, activities, onUpdate }: RequirementProgressProps) {
     const { toggleActivityStatus, updating } = useActivityActions();
+    const [optimisticUpdates, setOptimisticUpdates] = useState<Record<string, boolean>>({});
 
     const estimationActivities = useMemo(() => {
         return estimation.estimation_activities || [];
     }, [estimation.estimation_activities]);
 
-    const progress = useMemo(() => {
-        if (estimationActivities.length === 0) return 0;
-        const completed = estimationActivities.filter(a => a.is_done).length;
-        return Math.round((completed / estimationActivities.length) * 100);
+    // Sync/Clear optimistic updates when real data arrives
+    useEffect(() => {
+        setOptimisticUpdates(prev => {
+            const next = { ...prev };
+            let changed = false;
+            estimationActivities.forEach(act => {
+                // If the server data matches our optimistic expectation, we can clear the override
+                if (next[act.id] === act.is_done) {
+                    delete next[act.id];
+                    changed = true;
+                }
+            });
+            return changed ? next : prev;
+        });
     }, [estimationActivities]);
 
+    const progress = useMemo(() => {
+        if (estimationActivities.length === 0) return 0;
+        // Calculate progress using optimistic values
+        const completed = estimationActivities.filter(a => {
+            const isDone = optimisticUpdates[a.id] !== undefined ? optimisticUpdates[a.id] : a.is_done;
+            return isDone;
+        }).length;
+        return Math.round((completed / estimationActivities.length) * 100);
+    }, [estimationActivities, optimisticUpdates]);
+
     const handleToggle = async (activityId: string, currentStatus: boolean) => {
-        await toggleActivityStatus(activityId, currentStatus, onUpdate);
+        const newStatus = !currentStatus;
+        // Apply optimistic update
+        setOptimisticUpdates(prev => ({ ...prev, [activityId]: newStatus }));
+
+        try {
+            await toggleActivityStatus(activityId, currentStatus, onUpdate);
+        } catch (error) {
+            // Revert on error
+            setOptimisticUpdates(prev => {
+                const next = { ...prev };
+                delete next[activityId];
+                return next;
+            });
+        }
     };
 
     if (estimationActivities.length === 0) return null;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 h-full flex flex-col">
             {/* Progress Bar */}
-            <div className="space-y-2">
+            <div className="space-y-2 shrink-0">
                 <div className="flex justify-between items-end">
                     <h3 className="text-sm font-medium text-slate-700">Implementation Progress</h3>
                     <span className="text-2xl font-bold text-blue-600">{progress}%</span>
@@ -43,16 +77,20 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
             </div>
 
             {/* Activity Checklist */}
-            <div className="space-y-3">
-                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            <div className="space-y-3 flex-1 min-h-0 flex flex-col">
+                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider shrink-0">
                     Activities ({estimationActivities.length})
                 </h4>
-                <div className="grid gap-2">
+                <div className="grid gap-2 overflow-y-auto pr-2">
                     {estimationActivities.map((estAct) => {
                         const activity = activities.find(a => a.id === estAct.activity_id);
                         if (!activity) return null;
 
-                        const isDone = estAct.is_done;
+                        // Use optimistic value if available
+                        const isDone = optimisticUpdates[estAct.id] !== undefined
+                            ? optimisticUpdates[estAct.id]
+                            : estAct.is_done;
+
                         const isUpdating = updating === estAct.id;
 
                         return (
@@ -61,7 +99,7 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
                                 layout
                                 initial={false}
                                 className={cn(
-                                    "group flex items-start gap-3 p-3 rounded-lg border transition-all duration-200 cursor-pointer",
+                                    "group flex items-center gap-2 p-2 rounded-md border transition-all duration-200 cursor-pointer",
                                     isDone
                                         ? "bg-blue-50/50 border-blue-100"
                                         : "bg-white border-slate-200 hover:border-blue-300 hover:shadow-sm"
@@ -69,33 +107,29 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
                                 onClick={() => !isUpdating && handleToggle(estAct.id, isDone)}
                             >
                                 <div className={cn(
-                                    "mt-0.5 shrink-0 transition-colors duration-200",
+                                    "shrink-0 transition-colors duration-200",
                                     isDone ? "text-blue-600" : "text-slate-300 group-hover:text-blue-400"
                                 )}>
-                                    {isUpdating ? (
-                                        <div className="w-5 h-5 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                                    ) : isDone ? (
-                                        <CheckCircle2 className="w-5 h-5" />
+                                    {isDone ? (
+                                        <CheckCircle2 className="w-4 h-4" />
                                     ) : (
-                                        <Circle className="w-5 h-5" />
+                                        <Circle className="w-4 h-4" />
                                     )}
                                 </div>
 
                                 <div className="flex-1 min-w-0">
                                     <div className={cn(
-                                        "font-medium text-sm transition-colors duration-200",
+                                        "font-medium text-xs transition-colors duration-200 truncate",
                                         isDone ? "text-slate-500 line-through" : "text-slate-900"
                                     )}>
                                         {activity.name}
                                     </div>
-                                    {activity.description && (
-                                        <div className="text-xs text-slate-500 mt-0.5 line-clamp-1">
-                                            {activity.description}
-                                        </div>
-                                    )}
                                 </div>
 
-                                <div className="text-xs font-mono font-medium text-slate-400">
+                                <div className={cn(
+                                    "text-xs font-bold px-1.5 py-0.5 rounded",
+                                    isDone ? "bg-slate-100 text-slate-400" : "bg-blue-50 text-blue-700"
+                                )}>
                                     {activity.base_days}d
                                 </div>
                             </motion.div>

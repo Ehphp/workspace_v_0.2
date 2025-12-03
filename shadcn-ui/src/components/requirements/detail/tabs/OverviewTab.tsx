@@ -29,13 +29,13 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
 
     return (
         <div className="h-full flex flex-col overflow-hidden">
-            <div className="flex-1 min-h-0 overflow-y-auto">
-                <div className="container mx-auto px-6 py-3">
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            <div className="flex-1 min-h-0 lg:overflow-hidden overflow-hidden">
+                <div className="container mx-auto px-6 py-3 h-full">
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:h-full">
                         {/* Left: Compact Info Grid (3/5) */}
-                        <div className="lg:col-span-3 space-y-3">
+                        <div className="lg:col-span-3 space-y-3 lg:overflow-hidden lg:pr-2 lg:h-full flex flex-col">
                             {/* Title & Description Card */}
-                            <Card className="rounded-xl shadow-sm border-slate-200 bg-white/60 backdrop-blur-sm">
+                            <Card className="rounded-xl shadow-sm border-slate-200 bg-white/60 backdrop-blur-sm shrink-0">
                                 <CardContent className="p-4">
                                     <div className="flex items-start justify-between gap-3 mb-2">
                                         <div className="flex-1">
@@ -69,8 +69,8 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
 
                             {/* Progress Section */}
                             {latestEstimation && (
-                                <Card className="rounded-xl shadow-sm border-slate-200 bg-white/60 backdrop-blur-sm">
-                                    <CardContent className="p-4">
+                                <Card className="rounded-xl shadow-sm border-slate-200 bg-white/60 backdrop-blur-sm flex-1 min-h-0 flex flex-col">
+                                    <CardContent className="p-4 flex-1 min-h-0 flex flex-col">
                                         <RequirementProgress
                                             estimation={latestEstimation}
                                             activities={activities}
@@ -84,8 +84,8 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
                         </div>
 
                         {/* Right: Estimation Summary (2/5) */}
-                        <div className="lg:col-span-2">
-                            <Card className="rounded-xl shadow-sm border-slate-200 bg-white/60 backdrop-blur-sm h-full">
+                        <div className="lg:col-span-2 lg:h-full lg:overflow-hidden">
+                            <Card className="rounded-xl shadow-sm border-slate-200 bg-white/60 backdrop-blur-sm h-full min-h-min">
                                 <CardContent className="p-4">
                                     <div className="flex items-center gap-2 mb-3">
                                         <div className="p-1.5 bg-blue-50 rounded">

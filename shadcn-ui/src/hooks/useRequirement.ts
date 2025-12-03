@@ -12,6 +12,7 @@ interface UseRequirementReturn {
     driverValues: RequirementDriverValue[];
     assignedEstimation: EstimationWithDetails | null;
     loading: boolean;
+    isRefetching: boolean;
     error: Error | null;
     refetch: () => Promise<void>;
 }
@@ -56,7 +57,8 @@ export function useRequirement(
     const preset = useMemo(() => query.data?.preset ?? null, [query.data]);
     const driverValues = useMemo(() => query.data?.driverValues ?? [], [query.data]);
     const assignedEstimation = useMemo(() => query.data?.assignedEstimation ?? null, [query.data]);
-    const loading = query.isLoading || query.isFetching || !enabled;
+    const loading = query.isLoading || !enabled;
+    const isRefetching = query.isFetching;
     const error = (query.error as Error) || null;
 
     return {
@@ -66,6 +68,7 @@ export function useRequirement(
         driverValues,
         assignedEstimation,
         loading,
+        isRefetching,
         error,
         refetch: async () => { await query.refetch(); }
     };

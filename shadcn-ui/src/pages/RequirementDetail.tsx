@@ -27,7 +27,7 @@ import { OverviewTab } from '@/components/requirements/detail/tabs/OverviewTab';
 import { EstimationTab } from '@/components/requirements/detail/tabs/EstimationTab';
 import { HistoryTab } from '@/components/requirements/detail/tabs/HistoryTab';
 
-const HISTORY_PAGE_SIZE = 5;
+const HISTORY_PAGE_SIZE = 50;
 
 export default function RequirementDetail() {
     const navigate = useNavigate();
@@ -372,7 +372,7 @@ export default function RequirementDetail() {
     }
 
     return (
-        <div className="min-h-screen h-screen flex flex-col bg-slate-50 relative overflow-hidden">
+        <div className="h-screen flex flex-col bg-slate-50 relative overflow-hidden">
             {/* Background Pattern */}
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
@@ -426,7 +426,7 @@ export default function RequirementDetail() {
             <div className="flex-1 relative z-10 flex flex-col min-h-0">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
                     {/* Tab Navigation */}
-                    <div className="flex-shrink-0 border-b border-slate-200 bg-white/40 backdrop-blur-sm overflow-x-auto">
+                    <div className="flex-shrink-0 border-b border-slate-200 bg-white/40 backdrop-blur-sm">
                         <div className="container mx-auto px-6">
                             <TabsList className="h-12 bg-transparent border-0 gap-1">
                                 <TabsTrigger
@@ -455,7 +455,7 @@ export default function RequirementDetail() {
                     </div>
 
                     {/* Tab Content - Each tab manages its own scroll */}
-                    <TabsContent value="info" className="flex-1 min-h-0 m-0 focus-visible:outline-none">
+                    <TabsContent value="info" className="flex-1 min-h-0 m-0 focus-visible:outline-none h-full">
                         <OverviewTab
                             requirement={requirement}
                             presets={presets}
@@ -465,7 +465,7 @@ export default function RequirementDetail() {
                         />
                     </TabsContent>
 
-                    <TabsContent value="estimation" className="flex-1 min-h-0 m-0 focus-visible:outline-none">
+                    <TabsContent value="estimation" className="flex-1 min-h-0 m-0 focus-visible:outline-none h-full">
                         <EstimationTab
                             requirement={requirement}
                             estimationState={estimationState}
@@ -479,7 +479,7 @@ export default function RequirementDetail() {
                         />
                     </TabsContent>
 
-                    <TabsContent value="history" className="flex-1 m-0 focus-visible:outline-none">
+                    <TabsContent value="history" className="flex-1 min-h-0 m-0 focus-visible:outline-none h-full">
                         <HistoryTab
                             history={estimationHistory}
                             loading={historyLoading}
