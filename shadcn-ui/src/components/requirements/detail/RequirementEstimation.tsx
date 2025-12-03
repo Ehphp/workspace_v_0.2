@@ -63,7 +63,7 @@ export function RequirementEstimation({
 
     return (
         <div className="h-full flex flex-col">
-            <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)_320px] gap-3">
+            <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[380px_minmax(0,1fr)_300px] gap-3">
                 {/* Column 1: Tech / Drivers / Risks */}
                 <div className="overflow-hidden">
                     <div className="h-full overflow-y-auto space-y-3">
@@ -72,9 +72,6 @@ export function RequirementEstimation({
                             selectedPresetId={selectedPresetId}
                             onPresetChange={handlePresetChange}
                             onApplyTemplate={handleApplyTemplate}
-                            onAiRecalculate={onAiSuggest}
-                            isAiLoading={isAiLoading}
-                            requirementDescription={requirementDescription}
                             isExpanded={leftColumnExpanded === 'technology'}
                             onToggle={() => setLeftColumnExpanded(leftColumnExpanded === 'technology' ? null : 'technology')}
                         />
@@ -107,8 +104,11 @@ export function RequirementEstimation({
                             selectedActivityIds={selectedActivityIds}
                             aiSuggestedIds={aiSuggestedIds}
                             onActivityToggle={toggleActivity}
+                            onAiRecalculate={onAiSuggest}
+                            isAiLoading={isAiLoading}
+                            requirementDescription={requirementDescription}
                             isExpanded
-                            onToggle={() => {}}
+                            onToggle={() => { }}
                         />
                     </div>
                 </div>

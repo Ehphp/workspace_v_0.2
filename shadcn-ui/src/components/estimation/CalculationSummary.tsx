@@ -91,26 +91,6 @@ export function CalculationSummary({
                     </div>
                 </div>
 
-                {/* Formula Explanation */}
-                <div className="bg-muted/30 p-2 rounded text-[10px] space-y-0.5">
-                    <div className="font-semibold mb-1 text-xs">Formula:</div>
-                    <div className="font-mono">
-                        Subtotal = Base Days × Driver Multiplier
-                    </div>
-                    <div className="font-mono">
-                        = {result.baseDays.toFixed(1)} × {result.driverMultiplier.toFixed(2)}
-                        = {result.subtotal.toFixed(1)}d
-                    </div>
-                    <Separator className="my-2" />
-                    <div className="font-mono">
-                        Total = Subtotal × (1 + Contingency%)
-                    </div>
-                    <div className="font-mono">
-                        = {result.subtotal.toFixed(1)} × (1 + {(result.contingencyPercent * 100).toFixed(0)}%)
-                        = {result.totalDays.toFixed(1)}d
-                    </div>
-                </div>
-
                 {/* Actions */}
                 <div className="flex gap-2">
                     <Button

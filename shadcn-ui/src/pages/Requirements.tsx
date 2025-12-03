@@ -34,7 +34,6 @@ export default function Requirements() {
     const {
         list,
         filteredRequirements,
-        paginatedRequirements,
         loading,
         errorMessage,
         searchTerm,
@@ -45,13 +44,6 @@ export default function Requirements() {
         setFilterState,
         sortBy,
         setSortBy,
-        page,
-        setPage,
-        pageSize,
-        setPageSize,
-        totalPages,
-        showingFrom,
-        showingTo,
         totalEstimation,
         estimatedCount,
         notEstimatedCount,
@@ -227,60 +219,9 @@ export default function Requirements() {
                         </div>
                     ) : (
                         <div className="max-w-7xl mx-auto">
-                            {/* Pagination Controls */}
-                            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 px-1">
-                                <div className="text-sm text-slate-600">
-                                    Showing {showingFrom}-{showingTo} of {filteredRequirements.length} requirements
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs text-slate-500">Rows</span>
-                                        <Select
-                                            value={String(pageSize)}
-                                            onValueChange={(value) => {
-                                                setPageSize(Number(value));
-                                                setPage(1);
-                                            }}
-                                        >
-                                            <SelectTrigger className="w-24 h-9 border-slate-300 bg-white/80">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent className="bg-white/95 backdrop-blur-lg border-slate-200/50">
-                                                {[10, 20, 50].map((size) => (
-                                                    <SelectItem key={size} value={String(size)}>
-                                                        {size} / page
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={page <= 1}
-                                            onClick={() => setPage(page - 1 > 1 ? page - 1 : 1)}
-                                        >
-                                            Prev
-                                        </Button>
-                                        <span className="text-xs text-slate-600">
-                                            Page {page} / {totalPages}
-                                        </span>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={page >= totalPages}
-                                            onClick={() => setPage(page + 1 < totalPages ? page + 1 : totalPages)}
-                                        >
-                                            Next
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-
                             {/* Requirements Grid */}
                             <div className="grid gap-5">
-                                {paginatedRequirements.map((req) => {
+                                {filteredRequirements.map((req) => {
                                     const estimation = req.latest_estimation;
                                     const hasEstimation = !!estimation;
                                     const priorityConfig = PRIORITY_CONFIGS[req.priority as keyof typeof PRIORITY_CONFIGS] || PRIORITY_CONFIGS.MEDIUM;

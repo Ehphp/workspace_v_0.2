@@ -9,7 +9,7 @@ import { useRequirement } from '@/hooks/useRequirement';
 import { useEstimationHistory } from '@/hooks/useEstimationHistory';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -17,6 +17,7 @@ import { FileText, Calculator, History, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { suggestActivities } from '@/lib/openai';
 import { Header } from '@/components/layout/Header';
+import type { EstimationWithDetails } from '@/types/database';
 
 // New Components
 import { RequirementHeader } from '@/components/requirements/detail/RequirementHeader';
@@ -93,8 +94,7 @@ export default function RequirementDetail() {
     const [activeTab, setActiveTab] = useState('info');
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [showScenarioDialog, setShowScenarioDialog] = useState(false);
-    const [scenarioName, setScenarioName] = useState('Default');
+    // Scenario naming handled automatically (no dialog)
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [selectedEstimationId, setSelectedEstimationId] = useState<string | null>(null);
 
@@ -298,7 +298,7 @@ export default function RequirementDetail() {
             toast.error('Cannot save invalid estimation');
             return;
         }
-        setShowScenarioDialog(true);
+        confirmSaveEstimation();
     }, [user, requirement, estimationResult, isEstimationValid]);
 
     const confirmSaveEstimation = async () => {
@@ -306,6 +306,7 @@ export default function RequirementDetail() {
 
         setIsSaving(true);
         try {
+            const autoScenarioName = `Auto - ${new Date().toLocaleString()}`;
             // Prepare data for RPC
             const estimationData = {
                 p_requirement_id: requirement.id,
@@ -315,7 +316,7 @@ export default function RequirementDetail() {
                 p_driver_multiplier: estimationResult.driverMultiplier,
                 p_risk_score: estimationResult.riskScore,
                 p_contingency_percent: estimationResult.contingencyPercent,
-                p_scenario_name: scenarioName,
+                p_scenario_name: autoScenarioName,
                 p_activities: selectedActivityIds.map(id => ({
                     activity_id: id,
                     is_ai_suggested: false, // We don't track this granularly in state yet, simplified
@@ -335,8 +336,6 @@ export default function RequirementDetail() {
             if (error) throw error;
 
             toast.success('Estimation saved successfully');
-            setShowScenarioDialog(false);
-            setScenarioName('Default'); // Reset name
             refetchHistory(); // Refresh history
         } catch (error) {
             console.error('Error saving estimation:', error);
@@ -418,8 +417,7 @@ export default function RequirementDetail() {
                         requirement={requirement}
                         onBack={handleBack}
                         refetchRequirement={refetchRequirement}
-                        onQuickEstimate={handleQuickEstimate}
-                        isQuickEstimating={isQuickEstimating}
+                        presets={presets}
                     />
                 </div>
             </div>
@@ -462,7 +460,7 @@ export default function RequirementDetail() {
                             requirement={requirement}
                             presets={presets}
                             refetchRequirement={refetchAll}
-                            latestEstimation={assignedEstimation || estimationHistory[0] || null}
+                            latestEstimation={assignedEstimation || (estimationHistory[0] as unknown as EstimationWithDetails) || null}
                             activities={filteredActivities}
                         />
                     </TabsContent>
@@ -649,42 +647,6 @@ export default function RequirementDetail() {
             </Sheet>
 
             {/* Scenario Name Dialog */}
-            <AlertDialog open={showScenarioDialog} onOpenChange={setShowScenarioDialog}>
-                <AlertDialogContent className="bg-white/95 backdrop-blur-lg border-white/50 shadow-2xl">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-slate-900">Save Estimation</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600">
-                            Give this estimation a name to identify it in the history.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="py-4">
-                        <Label htmlFor="scenario-name" className="text-sm font-medium text-slate-700">Scenario Name</Label>
-                        <Input
-                            id="scenario-name"
-                            placeholder="e.g., Base Estimate, With Integration, Optimistic"
-                            value={scenarioName}
-                            onChange={(e) => setScenarioName(e.target.value)}
-                            className="mt-2 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
-                    </div>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel
-                            onClick={() => setScenarioName('Default')}
-                            className="border-slate-300 hover:bg-slate-100"
-                        >
-                            Cancel
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={confirmSaveEstimation}
-                            disabled={isSaving}
-                            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg"
-                        >
-                            {isSaving ? 'Saving...' : 'Save Estimation'}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
             {/* Quick Estimate Error Dialog */}
             <AlertDialog open={showQuickEstimateError} onOpenChange={setShowQuickEstimateError}>
                 <AlertDialogContent className="bg-white/95 backdrop-blur-lg border-white/50 shadow-2xl max-w-lg">

@@ -80,50 +80,7 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
                                 </Card>
                             )}
 
-                            {/* Compact Metadata Grid */}
-                            <Card className="rounded-xl shadow-sm border-slate-200 bg-white/60 backdrop-blur-sm">
-                                <CardContent className="p-4">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="flex items-center gap-2">
-                                            <div className="p-1.5 bg-blue-50 rounded">
-                                                <User className="w-3.5 h-3.5 text-blue-600" />
-                                            </div>
-                                            <div>
-                                                <div className="text-[10px] text-slate-500 uppercase font-medium">Owner</div>
-                                                <div className="text-xs font-semibold text-slate-900">{requirement.business_owner}</div>
-                                            </div>
-                                        </div>
 
-                                        <div className="flex items-center gap-2">
-                                            <div className="p-1.5 bg-purple-50 rounded">
-                                                <Settings className="w-3.5 h-3.5 text-purple-600" />
-                                            </div>
-                                            <div>
-                                                <div className="text-[10px] text-slate-500 uppercase font-medium">Technology</div>
-                                                <div className="text-xs font-semibold text-slate-900">{preset?.name || 'Not set'}</div>
-                                            </div>
-                                        </div>
-
-                                        {requirement.labels && requirement.labels.length > 0 && (
-                                            <div className="col-span-2 flex items-center gap-2">
-                                                <div className="p-1.5 bg-indigo-50 rounded">
-                                                    <Tag className="w-3.5 h-3.5 text-indigo-600" />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="text-[10px] text-slate-500 uppercase font-medium mb-0.5">Labels</div>
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {requirement.labels.map((label, idx) => (
-                                                            <Badge key={idx} variant="secondary" className="text-[10px] px-1.5 py-0">
-                                                                {label}
-                                                            </Badge>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
                         </div>
 
                         {/* Right: Estimation Summary (2/5) */}

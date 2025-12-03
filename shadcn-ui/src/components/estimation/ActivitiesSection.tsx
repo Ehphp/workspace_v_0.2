@@ -1,7 +1,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Sparkles, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import type { Activity } from '@/types/database';
 
 interface ActivitiesSectionProps {
@@ -9,6 +10,9 @@ interface ActivitiesSectionProps {
     selectedActivityIds: string[];
     aiSuggestedIds: string[];
     onActivityToggle: (activityId: string) => void;
+    onAiRecalculate: () => void;
+    isAiLoading: boolean;
+    requirementDescription: string;
     isExpanded: boolean;
     onToggle: () => void;
 }
@@ -18,6 +22,9 @@ export function ActivitiesSection({
     selectedActivityIds,
     aiSuggestedIds,
     onActivityToggle,
+    onAiRecalculate,
+    isAiLoading,
+    requirementDescription,
     isExpanded,
     onToggle,
 }: ActivitiesSectionProps) {
@@ -67,7 +74,28 @@ export function ActivitiesSection({
                 </div>
             </CardHeader>
             {isExpanded && (
-                <CardContent className="px-3 pb-3 pt-0 overflow-y-auto max-h-[70vh]">
+                <CardContent className="px-3 pb-3 pt-0">
+                    <div className="mb-3">
+                        <Button
+                            onClick={onAiRecalculate}
+                            disabled={isAiLoading || !requirementDescription}
+                            size="sm"
+                            className="w-full h-8 text-xs bg-purple-600 hover:bg-purple-700 text-white"
+                        >
+                            {isAiLoading ? (
+                                <>
+                                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                    Analyzing...
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles className="h-3 w-3 mr-1" />
+                                    AI Suggest Activities
+                                </>
+                            )}
+                        </Button>
+                    </div>
+
                     <div className="space-y-3">
                         {selectedActivities.length > 0 && (
                             <div>

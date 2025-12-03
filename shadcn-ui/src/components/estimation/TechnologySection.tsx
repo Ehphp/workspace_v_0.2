@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Sparkles, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { TechnologyPreset } from '@/types/database';
 
 interface TechnologySectionProps {
@@ -11,9 +10,6 @@ interface TechnologySectionProps {
     selectedPresetId: string;
     onPresetChange: (presetId: string) => void;
     onApplyTemplate: () => void;
-    onAiRecalculate: () => void;
-    isAiLoading: boolean;
-    requirementDescription: string;
     isExpanded: boolean;
     onToggle: () => void;
 }
@@ -23,9 +19,6 @@ export function TechnologySection({
     selectedPresetId,
     onPresetChange,
     onApplyTemplate,
-    onAiRecalculate,
-    isAiLoading,
-    requirementDescription,
     isExpanded,
     onToggle,
 }: TechnologySectionProps) {
@@ -82,25 +75,6 @@ export function TechnologySection({
                             Apply
                         </Button>
                     </div>
-
-                    <Button
-                        onClick={onAiRecalculate}
-                        disabled={isAiLoading || !requirementDescription || !selectedPresetId}
-                        size="sm"
-                        className="w-full h-8 text-xs"
-                    >
-                        {isAiLoading ? (
-                            <>
-                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                Analyzing...
-                            </>
-                        ) : (
-                            <>
-                                <Sparkles className="h-3 w-3 mr-1" />
-                                AI Suggest
-                            </>
-                        )}
-                    </Button>
 
                     {selectedPreset && selectedPreset.description && (
                         <p className="text-[10px] text-slate-500 leading-tight">{selectedPreset.description}</p>

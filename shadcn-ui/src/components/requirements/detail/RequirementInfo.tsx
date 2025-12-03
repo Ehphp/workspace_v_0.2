@@ -123,16 +123,6 @@ export function RequirementInfo({ requirement, presets, refetchRequirement }: Re
                 ) : (
                     <>
                         <div className="space-y-1">
-                            <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Business Owner</div>
-                            <div className="text-sm font-medium text-slate-900">{requirement.business_owner || '-'}</div>
-                        </div>
-
-                        <div className="space-y-1">
-                            <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Technology</div>
-                            <div className="text-sm font-medium text-slate-900">{selectedPresetName}</div>
-                        </div>
-
-                        <div className="space-y-1">
                             <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Labels</div>
                             <div className="flex flex-wrap gap-1.5 mt-1">
                                 {requirement.labels && requirement.labels.length > 0 ? (

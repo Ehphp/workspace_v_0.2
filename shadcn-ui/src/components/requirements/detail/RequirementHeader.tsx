@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { ArrowLeft, Pencil, Save, X, Zap } from 'lucide-react';
+import { ArrowLeft, Pencil, Save, X, User, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRequirementActions, type EditedData } from '@/hooks/useRequirementActions';
-import type { Requirement } from '@/types/database';
+import type { Requirement, TechnologyPreset } from '@/types/database';
 import { useAuth } from '@/hooks/useAuth';
 import { PriorityBadge, StateBadge } from '@/components/shared/RequirementBadges';
 
@@ -12,11 +12,10 @@ interface RequirementHeaderProps {
     requirement: Requirement;
     onBack: () => void;
     refetchRequirement: () => Promise<void>;
-    onQuickEstimate: () => void;
-    isQuickEstimating: boolean;
+    presets?: TechnologyPreset[];
 }
 
-export function RequirementHeader({ requirement, onBack, refetchRequirement, onQuickEstimate, isQuickEstimating }: RequirementHeaderProps) {
+export function RequirementHeader({ requirement, onBack, refetchRequirement, presets = [] }: RequirementHeaderProps) {
     const { user } = useAuth();
     const { saveHeader, isSavingSection } = useRequirementActions({ requirement, user, refetchRequirement });
     const [isEditing, setIsEditing] = useState(false);
@@ -138,25 +137,28 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, onQ
                                         </span>
                                     </div>
                                 </div>
-                                <Button
-                                    size="sm"
-                                    onClick={onQuickEstimate}
-                                    disabled={isQuickEstimating || !requirement.description}
-                                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-md transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title="Quick Estimate: AI suggests activities only (no drivers/risks). Review and save when ready."
-                                >
-                                    {isQuickEstimating ? (
-                                        <>
-                                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
-                                            <span className="text-xs font-medium">Estimating...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Zap className="h-3 w-3 mr-1" />
-                                            <span className="text-xs font-medium">Quick Estimate</span>
-                                        </>
-                                    )}
-                                </Button>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white shadow-sm border border-slate-200">
+                                        <div className="p-1.5 bg-blue-50 rounded">
+                                            <User className="h-4 w-4 text-blue-600" />
+                                        </div>
+                                        <div className="leading-tight">
+                                            <div className="text-[10px] uppercase text-slate-500 font-medium">Owner</div>
+                                            <div className="text-sm font-semibold text-slate-900">{requirement.business_owner || 'N/A'}</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white shadow-sm border border-slate-200">
+                                        <div className="p-1.5 bg-purple-50 rounded">
+                                            <Settings className="h-4 w-4 text-purple-600" />
+                                        </div>
+                                        <div className="leading-tight">
+                                            <div className="text-[10px] uppercase text-slate-500 font-medium">Technology</div>
+                                            <div className="text-sm font-semibold text-slate-900">
+                                                {presets.find(p => p.id === requirement.tech_preset_id)?.name || 'Not set'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
