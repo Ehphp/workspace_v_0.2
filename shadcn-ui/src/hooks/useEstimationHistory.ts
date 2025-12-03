@@ -15,8 +15,10 @@ export interface EstimationHistoryItem {
     scenario_name: string;
     created_at: string;
     estimation_activities?: Array<{
+        id: string;
         activity_id: string;
         is_ai_suggested: boolean;
+        is_done: boolean;
     }>;
     estimation_drivers?: Array<{
         driver_id: string;
@@ -63,7 +65,7 @@ export function useEstimationHistory(
                 .from('estimations')
                 .select(`
                     *,
-                    estimation_activities (activity_id, is_ai_suggested),
+                    estimation_activities (id, activity_id, is_ai_suggested, is_done),
                     estimation_drivers (driver_id, selected_value),
                     estimation_risks (risk_id)
                 `, { count: 'exact' })

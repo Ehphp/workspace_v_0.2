@@ -87,6 +87,7 @@ export interface Requirement {
   state: 'CREATED' | 'IN_PROGRESS' | 'DONE';
   business_owner: string;
   labels: string[];
+  assigned_estimation_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -139,10 +140,11 @@ export interface RequirementDriverValue {
 // Extended types with joins
 export interface RequirementWithEstimation extends Requirement {
   latest_estimation: Estimation | null;
+  assigned_estimation?: EstimationWithDetails | null;
 }
 
 export interface EstimationWithDetails extends Estimation {
-  activities?: EstimationActivity[];
-  drivers?: EstimationDriver[];
-  risks?: EstimationRisk[];
+  estimation_activities?: EstimationActivity[];
+  estimation_drivers?: EstimationDriver[];
+  estimation_risks?: EstimationRisk[];
 }

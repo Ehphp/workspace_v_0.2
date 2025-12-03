@@ -105,11 +105,13 @@ export function useRequirementsList({ listId, userId }: UseRequirementsListProps
             setList(listData);
 
             // Load requirements with their latest estimation
+            // Using estimations!requirement_id to explicitly specify which foreign key to use
+            // (now that we have both requirement_id and assigned_estimation_id relationships)
             const { data: reqData, error: reqError } = await supabase
                 .from('requirements')
                 .select(`
           *,
-          estimations(
+          estimations!requirement_id(
             id,
             total_days,
             created_at

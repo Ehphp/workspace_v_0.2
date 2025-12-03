@@ -46,6 +46,7 @@ export default function RequirementDetail() {
         list,
         preset,
         driverValues: requirementDriverValues,
+        assignedEstimation,
         loading: requirementLoading,
         error: requirementError,
         refetch: refetchRequirement
@@ -89,6 +90,11 @@ export default function RequirementDetail() {
         totalCount: historyTotalCount,
         refetch: refetchHistory
     } = useEstimationHistory(requirement?.id, { page: historyPage, pageSize: HISTORY_PAGE_SIZE });
+
+    // Combined refetch for when we need to update both requirement and history
+    const refetchAll = useCallback(async () => {
+        await Promise.all([refetchRequirement(), refetchHistory()]);
+    }, [refetchRequirement, refetchHistory]);
 
     // UI State
     const [activeTab, setActiveTab] = useState('info');
@@ -462,8 +468,8 @@ export default function RequirementDetail() {
                         <OverviewTab
                             requirement={requirement}
                             presets={presets}
-                            refetchRequirement={refetchRequirement}
-                            latestEstimation={estimationHistory[0] || null}
+                            refetchRequirement={refetchAll}
+                            latestEstimation={assignedEstimation || estimationHistory[0] || null}
                             activities={filteredActivities}
                         />
                     </TabsContent>
@@ -498,6 +504,9 @@ export default function RequirementDetail() {
                             activities={activities}
                             drivers={drivers}
                             risks={risks}
+                            assignedEstimationId={requirement.assigned_estimation_id}
+                            onAssign={refetchRequirement}
+                            requirementId={requirement.id}
                         />
                     </TabsContent>
                 </Tabs>

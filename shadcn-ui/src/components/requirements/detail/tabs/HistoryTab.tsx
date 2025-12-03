@@ -14,6 +14,9 @@ interface HistoryTabProps {
     activities: Activity[];
     drivers: Driver[];
     risks: Risk[];
+    assignedEstimationId?: string | null;
+    onAssign?: () => void;
+    requirementId: string;
 }
 
 export function HistoryTab({
@@ -25,7 +28,10 @@ export function HistoryTab({
     onPageChange,
     activities,
     drivers,
-    risks
+    risks,
+    assignedEstimationId,
+    onAssign,
+    requirementId
 }: HistoryTabProps) {
     return (
         <div className="flex flex-col">
@@ -46,6 +52,9 @@ export function HistoryTab({
                                     page={page}
                                     pageSize={pageSize}
                                     onPageChange={onPageChange}
+                                    assignedEstimationId={assignedEstimationId}
+                                    onAssign={onAssign}
+                                    requirementId={requirementId}
                                 />
                             </div>
                         </div>

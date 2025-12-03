@@ -221,6 +221,22 @@ export async function createRequirement(input: CreateRequirementInput): Promise<
   );
 }
 
+export async function fetchEstimationDetails(estimationId: string) {
+  const { data: estimation, error } = await supabase
+    .from('estimations')
+    .select(`
+      *,
+      estimation_activities(*),
+      estimation_drivers(*),
+      estimation_risks(*)
+    `)
+    .eq('id', estimationId)
+    .single();
+
+  if (error) throw error;
+  return estimation;
+}
+
 export async function fetchRequirementBundle(listId: string, reqId: string, userId: string) {
   const list = await fetchListForUser(listId, userId);
   const requirement = await fetchRequirementForUser(listId, reqId, userId);
@@ -236,7 +252,22 @@ export async function fetchRequirementBundle(listId: string, reqId: string, user
     console.warn('Failed to load requirement driver values', driverErr);
   }
 
-  return { list, requirement, preset, driverValues: (driverValues || []) as RequirementDriverValue[] };
+  let assignedEstimation = null;
+  if (requirement.assigned_estimation_id) {
+    try {
+      assignedEstimation = await fetchEstimationDetails(requirement.assigned_estimation_id);
+    } catch (e) {
+      console.warn('Failed to load assigned estimation', e);
+    }
+  }
+
+  return {
+    list,
+    requirement,
+    preset,
+    driverValues: (driverValues || []) as RequirementDriverValue[],
+    assignedEstimation
+  };
 }
 export interface SaveEstimationInput {
   requirementId: string;

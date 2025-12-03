@@ -10,18 +10,37 @@ export function useActivityActions() {
         currentStatus: boolean,
         onSuccess?: () => void
     ) => {
+        console.log('🔄 [toggleActivityStatus] Starting toggle...', { activityId, currentStatus });
         setUpdating(activityId);
         try {
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('estimation_activities')
                 .update({ is_done: !currentStatus })
-                .eq('id', activityId);
+                .eq('id', activityId)
+                .select();
 
-            if (error) throw error;
+            console.log('📊 [toggleActivityStatus] Supabase response:', { data, error });
 
-            if (onSuccess) onSuccess();
+            if (error) {
+                console.error('❌ [toggleActivityStatus] Supabase error:', error);
+                throw error;
+            }
+
+            if (!data || data.length === 0) {
+                console.warn('⚠️ [toggleActivityStatus] No rows updated! Check RLS policies.');
+                toast.error('Failed to update: No rows affected. Check permissions.');
+                return;
+            }
+
+            console.log('✅ [toggleActivityStatus] Successfully updated!', data);
+            toast.success(`Activity marked as ${!currentStatus ? 'done' : 'not done'}`);
+
+            if (onSuccess) {
+                console.log('🔁 [toggleActivityStatus] Calling onSuccess callback');
+                await onSuccess();
+            }
         } catch (error) {
-            console.error('Error updating activity status:', error);
+            console.error('💥 [toggleActivityStatus] Caught error:', error);
             toast.error('Failed to update activity status');
         } finally {
             setUpdating(null);

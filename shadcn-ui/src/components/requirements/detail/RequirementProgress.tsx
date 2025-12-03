@@ -16,8 +16,8 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
     const { toggleActivityStatus, updating } = useActivityActions();
 
     const estimationActivities = useMemo(() => {
-        return estimation.activities || [];
-    }, [estimation.activities]);
+        return estimation.estimation_activities || [];
+    }, [estimation.estimation_activities]);
 
     const progress = useMemo(() => {
         if (estimationActivities.length === 0) return 0;
