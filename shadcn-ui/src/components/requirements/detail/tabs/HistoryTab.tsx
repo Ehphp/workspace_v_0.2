@@ -34,8 +34,8 @@ export function HistoryTab({
     requirementId
 }: HistoryTabProps) {
     return (
-        <div className="flex flex-col">
-            <div className="flex-1">
+        <div className="h-full flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto">
                 <div className="container mx-auto px-6 py-3">
                     <div className="grid grid-cols-2 gap-4">
                         {/* Left: History List */}

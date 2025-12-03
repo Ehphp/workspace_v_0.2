@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -22,8 +21,12 @@ export function ActivitiesSection({
     isExpanded,
     onToggle,
 }: ActivitiesSectionProps) {
-    // Group activities by group
-    const groupedActivities = activities.reduce((acc, activity) => {
+    const selectedSet = new Set(selectedActivityIds);
+    const selectedActivities = activities.filter((activity) => selectedSet.has(activity.id));
+    const remainingActivities = activities.filter((activity) => !selectedSet.has(activity.id));
+
+    // Group remaining (non-selected) activities by group
+    const groupedActivities = remainingActivities.reduce((acc, activity) => {
         if (!acc[activity.group]) {
             acc[activity.group] = [];
         }
@@ -64,8 +67,49 @@ export function ActivitiesSection({
                 </div>
             </CardHeader>
             {isExpanded && (
-                <CardContent className="px-3 pb-3 pt-0 overflow-y-auto max-h-[300px]">
-                    <div className="space-y-2">
+                <CardContent className="px-3 pb-3 pt-0 overflow-y-auto max-h-[70vh]">
+                    <div className="space-y-3">
+                        {selectedActivities.length > 0 && (
+                            <div>
+                                <h4 className="text-[10px] font-semibold uppercase text-slate-500 mb-1">Selected</h4>
+                                <div className="space-y-1">
+                                    {selectedActivities.map((activity) => {
+                                        const isAiSuggested = aiSuggestedIds.includes(activity.id);
+                                        return (
+                                            <div
+                                                key={activity.id}
+                                                className="flex items-start gap-2 p-2 border rounded cursor-pointer text-xs transition-colors border-purple-300 bg-purple-50"
+                                                onClick={() => onActivityToggle(activity.id)}
+                                            >
+                                                <Checkbox
+                                                    id={`selected-${activity.id}`}
+                                                    checked={selectedSet.has(activity.id)}
+                                                    onCheckedChange={() => onActivityToggle(activity.id)}
+                                                    className="mt-0.5"
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                    <label htmlFor={`selected-${activity.id}`} className="cursor-pointer">
+                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                            <span className="font-semibold text-slate-900">{activity.name}</span>
+                                                            <span className="text-[10px] text-slate-500 bg-slate-100 px-1 rounded">
+                                                                {activity.base_days}h
+                                                            </span>
+                                                            {isAiSuggested && (
+                                                                <Badge className="text-[10px] h-4 px-1 bg-purple-600">
+                                                                    <Sparkles className="h-2.5 w-2.5 mr-0.5" /> AI
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-2">{activity.description}</p>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
                         {groupOrder.map((group) => {
                             const groupActivities = groupedActivities[group] || [];
                             if (groupActivities.length === 0) return null;
@@ -75,21 +119,16 @@ export function ActivitiesSection({
                                     <h4 className="text-[10px] font-semibold uppercase text-slate-500 mb-1">{groupLabels[group]}</h4>
                                     <div className="space-y-1">
                                         {groupActivities.map((activity) => {
-                                            const isSelected = selectedActivityIds.includes(activity.id);
                                             const isAiSuggested = aiSuggestedIds.includes(activity.id);
-
                                             return (
                                                 <div
                                                     key={activity.id}
-                                                    className={`flex items-start gap-2 p-2 border rounded cursor-pointer text-xs transition-colors ${isSelected
-                                                            ? 'border-purple-300 bg-purple-50'
-                                                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                                                        }`}
+                                                    className="flex items-start gap-2 p-2 border rounded cursor-pointer text-xs transition-colors border-slate-200 hover:border-slate-300 hover:bg-slate-50"
                                                     onClick={() => onActivityToggle(activity.id)}
                                                 >
                                                     <Checkbox
                                                         id={activity.id}
-                                                        checked={isSelected}
+                                                        checked={selectedSet.has(activity.id)}
                                                         onCheckedChange={() => onActivityToggle(activity.id)}
                                                         className="mt-0.5"
                                                     />

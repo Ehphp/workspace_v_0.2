@@ -7,7 +7,6 @@ import { useEstimationData } from '@/hooks/useEstimationData';
 import { useEstimationState } from '@/hooks/useEstimationState';
 import { useRequirement } from '@/hooks/useRequirement';
 import { useEstimationHistory } from '@/hooks/useEstimationHistory';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -18,15 +17,9 @@ import { FileText, Calculator, History, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { suggestActivities } from '@/lib/openai';
 import { Header } from '@/components/layout/Header';
-import { HistorySection } from '@/components/requirements/detail/HistorySection';
-import { EstimationComparison } from '@/components/estimation/EstimationComparison';
 
 // New Components
 import { RequirementHeader } from '@/components/requirements/detail/RequirementHeader';
-import { RequirementDescription } from '@/components/requirements/detail/RequirementDescription';
-import { RequirementInfo } from '@/components/requirements/detail/RequirementInfo';
-import { RequirementEstimation } from '@/components/requirements/detail/RequirementEstimation';
-import { RequirementDriversCard } from '@/components/requirements/detail/RequirementDriversCard';
 
 // Tab Components
 import { OverviewTab } from '@/components/requirements/detail/tabs/OverviewTab';
@@ -380,7 +373,7 @@ export default function RequirementDetail() {
     }
 
     return (
-        <div className="min-h-screen flex flex-col overflow-y-auto bg-slate-50 relative">
+        <div className="min-h-screen h-screen flex flex-col bg-slate-50 relative overflow-hidden">
             {/* Background Pattern */}
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
@@ -432,10 +425,10 @@ export default function RequirementDetail() {
             </div>
 
             {/* Content Area - Tab-based Layout (No Global Scroll) */}
-            <div className="flex-1 relative z-10 flex flex-col">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+            <div className="flex-1 relative z-10 flex flex-col min-h-0">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
                     {/* Tab Navigation */}
-                    <div className="flex-shrink-0 border-b border-slate-200 bg-white/40 backdrop-blur-sm">
+                    <div className="flex-shrink-0 border-b border-slate-200 bg-white/40 backdrop-blur-sm overflow-x-auto">
                         <div className="container mx-auto px-6">
                             <TabsList className="h-12 bg-transparent border-0 gap-1">
                                 <TabsTrigger
@@ -479,17 +472,12 @@ export default function RequirementDetail() {
                             requirement={requirement}
                             estimationState={estimationState}
                             data={{ presets, activities: filteredActivities, drivers, risks }}
-                            drivers={drivers}
-                            driverValues={requirementDriverValues}
                             onSave={handleSaveEstimation}
                             isSaving={isSaving}
                             hasUnsavedChanges={hasUnsavedChanges}
                             onAiSuggest={handleAiSuggest}
                             isAiLoading={isAiLoading}
                             requirementDescription={requirement.description || ''}
-                            refetchRequirement={refetchRequirement}
-                            setDriverValues={setDriverValues}
-                            estimationHistory={estimationHistory}
                         />
                     </TabsContent>
 

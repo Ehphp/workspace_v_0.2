@@ -33,7 +33,7 @@ export function RequirementEstimation({
     isAiLoading,
     requirementDescription,
 }: RequirementEstimationProps) {
-    const [expandedSection, setExpandedSection] = useState<string | null>('technology');
+    const [leftColumnExpanded, setLeftColumnExpanded] = useState<string | null>('technology');
 
     const {
         selectedPresetId,
@@ -63,58 +63,67 @@ export function RequirementEstimation({
 
     return (
         <div className="h-full flex flex-col">
-            <div className="flex-1 min-h-0 grid lg:grid-cols-[1fr_320px] gap-3">
-                {/* Left Column - Configuration */}
-                <div className="space-y-2 overflow-y-auto">
-                    <TechnologySection
-                        presets={presets}
-                        selectedPresetId={selectedPresetId}
-                        onPresetChange={handlePresetChange}
-                        onApplyTemplate={handleApplyTemplate}
-                        onAiRecalculate={onAiSuggest}
-                        isAiLoading={isAiLoading}
-                        requirementDescription={requirementDescription}
-                        isExpanded={expandedSection === 'technology'}
-                        onToggle={() => setExpandedSection(expandedSection === 'technology' ? null : 'technology')}
-                    />
+            <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)_320px] gap-3">
+                {/* Column 1: Tech / Drivers / Risks */}
+                <div className="overflow-hidden">
+                    <div className="h-full overflow-y-auto space-y-3">
+                        <TechnologySection
+                            presets={presets}
+                            selectedPresetId={selectedPresetId}
+                            onPresetChange={handlePresetChange}
+                            onApplyTemplate={handleApplyTemplate}
+                            onAiRecalculate={onAiSuggest}
+                            isAiLoading={isAiLoading}
+                            requirementDescription={requirementDescription}
+                            isExpanded={leftColumnExpanded === 'technology'}
+                            onToggle={() => setLeftColumnExpanded(leftColumnExpanded === 'technology' ? null : 'technology')}
+                        />
 
-                    <ActivitiesSection
-                        activities={activities}
-                        selectedActivityIds={selectedActivityIds}
-                        aiSuggestedIds={aiSuggestedIds}
-                        onActivityToggle={toggleActivity}
-                        isExpanded={expandedSection === 'activities'}
-                        onToggle={() => setExpandedSection(expandedSection === 'activities' ? null : 'activities')}
-                    />
+                        <DriversSection
+                            drivers={drivers}
+                            selectedDriverValues={selectedDriverValues}
+                            onDriverChange={setDriverValue}
+                            currentMultiplier={estimationResult?.driverMultiplier || 1.0}
+                            isExpanded={leftColumnExpanded === 'drivers'}
+                            onToggle={() => setLeftColumnExpanded(leftColumnExpanded === 'drivers' ? null : 'drivers')}
+                        />
 
-                    <DriversSection
-                        drivers={drivers}
-                        selectedDriverValues={selectedDriverValues}
-                        onDriverChange={setDriverValue}
-                        currentMultiplier={estimationResult?.driverMultiplier || 1.0}
-                        isExpanded={expandedSection === 'drivers'}
-                        onToggle={() => setExpandedSection(expandedSection === 'drivers' ? null : 'drivers')}
-                    />
-
-                    <RisksSection
-                        risks={risks}
-                        selectedRiskIds={selectedRiskIds}
-                        onRiskToggle={toggleRisk}
-                        currentRiskScore={estimationResult?.riskScore || 0}
-                        isExpanded={expandedSection === 'risks'}
-                        onToggle={() => setExpandedSection(expandedSection === 'risks' ? null : 'risks')}
-                    />
+                        <RisksSection
+                            risks={risks}
+                            selectedRiskIds={selectedRiskIds}
+                            onRiskToggle={toggleRisk}
+                            currentRiskScore={estimationResult?.riskScore || 0}
+                            isExpanded={leftColumnExpanded === 'risks'}
+                            onToggle={() => setLeftColumnExpanded(leftColumnExpanded === 'risks' ? null : 'risks')}
+                        />
+                    </div>
                 </div>
 
-                {/* Right Column - Summary */}
-                <div className="overflow-y-auto">
-                    <div className="sticky top-0">
-                        <CalculationSummary
-                            result={estimationResult}
-                            onSave={onSave}
-                            isSaving={isSaving}
-                            hasUnsavedChanges={hasUnsavedChanges}
+                {/* Column 2: Activities */}
+                <div className="overflow-hidden">
+                    <div className="h-full overflow-y-auto">
+                        <ActivitiesSection
+                            activities={activities}
+                            selectedActivityIds={selectedActivityIds}
+                            aiSuggestedIds={aiSuggestedIds}
+                            onActivityToggle={toggleActivity}
+                            isExpanded
+                            onToggle={() => {}}
                         />
+                    </div>
+                </div>
+
+                {/* Column 3: Summary */}
+                <div className="overflow-hidden">
+                    <div className="h-full overflow-y-auto">
+                        <div className="sticky top-0">
+                            <CalculationSummary
+                                result={estimationResult}
+                                onSave={onSave}
+                                isSaving={isSaving}
+                                hasUnsavedChanges={hasUnsavedChanges}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
