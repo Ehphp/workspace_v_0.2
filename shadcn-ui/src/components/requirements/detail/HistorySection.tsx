@@ -110,65 +110,65 @@ export function HistorySection({
                   key={est.id}
                   className="rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border-l-4 border-l-blue-500 bg-white/90 backdrop-blur-sm"
                 >
-                  <CardContent className="p-4 space-y-3">
+                  <CardContent className="p-2.5 space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
                       <div>
-                        <h4 className="font-bold text-sm text-slate-900 truncate mb-1">{est.scenario_name}</h4>
-                        <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                          <Clock className="h-3 w-3" />
+                        <h4 className="font-bold text-xs text-slate-900 truncate mb-0.5">{est.scenario_name}</h4>
+                        <div className="flex items-center gap-1 text-[9px] text-slate-500">
+                          <Clock className="h-2.5 w-2.5" />
                           {new Date(est.created_at).toLocaleDateString()}{' '}
                           {new Date(est.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-[10px] border-slate-200 bg-blue-50">
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 border-slate-200 bg-blue-50">
                         {est.contingency_percent.toFixed(0)}% risk buffer
                       </Badge>
                     </div>
 
-                    <div className="text-center py-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg">
-                      <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                    <div className="text-center py-2 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg">
+                      <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                         {est.total_days.toFixed(1)}
                       </div>
-                      <div className="text-[10px] text-slate-600 font-medium uppercase mt-1">days</div>
+                      <div className="text-[9px] text-slate-600 font-medium uppercase">days</div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 text-[10px]">
-                      <div className="text-center bg-slate-50 rounded px-2 py-1">
+                    <div className="grid grid-cols-3 gap-1.5 text-[9px]">
+                      <div className="text-center bg-slate-50 rounded px-1.5 py-1">
                         <div className="text-slate-600">Base</div>
                         <div className="font-bold text-slate-900">{est.base_days.toFixed(1)}</div>
                       </div>
-                      <div className="text-center bg-purple-50 rounded px-2 py-1">
+                      <div className="text-center bg-purple-50 rounded px-1.5 py-1">
                         <div className="text-purple-600">Driver</div>
                         <div className="font-bold text-purple-700">{est.driver_multiplier.toFixed(2)}x</div>
                       </div>
-                      <div className="text-center bg-amber-50 rounded px-2 py-1">
+                      <div className="text-center bg-amber-50 rounded px-1.5 py-1">
                         <div className="text-amber-600">Risk</div>
                         <div className="font-bold text-amber-700">{est.risk_score}</div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 text-[11px] text-slate-700">
-                      <div className="flex items-center gap-2 bg-slate-50 rounded px-2 py-1">
-                        <div className="w-6 h-6 rounded-lg bg-blue-100 flex items-center justify-center text-[11px] font-bold text-blue-700">
+                    <div className="grid grid-cols-3 gap-1.5 text-[10px] text-slate-700">
+                      <div className="flex items-center gap-1.5 bg-slate-50 rounded px-1.5 py-0.5">
+                        <div className="w-5 h-5 rounded-lg bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-700">
                           {est.estimation_activities?.length ?? 0}
                         </div>
                         <span>Activities</span>
                       </div>
-                      <div className="flex items-center gap-2 bg-purple-50 rounded px-2 py-1">
-                        <div className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center text-[11px] font-bold text-purple-700">
+                      <div className="flex items-center gap-1.5 bg-purple-50 rounded px-1.5 py-0.5">
+                        <div className="w-5 h-5 rounded-lg bg-purple-100 flex items-center justify-center text-[10px] font-bold text-purple-700">
                           {est.estimation_drivers?.length ?? 0}
                         </div>
                         <span>Drivers</span>
                       </div>
-                      <div className="flex items-center gap-2 bg-amber-50 rounded px-2 py-1">
-                        <div className="w-6 h-6 rounded-lg bg-amber-100 flex items-center justify-center text-[11px] font-bold text-amber-700">
+                      <div className="flex items-center gap-1.5 bg-amber-50 rounded px-1.5 py-0.5">
+                        <div className="w-5 h-5 rounded-lg bg-amber-100 flex items-center justify-center text-[10px] font-bold text-amber-700">
                           {est.estimation_risks?.length ?? 0}
                         </div>
                         <span>Risks</span>
                       </div>
                     </div>
 
-                    <div className="text-[11px] text-slate-600 space-y-1">
+                    <div className="text-[10px] text-slate-600 space-y-0.5">
                       <div className="flex justify-between">
                         <span>AI suggested</span>
                         <span className="font-semibold">
@@ -180,16 +180,16 @@ export function HistorySection({
                         <span className="font-semibold">
                           {hasActivities
                             ? (est.estimation_activities?.length || 0) -
-                              (est.estimation_activities?.filter((a) => a.is_ai_suggested).length || 0)
+                            (est.estimation_activities?.filter((a) => a.is_ai_suggested).length || 0)
                             : 0}
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      {hasActivities && <Badge variant="secondary">{est.estimation_activities?.length} activities</Badge>}
-                      {hasDrivers && <Badge variant="secondary">{est.estimation_drivers?.length} drivers</Badge>}
-                      {hasRisks && <Badge variant="secondary">{est.estimation_risks?.length} risks</Badge>}
+                    <div className="flex flex-wrap gap-1.5">
+                      {hasActivities && <Badge variant="secondary" className="text-[9px] px-1.5 py-0">{est.estimation_activities?.length} activities</Badge>}
+                      {hasDrivers && <Badge variant="secondary" className="text-[9px] px-1.5 py-0">{est.estimation_drivers?.length} drivers</Badge>}
+                      {hasRisks && <Badge variant="secondary" className="text-[9px] px-1.5 py-0">{est.estimation_risks?.length} risks</Badge>}
                     </div>
                   </CardContent>
                 </Card>

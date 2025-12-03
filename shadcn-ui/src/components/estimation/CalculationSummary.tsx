@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Save, TrendingUp } from 'lucide-react';
+import { Save, TrendingUp, Copy } from 'lucide-react';
 import type { EstimationResult } from '@/types/estimation';
 
 interface CalculationSummaryProps {
@@ -111,29 +111,49 @@ export function CalculationSummary({
                     </div>
                 </div>
 
-                {/* Save Button */}
-                <Button
-                    onClick={() => {
-                        console.log('🖱️ Button clicked in CalculationSummary', {
-                            isSaving,
-                            hasUnsavedChanges,
-                            disabled: isSaving || !hasUnsavedChanges
-                        });
-                        onSave();
-                    }}
-                    disabled={isSaving || !hasUnsavedChanges}
-                    className="w-full"
-                    size="lg"
-                >
-                    {isSaving ? (
-                        'Saving...'
-                    ) : (
-                        <>
-                            <Save className="h-4 w-4 mr-2" />
-                            Save Estimation
-                        </>
-                    )}
-                </Button>
+                {/* Actions */}
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            const text = [
+                                `Estimation Summary`,
+                                `------------------`,
+                                `Base Days: ${result.baseDays.toFixed(1)}d`,
+                                `Driver Multiplier: ${result.driverMultiplier.toFixed(2)}x`,
+                                `Subtotal: ${result.subtotal.toFixed(1)}d`,
+                                `Risk Score: ${result.riskScore}`,
+                                `Contingency: ${(result.contingencyPercent * 100).toFixed(0)}% (+${result.contingencyDays.toFixed(1)}d)`,
+                                `------------------`,
+                                `TOTAL: ${result.totalDays.toFixed(1)} days`
+                            ].join('\n');
+
+                            navigator.clipboard.writeText(text);
+                            // You might want to add a toast here if available in context, 
+                            // but for now we'll assume the user sees the visual feedback or we can add a simple alert/console
+                            // actually let's try to use the toast from sonner if it's available in the project
+                        }}
+                        className="flex-1"
+                    >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy
+                    </Button>
+
+                    <Button
+                        onClick={onSave}
+                        disabled={isSaving || !hasUnsavedChanges}
+                        className="flex-[2]"
+                    >
+                        {isSaving ? (
+                            'Saving...'
+                        ) : (
+                            <>
+                                <Save className="h-4 w-4 mr-2" />
+                                Save Estimation
+                            </>
+                        )}
+                    </Button>
+                </div>
             </CardContent>
         </Card>
     );

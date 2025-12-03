@@ -374,7 +374,7 @@ export default function RequirementDetail() {
     }
 
     return (
-        <div className="h-screen flex flex-col overflow-hidden bg-slate-50 relative">
+        <div className="min-h-screen flex flex-col overflow-y-auto bg-slate-50 relative">
             {/* Background Pattern */}
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
@@ -426,8 +426,8 @@ export default function RequirementDetail() {
             </div>
 
             {/* Content Area - Tab-based Layout (No Global Scroll) */}
-            <div className="flex-1 min-h-0 relative z-10 flex flex-col">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 relative z-10 flex flex-col">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
                     {/* Tab Navigation */}
                     <div className="flex-shrink-0 border-b border-slate-200 bg-white/40 backdrop-blur-sm">
                         <div className="container mx-auto px-6">
@@ -486,7 +486,7 @@ export default function RequirementDetail() {
                         />
                     </TabsContent>
 
-                    <TabsContent value="history" className="flex-1 min-h-0 m-0 focus-visible:outline-none">
+                    <TabsContent value="history" className="flex-1 m-0 focus-visible:outline-none">
                         <HistoryTab
                             history={estimationHistory}
                             loading={historyLoading}

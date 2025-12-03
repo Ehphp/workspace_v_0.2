@@ -60,26 +60,40 @@ export function RecentRequirements() {
 
             if (reqsError) throw reqsError;
 
-            // Get latest estimation for each requirement
-            const requirementsWithEstimations = await Promise.all(
-                (reqs || []).map(async (req) => {
-                    const { data: estimation } = await supabase
-                        .from('estimations')
-                        .select('total_days')
-                        .eq('requirement_id', req.id)
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
+            if (!reqs || reqs.length === 0) {
+                setRequirements([]);
+                setLoading(false);
+                return;
+            }
 
-                    const list = lists?.find(l => l.id === req.list_id);
+            // Get latest estimation for ALL requirements in a SINGLE query (fix N+1)
+            const reqIds = reqs.map(r => r.id);
 
-                    return {
-                        ...req,
-                        list_name: list?.name || 'Unknown',
-                        total_days: estimation?.total_days || null,
-                    };
-                })
-            );
+            const { data: estimations, error: estError } = await supabase
+                .from('estimations')
+                .select('requirement_id, total_days, created_at')
+                .in('requirement_id', reqIds)
+                .order('created_at', { ascending: false });
+
+            if (estError) throw estError;
+
+            // Build a map of requirement_id -> latest estimation
+            const latestEstimationMap = new Map<string, number>();
+            estimations?.forEach(est => {
+                if (!latestEstimationMap.has(est.requirement_id)) {
+                    latestEstimationMap.set(est.requirement_id, est.total_days);
+                }
+            });
+
+            // Map requirements with their estimations and list names
+            const requirementsWithEstimations = reqs.map(req => {
+                const list = lists?.find(l => l.id === req.list_id);
+                return {
+                    ...req,
+                    list_name: list?.name || 'Unknown',
+                    total_days: latestEstimationMap.get(req.id) || null,
+                };
+            });
 
             setRequirements(requirementsWithEstimations);
         } catch (err) {

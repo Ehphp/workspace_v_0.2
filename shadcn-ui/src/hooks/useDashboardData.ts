@@ -44,7 +44,7 @@ export function useDashboardData() {
         setStats(prev => ({ ...prev, loading: true, error: null }));
 
         try {
-            // Get total active projects
+            // 1. Get total active projects (count only)
             const { count: projectCount, error: projectError } = await supabase
                 .from('lists')
                 .select('*', { count: 'exact', head: true })
@@ -53,15 +53,11 @@ export function useDashboardData() {
 
             if (projectError) throw projectError;
 
-            // Get active requirements count
-            const { data: requirementsData, error: reqError } = await supabase
-                .from('requirements')
-                .select('id, list_id')
-                .neq('state', 'ARCHIVED');
+            // 2. Get active requirements count (count only, filtered by user's lists via inner join logic or two-step)
+            // Since RLS is per user, we can trust the user_id on lists. 
+            // Requirements don't have user_id directly usually, they link to lists.
+            // Efficient way: Get all list IDs first (lightweight), then count reqs in those lists.
 
-            if (reqError) throw reqError;
-
-            // Filter requirements by user's lists
             const { data: userLists, error: listsError } = await supabase
                 .from('lists')
                 .select('id')
@@ -69,44 +65,56 @@ export function useDashboardData() {
 
             if (listsError) throw listsError;
 
-            const userListIds = new Set(userLists?.map(l => l.id) || []);
-            const userRequirements = requirementsData?.filter(r => userListIds.has(r.list_id)) || [];
-            const activeRequirementsCount = userRequirements.length;
+            const listIds = userLists?.map(l => l.id) || [];
 
-            // Get estimation stats
-            const requirementIds = userRequirements.map(r => r.id);
+            let activeRequirementsCount = 0;
+            let totalDays = 0;
+            let avgDays = 0;
 
-            if (requirementIds.length > 0) {
+            if (listIds.length > 0) {
+                // Count active requirements in user's lists
+                const { count: reqCount, error: reqError } = await supabase
+                    .from('requirements')
+                    .select('*', { count: 'exact', head: true })
+                    .in('list_id', listIds)
+                    .neq('state', 'ARCHIVED');
+
+                if (reqError) throw reqError;
+                activeRequirementsCount = reqCount || 0;
+
+                // 3. Get total estimated days
+                // We need to sum 'total_days' from estimations for these requirements.
+                // We can use a join if possible, or fetch just the 'total_days' column for relevant estimations.
+                // To avoid fetching ALL estimations, we can try to use an RPC if available, or just fetch the column.
+                // For now, fetching just the column is better than fetching full objects.
+                // Optimization: We only need estimations for the active requirements in these lists.
+
+                // Fetching just total_days for all estimations linked to user's requirements
+                // This might still be large if there are 10k requirements, but better than before.
+                // Ideally we'd have a DB view: view_user_stats
+
                 const { data: estimations, error: estError } = await supabase
                     .from('estimations')
-                    .select('total_days')
-                    .in('requirement_id', requirementIds);
+                    .select('total_days, requirements!inner(list_id)') // Inner join to filter by requirements
+                    .in('requirements.list_id', listIds);
 
                 if (estError) throw estError;
 
-                const totalDays = estimations?.reduce((sum, e) => sum + (e.total_days || 0), 0) || 0;
-                const avgDays = estimations && estimations.length > 0
-                    ? totalDays / estimations.length
-                    : 0;
-
-                setStats({
-                    totalProjects: projectCount || 0,
-                    activeRequirements: activeRequirementsCount,
-                    totalEstimatedDays: Math.round(totalDays),
-                    averageDaysPerReq: Math.round(avgDays * 10) / 10,
-                    loading: false,
-                    error: null,
-                });
-            } else {
-                setStats({
-                    totalProjects: projectCount || 0,
-                    activeRequirements: 0,
-                    totalEstimatedDays: 0,
-                    averageDaysPerReq: 0,
-                    loading: false,
-                    error: null,
-                });
+                if (estimations && estimations.length > 0) {
+                    totalDays = estimations.reduce((sum, e) => sum + (e.total_days || 0), 0);
+                    avgDays = totalDays / estimations.length;
+                }
             }
+
+            setStats({
+                totalProjects: projectCount || 0,
+                activeRequirements: activeRequirementsCount,
+                totalEstimatedDays: Math.round(totalDays),
+                averageDaysPerReq: Math.round(avgDays * 10) / 10,
+                loading: false,
+                error: null,
+            });
+
         } catch (err) {
             console.error('Error loading dashboard stats:', err);
             setStats(prev => ({

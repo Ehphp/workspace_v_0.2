@@ -183,10 +183,7 @@ function validateRequirementDescription(description: string): { isValid: boolean
         return { isValid: false, reason: 'Description looks like placeholder or test input' };
     }
 
-    const hasActionVerb = /(add|update|modify|change|create|implement|build|fix|refactor|remove|delete|configure|enable|disable|integrate|migrate|rename|aggiorn|aggiung|modific|crea|elimin|rimuov|implement|configur|abilit|disabilit|corregg|integra|migra|sistem)/i.test(normalized);
-    if (!hasActionVerb) {
-        return { isValid: false, reason: 'Missing action verb' };
-    }
+    // REMOVED: Verb check was too restrictive. AI will validate if requirement is actionable.
 
     const words = normalized.split(/\s+/).filter(w => w.length >= 3);
     if (words.length < 3) {
@@ -194,11 +191,10 @@ function validateRequirementDescription(description: string): { isValid: boolean
     }
 
     const hasTechnicalTarget = /(api|endpoint|service|servizio|microservice|database|db|table|tabella|campo|column|form|pagina|screen|ui|ux|workflow|processo|process|configurazione|report|dashboard|notifica|email|auth|login|registrazione|utente|profilo|integrazione|deploy|pipeline|script|query|data|model|schema|cache|log|monitor|cron|job|batch|trigger|webhook|storage|bucket|file|documento|pdf|excel|csv|import|export|frontend|front-end|backend|back-end|api-gateway|serverless|lambda|function|cloud)/i.test(normalized);
-    // Se non trova un technical target, ma ci sono almeno 3 parole e un verbo d'azione, accetta comunque ma logga un warning
+    // If no technical target found, still accept if there are at least 3 words (let AI decide if it's actionable)
     if (!hasTechnicalTarget) {
-        if (words.length >= 3 && hasActionVerb) {
-            console.warn('Warning: Nessun technical target rilevato, ma accettato per flessibilita.');
-            // Si accetta comunque, ma si potrebbe aggiungere una reason opzionale se serve
+        if (words.length >= 3) {
+            console.warn('Warning: No technical target detected, but accepting for flexibility.');
             return { isValid: true };
         }
         return { isValid: false, reason: 'Missing technical target (API, form, table, workflow, etc.)' };
@@ -452,15 +448,16 @@ OUTPUT: A structured JSON object with the following fields:
 - isValidRequirement: boolean (true if it's a valid technical requirement, false if gibberish/test/question)
 - confidence: number (0.0 to 1.0, how confident you are in the interpretation)
 - originalDescription: string (the input text)
-- normalizedDescription: string (a clear, professional, concise rewrite of the requirement. DO NOT invent new details. DO NOT add systems/APIs not mentioned. Merge scattered info into a cohesive paragraph.)
+- normalizedDescription: string (a clear, professional, concise rewrite of the requirement. CRITICAL: Keep the SAME LANGUAGE as the input. DO NOT translate to English or other languages. DO NOT invent new details. DO NOT add systems/APIs not mentioned. Merge scattered info into a cohesive paragraph.)
 - validationIssues: array of strings (list of missing info, ambiguities, or contradictions. If none, empty array.)
 - transformNotes: array of strings (brief notes on what you changed/interpreted, e.g., "Merged 'Notes' column into description", "Clarified user role")
 
 RULES:
-1. DO NOT invent new constraints, numbers, or systems.
-2. If the input is vague, mark it in validationIssues, don't guess.
-3. Keep the normalizedDescription technical but readable.
-4. If the input is just a title, expand it slightly into a sentence if possible, but don't hallucinate.`;
+1. DO NOT translate the text. Keep the original language (Italian, English, etc.).
+2. DO NOT invent new constraints, numbers, or systems.
+3. If the input is vague, mark it in validationIssues, don't guess.
+4. Keep the normalizedDescription technical but readable.
+5. If the input is just a title, expand it slightly into a sentence if possible, but don't hallucinate.`;
 
             const userPrompt = sanitizedDescription.substring(0, 2000);
 

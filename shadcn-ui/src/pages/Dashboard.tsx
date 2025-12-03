@@ -90,15 +90,19 @@ export default function Dashboard() {
       if (listIds.length === 0) return;
 
       // Get status distribution and tech stack
+      // For charts, we don't need ALL requirements if there are thousands
+      // Limit to most recent 500 for chart aggregation as a reasonable sample
       const { data: requirements } = await supabase
         .from('requirements')
         .select('state, tech_preset_id')
-        .in('list_id', listIds);
+        .in('list_id', listIds)
+        .order('updated_at', { ascending: false })
+        .limit(500);
 
       const statusCounts: Record<string, number> = {};
       const techCounts: Record<string, number> = {};
 
-      // Fetch presets to map IDs to names
+      // Fetch presets to map IDs to names (this is cached/small table)
       const { data: presets } = await supabase
         .from('technology_presets')
         .select('id, name');

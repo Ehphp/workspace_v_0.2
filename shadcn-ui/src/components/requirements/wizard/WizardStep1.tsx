@@ -60,7 +60,7 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
     }
   };
 
-  const canProceed = Boolean(data.title && data.description);
+  const canProceed = Boolean(data.description); // Title is now optional
   const charCount = data.description.length;
   const maxChars = 2000;
   const charPercentage = (charCount / maxChars) * 100;
@@ -91,7 +91,7 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
         <div className="grid gap-3 md:grid-cols-[1.05fr,0.95fr]">
           <div className="space-y-2.5">
             <div className="space-y-1.5">
-              <Label htmlFor="title" className="text-xs">Title *</Label>
+              <Label htmlFor="title" className="text-xs">Title (optional)</Label>
               <Input
                 id="title"
                 placeholder="Brief requirement title"

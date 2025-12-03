@@ -298,6 +298,14 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
                   Please improve the description or adjust technology before continuing
                 </p>
               </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleAISuggest}
+                className="h-7 text-xs border-amber-300 text-amber-800 hover:bg-amber-100 bg-white/50"
+              >
+                Retry
+              </Button>
             </div>
           </div>
         )}
