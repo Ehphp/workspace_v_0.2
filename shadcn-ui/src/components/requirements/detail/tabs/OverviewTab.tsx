@@ -1,19 +1,15 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Calculator, FileText, User, Tag, Zap, Settings } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import type { Requirement, TechnologyPreset } from '@/types/database';
+import type { Requirement, TechnologyPreset, EstimationWithDetails, Activity } from '@/types/database';
+import { RequirementProgress } from '../RequirementProgress';
 
 interface OverviewTabProps {
     requirement: Requirement;
     presets: TechnologyPreset[];
     refetchRequirement: () => Promise<void>;
-    latestEstimation?: {
-        total_days: number;
-        base_days: number;
-        driver_multiplier: number;
-        contingency_percent: number;
-        risk_score: number;
-    } | null;
+    latestEstimation?: EstimationWithDetails | null;
+    activities?: Activity[];
 }
 
 const priorityColors = {
@@ -23,13 +19,12 @@ const priorityColors = {
 };
 
 const stateColors = {
-    PROPOSED: 'bg-slate-100 text-slate-700 border-slate-200',
-    SELECTED: 'bg-blue-100 text-blue-700 border-blue-200',
-    SCHEDULED: 'bg-purple-100 text-purple-700 border-purple-200',
+    CREATED: 'bg-slate-100 text-slate-700 border-slate-200',
+    IN_PROGRESS: 'bg-blue-100 text-blue-700 border-blue-200',
     DONE: 'bg-emerald-100 text-emerald-700 border-emerald-200',
 };
 
-export function OverviewTab({ requirement, presets, refetchRequirement, latestEstimation }: OverviewTabProps) {
+export function OverviewTab({ requirement, presets, refetchRequirement, latestEstimation, activities = [] }: OverviewTabProps) {
     const preset = presets.find(p => p.id === requirement.tech_preset_id);
 
     return (
@@ -54,7 +49,7 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
                                                 </Badge>
                                                 <Badge
                                                     variant="outline"
-                                                    className={`text-xs px-2 py-0 ${stateColors[requirement.state]}`}
+                                                    className={`text-xs px-2 py-0 ${stateColors[requirement.state] || 'bg-slate-100 text-slate-700'}`}
                                                 >
                                                     {requirement.state}
                                                 </Badge>
@@ -71,6 +66,19 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
                                     </div>
                                 </CardContent>
                             </Card>
+
+                            {/* Progress Section */}
+                            {latestEstimation && (
+                                <Card className="rounded-xl shadow-sm border-slate-200 bg-white/60 backdrop-blur-sm">
+                                    <CardContent className="p-4">
+                                        <RequirementProgress
+                                            estimation={latestEstimation}
+                                            activities={activities}
+                                            onUpdate={refetchRequirement}
+                                        />
+                                    </CardContent>
+                                </Card>
+                            )}
 
                             {/* Compact Metadata Grid */}
                             <Card className="rounded-xl shadow-sm border-slate-200 bg-white/60 backdrop-blur-sm">

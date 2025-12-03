@@ -464,6 +464,7 @@ export default function RequirementDetail() {
                             presets={presets}
                             refetchRequirement={refetchRequirement}
                             latestEstimation={estimationHistory[0] || null}
+                            activities={filteredActivities}
                         />
                     </TabsContent>
 

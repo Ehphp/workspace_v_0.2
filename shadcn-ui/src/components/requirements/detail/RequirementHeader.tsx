@@ -84,12 +84,9 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, onQ
                                         <SelectValue placeholder="State" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="PROPOSED">Proposed</SelectItem>
-                                        <SelectItem value="SELECTED">Selected</SelectItem>
-                                        <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+                                        <SelectItem value="CREATED">Created</SelectItem>
                                         <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
                                         <SelectItem value="DONE">Done</SelectItem>
-                                        <SelectItem value="REJECTED">Rejected</SelectItem>
                                     </SelectContent>
                                 </Select>
 

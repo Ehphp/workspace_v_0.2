@@ -84,7 +84,7 @@ export interface Requirement {
   description: string;
   tech_preset_id: string;
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
-  state: 'PROPOSED' | 'SELECTED' | 'SCHEDULED' | 'DONE';
+  state: 'CREATED' | 'IN_PROGRESS' | 'DONE';
   business_owner: string;
   labels: string[];
   created_at: string;
@@ -109,6 +109,7 @@ export interface EstimationActivity {
   estimation_id: string;
   activity_id: string;
   is_ai_suggested: boolean;
+  is_done: boolean;
   notes: string;
 }
 

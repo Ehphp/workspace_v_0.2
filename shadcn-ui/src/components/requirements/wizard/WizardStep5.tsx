@@ -13,12 +13,13 @@ import { useNavigate } from 'react-router-dom';
 
 interface WizardStep5Props {
   data: WizardData;
+  onUpdate: (updates: Partial<WizardData>) => void;
   onBack: () => void;
   onReset: () => void;
   onSave?: (result: EstimationResult) => void;
 }
 
-export function WizardStep5({ data, onBack, onReset, onSave }: WizardStep5Props) {
+export function WizardStep5({ data, onUpdate, onBack, onReset, onSave }: WizardStep5Props) {
   const navigate = useNavigate();
   const [result, setResult] = useState<EstimationResult | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -35,6 +36,13 @@ export function WizardStep5({ data, onBack, onReset, onSave }: WizardStep5Props)
   }, []);
 
   const generateTitle = async () => {
+    // If user already provided a title in Step 1, use it
+    if (data.title) {
+      setGeneratedTitle(data.title);
+      setTitleLoading(false);
+      return;
+    }
+
     if (!data.description) {
       setGeneratedTitle('Untitled requirement');
       setTitleLoading(false);
@@ -45,9 +53,13 @@ export function WizardStep5({ data, onBack, onReset, onSave }: WizardStep5Props)
       setTitleLoading(true);
       const title = await generateTitleFromDescription(data.description);
       setGeneratedTitle(title);
+      // Save the generated title to the wizard state so it gets persisted
+      onUpdate({ title });
     } catch (error) {
       console.error('Error generating title:', error);
-      setGeneratedTitle(data.description.substring(0, 100));
+      const fallbackTitle = data.description.substring(0, 100);
+      setGeneratedTitle(fallbackTitle);
+      onUpdate({ title: fallbackTitle });
     } finally {
       setTitleLoading(false);
     }
