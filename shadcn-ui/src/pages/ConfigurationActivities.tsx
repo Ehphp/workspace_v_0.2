@@ -51,7 +51,7 @@ const groupOptions = [
 const initialForm = {
   name: '',
   description: '',
-  baseDays: '1.0',
+  baseHours: '1.0',
   techCategory: 'MULTI',
   group: 'DEV',
   active: true,
@@ -151,14 +151,14 @@ export default function ConfigurationActivities() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const baseDays = Number(form.baseDays);
+    const baseHours = Number(form.baseHours);
 
     if (!form.name.trim()) {
       toast.error('Nome obbligatorio');
       return;
     }
 
-    if (!Number.isFinite(baseDays) || baseDays <= 0) {
+    if (!Number.isFinite(baseHours) || baseHours <= 0) {
       toast.error('Peso non valido', {
         description: 'Inserisci un numero di ore maggiore di zero',
       });
@@ -177,7 +177,7 @@ export default function ConfigurationActivities() {
           .update({
             name: form.name,
             description: form.description,
-            base_days: baseDays,
+            base_hours: baseHours,
             tech_category: form.techCategory,
             group: form.group,
             active: form.active,
@@ -187,7 +187,7 @@ export default function ConfigurationActivities() {
         if (error) throw error;
 
         toast.success('Attivita aggiornata', {
-          description: `${form.name} - ${baseDays.toFixed(2)} ore`,
+          description: `${form.name} - ${baseHours.toFixed(2)} ore`,
         });
         setEditActivity(null);
       } else {
@@ -200,7 +200,7 @@ export default function ConfigurationActivities() {
           code: generatedCode,
           name: form.name,
           description: form.description,
-          base_days: baseDays,
+          base_hours: baseHours,
           tech_category: form.techCategory,
           group: form.group,
           active: form.active,
@@ -212,7 +212,7 @@ export default function ConfigurationActivities() {
         if (error) throw error;
 
         toast.success('Attivita creata', {
-          description: `${generatedCode} - ${baseDays.toFixed(2)} ore`,
+          description: `${generatedCode} - ${baseHours.toFixed(2)} ore`,
         });
       }
 
@@ -235,7 +235,7 @@ export default function ConfigurationActivities() {
     setForm({
       name: activity.name,
       description: activity.description || '',
-      baseDays: activity.base_days.toString(),
+      baseHours: activity.base_hours.toString(),
       techCategory: activity.tech_category,
       group: activity.group,
       active: activity.active,
@@ -254,7 +254,7 @@ export default function ConfigurationActivities() {
     setForm({
       name: activity.name + ' (Copy)',
       description: activity.description || '',
-      baseDays: activity.base_days.toString(),
+      baseHours: activity.base_hours.toString(),
       techCategory: activity.tech_category,
       group: activity.group,
       active: true,
@@ -476,8 +476,8 @@ export default function ConfigurationActivities() {
                           type="number"
                           step="0.05"
                           min="0.05"
-                          value={form.baseDays}
-                          onChange={(e) => setForm((prev) => ({ ...prev, baseDays: e.target.value }))}
+                          value={form.baseHours}
+                          onChange={(e) => setForm((prev) => ({ ...prev, baseHours: e.target.value }))}
                           required
                           className="text-lg font-semibold bg-white/50 border-slate-200 focus:bg-white transition-colors"
                         />
@@ -711,7 +711,7 @@ export default function ConfigurationActivities() {
                                   {visibleColumns.peso && (
                                     <TableCell className="truncate">
                                       <div className="flex items-center gap-1.5">
-                                        <span className="text-xl font-bold text-slate-700">{activity.base_days.toFixed(1)}</span>
+                                        <span className="text-xl font-bold text-slate-700">{activity.base_hours.toFixed(1)}</span>
                                         <span className="text-xs text-slate-500 font-medium">ore</span>
                                       </div>
                                     </TableCell>

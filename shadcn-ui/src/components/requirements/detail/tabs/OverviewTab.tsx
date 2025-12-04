@@ -110,7 +110,7 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
                                             <div className="space-y-1.5 text-xs">
                                                 <div className="flex justify-between">
                                                     <span className="text-slate-600">Base:</span>
-                                                    <span className="font-bold text-slate-900">{latestEstimation.base_days.toFixed(1)}d</span>
+                                                    <span className="font-bold text-slate-900">{(latestEstimation.base_hours / 8).toFixed(1)}d</span>
                                                 </div>
                                                 <div className="flex justify-between">
                                                     <span className="text-slate-600">Multiplier:</span>
@@ -119,7 +119,7 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
                                                 <div className="flex justify-between border-t pt-1.5">
                                                     <span className="text-slate-600">Subtotal:</span>
                                                     <span className="font-bold text-slate-900">
-                                                        {(latestEstimation.base_days * latestEstimation.driver_multiplier).toFixed(1)}d
+                                                        {((latestEstimation.base_hours / 8) * latestEstimation.driver_multiplier).toFixed(1)}d
                                                     </span>
                                                 </div>
                                                 <div className="flex justify-between bg-orange-50 rounded px-2 py-1">

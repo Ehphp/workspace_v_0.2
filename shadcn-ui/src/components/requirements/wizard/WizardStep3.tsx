@@ -355,7 +355,7 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
                               ? 'bg-purple-200 text-purple-800'
                               : 'bg-slate-100 text-slate-600'
                               }`}>
-                              {activity.base_days}h
+                              {activity.base_hours}h
                             </span>
                             {isAiSuggested && (
                               <Badge className="text-[10px] bg-gradient-to-r from-purple-600 to-pink-600 border-0 shadow-sm">

@@ -8,7 +8,7 @@ export interface EstimationHistoryItem {
     requirement_id: string;
     user_id: string;
     total_days: number;
-    base_days: number;
+    base_hours: number;
     driver_multiplier: number;
     risk_score: number;
     contingency_percent: number;
@@ -33,7 +33,7 @@ interface UseEstimationHistoryReturn {
     history: EstimationHistoryItem[];
     loading: boolean;
     error: Error | null;
-    refetch: () => Promise<void>;
+    refetch: () => Promise<any>;
     totalCount: number;
 }
 

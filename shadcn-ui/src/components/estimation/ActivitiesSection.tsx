@@ -120,7 +120,7 @@ export function ActivitiesSection({
                                                         <div className="flex items-center gap-1.5 flex-wrap">
                                                             <span className="font-semibold text-slate-900">{activity.name}</span>
                                                             <span className="text-[10px] text-slate-500 bg-slate-100 px-1 rounded">
-                                                                {activity.base_days}h
+                                                                {activity.base_hours}h
                                                             </span>
                                                             {isAiSuggested && (
                                                                 <Badge className="text-[10px] h-4 px-1 bg-purple-600">
@@ -165,7 +165,7 @@ export function ActivitiesSection({
                                                             <div className="flex items-center gap-1.5 flex-wrap">
                                                                 <span className="font-semibold text-slate-900">{activity.name}</span>
                                                                 <span className="text-[10px] text-slate-500 bg-slate-100 px-1 rounded">
-                                                                    {activity.base_days}h
+                                                                    {activity.base_hours}h
                                                                 </span>
                                                                 {isAiSuggested && (
                                                                     <Badge className="text-[10px] h-4 px-1 bg-purple-600">

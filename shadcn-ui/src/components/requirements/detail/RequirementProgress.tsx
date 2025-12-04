@@ -130,7 +130,7 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
                                     "text-xs font-bold px-1.5 py-0.5 rounded",
                                     isDone ? "bg-slate-100 text-slate-400" : "bg-blue-50 text-blue-700"
                                 )}>
-                                    {activity.base_days}d
+                                    {activity.base_hours}h
                                 </div>
                             </motion.div>
                         );

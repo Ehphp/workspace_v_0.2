@@ -138,14 +138,14 @@ export function EstimationComparison({ estimations, activities, drivers, risks }
                             <div className="mt-4 grid grid-cols-3 gap-4 text-xs">
                                 <div>
                                     <div className="text-muted-foreground">Base Days</div>
-                                    <div className="font-semibold">{est1.base_days.toFixed(1)}</div>
+                                    <div className="font-semibold">{(est1.base_hours / 8).toFixed(1)}</div>
                                 </div>
                                 <div className="flex items-center justify-center">
-                                    {renderDifferenceIcon(est1.base_days - est2.base_days)}
+                                    {renderDifferenceIcon((est1.base_hours - est2.base_hours) / 8)}
                                 </div>
                                 <div className="text-right">
                                     <div className="text-muted-foreground">Base Days</div>
-                                    <div className="font-semibold">{est2.base_days.toFixed(1)}</div>
+                                    <div className="font-semibold">{(est2.base_hours / 8).toFixed(1)}</div>
                                 </div>
 
                                 <div>
@@ -208,7 +208,7 @@ export function EstimationComparison({ estimations, activities, drivers, risks }
                                         </div>
                                     ))}
 
-                                { (est1.estimation_activities?.length || 0) === (est2.estimation_activities?.length || 0) &&
+                                {(est1.estimation_activities?.length || 0) === (est2.estimation_activities?.length || 0) &&
                                     (est1.estimation_activities ?? []).every((a1) =>
                                         (est2.estimation_activities ?? []).some((a2) => a2.activity_id === a1.activity_id)
                                     ) && (

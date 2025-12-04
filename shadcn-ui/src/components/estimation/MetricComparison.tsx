@@ -66,7 +66,7 @@ export function MetricComparison({ older, newer }: MetricComparisonProps) {
                         Metrics
                     </h4>
                     <div className="grid grid-cols-1 gap-1">
-                        <MetricDiff label="Base Days" oldVal={older.base_days} newVal={newer.base_days} />
+                        <MetricDiff label="Base Days" oldVal={older.base_hours / 8} newVal={newer.base_hours / 8} />
                         <MetricDiff label="Driver Multiplier" oldVal={older.driver_multiplier} newVal={newer.driver_multiplier} format={(v: number) => v.toFixed(2) + 'x'} />
                         <MetricDiff label="Risk Score" oldVal={older.risk_score} newVal={newer.risk_score} format={(v: number) => v.toFixed(0)} />
                         <MetricDiff label="Contingency" oldVal={older.contingency_percent} newVal={newer.contingency_percent} format={(v: number) => v.toFixed(0) + '%'} />

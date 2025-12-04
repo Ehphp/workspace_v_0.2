@@ -653,7 +653,7 @@ export default function ConfigurationPresets() {
                                         <ScrollArea className="h-[200px]">
                                             {allActivities.map(a => (
                                                 <SelectItem key={a.id} value={a.id} disabled={!!form.activities.find(fa => fa.id === a.id)}>
-                                                    {a.name} ({a.base_days}h)
+                                                    {a.name} ({a.base_hours}h)
                                                 </SelectItem>
                                             ))}
                                         </ScrollArea>
@@ -671,7 +671,7 @@ export default function ConfigurationPresets() {
                                                 <Badge variant="outline" className="w-6 h-6 flex items-center justify-center rounded-full p-0 bg-slate-50 border-slate-200 text-slate-600">{idx + 1}</Badge>
                                                 <div>
                                                     <div className="text-sm font-medium text-slate-900">{act.name}</div>
-                                                    <div className="text-[10px] text-slate-500">{act.code} • {act.base_days} ore</div>
+                                                    <div className="text-[10px] text-slate-500">{act.code} • {act.base_hours} ore</div>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-1">
@@ -770,7 +770,7 @@ export default function ConfigurationPresets() {
                                     {selectedPreview.defaultActivities.map((a, i) => (
                                         <div key={i} className="text-sm flex justify-between text-slate-700">
                                             <span>{i + 1}. {a.name}</span>
-                                            <span className="text-slate-500 text-xs">{a.base_days}h</span>
+                                            <span className="text-slate-500 text-xs">{a.base_hours}h</span>
                                         </div>
                                     ))}
                                 </div>

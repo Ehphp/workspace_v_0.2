@@ -21,7 +21,7 @@ export class ApiError extends Error {
   }
 }
 
-async function requireSingle<T>(promise: Promise<{ data: T | null; error: unknown; status: number }>): Promise<T> {
+async function requireSingle<T>(promise: PromiseLike<{ data: T | null; error: unknown; status: number }>): Promise<T> {
   const { data, error, status } = await promise;
   if (error || !data) {
     const message = error && typeof error === 'object' && 'message' in error ? (error as { message: string }).message : 'Resource not found';
@@ -30,18 +30,17 @@ async function requireSingle<T>(promise: Promise<{ data: T | null; error: unknow
   return data;
 }
 
-export async function fetchListForUser(listId: string, userId: string): Promise<List> {
+export async function fetchList(listId: string): Promise<List> {
   return requireSingle(
     supabase
       .from('lists')
       .select('*')
       .eq('id', listId)
-      .eq('user_id', userId)
       .single(),
   );
 }
 
-export async function fetchRequirementForUser(listId: string, reqId: string, _userId: string): Promise<Requirement> {
+export async function fetchRequirement(listId: string, reqId: string): Promise<Requirement> {
   return requireSingle(
     supabase
       .from('requirements')
@@ -128,15 +127,16 @@ export async function fetchEstimationMasterData(): Promise<EstimationMasterData>
 }
 
 export async function fetchPresets(): Promise<TechnologyPreset[]> {
-  const { data, error } = await supabase.from('technology_presets').select('*').order('name');
+  const { data, error, status } = await supabase.from('technology_presets').select('*').order('name');
   if (error) {
-    throw new ApiError(error.message || 'Unable to load technology presets', error.status, error);
+    throw new ApiError(error.message || 'Unable to load technology presets', status, error);
   }
   return data || [];
 }
 
 export interface CreateListInput {
   userId: string;
+  organizationId: string;
   name: string;
   description?: string;
   owner?: string;
@@ -147,6 +147,7 @@ export interface CreateListInput {
 export async function createList(input: CreateListInput): Promise<List> {
   const payload = {
     user_id: input.userId,
+    organization_id: input.organizationId,
     name: input.name,
     description: input.description || '',
     owner: input.owner || '',
@@ -164,14 +165,14 @@ export async function createList(input: CreateListInput): Promise<List> {
 }
 
 export async function generateNextRequirementId(listId: string): Promise<string> {
-  const { data, error } = await supabase
+  const { data, error, status } = await supabase
     .from('requirements')
     .select('req_id')
     .eq('list_id', listId)
     .order('created_at', { ascending: false });
 
   if (error) {
-    throw new ApiError(error.message || 'Unable to generate requirement id', error.status, error);
+    throw new ApiError(error.message || 'Unable to generate requirement id', status, error);
   }
 
   if (!data || data.length === 0) return 'REQ-001';
@@ -237,9 +238,9 @@ export async function fetchEstimationDetails(estimationId: string) {
   return estimation;
 }
 
-export async function fetchRequirementBundle(listId: string, reqId: string, userId: string) {
-  const list = await fetchListForUser(listId, userId);
-  const requirement = await fetchRequirementForUser(listId, reqId, userId);
+export async function fetchRequirementBundle(listId: string, reqId: string, _userId: string) {
+  const list = await fetchList(listId);
+  const requirement = await fetchRequirement(listId, reqId);
 
   const techPresetId = requirement.tech_preset_id || list.tech_preset_id;
   const preset = techPresetId ? await fetchTechnologyPreset(techPresetId) : null;
@@ -298,7 +299,7 @@ export async function saveEstimation(input: SaveEstimationInput): Promise<void> 
       requirement_id: input.requirementId,
       user_id: input.userId,
       total_days: input.totalDays,
-      base_days: input.baseDays,
+      base_hours: input.baseDays * 8,
       driver_multiplier: input.driverMultiplier,
       risk_score: input.riskScore,
       contingency_percent: input.contingencyPercent,

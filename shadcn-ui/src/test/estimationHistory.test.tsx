@@ -15,8 +15,8 @@
  * Mock data for testing
  */
 const mockActivities = [
-    { id: '1', code: 'ACT_001', name: 'Design', base_days: 2, tech_category: 'MULTI', group: 'ANALYSIS', active: true, created_at: '2024-01-01', description: 'Design phase' },
-    { id: '2', code: 'ACT_002', name: 'Development', base_days: 5, tech_category: 'MULTI', group: 'DEV', active: true, created_at: '2024-01-01', description: 'Development phase' },
+    { id: '1', code: 'ACT_001', name: 'Design', base_hours: 2, tech_category: 'MULTI', group: 'ANALYSIS', active: true, created_at: '2024-01-01', description: 'Design phase' },
+    { id: '2', code: 'ACT_002', name: 'Development', base_hours: 5, tech_category: 'MULTI', group: 'DEV', active: true, created_at: '2024-01-01', description: 'Development phase' },
 ];
 
 const mockDrivers = [
@@ -41,7 +41,7 @@ const mockEstimations = [
         user_id: 'user-1',
         scenario_name: 'Base Estimate',
         total_days: 10.5,
-        base_days: 7.0,
+        base_hours: 7.0,
         driver_multiplier: 1.0,
         risk_score: 5,
         contingency_percent: 15,
@@ -63,7 +63,7 @@ const mockEstimations = [
         user_id: 'user-1',
         scenario_name: 'Optimistic',
         total_days: 8.0,
-        base_days: 7.0,
+        base_hours: 7.0,
         driver_multiplier: 0.8,
         risk_score: 3,
         contingency_percent: 10,

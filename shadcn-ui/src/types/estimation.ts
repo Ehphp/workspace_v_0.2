@@ -2,7 +2,7 @@
 
 export interface SelectedActivity {
   code: string;
-  baseDays: number;
+  baseHours: number;
   isAiSuggested: boolean;
 }
 
@@ -40,5 +40,7 @@ export interface EstimationResult {
 export interface AIActivitySuggestion {
   isValidRequirement: boolean;
   activityCodes: string[];
+  suggestedDrivers?: Record<string, string>;
+  suggestedRisks?: string[];
   reasoning?: string;
 }

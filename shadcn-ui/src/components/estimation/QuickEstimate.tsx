@@ -52,7 +52,7 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
     const [result, setResult] = useState<EstimationResult | null>(null);
     const [isDemoMode, setIsDemoMode] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [selectedActivities, setSelectedActivities] = useState<Array<{ code: string; name: string; baseDays: number }>>([]);
+    const [selectedActivities, setSelectedActivities] = useState<Array<{ code: string; name: string; baseHours: number }>>([]);
     const [aiReasoning, setAiReasoning] = useState<string>('');
 
     // Normalization hook
@@ -227,7 +227,7 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                 const activity = allowedActivities.find((a) => a.code === code);
                 return {
                     code,
-                    baseDays: activity?.base_days || 0,
+                    baseHours: activity?.base_hours || 0,
                     isAiSuggested: aiSuggestion.isValidRequirement ?? false,
                 };
             });
@@ -238,7 +238,7 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                 return {
                     code,
                     name: activity?.name || code,
-                    baseDays: activity?.base_days || 0,
+                    baseHours: activity?.base_hours || 0,
                 };
             });
 
@@ -387,7 +387,7 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                                                 </div>
                                                 <span className="text-xs font-bold text-indigo-800 uppercase tracking-wide">AI Analysis</span>
                                             </div>
-                                            <Badge variant={normalizationResult.isValidRequirement ? "success" : "destructive"} className="text-[10px] py-0.5 h-5 font-semibold shadow-sm">
+                                            <Badge variant={normalizationResult.isValidRequirement ? "default" : "destructive"} className={`text-[10px] py-0.5 h-5 font-semibold shadow-sm ${normalizationResult.isValidRequirement ? 'bg-green-600 hover:bg-green-700' : ''}`}>
                                                 {normalizationResult.isValidRequirement ? 'Valid Requirement' : 'Needs Attention'}
                                             </Badge>
                                         </div>
@@ -534,7 +534,7 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                                                     </Badge>
                                                 </div>
                                                 <span className="font-bold text-slate-700 text-sm whitespace-nowrap bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 group-hover:border-blue-200 group-hover:bg-blue-50 transition-colors">
-                                                    {activity.baseDays.toFixed(1)} h
+                                                    {activity.baseHours.toFixed(1)} h
                                                 </span>
                                             </div>
                                         ))}
@@ -629,7 +629,7 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                         </div>
                     )}
                 </div>
-            </DialogContent>
-        </Dialog>
+            </DialogContent >
+        </Dialog >
     );
 }

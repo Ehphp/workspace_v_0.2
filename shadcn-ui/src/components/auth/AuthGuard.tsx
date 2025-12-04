@@ -2,6 +2,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
 import { SynteroMark } from '@/components/layout/SynteroMark';
 import { motion } from 'framer-motion';
+import { useEffect } from 'react';
+import { useAuthStore } from '@/store/useAuthStore';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -9,6 +11,13 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const { user, loading } = useAuth();
+  const { setUser } = useAuthStore();
+
+  useEffect(() => {
+    if (user) {
+      setUser(user);
+    }
+  }, [user, setUser]);
 
   if (loading) {
     return (

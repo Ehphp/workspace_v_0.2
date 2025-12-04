@@ -312,7 +312,7 @@ export default function RequirementDetail() {
                 p_requirement_id: requirement.id,
                 p_user_id: user.id,
                 p_total_days: estimationResult.totalDays,
-                p_base_days: estimationResult.baseDays,
+                p_base_hours: estimationResult.baseDays * 8, // Convert back to hours for storage if needed, OR if p_base_days was renamed to p_base_hours in RPC
                 p_driver_multiplier: estimationResult.driverMultiplier,
                 p_risk_score: estimationResult.riskScore,
                 p_contingency_percent: estimationResult.contingencyPercent,
@@ -533,7 +533,7 @@ export default function RequirementDetail() {
                                         <div className="bg-slate-50 rounded-lg p-4 space-y-2">
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-slate-600">Base Days:</span>
-                                                <span className="font-bold text-slate-900">{selectedEst.base_days.toFixed(1)}d</span>
+                                                <span className="font-bold text-slate-900">{(selectedEst.base_hours / 8).toFixed(1)}d</span>
                                             </div>
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-slate-600">Driver Multiplier:</span>
@@ -543,7 +543,7 @@ export default function RequirementDetail() {
                                                 <div className="flex justify-between text-sm font-medium">
                                                     <span className="text-slate-700">Subtotal:</span>
                                                     <span className="font-bold text-slate-900">
-                                                        {(selectedEst.base_days * selectedEst.driver_multiplier).toFixed(1)}d
+                                                        {((selectedEst.base_hours / 8) * selectedEst.driver_multiplier).toFixed(1)}d
                                                     </span>
                                                 </div>
                                             </div>
@@ -574,7 +574,7 @@ export default function RequirementDetail() {
                                                     return (
                                                         <div key={idx} className="flex items-center justify-between text-xs bg-blue-50 rounded px-3 py-2">
                                                             <span className="text-slate-700 flex-1">{activity?.name || 'Unknown'}</span>
-                                                            <span className="font-mono font-semibold text-blue-700 ml-2">{activity?.base_days.toFixed(1)}d</span>
+                                                            <span className="font-mono font-semibold text-blue-700 ml-2">{activity?.base_hours.toFixed(1)}h</span>
                                                             {estAct.is_ai_suggested && (
                                                                 <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">AI</Badge>
                                                             )}
@@ -633,10 +633,10 @@ export default function RequirementDetail() {
                                     <div className="bg-slate-100 rounded-lg p-4 text-xs font-mono space-y-1">
                                         <div className="font-semibold text-sm text-slate-900 mb-2">Formula:</div>
                                         <div className="text-slate-700">
-                                            Subtotal = {selectedEst.base_days.toFixed(1)} × {selectedEst.driver_multiplier.toFixed(3)} = {(selectedEst.base_days * selectedEst.driver_multiplier).toFixed(1)}d
+                                            Subtotal = {(selectedEst.base_hours / 8).toFixed(1)} × {selectedEst.driver_multiplier.toFixed(3)} = {((selectedEst.base_hours / 8) * selectedEst.driver_multiplier).toFixed(1)}d
                                         </div>
                                         <div className="text-slate-700">
-                                            Total = {(selectedEst.base_days * selectedEst.driver_multiplier).toFixed(1)} × (1 + {selectedEst.contingency_percent}%) = {selectedEst.total_days.toFixed(1)}d
+                                            Total = {((selectedEst.base_hours / 8) * selectedEst.driver_multiplier).toFixed(1)} × (1 + {selectedEst.contingency_percent}%) = {selectedEst.total_days.toFixed(1)}d
                                         </div>
                                     </div>
                                 </div>

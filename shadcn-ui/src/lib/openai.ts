@@ -8,6 +8,8 @@ interface SuggestActivitiesInput {
   description: string;
   preset: TechnologyPreset;
   activities: Activity[];
+  drivers?: Driver[];
+  risks?: Risk[];
   baseUrl?: string; // Optional base URL for testing
   testMode?: boolean; // Disable cache and increase temperature for variance testing
 }
@@ -29,7 +31,7 @@ export interface NormalizationResult {
 export async function suggestActivities(
   input: SuggestActivitiesInput
 ): Promise<AIActivitySuggestion> {
-  const { description, preset, activities, baseUrl = '', testMode = false } = input;
+  const { description, preset, activities, drivers, risks, baseUrl = '', testMode = false } = input;
 
   try {
     // Fetch current session token (if available) to authenticate serverless call
@@ -55,6 +57,8 @@ export async function suggestActivities(
         description: sanitizedDescription,
         preset,
         activities,
+        drivers,
+        risks,
         testMode, // Pass test mode to function
       }),
     });

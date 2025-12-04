@@ -3,7 +3,7 @@ import type { EstimationInput, EstimationResult, SelectedActivity } from '@/type
 /**
  * Deterministic estimation engine
  * Formula:
- * - Base Days = sum of selected activities' base_days
+ * - Base Days = sum of selected activities' base_hours / 8
  * - Driver Multiplier = product of all driver multipliers
  * - Subtotal = Base Days × Driver Multiplier
  * - Risk Score = sum of selected risks' weights
@@ -16,7 +16,7 @@ import type { EstimationInput, EstimationResult, SelectedActivity } from '@/type
  */
 
 export function calculateBaseDays(activities: SelectedActivity[]): number {
-  const totalHours = activities.reduce((sum, activity) => sum + activity.baseDays, 0);
+  const totalHours = activities.reduce((sum, activity) => sum + activity.baseHours, 0);
   return totalHours / 8.0;
 }
 

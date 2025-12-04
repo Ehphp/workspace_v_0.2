@@ -280,7 +280,7 @@ export function BulkEstimateDialog({
                     const estimation = calculateEstimation({
                         activities: selectedActivities.map((a: Activity) => ({
                             code: a.code,
-                            baseDays: a.base_days,
+                            baseHours: a.base_hours,
                             isAiSuggested: aiCodesSet.has(a.code),
                         })),
                         drivers: [],
@@ -297,7 +297,7 @@ export function BulkEstimateDialog({
                         p_requirement_id: req.id,
                         p_user_id: userId,
                         p_total_days: estimation.totalDays,
-                        p_base_days: estimation.baseDays,
+                        p_base_hours: estimation.baseDays * 8, // Convert back to hours for storage
                         p_driver_multiplier: estimation.driverMultiplier,
                         p_risk_score: estimation.riskScore,
                         p_contingency_percent: estimation.contingencyPercent,

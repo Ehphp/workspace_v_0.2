@@ -99,7 +99,7 @@ export function WizardStep5({ data, onUpdate, onBack, onReset, onSave }: WizardS
         const activity = allActivities.find((a) => a.code === code);
         return {
           code,
-          baseDays: activity?.base_days || 0,
+          baseHours: activity?.base_hours || 0,
           isAiSuggested: data.aiSuggestedActivityCodes.includes(code),
         };
       });
@@ -143,7 +143,7 @@ export function WizardStep5({ data, onUpdate, onBack, onReset, onSave }: WizardS
         const activity = allActivities.find((a) => a.code === code);
         return {
           code,
-          baseDays: activity?.base_days || 0,
+          baseHours: activity?.base_hours || 0,
           isAiSuggested: data.aiSuggestedActivityCodes.includes(code),
         };
       });
@@ -262,7 +262,7 @@ export function WizardStep5({ data, onUpdate, onBack, onReset, onSave }: WizardS
                   return {
                     key: code,
                     left: activity?.name || code,
-                    right: `${activity?.base_days ?? 0}h`,
+                    right: `${activity?.base_hours ?? 0}h`,
                     badge: isAi ? 'AI' : undefined,
                   };
                 })}

@@ -14,13 +14,13 @@ import type { Activity, Driver, Risk, TechnologyPreset } from '@/types/database'
 
 // Mock data realistici
 const mockActivities: Activity[] = [
-    { id: '1', code: 'REQ_ANALYSIS', name: 'Requirements Analysis', base_days: 2, tech_category: 'MULTI', group: 'ANALYSIS', active: true, created_at: '2024-01-01', description: 'Analyze requirements' },
-    { id: '2', code: 'DESIGN_UI', name: 'UI Design', base_days: 3, tech_category: 'FRONTEND', group: 'ANALYSIS', active: true, created_at: '2024-01-01', description: 'Design user interface' },
-    { id: '3', code: 'DEV_BACKEND', name: 'Backend Development', base_days: 8, tech_category: 'BACKEND', group: 'DEV', active: true, created_at: '2024-01-01', description: 'Develop backend' },
-    { id: '4', code: 'DEV_FRONTEND', name: 'Frontend Development', base_days: 6, tech_category: 'FRONTEND', group: 'DEV', active: true, created_at: '2024-01-01', description: 'Develop frontend' },
-    { id: '5', code: 'TEST_UNIT', name: 'Unit Testing', base_days: 3, tech_category: 'MULTI', group: 'TEST', active: true, created_at: '2024-01-01', description: 'Unit tests' },
-    { id: '6', code: 'TEST_INTEG', name: 'Integration Testing', base_days: 4, tech_category: 'MULTI', group: 'TEST', active: true, created_at: '2024-01-01', description: 'Integration tests' },
-    { id: '7', code: 'DEPLOY', name: 'Deployment', base_days: 2, tech_category: 'MULTI', group: 'OPS', active: true, created_at: '2024-01-01', description: 'Deploy to production' },
+    { id: '1', code: 'REQ_ANALYSIS', name: 'Requirements Analysis', base_hours: 2, tech_category: 'MULTI', group: 'ANALYSIS', active: true, created_at: '2024-01-01', description: 'Analyze requirements' },
+    { id: '2', code: 'DESIGN_UI', name: 'UI Design', base_hours: 3, tech_category: 'FRONTEND', group: 'ANALYSIS', active: true, created_at: '2024-01-01', description: 'Design user interface' },
+    { id: '3', code: 'DEV_BACKEND', name: 'Backend Development', base_hours: 8, tech_category: 'BACKEND', group: 'DEV', active: true, created_at: '2024-01-01', description: 'Develop backend' },
+    { id: '4', code: 'DEV_FRONTEND', name: 'Frontend Development', base_hours: 6, tech_category: 'FRONTEND', group: 'DEV', active: true, created_at: '2024-01-01', description: 'Develop frontend' },
+    { id: '5', code: 'TEST_UNIT', name: 'Unit Testing', base_hours: 3, tech_category: 'MULTI', group: 'TEST', active: true, created_at: '2024-01-01', description: 'Unit tests' },
+    { id: '6', code: 'TEST_INTEG', name: 'Integration Testing', base_hours: 4, tech_category: 'MULTI', group: 'TEST', active: true, created_at: '2024-01-01', description: 'Integration tests' },
+    { id: '7', code: 'DEPLOY', name: 'Deployment', base_hours: 2, tech_category: 'MULTI', group: 'OPS', active: true, created_at: '2024-01-01', description: 'Deploy to production' },
 ]; const mockDrivers: Driver[] = [
     {
         id: '1',

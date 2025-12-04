@@ -1,5 +1,20 @@
 // Database types matching Supabase schema
 
+export interface Organization {
+  id: string;
+  name: string;
+  type: 'personal' | 'team';
+  created_at: string;
+}
+
+export interface OrganizationMember {
+  id: string;
+  org_id: string;
+  user_id: string;
+  role: 'admin' | 'editor' | 'viewer';
+  created_at: string;
+}
+
 export interface Technology {
   id: string;
   code: string;
@@ -16,7 +31,7 @@ export interface Activity {
   code: string;
   name: string;
   description: string;
-  base_days: number;
+  base_hours: number;
   tech_category: string;
   group: 'ANALYSIS' | 'DEV' | 'TEST' | 'OPS' | 'GOVERNANCE';
   active: boolean;
@@ -66,12 +81,15 @@ export interface TechnologyPreset {
 
 export interface List {
   id: string;
-  user_id: string;
+  user_id: string; // Now acts as "created_by"
+  organization_id: string; // New owner field
   name: string;
   description: string;
   owner: string;
   tech_preset_id: string | null; // Default technology for requirements in this list
-  status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  status: 'DRAFT' | 'REVIEW' | 'LOCKED' | 'ACTIVE' | 'ARCHIVED'; // Updated status enum
+  locked_at?: string | null;
+  locked_by?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -97,7 +115,7 @@ export interface Estimation {
   requirement_id: string;
   user_id: string;
   total_days: number;
-  base_days: number;
+  base_hours: number;
   driver_multiplier: number;
   risk_score: number;
   contingency_percent: number;

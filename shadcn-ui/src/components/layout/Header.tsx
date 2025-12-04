@@ -15,6 +15,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { User, LogOut, Settings, Command, Sparkles } from 'lucide-react';
 import { SynteroMark } from './SynteroMark';
 
+import { OrganizationSwitcher } from '@/components/common/OrganizationSwitcher';
+
 export function Header() {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -31,8 +33,7 @@ export function Header() {
                     .from('lists')
                     .select('name')
                     .eq('id', params.listId)
-                    .eq('user_id', user.id)
-                    .single();
+                    .single(); // Removed user_id check as RLS handles it now
 
                 if (list) setListName(list.name);
             }
@@ -128,6 +129,13 @@ export function Header() {
                             AI Workspace
                         </span>
                     </Link>
+
+                    {/* Organization Switcher */}
+                    {user && (
+                        <div className="hidden md:block border-l border-slate-200 pl-4">
+                            <OrganizationSwitcher />
+                        </div>
+                    )}
 
                     {/* Tech Minimal Breadcrumb */}
                     {breadcrumb}

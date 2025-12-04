@@ -240,7 +240,7 @@ export function useEstimationState({
             .filter((a) => selectedActivityIds.includes(a.id))
             .map((a) => ({
                 code: a.code,
-                baseDays: a.base_days,
+                baseHours: a.base_hours,
                 isAiSuggested: aiSuggestedIds.includes(a.id),
             }));
 
