@@ -49,7 +49,7 @@ export function ProjectCard({ project, onEdit, onDelete, layout = 'grid' }: Proj
     if (layout === 'list') {
         return (
             <div
-                className="group relative flex items-center gap-4 p-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:shadow-sm transition-all duration-200 cursor-pointer"
+                className="group relative flex items-center gap-4 p-3 rounded-lg border border-slate-200/60 bg-white/80 hover:bg-white hover:shadow-sm transition-all duration-200 cursor-pointer backdrop-blur-sm"
                 onClick={() => navigate(`/dashboard/${project.id}/requirements`)}
             >
                 <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-lg ${getStatusColor(project.status)}`} />
@@ -109,7 +109,7 @@ export function ProjectCard({ project, onEdit, onDelete, layout = 'grid' }: Proj
 
     return (
         <Card
-            className="group relative overflow-hidden border-slate-200 bg-white hover:bg-slate-50 hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col"
+            className="group relative overflow-hidden border-slate-200/60 bg-white/80 hover:bg-white hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col backdrop-blur-sm"
             onClick={() => navigate(`/dashboard/${project.id}/requirements`)}
         >
             <div className={`absolute top-0 left-0 w-1 h-full ${getStatusColor(project.status)}`} />

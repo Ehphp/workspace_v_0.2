@@ -175,7 +175,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-slate-50 relative">
+    <div className="h-screen flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 relative">
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
@@ -209,7 +209,7 @@ export default function Dashboard() {
       />
 
       {/* Header - Fixed */}
-      <div className="flex-shrink-0 bg-white border-b border-slate-200 z-20 relative">
+      <div className="flex-shrink-0 bg-white/80 backdrop-blur-md border-b border-white/20 shadow-sm z-20 relative">
         <Header />
       </div>
 
@@ -288,7 +288,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-12 gap-4 h-full">
 
               {/* Left Column: Projects List - Scrollable */}
-              <div className="col-span-8 flex flex-col h-full min-h-0 bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-sm overflow-hidden hover:border-blue-300/30 transition-colors duration-300">
+              <div className="col-span-8 flex flex-col h-full min-h-0 bg-white/60 backdrop-blur-md rounded-xl border border-slate-200/50 shadow-sm overflow-hidden hover:border-blue-300/50 transition-all duration-300">
                 <div className="flex-shrink-0 px-3 py-2 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                   <div className="flex items-center gap-2">
                     <Layers className="w-3.5 h-3.5 text-slate-500" />
@@ -350,7 +350,7 @@ export default function Dashboard() {
               <div className="col-span-4 flex flex-col gap-3 h-full min-h-0 overflow-y-auto custom-scrollbar pr-1">
 
                 {/* Recent Activity */}
-                <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-sm overflow-hidden flex-1 hover:border-blue-300/30 transition-colors duration-300">
+                <div className="bg-white/60 backdrop-blur-md rounded-xl border border-slate-200/50 shadow-sm overflow-hidden flex-1 hover:border-blue-300/50 transition-all duration-300">
                   <div className="px-3 py-2 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <h3 className="font-semibold text-slate-700 text-xs">Recent Activity</h3>
                   </div>

@@ -49,7 +49,7 @@ export function RequirementsFilters({
     };
 
     return (
-        <div className="flex-shrink-0 relative border-b border-slate-200/60 bg-white/95 backdrop-blur-sm z-10">
+        <div className="flex-shrink-0 relative border-b border-slate-200/60 bg-white/80 backdrop-blur-md z-10">
             <div className="container mx-auto px-6 py-3">
                 <div className="flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
 

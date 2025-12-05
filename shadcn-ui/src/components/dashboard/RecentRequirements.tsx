@@ -136,7 +136,7 @@ export function RecentRequirements() {
             {requirements.map((req) => (
                 <div
                     key={req.id}
-                    className="group flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer border border-transparent hover:border-slate-100"
+                    className="group flex items-center gap-3 p-2 rounded-lg hover:bg-white/80 transition-colors cursor-pointer border border-transparent hover:border-slate-200/50 hover:shadow-sm"
                     onClick={() => navigate(`/dashboard/${req.list_id}/requirements/${req.id}`)}
                 >
                     <div className="flex-shrink-0 mt-0.5">

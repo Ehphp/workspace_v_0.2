@@ -27,6 +27,8 @@ import { RequirementsFilters } from '@/components/requirements/RequirementsFilte
 import { PriorityBadge, StateBadge, PRIORITY_CONFIGS } from '@/components/shared/RequirementBadges';
 import { Plus, Upload, MoreVertical } from 'lucide-react';
 
+import { motion } from 'framer-motion';
+
 export default function Requirements() {
     const navigate = useNavigate();
     const { listId } = useParams<{ listId: string }>();
@@ -119,9 +121,41 @@ export default function Requirements() {
     }
 
     return (
-        <div className="h-screen flex flex-col overflow-hidden bg-syntero-gradient">
+        <div className="h-screen flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 relative">
+            {/* Background Pattern */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+
+            {/* Animated Background Blobs */}
+            <motion.div
+                animate={{
+                    x: [0, 100, 0],
+                    y: [0, -50, 0],
+                    scale: [1, 1.1, 1],
+                }}
+                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                className="absolute top-0 -left-20 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+            />
+            <motion.div
+                animate={{
+                    x: [0, -100, 0],
+                    y: [0, 50, 0],
+                    scale: [1, 1.2, 1],
+                }}
+                transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+                className="absolute top-1/3 -right-20 w-[30rem] h-[30rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+            />
+            <motion.div
+                animate={{
+                    x: [0, 50, 0],
+                    y: [0, 100, 0],
+                    scale: [1, 1.1, 1],
+                }}
+                transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
+                className="absolute bottom-0 left-1/3 w-[25rem] h-[25rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+            />
+
             {/* Header */}
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 z-20 relative">
                 <Header />
             </div>
 
@@ -171,7 +205,7 @@ export default function Requirements() {
                     {filteredRequirements.length === 0 ? (
                         <div className="max-w-4xl mx-auto">
                             {requirements.length === 0 ? (
-                                <Card className="border-slate-200 bg-white shadow-lg">
+                                <Card className="border-slate-200/60 bg-white/80 backdrop-blur-md shadow-sm">
                                     <div className="p-12 text-center">
                                         <div className="max-w-md mx-auto space-y-6">
                                             <div className="mx-auto w-24 h-24 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center border-2 border-slate-300/50">
@@ -208,7 +242,7 @@ export default function Requirements() {
                                     </div>
                                 </Card>
                             ) : (
-                                <Card className="border-slate-200 bg-white shadow-lg">
+                                <Card className="border-slate-200/60 bg-white/80 backdrop-blur-md shadow-sm">
                                     <div className="p-12 text-center">
                                         <div className="max-w-md mx-auto space-y-6">
                                             <h3 className="text-2xl font-bold text-slate-900">No Matching Requirements</h3>
@@ -242,7 +276,7 @@ export default function Requirements() {
                                     return (
                                         <Card
                                             key={req.id}
-                                            className="group relative overflow-hidden border-slate-200/60 bg-white/90 backdrop-blur-md hover:bg-white hover:shadow-md transition-all duration-300 ease-out cursor-pointer"
+                                            className="group relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-md hover:bg-white hover:shadow-md transition-all duration-300 ease-out cursor-pointer"
                                             onClick={() => navigate(`/dashboard/${listId}/requirements/${req.id}`)}
                                             role="button"
                                             tabIndex={0}
