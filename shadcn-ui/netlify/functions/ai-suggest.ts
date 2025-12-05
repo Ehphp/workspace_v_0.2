@@ -388,7 +388,7 @@ export const handler: Handler = async (
                 messages: [
                     {
                         role: 'system',
-                        content: 'Create concise requirement titles (max 10 words). The description may include bullet lines formatted as "- ColumnName: value" coming from Excel columns; use the values and their labels as context but do not repeat the label prefix in the title. Return only the title.',
+                        content: 'Create concise requirement titles (max 10 words). The description may include sections formatted as "**ColumnName**" followed by the value; use these values and their labels as context but do not repeat the label prefix in the title. Return only the title.',
                     },
                     {
                         role: 'user',

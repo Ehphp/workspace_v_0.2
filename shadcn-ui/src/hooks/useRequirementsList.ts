@@ -46,6 +46,7 @@ interface UseRequirementsListReturn {
 
     // Actions
     loadData: (signal?: AbortSignal) => Promise<void>;
+    updateRequirement: (id: string, updates: Partial<RequirementWithEstimation>) => void;
 }
 
 export function useRequirementsList({ listId, userId }: UseRequirementsListProps): UseRequirementsListReturn {
@@ -67,6 +68,16 @@ export function useRequirementsList({ listId, userId }: UseRequirementsListProps
     // Pagination state
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
+
+    const updateRequirement = useCallback((id: string, updates: Partial<RequirementWithEstimation>) => {
+        setRequirements(prev => prev.map(req =>
+            req.id === id ? { ...req, ...updates } : req
+        ));
+    }, []);
+
+    const addRequirement = useCallback((req: RequirementWithEstimation) => {
+        setRequirements(prev => [req, ...prev]);
+    }, []);
 
     const loadData = useCallback(async (signal?: AbortSignal) => {
         if (!userId || !listId) return;
@@ -303,5 +314,7 @@ export function useRequirementsList({ listId, userId }: UseRequirementsListProps
 
         // Actions
         loadData,
+        updateRequirement,
+        addRequirement,
     };
 }

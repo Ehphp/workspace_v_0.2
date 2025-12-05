@@ -14,7 +14,6 @@ interface RequirementsHeaderProps {
     onBulkEstimate: () => void;
     onCreateRequirement: () => void;
     onRetry: () => void;
-    statusControl?: React.ReactNode;
 }
 
 export function RequirementsHeader({
@@ -28,11 +27,10 @@ export function RequirementsHeader({
     onBulkEstimate,
     onCreateRequirement,
     onRetry,
-    statusControl,
 }: RequirementsHeaderProps) {
     return (
-        <div className="flex-shrink-0 relative border-b border-slate-200/60 bg-white/80 backdrop-blur-md shadow-sm z-10">
-            <div className="container mx-auto px-6 py-4">
+        <div className="flex-shrink-0 relative border-b border-white/50 bg-white/40 backdrop-blur-md shadow-sm z-10">
+            <div className="container mx-auto px-6 py-3">
                 <div className="flex items-center justify-between gap-6">
                     {/* Left side: Project info */}
                     <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -41,7 +39,7 @@ export function RequirementsHeader({
                         </div>
 
                         <div className="flex-1 min-w-0">
-                            <h1 className="text-xl font-bold text-slate-900 truncate mb-1">
+                            <h1 className="text-3xl font-bold text-slate-900 truncate mb-1">
                                 {list?.name}
                             </h1>
                             {list?.description && (
@@ -49,37 +47,11 @@ export function RequirementsHeader({
                             )}
                         </div>
 
-                        {/* Summary Card - Modern Glass Pill */}
-                        <div className="flex items-center gap-5 px-6 py-2 rounded-full bg-white/40 backdrop-blur-md border border-white/50 shadow-sm hover:bg-white/60 transition-colors">
-                            <div className="flex items-baseline gap-1.5">
-                                <span className="text-2xl font-bold text-slate-800 tracking-tight">
-                                    {totalEstimation.toFixed(1)}
-                                </span>
-                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Days</span>
-                            </div>
-
-                            <div className="h-6 w-px bg-slate-300/50"></div>
-
-                            <div className="flex items-center gap-4 text-xs">
-                                <div className="flex items-center gap-1.5" title="Estimated Requirements">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
-                                    <span className="font-medium text-slate-700">
-                                        <span className="font-bold text-slate-900">{estimatedCount}</span> Done
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-1.5" title="Pending Requirements">
-                                    <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]"></div>
-                                    <span className="font-medium text-slate-700">
-                                        <span className="font-bold text-slate-900">{notEstimatedCount}</span> Pending
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+                        {/* Summary Card removed and moved to body */}
                     </div>
 
                     {/* Right side: Actions */}
                     <div className="flex items-center gap-3">
-                        {statusControl}
                         <Button
                             variant="outline"
                             onClick={onSetTechnology}

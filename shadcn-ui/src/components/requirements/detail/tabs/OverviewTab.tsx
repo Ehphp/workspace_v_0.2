@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Calculator, FileText, User, Tag, Zap, Settings } from 'lucide-react';
+import { Calculator, FileText, User, Tag, Zap, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { Requirement, TechnologyPreset, EstimationWithDetails, Activity } from '@/types/database';
 import { RequirementProgress } from '../RequirementProgress';
@@ -26,6 +27,7 @@ const stateColors = {
 
 export function OverviewTab({ requirement, presets, refetchRequirement, latestEstimation, activities = [] }: OverviewTabProps) {
     const preset = presets.find(p => p.id === requirement.tech_preset_id);
+    const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
     return (
         <div className="h-full flex flex-col overflow-hidden">
@@ -34,33 +36,33 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:h-full">
                         {/* Left: Compact Info Grid (3/5) */}
                         <div className="lg:col-span-3 space-y-3 lg:overflow-hidden lg:pr-2 lg:h-full flex flex-col">
-                            {/* Title & Description Card */}
-                            <Card className="rounded-xl shadow-sm border-slate-200 bg-white/60 backdrop-blur-sm shrink-0">
-                                <CardContent className="p-4">
-                                    <div className="flex items-start justify-between gap-3 mb-2">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-xs font-mono text-slate-500">{requirement.req_id}</span>
-                                                <Badge
-                                                    variant="outline"
-                                                    className={`text-xs px-2 py-0 ${priorityColors[requirement.priority]}`}
-                                                >
-                                                    {requirement.priority}
-                                                </Badge>
-                                                <Badge
-                                                    variant="outline"
-                                                    className={`text-xs px-2 py-0 ${stateColors[requirement.state] || 'bg-slate-100 text-slate-700'}`}
-                                                >
-                                                    {requirement.state}
-                                                </Badge>
-                                            </div>
-                                            <h2 className="text-lg font-bold text-slate-900 leading-tight">{requirement.title}</h2>
+                            {/* Description Card */}
+                            <Card className={`rounded-xl shadow-sm border-slate-200 bg-white/60 backdrop-blur-sm ${latestEstimation ? 'shrink-0' : 'flex-1 min-h-0 flex flex-col'}`}>
+                                <CardContent className={`p-4 ${latestEstimation ? '' : 'flex-1 flex flex-col min-h-0'}`}>
+                                    {/* Description Header */}
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <FileText className="w-4 h-4 text-slate-500" />
+                                            <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Description</span>
                                         </div>
+                                        {latestEstimation && (
+                                            <button
+                                                onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                                                className="p-1 hover:bg-slate-100 rounded transition-colors"
+                                                title={isDescriptionExpanded ? "Collapse" : "Expand"}
+                                            >
+                                                {isDescriptionExpanded ? (
+                                                    <ChevronUp className="w-4 h-4 text-slate-600" />
+                                                ) : (
+                                                    <ChevronDown className="w-4 h-4 text-slate-600" />
+                                                )}
+                                            </button>
+                                        )}
                                     </div>
 
-                                    {/* Compact Description */}
-                                    <div className="mt-2">
-                                        <p className="text-sm text-slate-600 line-clamp-3">
+                                    {/* Description Content */}
+                                    <div className={`${latestEstimation ? (isDescriptionExpanded ? 'max-h-[30vh]' : 'max-h-[15vh]') : 'flex-1'} overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent transition-all duration-300`}>
+                                        <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
                                             {requirement.description || 'No description provided'}
                                         </p>
                                     </div>
@@ -69,7 +71,7 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
 
                             {/* Progress Section */}
                             {latestEstimation && (
-                                <Card className="rounded-xl shadow-sm border-slate-200 bg-white/60 backdrop-blur-sm flex-1 min-h-0 flex flex-col">
+                                <Card className={`rounded-xl shadow-sm border-slate-200 bg-white/60 backdrop-blur-sm flex-1 min-h-0 flex flex-col transition-all duration-300`}>
                                     <CardContent className="p-4 flex-1 min-h-0 flex flex-col">
                                         <RequirementProgress
                                             estimation={latestEstimation}

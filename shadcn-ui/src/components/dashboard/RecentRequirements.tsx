@@ -2,7 +2,7 @@ import type React from 'react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthStore } from '@/store/useAuthStore';
 import { Badge } from '@/components/ui/badge';
 import { Clock, FileText, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,26 +19,26 @@ interface RecentRequirement {
 }
 
 export function RecentRequirements() {
-    const { user } = useAuth();
+    const { user, currentOrganization } = useAuthStore();
     const navigate = useNavigate();
     const [requirements, setRequirements] = useState<RecentRequirement[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (user) {
+        if (user && currentOrganization) {
             loadRecentRequirements();
         }
-    }, [user]);
+    }, [user, currentOrganization]);
 
     const loadRecentRequirements = async () => {
-        if (!user) return;
+        if (!user || !currentOrganization) return;
 
         try {
-            // Get user's lists
+            // Get organization's lists
             const { data: lists, error: listsError } = await supabase
                 .from('lists')
                 .select('id, name')
-                .eq('user_id', user.id);
+                .eq('organization_id', currentOrganization.id);
 
             if (listsError) throw listsError;
 

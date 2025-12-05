@@ -60,6 +60,9 @@ export function HistorySection({
             estimations={history}
             selectedIds={selectedIds}
             onSelectionChange={onSelectionChange}
+            assignedId={assignedEstimationId}
+            onAssign={handleAssign}
+            assigning={assigning}
           />
         </div>
       )}

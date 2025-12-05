@@ -45,16 +45,16 @@ interface ImportRequirementsDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     listId: string;
-    onSuccess: () => void;
+    onImport: (requirements: ParsedRequirement[]) => void;
 }
 
-type Step = 'upload' | 'mapping' | 'preview' | 'importing' | 'complete';
+type Step = 'upload' | 'mapping' | 'preview';
 
 export function ImportRequirementsDialog({
     open,
     onOpenChange,
     listId,
-    onSuccess,
+    onImport,
 }: ImportRequirementsDialogProps) {
     const { user } = useAuth();
     const [step, setStep] = useState<Step>('upload');
@@ -64,9 +64,6 @@ export function ImportRequirementsDialog({
     const [columnMapping, setColumnMapping] = useState<ColumnMapping>({});
     const [requirements, setRequirements] = useState<ParsedRequirement[]>([]);
     const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
-    const [importProgress, setImportProgress] = useState(0);
-    const [importedCount, setImportedCount] = useState(0);
-    const [skippedCount, setSkippedCount] = useState(0);
     const [error, setError] = useState<string>('');
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,11 +140,6 @@ export function ImportRequirementsDialog({
 
         console.log('=== IMPORT START ===');
         console.log('Total requirements:', requirements.length);
-        console.log('Requirements to import:', requirements);
-
-        setStep('importing');
-        setImportProgress(0);
-        setImportedCount(0);
 
         const validRequirements = requirements.filter((req, index) => {
             const rowNum = index + 2;
@@ -156,96 +148,9 @@ export function ImportRequirementsDialog({
 
         console.log('Valid requirements after filtering errors:', validRequirements.length);
 
-        let successCount = 0;
-        let skippedCount = 0;
-
-        // Check for existing req_ids in this list
-        const reqIds = validRequirements.map(r => r.req_id);
-        console.log('Checking for duplicate req_ids:', reqIds);
-
-        const { data: existingReqs } = await supabase
-            .from('requirements')
-            .select('req_id')
-            .eq('list_id', listId)
-            .in('req_id', reqIds);
-
-        console.log('Existing requirements in DB:', existingReqs);
-
-        const existingReqIds = new Set(existingReqs?.map(r => r.req_id) || []);
-
-        for (let i = 0; i < validRequirements.length; i++) {
-            const req = validRequirements[i];
-
-            try {
-                // Skip if req_id already exists in this list
-                if (existingReqIds.has(req.req_id)) {
-                    console.log(`Skipping duplicate req_id: ${req.req_id}`);
-                    skippedCount++;
-                    setImportProgress(((i + 1) / validRequirements.length) * 100);
-                    continue;
-                }
-
-                // Generate title with AI if missing
-                let title = req.title;
-                console.log(`[IMPORT ${i + 1}/${validRequirements.length}] req_id: ${req.req_id}`);
-                console.log(`  - Original title: "${title || '(EMPTY)'}"`);
-                console.log(`  - Original description length: ${req.description?.length || 0}`);
-                console.log(`  - Description preview: "${req.description?.substring(0, 100) || '(EMPTY)'}"`);
-
-                if (!title || title.trim() === '') {
-                    console.log('  → Title is empty, checking description...');
-                    if (req.description && req.description.trim() !== '') {
-                        console.log('  → Description exists, calling AI to generate title...');
-                        try {
-                            title = await generateTitleFromDescription(req.description);
-                            console.log(`  → AI generated title: "${title}"`);
-                        } catch (error) {
-                            console.error('  → Error generating title:', error);
-                            title = req.req_id; // Fallback to ID
-                            console.log(`  → Fallback to req_id: "${title}"`);
-                        }
-                    } else {
-                        console.log('  → No description, using req_id as title');
-                        title = req.req_id; // Fallback to ID
-                    }
-                } else {
-                    console.log('  → Title already exists, using it');
-                }
-
-                console.log('  → Inserting into database:', {
-                    req_id: req.req_id,
-                    title: title,
-                    description_length: req.description?.length || 0,
-                    description_preview: req.description?.substring(0, 100)
-                });
-
-                const { error } = await supabase.from('requirements').insert({
-                    list_id: listId,
-                    req_id: req.req_id,
-                    title: title,
-                    description: req.description,
-                    priority: req.priority,
-                    state: req.state,
-                    business_owner: req.business_owner,
-                    tech_preset_id: null,
-                    labels: [],
-                });
-
-                if (!error) {
-                    successCount++;
-                    console.log(`  ✓ Successfully inserted`);
-                } else {
-                    console.error(`  ✗ Error inserting requirement ${req.req_id}:`, error);
-                }
-            } catch (err) {
-                console.error('Error importing requirement:', err);
-            }
-
-            setImportProgress(((i + 1) / validRequirements.length) * 100);
-            setImportedCount(successCount);
-        }
-
-        setStep('complete');
+        // Pass valid requirements to parent for background processing
+        onImport(validRequirements);
+        handleClose();
     };
 
     const handleClose = () => {
@@ -255,15 +160,9 @@ export function ImportRequirementsDialog({
         setColumnMapping({});
         setRequirements([]);
         setValidationErrors([]);
-        setImportProgress(0);
-        setImportedCount(0);
-        setSkippedCount(0);
         setError('');
         onOpenChange(false);
 
-        if (step === 'complete') {
-            onSuccess();
-        }
     };
 
     const renderUploadStep = () => (
@@ -582,35 +481,6 @@ export function ImportRequirementsDialog({
         );
     };
 
-    const renderImportingStep = () => (
-        <div className="space-y-4 py-8">
-            <div className="text-center">
-                <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Importing Requirements...</h3>
-                <p className="text-sm text-muted-foreground">
-                    {importedCount} imported{skippedCount > 0 && `, ${skippedCount} skipped (duplicates)`}
-                </p>
-            </div>
-            <Progress value={importProgress} className="w-full" />
-        </div>
-    );
-
-    const renderCompleteStep = () => (
-        <div className="space-y-4 py-8 text-center">
-            <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
-            <h3 className="text-xl font-semibold">Import Complete!</h3>
-            <div className="text-muted-foreground space-y-1">
-                <p>Successfully imported {importedCount} requirements</p>
-                {skippedCount > 0 && (
-                    <p className="text-sm text-yellow-600">
-                        {skippedCount} duplicate(s) skipped
-                    </p>
-                )}
-            </div>
-            <Button onClick={handleClose}>Done</Button>
-        </div>
-    );
-
     return (
         <Dialog open={open} onOpenChange={handleClose}>
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -625,8 +495,6 @@ export function ImportRequirementsDialog({
                     {step === 'upload' && renderUploadStep()}
                     {step === 'mapping' && renderMappingStep()}
                     {step === 'preview' && renderPreviewStep()}
-                    {step === 'importing' && renderImportingStep()}
-                    {step === 'complete' && renderCompleteStep()}
                 </div>
             </DialogContent>
         </Dialog>

@@ -294,6 +294,11 @@ export interface SaveEstimationInput {
 }
 
 export async function saveEstimation(input: SaveEstimationInput): Promise<void> {
+  // 0. Validate input
+  if (!input.activities || input.activities.length === 0) {
+    throw new ApiError('Cannot save an estimation without activities', 400);
+  }
+
   // 1. Create estimation record
   const { data: estimation, error: estError } = await supabase
     .from('estimations')
@@ -425,15 +430,6 @@ export async function updateMemberRole(orgId: string, userId: string, newRole: '
     target_user_id: userId,
     new_role: newRole,
   });
-
-  if (error) throw new ApiError(error.message, parseInt(error.code), error);
-}
-
-export async function updateListStatus(listId: string, status: 'DRAFT' | 'REVIEW' | 'LOCKED'): Promise<void> {
-  const { error } = await supabase
-    .from('lists')
-    .update({ status })
-    .eq('id', listId);
 
   if (error) throw new ApiError(error.message, parseInt(error.code), error);
 }

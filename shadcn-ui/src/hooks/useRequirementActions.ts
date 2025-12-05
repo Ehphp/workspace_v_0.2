@@ -38,7 +38,7 @@ export function useRequirementActions({ requirement, user, refetchRequirement }:
             showApiError('Title is too long (max 200 characters)', 'validazione');
             return;
         }
-        const validStates = ['PROPOSED', 'SELECTED', 'SCHEDULED', 'IN_PROGRESS', 'DONE', 'REJECTED'];
+        const validStates = ['PROPOSED', 'SELECTED', 'SCHEDULED', 'DONE'];
         if (!validStates.includes(data.state)) {
             showApiError('Invalid state selected', 'validazione');
             return;
@@ -68,10 +68,12 @@ export function useRequirementActions({ requirement, user, refetchRequirement }:
 
             showSuccess('Header updated successfully');
             stopEditing();
-            await refetchRequirement();
+            // No refetch - optimistic update already applied
         } catch (error) {
             console.error('Error updating header:', error);
             showApiError(error, 'aggiornamento header');
+            // On error, trigger refetch to restore correct state
+            await refetchRequirement();
         } finally {
             setSavingSections(prev => {
                 const next = new Set(prev);

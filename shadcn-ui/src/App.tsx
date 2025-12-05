@@ -12,7 +12,6 @@ import RequirementDetail from './pages/RequirementDetail';
 import NotFound from './pages/NotFound';
 import Configuration from './pages/Configuration';
 import ConfigurationActivities from './pages/ConfigurationActivities';
-import ConfigurationTechnologies from './pages/ConfigurationTechnologies';
 import ConfigurationPresets from './pages/ConfigurationPresets';
 import HowItWorks from './pages/HowItWorks';
 import Profile from './pages/Profile';
@@ -70,14 +69,7 @@ const App = () => (
               </AuthGuard>
             }
           />
-          <Route
-            path="/configuration/technologies"
-            element={
-              <AuthGuard>
-                <ConfigurationTechnologies />
-              </AuthGuard>
-            }
-          />
+
           <Route
             path="/configuration/presets"
             element={

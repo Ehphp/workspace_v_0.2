@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthStore } from '@/store/useAuthStore';
 
 interface DashboardStats {
     totalProjects: number;
@@ -12,7 +12,7 @@ interface DashboardStats {
 }
 
 export function useDashboardData() {
-    const { user } = useAuth();
+    const { user, currentOrganization } = useAuthStore();
     const [stats, setStats] = useState<DashboardStats>({
         totalProjects: 0,
         activeRequirements: 0,
@@ -23,7 +23,7 @@ export function useDashboardData() {
     });
 
     useEffect(() => {
-        if (!user) {
+        if (!user || !currentOrganization) {
             setStats({
                 totalProjects: 0,
                 activeRequirements: 0,
@@ -36,19 +36,19 @@ export function useDashboardData() {
         }
 
         loadDashboardStats();
-    }, [user]);
+    }, [user, currentOrganization]);
 
     const loadDashboardStats = async () => {
-        if (!user) return;
+        if (!user || !currentOrganization) return;
 
         setStats(prev => ({ ...prev, loading: true, error: null }));
 
         try {
-            // 1) Get user's active projects and keep the ids for next queries
+            // 1) Get organization's active projects and keep the ids for next queries
             const { data: projects, count: projectCount, error: projectError } = await supabase
                 .from('lists')
                 .select('id', { count: 'exact' })
-                .eq('user_id', user.id)
+                .eq('organization_id', currentOrganization.id)
                 .neq('status', 'ARCHIVED');
 
             if (projectError) throw projectError;
@@ -61,7 +61,7 @@ export function useDashboardData() {
 
             if (listIds.length > 0) {
                 // 2) Count requirements in those projects and collect their ids
-                // Count active requirements in user's lists
+                // Count active requirements in organization's lists
                 const { data: requirements, count: reqCount, error: reqError } = await supabase
                     .from('requirements')
                     .select('id', { count: 'exact' })

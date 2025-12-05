@@ -15,17 +15,6 @@ export interface OrganizationMember {
   created_at: string;
 }
 
-export interface Technology {
-  id: string;
-  code: string;
-  name: string;
-  description: string | null;
-  color: string | null;
-  icon: string | null;
-  sort_order: number;
-  created_at: string;
-}
-
 export interface Activity {
   id: string;
   code: string;
@@ -74,6 +63,9 @@ export interface TechnologyPreset {
   default_driver_values: Record<string, string>;
   default_risks: string[];
   default_activity_codes: string[];
+  color: string | null;
+  icon: string | null;
+  sort_order: number;
   created_at: string;
   is_custom?: boolean;
   created_by?: string | null;
@@ -87,9 +79,7 @@ export interface List {
   description: string;
   owner: string;
   tech_preset_id: string | null; // Default technology for requirements in this list
-  status: 'DRAFT' | 'REVIEW' | 'LOCKED' | 'ACTIVE' | 'ARCHIVED'; // Updated status enum
-  locked_at?: string | null;
-  locked_by?: string | null;
+  status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
   created_at: string;
   updated_at: string;
 }
@@ -102,7 +92,7 @@ export interface Requirement {
   description: string;
   tech_preset_id: string;
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
-  state: 'CREATED' | 'IN_PROGRESS' | 'DONE';
+  state: 'PROPOSED' | 'SELECTED' | 'SCHEDULED' | 'DONE';
   business_owner: string;
   labels: string[];
   assigned_estimation_id: string | null;

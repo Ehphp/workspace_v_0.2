@@ -2,6 +2,7 @@ import type React from 'react';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import { useRequirementsList } from '@/hooks/useRequirementsList';
 import type { Requirement } from '@/types/database';
 import { Button } from '@/components/ui/button';
@@ -21,11 +22,13 @@ import { BulkEstimateDialog } from '@/components/requirements/BulkEstimateDialog
 import { Header } from '@/components/layout/Header';
 import { ListTechnologyDialog } from '@/components/lists/ListTechnologyDialog';
 import { useAuthStore } from '@/store/useAuthStore';
-import { ProjectStatusControl } from '@/components/common/ProjectStatusControl';
 import { RequirementsHeader } from '@/components/requirements/RequirementsHeader';
 import { RequirementsFilters } from '@/components/requirements/RequirementsFilters';
+import { RequirementsStats } from '@/components/requirements/RequirementsStats';
 import { PriorityBadge, StateBadge, PRIORITY_CONFIGS } from '@/components/shared/RequirementBadges';
-import { Plus, Upload, MoreVertical } from 'lucide-react';
+import { Plus, Upload, MoreVertical, Loader2, Sparkles } from 'lucide-react';
+import { generateTitleFromDescription } from '@/lib/openai';
+import { supabase } from '@/lib/supabase';
 
 import { motion } from 'framer-motion';
 
@@ -33,6 +36,7 @@ export default function Requirements() {
     const navigate = useNavigate();
     const { listId } = useParams<{ listId: string }>();
     const { user } = useAuth();
+    const { toast } = useToast();
     const { userRole } = useAuthStore();
     const canManage = userRole === 'admin' || userRole === 'editor';
 
@@ -55,7 +59,69 @@ export default function Requirements() {
         notEstimatedCount,
         requirements,
         loadData,
+        updateRequirement,
+        addRequirement,
     } = useRequirementsList({ listId, userId: user?.id });
+
+    // Track processing items to avoid race conditions
+    const processingRef = useRef<Set<string>>(new Set());
+
+    // Background Title Generation
+    useEffect(() => {
+        if (!requirements || requirements.length === 0) return;
+
+        const pendingTitles = requirements.filter(r =>
+            r.labels && r.labels.includes('AI_TITLE_PENDING') && !processingRef.current.has(r.id)
+        );
+
+        if (pendingTitles.length === 0) return;
+
+        console.log(`Found ${pendingTitles.length} new requirements pending title generation`);
+
+        // Mark as processing immediately
+        pendingTitles.forEach(req => processingRef.current.add(req.id));
+
+        const processQueue = async () => {
+            // Process one by one to avoid rate limits
+            for (const req of pendingTitles) {
+                try {
+                    if (!req.description) {
+                        processingRef.current.delete(req.id);
+                        continue;
+                    }
+
+                    console.log(`Generating title for ${req.req_id}...`);
+                    const newTitle = await generateTitleFromDescription(req.description);
+
+                    // Update DB
+                    const newLabels = (req.labels || []).filter(l => l !== 'AI_TITLE_PENDING');
+
+                    const { error } = await supabase
+                        .from('requirements')
+                        .update({
+                            title: newTitle,
+                            labels: newLabels
+                        })
+                        .eq('id', req.id);
+
+                    if (!error) {
+                        console.log(`Updated title for ${req.req_id}: ${newTitle}`);
+                        // Update local state immediately to show the new title
+                        updateRequirement(req.id, {
+                            title: newTitle,
+                            labels: newLabels
+                        });
+                    }
+                } catch (err) {
+                    console.error(`Failed to generate title for ${req.req_id}`, err);
+                } finally {
+                    processingRef.current.delete(req.id);
+                }
+            }
+        };
+
+        processQueue();
+    }, [requirements, updateRequirement]); // Dependency on requirements list
 
     // Dialog state
     const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -64,6 +130,97 @@ export default function Requirements() {
     const [showClearDialog, setShowClearDialog] = useState(false);
     const [showBulkEstimate, setShowBulkEstimate] = useState(false);
     const [deleteRequirement, setDeleteRequirement] = useState<Requirement | null>(null);
+
+    const handleImportRequirements = async (parsedRequirements: any[]) => {
+        if (!user || !listId) return;
+
+        toast({
+            title: "Import started",
+            description: `Importing ${parsedRequirements.length} requirements...`,
+        });
+
+        // Check for existing req_ids in this list
+        const reqIds = parsedRequirements.map(r => r.req_id);
+        const { data: existingReqs } = await supabase
+            .from('requirements')
+            .select('req_id')
+            .eq('list_id', listId)
+            .in('req_id', reqIds);
+
+        const existingReqIds = new Set(existingReqs?.map(r => r.req_id) || []);
+        let importedCount = 0;
+
+        // Process in background
+        for (const req of parsedRequirements) {
+            if (existingReqIds.has(req.req_id)) continue;
+
+            try {
+                let title = req.title;
+                let labels: string[] = [];
+
+                // Check if title needs AI generation:
+                // 1. Missing or empty
+                // 2. Identical to description (user mapped description to title)
+                // 3. Too long (> 100 chars) - likely a raw description
+                const isTitleInvalid = !title ||
+                    title.trim() === '' ||
+                    (req.description && title.trim() === req.description.trim()) ||
+                    (title && title.length > 100);
+
+                if (isTitleInvalid) {
+                    // Only mark for AI if we have a description to generate from
+                    if (req.description && req.description.trim() !== '') {
+                        labels.push('AI_TITLE_PENDING');
+
+                        // If title is completely missing, use ID as placeholder
+                        if (!title || title.trim() === '') {
+                            title = req.req_id;
+                        }
+                        // If title is long/description, we keep it in DB as fallback, 
+                        // but UI will show "Generating..." due to the label.
+                    } else if (!title || title.trim() === '') {
+                        // No description to generate from, just use ID
+                        title = req.req_id;
+                    }
+                }
+
+                const { data, error } = await supabase.from('requirements').insert({
+                    list_id: listId,
+                    req_id: req.req_id,
+                    title: title,
+                    description: req.description,
+                    priority: req.priority,
+                    state: req.state,
+                    business_owner: req.business_owner,
+                    tech_preset_id: null,
+                    labels: labels,
+                }).select().single();
+
+                if (!error && data) {
+                    // Add to local list immediately
+                    addRequirement({
+                        ...data,
+                        latest_estimation: null
+                    });
+                    importedCount++;
+                }
+            } catch (err) {
+                console.error('Error importing requirement:', err);
+            }
+        }
+
+        if (importedCount > 0) {
+            toast({
+                title: "Import complete",
+                description: `Successfully imported ${importedCount} requirements.`,
+            });
+        } else {
+            toast({
+                title: "Import complete",
+                description: "No new requirements were imported (duplicates skipped).",
+            });
+        }
+    };
 
     // Scrolling support for horizontal drag
     const requirementsScrollRef = useRef<HTMLDivElement>(null);
@@ -171,15 +328,6 @@ export default function Requirements() {
                 onBulkEstimate={() => setShowBulkEstimate(true)}
                 onCreateRequirement={() => setShowCreateDialog(true)}
                 onRetry={() => loadData()}
-                statusControl={
-                    list && (
-                        <ProjectStatusControl
-                            list={list}
-                            onStatusChange={loadData}
-                            canManage={canManage}
-                        />
-                    )
-                }
             />
 
             {/* Filters Bar */}
@@ -202,6 +350,13 @@ export default function Requirements() {
             {/* Main Content */}
             <div className="flex-1 overflow-y-auto relative z-0">
                 <div className="container mx-auto px-6 py-6">
+                    {/* Stats Summary (Moved from Header) */}
+                    <RequirementsStats
+                        totalEstimation={totalEstimation}
+                        estimatedCount={estimatedCount}
+                        notEstimatedCount={notEstimatedCount}
+                    />
+
                     {filteredRequirements.length === 0 ? (
                         <div className="max-w-4xl mx-auto">
                             {requirements.length === 0 ? (
@@ -272,6 +427,7 @@ export default function Requirements() {
                                     const estimation = req.latest_estimation;
                                     const hasEstimation = !!estimation;
                                     const priorityConfig = PRIORITY_CONFIGS[req.priority as keyof typeof PRIORITY_CONFIGS] || PRIORITY_CONFIGS.MEDIUM;
+                                    const isGeneratingTitle = req.labels?.includes('AI_TITLE_PENDING');
 
                                     return (
                                         <Card
@@ -301,12 +457,19 @@ export default function Requirements() {
 
                                                 {/* Main Content: Title & State */}
                                                 <div className="flex-1 min-w-0 flex items-center gap-3">
-                                                    <span
-                                                        className="font-semibold text-sm text-slate-900 truncate group-hover:text-blue-700 transition-colors"
-                                                        title={req.title}
-                                                    >
-                                                        {req.title}
-                                                    </span>
+                                                    {isGeneratingTitle ? (
+                                                        <div className="flex items-center gap-2 text-slate-500 italic">
+                                                            <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
+                                                            <span className="text-sm">Generating title with AI...</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span
+                                                            className="font-semibold text-sm text-slate-900 truncate group-hover:text-blue-700 transition-colors"
+                                                            title={req.title}
+                                                        >
+                                                            {req.title}
+                                                        </span>
+                                                    )}
                                                     <div className="scale-90 origin-left shrink-0">
                                                         <StateBadge state={req.state} />
                                                     </div>
@@ -390,7 +553,7 @@ export default function Requirements() {
                         open={showImportDialog}
                         onOpenChange={setShowImportDialog}
                         listId={listId}
-                        onSuccess={loadData}
+                        onImport={handleImportRequirements}
                     />
                     <ListTechnologyDialog
                         list={list}

@@ -256,8 +256,8 @@ export function mapDataToRequirements(
                 if (labeledChunks.length === 0) return '';
 
                 const structured = labeledChunks
-                    .map(({ header, value }) => `- ${header}: ${value}`)
-                    .join('\n');
+                    .map(({ header, value }) => `**${header}**\n${value}`)
+                    .join('\n\n');
 
                 console.log('  -> Structured description with column labels:', structured);
                 return structured;
@@ -281,13 +281,11 @@ export function mapDataToRequirements(
         const priorityRaw = getCell('priority').toLowerCase();
         const stateRaw = getCell('state').toLowerCase();
         const business_owner = getCell('business_owner');
-
-        // Generate title from first 100 chars of description or req_id
-        const title = description ? description.substring(0, 100) : req_id;
+        const title = getCell('title');
 
         console.log(`[ROW ${rowIndex + 1}] Mapped requirement:`, {
             req_id,
-            title: title.substring(0, 50) + (title.length > 50 ? '...' : ''),
+            title: title ? (title.substring(0, 50) + (title.length > 50 ? '...' : '')) : '(EMPTY)',
             description: description.substring(0, 100) + (description.length > 100 ? '...' : ''),
             priority: PRIORITY_MAPPING[priorityRaw] || 'MEDIUM',
             state: STATE_MAPPING[stateRaw] || 'PROPOSED',

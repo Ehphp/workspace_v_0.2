@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { Button } from '@/components/ui/button';
 import { Plus, Search, Layers, TrendingUp, ListChecks, BarChart3, PieChart, LayoutGrid, List as ListIcon } from 'lucide-react';
@@ -29,7 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, currentOrganization } = useAuthStore();
   const { stats } = useDashboardData();
   const [lists, setLists] = useState<List[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,19 +44,19 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
-    if (user) {
+    if (user && currentOrganization) {
       loadLists();
       loadChartData();
     }
-  }, [user, showArchived]);
+  }, [user, currentOrganization, showArchived]);
 
   const loadLists = async () => {
-    if (!user) return;
+    if (!user || !currentOrganization) return;
 
     let query = supabase
       .from('lists')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('organization_id', currentOrganization.id)
       .order('updated_at', { ascending: false });
 
     if (showArchived) {
@@ -76,16 +76,16 @@ export default function Dashboard() {
   };
 
   const loadChartData = async () => {
-    if (!user) return;
+    if (!user || !currentOrganization) return;
 
     try {
-      // Get user's lists
-      const { data: userLists } = await supabase
+      // Get organization's lists
+      const { data: orgLists } = await supabase
         .from('lists')
         .select('id')
-        .eq('user_id', user.id);
+        .eq('organization_id', currentOrganization.id);
 
-      const listIds = userLists?.map(l => l.id) || [];
+      const listIds = orgLists?.map(l => l.id) || [];
 
       if (listIds.length === 0) return;
 
@@ -217,75 +217,73 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col overflow-hidden relative z-10">
 
         {/* Top Bar: KPIs & Actions - Fixed Height */}
-        <div className="flex-shrink-0 px-6 py-2 bg-white/70 backdrop-blur-xl border-b border-white/50 shadow-sm z-10">
-          <div className="container mx-auto max-w-7xl">
-            <div className="flex flex-col gap-2">
-              {/* Welcome & Actions */}
-              <div className="flex justify-between items-center">
-                <div>
-                  <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-500 bg-clip-text text-transparent">Dashboard</h1>
-                  <p className="text-xs text-slate-500">Welcome back, {user?.email}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="relative w-56">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                    <Input
-                      placeholder="Search projects..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8 h-8 text-xs bg-slate-50 border-slate-200"
-                    />
-                  </div>
-                  <Button
-                    onClick={() => setShowCreateDialog(true)}
-                    size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 shadow-sm h-8 text-xs"
-                  >
-                    <Plus className="mr-1.5 h-3.5 w-3.5" />
-                    New Project
-                  </Button>
-                </div>
+        {/* Top Bar: Headers - Fixed Height */}
+        <div className="flex-shrink-0 relative z-10 border-b border-white/50 bg-white/40 backdrop-blur-md shadow-sm">
+          <div className="container mx-auto max-w-7xl px-6 py-3">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
               </div>
-
-              {/* KPI Cards */}
-              <div className="grid grid-cols-4 gap-3">
-                <KpiCard
-                  icon={Layers}
-                  label="Total Projects"
-                  value={stats.totalProjects}
-                  gradient="from-white to-blue-50"
-                  iconGradient="from-blue-500 to-indigo-500"
-                />
-                <KpiCard
-                  icon={ListChecks}
-                  label="Active Requirements"
-                  value={stats.activeRequirements}
-                  gradient="from-white to-emerald-50"
-                  iconGradient="from-emerald-500 to-teal-500"
-                />
-                <KpiCard
-                  icon={TrendingUp}
-                  label="Total Days"
-                  value={stats.totalEstimatedDays}
-                  gradient="from-white to-purple-50"
-                  iconGradient="from-purple-500 to-pink-500"
-                />
-                <KpiCard
-                  icon={BarChart3}
-                  label="Avg Days/Req"
-                  value={stats.averageDaysPerReq}
-                  gradient="from-white to-amber-50"
-                  iconGradient="from-amber-500 to-orange-500"
-                />
+              <div className="flex items-center gap-2">
+                <div className="relative w-56">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                  <Input
+                    placeholder="Search projects..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8 h-8 text-xs bg-white/60 border-slate-200"
+                  />
+                </div>
+                <Button
+                  onClick={() => setShowCreateDialog(true)}
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700 shadow-sm h-8 text-xs"
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  New Project
+                </Button>
               </div>
             </div>
           </div>
         </div>
 
         {/* Content Grid - Flex 1 with internal scrolling */}
-        <div className="flex-1 overflow-hidden">
-          <div className="container mx-auto max-w-7xl h-full px-6 py-3">
-            <div className="grid grid-cols-12 gap-4 h-full">
+        <div className="flex-1 overflow-y-auto relative z-0">
+          <div className="container mx-auto max-w-7xl px-6 py-6 space-y-6">
+
+            {/* KPI Cards (Moved from Header) */}
+            <div className="grid grid-cols-4 gap-3">
+              <KpiCard
+                icon={Layers}
+                label="Total Projects"
+                value={stats.totalProjects}
+                gradient="from-white to-blue-50"
+                iconGradient="from-blue-500 to-indigo-500"
+              />
+              <KpiCard
+                icon={ListChecks}
+                label="Active Requirements"
+                value={stats.activeRequirements}
+                gradient="from-white to-emerald-50"
+                iconGradient="from-emerald-500 to-teal-500"
+              />
+              <KpiCard
+                icon={TrendingUp}
+                label="Total Days"
+                value={stats.totalEstimatedDays}
+                gradient="from-white to-purple-50"
+                iconGradient="from-purple-500 to-pink-500"
+              />
+              <KpiCard
+                icon={BarChart3}
+                label="Avg Days/Req"
+                value={stats.averageDaysPerReq}
+                gradient="from-white to-amber-50"
+                iconGradient="from-amber-500 to-orange-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-12 gap-4 h-[calc(100vh-320px)]">
 
               {/* Left Column: Projects List - Scrollable */}
               <div className="col-span-8 flex flex-col h-full min-h-0 bg-white/60 backdrop-blur-md rounded-xl border border-slate-200/50 shadow-sm overflow-hidden hover:border-blue-300/50 transition-all duration-300">

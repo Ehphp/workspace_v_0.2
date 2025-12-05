@@ -20,9 +20,12 @@ interface EstimationTimelineProps {
     estimations: EstimationHistoryItem[];
     selectedIds: string[];
     onSelectionChange: (ids: string[]) => void;
+    assignedId?: string | null;
+    onAssign?: (id: string) => void;
+    assigning?: string | null;
 }
 
-export function EstimationTimeline({ estimations, selectedIds, onSelectionChange }: EstimationTimelineProps) {
+export function EstimationTimeline({ estimations, selectedIds, onSelectionChange, assignedId, onAssign, assigning }: EstimationTimelineProps) {
     // Sort by date ascending for the chart
     const sortedData = useMemo(() => {
         return [...estimations].sort(
@@ -41,18 +44,21 @@ export function EstimationTimeline({ estimations, selectedIds, onSelectionChange
         }
     };
 
-    const CustomDot = (props: any) => {
+    const CustomDotWithChip = (props: any) => {
         const { cx, cy, payload } = props;
         const isSelected = selectedIds.includes(payload.id);
+        const isAssigned = payload.id === assignedId;
+        const isAssigning = assigning === payload.id;
 
         return (
             <g onClick={() => handleDotClick(payload)} style={{ cursor: 'pointer' }}>
+                {/* Punto del grafico */}
                 <circle
                     cx={cx}
                     cy={cy}
                     r={isSelected ? 8 : 5}
-                    fill={isSelected ? "hsl(var(--primary))" : "white"}
-                    stroke="hsl(var(--primary))"
+                    fill={isAssigned ? '#10b981' : isSelected ? "hsl(var(--primary))" : "white"}
+                    stroke={isAssigned ? '#10b981' : "hsl(var(--primary))"}
                     strokeWidth={2}
                     className="transition-all duration-300 ease-in-out"
                 />
@@ -61,33 +67,91 @@ export function EstimationTimeline({ estimations, selectedIds, onSelectionChange
                         cx={cx}
                         cy={cy}
                         r={12}
-                        fill="hsl(var(--primary))"
+                        fill={isAssigned ? '#10b981' : "hsl(var(--primary))"}
                         opacity={0.2}
                         className="animate-pulse"
                     />
                 )}
+
+                {/* Chip Button usando foreignObject */}
+                <foreignObject
+                    x={cx - 30}
+                    y={cy - 42}
+                    width={60}
+                    height={24}
+                >
+                    <div
+                        style={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            pointerEvents: 'auto'
+                        }}
+                    >
+                        {isAssigned ? (
+                            <div
+                                className="
+                                    px-2 py-0.5 
+                                    rounded-full 
+                                    bg-green-100 
+                                    border border-green-300
+                                    text-green-700
+                                    text-[10px] 
+                                    font-semibold
+                                    flex items-center gap-1
+                                    shadow-sm
+                                    pointer-events-none
+                                "
+                            >
+                                <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                                <span>Active</span>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onAssign?.(payload.id);
+                                }}
+                                disabled={isAssigning}
+                                className="
+                                    px-2.5 py-0.5
+                                    rounded-full
+                                    bg-blue-50
+                                    hover:bg-blue-100
+                                    border border-blue-300
+                                    text-blue-700
+                                    text-[10px]
+                                    font-semibold
+                                    transition-all
+                                    hover:scale-105
+                                    active:scale-95
+                                    shadow-sm
+                                    hover:shadow-md
+                                    disabled:opacity-50
+                                    disabled:cursor-not-allowed
+                                "
+                            >
+                                {isAssigning ? (
+                                    <span className="flex items-center gap-1">
+                                        <svg className="w-2.5 h-2.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                        </svg>
+                                        ...
+                                    </span>
+                                ) : (
+                                    'Use'
+                                )}
+                            </button>
+                        )}
+                    </div>
+                </foreignObject>
             </g>
         );
     };
 
-    const CustomActiveDot = (props: any) => {
-        const { cx, cy, payload } = props;
-        return (
-            <circle
-                cx={cx}
-                cy={cy}
-                r={8}
-                fill="hsl(var(--primary))"
-                stroke="white"
-                strokeWidth={2}
-                style={{ cursor: 'pointer' }}
-                onClick={(e) => {
-                    e.stopPropagation();
-                    handleDotClick(payload);
-                }}
-            />
-        );
-    };
+
 
     const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
         if (active && payload && payload.length) {
@@ -125,7 +189,7 @@ export function EstimationTimeline({ estimations, selectedIds, onSelectionChange
                 <CardHeader className="px-0 pt-0">
                     <CardTitle className="text-lg font-medium text-slate-800">Estimation Evolution</CardTitle>
                     <p className="text-sm text-slate-500">
-                        Click on two points to compare versions
+                        Click on two points to compare versions • Use chips to assign estimation
                     </p>
                 </CardHeader>
                 <CardContent className="px-0">
@@ -133,7 +197,7 @@ export function EstimationTimeline({ estimations, selectedIds, onSelectionChange
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart
                                 data={sortedData}
-                                margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
+                                margin={{ top: 50, right: 30, left: 0, bottom: 0 }}
                             >
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                                 <XAxis
@@ -157,8 +221,8 @@ export function EstimationTimeline({ estimations, selectedIds, onSelectionChange
                                     dataKey="total_days"
                                     stroke="hsl(var(--primary))"
                                     strokeWidth={3}
-                                    dot={<CustomDot />}
-                                    activeDot={<CustomActiveDot />}
+                                    dot={<CustomDotWithChip />}
+                                    activeDot={<CustomDotWithChip />}
                                     animationDuration={1000}
                                 />
                             </LineChart>

@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   Settings2,
   ArrowLeft,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { generateActivityCode } from '@/lib/codeGeneration';
@@ -72,6 +74,7 @@ export default function ConfigurationActivities() {
   const [activeTab, setActiveTab] = useState<'create' | 'catalog'>('create');
   const [showDescription, setShowDescription] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const [filterTech, setFilterTech] = useState<string>('ALL');
   const [viewFilter, setViewFilter] = useState<ViewFilter>('ALL');
@@ -93,12 +96,17 @@ export default function ConfigurationActivities() {
 
   const loadTechnologies = async () => {
     const { data } = await supabase
-      .from('technologies')
-      .select('code, name')
+      .from('technology_presets')
+      .select('tech_category, name')
       .order('sort_order');
 
     if (data && data.length > 0) {
-      setTechnologies(data.map(t => ({ value: t.code, label: t.name })));
+      // Group by tech_category to avoid duplicates  
+      const uniqueTechs = Array.from(
+        new Map(data.map(t => [t.tech_category, t.name])).entries()
+      ).map(([value, label]) => ({ value, label }));
+
+      setTechnologies(uniqueTechs);
     } else {
       setTechnologies([
         { value: 'POWER_PLATFORM', label: 'Power Platform' },
@@ -296,8 +304,8 @@ export default function ConfigurationActivities() {
 
       <Header />
 
-      <main className="container mx-auto px-4 pt-4 pb-4 max-w-7xl relative z-10 h-[calc(100vh-64px)] flex flex-col">
-        <div className={`flex flex-col lg:flex-row gap-6 items-start h-full ${activeTab === 'catalog' ? 'lg:justify-center' : ''}`}>
+      <main className={`container mx-auto px-4 pt-4 pb-4 max-w-7xl relative z-10 flex flex-col ${isExpanded ? 'min-h-[calc(100vh-64px)]' : 'h-[calc(100vh-64px)]'}`}>
+        <div className={`flex flex-col lg:flex-row gap-6 items-start ${isExpanded ? '' : 'h-full'} ${activeTab === 'catalog' ? 'lg:justify-center' : ''}`}>
           <AnimatePresence initial={false}>
             {activeTab !== 'catalog' && (
               <motion.div
@@ -361,7 +369,7 @@ export default function ConfigurationActivities() {
               alignSelf: activeTab === 'catalog' ? 'center' : 'stretch'
             }}
             transition={{ duration: 0.35, ease: 'easeInOut' }}
-            className={`group relative p-6 rounded-3xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl overflow-hidden w-full max-w-[1300px] flex flex-col ${activeTab === 'catalog' ? 'h-[90%]' : 'h-full lg:flex-1'}`}
+            className={`group relative p-6 rounded-3xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl overflow-hidden w-full max-w-[1300px] flex flex-col ${isExpanded ? 'h-auto' : (activeTab === 'catalog' ? 'h-[90%]' : 'h-full lg:flex-1')}`}
           >
             <div className="absolute -right-8 -top-8 text-indigo-500/5 pointer-events-none">
               <Sparkles className="w-40 h-40" />
@@ -637,8 +645,8 @@ export default function ConfigurationActivities() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-white/50 flex-1 overflow-hidden flex flex-col min-h-0">
-                    <div className="overflow-y-auto overflow-x-hidden flex-1 [scrollbar-width:thin]">
+                  <div className={`rounded-2xl border border-slate-200 bg-white/50 flex-1 flex flex-col ${isExpanded ? '' : 'overflow-hidden min-h-0'}`}>
+                    <div className={`overflow-x-hidden flex-1 [scrollbar-width:thin] ${isExpanded ? '' : 'overflow-y-auto'}`}>
                       <Table className="table-fixed w-full">
                         <TableHeader className="sticky top-0 bg-slate-50/90 backdrop-blur z-10 shadow-sm">
                           <TableRow className="hover:bg-slate-100/50 border-slate-200">
@@ -770,6 +778,18 @@ export default function ConfigurationActivities() {
                 </TabsContent>
               </Tabs>
             </div>
+
+            {activeTab === 'catalog' && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute bottom-3 right-3 z-50 text-slate-400 hover:text-slate-600 bg-white/80 hover:bg-white shadow-sm border border-slate-200"
+                onClick={() => setIsExpanded(!isExpanded)}
+                title={isExpanded ? "Riduci vista" : "Espandi vista"}
+              >
+                {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </Button>
+            )}
           </motion.div>
         </div>
       </main>

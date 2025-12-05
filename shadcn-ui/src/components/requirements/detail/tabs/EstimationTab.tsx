@@ -64,20 +64,22 @@ export function EstimationTab({
     return (
         <div className="h-full flex flex-col overflow-hidden">
             {/* Toolbar */}
-            <div className="flex-shrink-0 px-6 py-2 bg-white border-b border-slate-200 flex justify-end">
-                <button
-                    onClick={handleExportCSV}
-                    className="text-xs flex items-center gap-1 text-slate-600 hover:text-blue-600 transition-colors"
-                    title="Export to CSV"
-                >
-                    <Download className="w-3.5 h-3.5" />
-                    Export CSV
-                </button>
+            <div className="flex-shrink-0 bg-white border-b border-slate-200">
+                <div className="container mx-auto px-6 py-2 flex justify-end">
+                    <button
+                        onClick={handleExportCSV}
+                        className="text-xs flex items-center gap-1 text-slate-600 hover:text-blue-600 transition-colors"
+                        title="Export to CSV"
+                    >
+                        <Download className="w-3.5 h-3.5" />
+                        Export CSV
+                    </button>
+                </div>
             </div>
 
             {/* Main Workspace - Full height */}
             <div className="flex-1 min-h-0">
-                <div className="container mx-auto px-6 py-3 h-full max-w-6xl">
+                <div className="container mx-auto px-6 py-3 h-full">
                     <div className="h-full overflow-y-auto">
                         <RequirementEstimation
                             estimationState={estimationState}
