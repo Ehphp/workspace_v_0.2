@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { signOut } from '@/lib/supabase';
 import { QuickEstimate } from '@/components/estimation/QuickEstimate';
 import { SynteroMark } from '@/components/layout/SynteroMark';
+import { RingParticlesBackground } from '@/components/RingParticlesBackground';
 
 export default function Home() {
   const [showQuickEstimate, setShowQuickEstimate] = useState(false);
@@ -34,6 +35,35 @@ export default function Home() {
 
   return (
     <div className="min-h-screen h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 overflow-hidden relative">
+      {/* Ring Particles Animated Background */}
+      <RingParticlesBackground
+        usePaintWorklet={false}
+        enableMouseInteraction={true}
+        config={{
+          shape: 'ring',
+          particleCount: 800,
+          radius: 38,
+          thickness: 18,
+          particleSize: [1, 5],
+          alphaRange: [0.5, 1.0],
+          color: { h: 120, s: 80 },
+          drift: 0.1,
+          angularSpeed: 0.03,
+          noiseFrequency: 0.9,
+          noiseAmplitude: 6,
+          seed: 42069,
+          blendMode: 'normal' as GlobalCompositeOperation,
+          repeatPattern: true,
+          responsive: {
+            maxParticlesMobile: 200,
+            scaleWithDPR: true
+          },
+          accessibility: {
+            prefersReducedMotion: true
+          }
+        }}
+      />
+
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
