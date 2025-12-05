@@ -16,6 +16,7 @@ import ConfigurationTechnologies from './pages/ConfigurationTechnologies';
 import ConfigurationPresets from './pages/ConfigurationPresets';
 import HowItWorks from './pages/HowItWorks';
 import Profile from './pages/Profile';
+import { OrganizationSettings } from './pages/OrganizationSettings';
 
 const queryClient = new QueryClient();
 
@@ -77,10 +78,6 @@ const App = () => (
               </AuthGuard>
             }
           />
-          import ConfigurationPresets from './pages/ConfigurationPresets';
-
-          // ... (inside Routes)
-
           <Route
             path="/configuration/presets"
             element={
@@ -94,6 +91,14 @@ const App = () => (
             element={
               <AuthGuard>
                 <Profile />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/organization"
+            element={
+              <AuthGuard>
+                <OrganizationSettings />
               </AuthGuard>
             }
           />

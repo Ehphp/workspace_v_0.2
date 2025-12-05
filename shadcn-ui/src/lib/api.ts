@@ -7,6 +7,8 @@ import type {
   RequirementDriverValue,
   TechnologyPreset,
   Risk,
+  Organization,
+  OrganizationMember
 } from '@/types/database';
 
 export class ApiError extends Error {
@@ -370,4 +372,68 @@ export async function saveEstimation(input: SaveEstimationInput): Promise<void> 
     await supabase.from('requirement_driver_values').delete().eq('requirement_id', input.requirementId);
     await supabase.from('requirement_driver_values').insert(reqDriverInserts);
   }
+}
+
+// --- Organization Management ---
+
+export async function createTeamOrganization(name: string): Promise<string> {
+  const { data, error } = await supabase.rpc('create_team_organization', {
+    org_name: name,
+  });
+
+  if (error) throw new ApiError(error.message, parseInt(error.code), error);
+  return data; // Returns the new org ID
+}
+
+export async function getOrganizationMembers(orgId: string): Promise<{
+  user_id: string;
+  email: string;
+  role: 'admin' | 'editor' | 'viewer';
+  joined_at: string;
+}[]> {
+  const { data, error } = await supabase.rpc('get_org_members_details', {
+    target_org_id: orgId,
+  });
+
+  if (error) throw new ApiError(error.message, parseInt(error.code), error);
+  return data;
+}
+
+export async function addMemberByEmail(orgId: string, email: string, role: 'admin' | 'editor' | 'viewer'): Promise<{ success: boolean; message: string }> {
+  const { data, error } = await supabase.rpc('add_member_by_email', {
+    target_org_id: orgId,
+    target_email: email,
+    target_role: role,
+  });
+
+  if (error) throw new ApiError(error.message, parseInt(error.code), error);
+  return data;
+}
+
+export async function removeMember(orgId: string, userId: string): Promise<void> {
+  const { error } = await supabase.rpc('remove_org_member', {
+    target_org_id: orgId,
+    target_user_id: userId,
+  });
+
+  if (error) throw new ApiError(error.message, parseInt(error.code), error);
+}
+
+export async function updateMemberRole(orgId: string, userId: string, newRole: 'admin' | 'editor' | 'viewer'): Promise<void> {
+  const { error } = await supabase.rpc('update_org_member_role', {
+    target_org_id: orgId,
+    target_user_id: userId,
+    new_role: newRole,
+  });
+
+  if (error) throw new ApiError(error.message, parseInt(error.code), error);
+}
+
+export async function updateListStatus(listId: string, status: 'DRAFT' | 'REVIEW' | 'LOCKED'): Promise<void> {
+  const { error } = await supabase
+    .from('lists')
+    .update({ status })
+    .eq('id', listId);
+
+  if (error) throw new ApiError(error.message, parseInt(error.code), error);
 }

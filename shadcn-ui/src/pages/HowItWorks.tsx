@@ -3,14 +3,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import {
-  FileText,
-  Layers,
-  Sparkles,
-  Settings2,
-  CheckCircle2,
-  Zap,
   Wand2,
-  ArrowRight
+  Database,
+  GitBranch,
+  Shield,
+  Lock,
+  CheckCircle2,
+  Code2,
+  Building2,
+  ArrowRight,
+  Sparkles
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -18,41 +20,41 @@ import { useRef } from 'react';
 
 const steps = [
   {
-    icon: FileText,
-    title: 'Descrivi il Requisito',
-    description: 'Inserisci un titolo e una descrizione dettagliata della funzionalità che vuoi stimare.',
+    icon: Wand2,
+    title: 'Requirement Normalization',
+    description: 'L\'AI analizza e normalizza i requisiti grezzi, estraendo le informazioni chiave e standardizzando il linguaggio.',
     color: 'text-blue-600',
     bg: 'bg-blue-100',
     border: 'border-blue-200',
   },
   {
-    icon: Layers,
-    title: 'Seleziona Tecnologia',
-    description: 'Scegli lo stack tecnologico dai preset o personalizzalo secondo le tue esigenze.',
+    icon: Database,
+    title: 'Company Presets',
+    description: 'Applica i preset aziendali personalizzati: tecnologie standard, attività ricorrenti e metriche di produttività.',
     color: 'text-indigo-600',
     bg: 'bg-indigo-100',
     border: 'border-indigo-200',
   },
   {
-    icon: Sparkles,
-    title: 'Analisi AI',
-    description: 'La nostra AI analizza il requisito e suggerisce le attività necessarie per l\'implementazione.',
+    icon: GitBranch,
+    title: 'Complexity Drivers',
+    description: 'Analisi tecnica approfondita dei driver di complessità basata su tecnologie, integrazioni e architettura.',
     color: 'text-purple-600',
     bg: 'bg-purple-100',
     border: 'border-purple-200',
   },
   {
-    icon: Settings2,
-    title: 'Configura Driver & Rischi',
-    description: 'Affina la stima regolando i driver di complessità e identificando potenziali rischi.',
+    icon: Shield,
+    title: 'Risk & Review',
+    description: 'Identificazione dei rischi di progetto e processo di revisione manageriale prima della finalizzazione.',
     color: 'text-pink-600',
     bg: 'bg-pink-100',
     border: 'border-pink-200',
   },
   {
-    icon: CheckCircle2,
-    title: 'Risultato Finale',
-    description: 'Ottieni una stima dettagliata in giorni uomo, pronta per essere condivisa.',
+    icon: Lock,
+    title: 'Lock & Export',
+    description: 'Blocco della stima per proteggere i margini e export professionale per la presentazione al cliente.',
     color: 'text-emerald-600',
     bg: 'bg-emerald-100',
     border: 'border-emerald-200',
@@ -133,13 +135,13 @@ export default function HowItWorks() {
               Come funziona
             </Badge>
             <h1 className="text-4xl md:text-7xl font-bold tracking-tight text-slate-900 mb-6 drop-shadow-sm">
-              Dall'idea alla stima <br className="hidden md:block" />
+              Standardizzazione & <br className="hidden md:block" />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 animate-gradient-x">
-                in pochi minuti
+                Protezione dei Margini
               </span>
             </h1>
             <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed font-medium">
-              Un processo fluido e trasparente che combina la potenza dell'AI con il tuo controllo esperto.
+              Un workflow di governance progettato per software agency che vogliono vendere meglio e consegnare con profitto.
             </p>
           </motion.div>
         </div>
@@ -206,95 +208,113 @@ export default function HowItWorks() {
           </div>
         </div>
 
-        {/* Dual Mode Section */}
-        <div className="grid md:grid-cols-2 gap-6 mb-24">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            whileHover={{ scale: 1.02 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="group relative p-8 rounded-3xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-blue-900/5 transition-all duration-300 overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500">
-              <Zap className="w-32 h-32 text-blue-600" />
-            </div>
-            <div className="relative z-10 space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-blue-100/80 flex items-center justify-center shadow-inner">
-                <Zap className="w-7 h-7 text-blue-600" />
+        {/* Designed for your Team Section */}
+        <div className="mb-24">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Progettato per il tuo Team</h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">Due ruoli chiave, un unico obiettivo: stimare con precisione e proteggere i margini.</p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              whileHover={{ scale: 1.02 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              className="group relative p-8 rounded-3xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-blue-900/5 transition-all duration-300 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500">
+                <Code2 className="w-32 h-32 text-blue-600" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900">Stima Rapida</h3>
-              <p className="text-slate-600 font-medium">
-                Ideale per stime veloci. Inserisci il requisito, scegli lo stack e ottieni subito una stima basata su AI.
-              </p>
-              <ul className="space-y-3 pt-4">
-                <li className="flex items-center text-sm text-slate-700 font-medium">
-                  <div className="p-1 rounded-full bg-blue-100 mr-3">
-                    <CheckCircle2 className="w-3 h-3 text-blue-600" />
-                  </div>
-                  Input minimo richiesto
-                </li>
-                <li className="flex items-center text-sm text-slate-700 font-medium">
-                  <div className="p-1 rounded-full bg-blue-100 mr-3">
-                    <CheckCircle2 className="w-3 h-3 text-blue-600" />
-                  </div>
-                  Risultato immediato
-                </li>
-              </ul>
-              <div className="pt-6">
-                <Link to="/" state={{ openQuick: true }}>
-                  <Button variant="outline" className="w-full h-11 border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 hover:border-blue-300 transition-all">
-                    Prova Stima Rapida
-                  </Button>
-                </Link>
+              <div className="relative z-10 space-y-4">
+                <div className="w-14 h-14 rounded-2xl bg-blue-100/80 flex items-center justify-center shadow-inner">
+                  <Code2 className="w-7 h-7 text-blue-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900">Per il Tech Lead</h3>
+                <p className="text-slate-600 font-medium">
+                  Strumenti per garantire accuratezza tecnica, granularità nelle stime e supporto AI per l'analisi dei requisiti.
+                </p>
+                <ul className="space-y-3 pt-4">
+                  <li className="flex items-center text-sm text-slate-700 font-medium">
+                    <div className="p-1 rounded-full bg-blue-100 mr-3">
+                      <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                    </div>
+                    AI per normalizzazione requisiti
+                  </li>
+                  <li className="flex items-center text-sm text-slate-700 font-medium">
+                    <div className="p-1 rounded-full bg-blue-100 mr-3">
+                      <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                    </div>
+                    Breakdown granulare per attività
+                  </li>
+                  <li className="flex items-center text-sm text-slate-700 font-medium">
+                    <div className="p-1 rounded-full bg-blue-100 mr-3">
+                      <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                    </div>
+                    Driver di complessità tecnica
+                  </li>
+                </ul>
+                <div className="pt-6">
+                  <Link to={user ? "/dashboard" : "/register"}>
+                    <Button variant="outline" className="w-full h-11 border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 hover:border-blue-300 transition-all">
+                      {user ? "Vai alla Dashboard" : "Inizia ora"}
+                    </Button>
+                  </Link>
+                </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            whileHover={{ scale: 1.02 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.3 }}
-            className="group relative p-8 rounded-3xl bg-slate-900 text-white shadow-2xl shadow-slate-900/20 hover:shadow-slate-900/30 transition-all duration-300 overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 to-slate-900" />
-            <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500">
-              <Wand2 className="w-32 h-32 text-indigo-400" />
-            </div>
-            <div className="relative z-10 space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
-                <Wand2 className="w-7 h-7 text-indigo-400" />
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              whileHover={{ scale: 1.02 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 }}
+              className="group relative p-8 rounded-3xl bg-slate-900 text-white shadow-2xl shadow-slate-900/20 hover:shadow-slate-900/30 transition-all duration-300 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 to-slate-900" />
+              <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500">
+                <Building2 className="w-32 h-32 text-indigo-400" />
               </div>
-              <h3 className="text-2xl font-bold">Wizard Avanzato</h3>
-              <p className="text-indigo-100/90 font-medium">
-                Controllo totale. Un processo guidato in 5 step per configurare ogni dettaglio, dai driver ai rischi specifici.
-              </p>
-              <ul className="space-y-3 pt-4">
-                <li className="flex items-center text-sm text-indigo-100">
-                  <div className="p-1 rounded-full bg-indigo-500/30 mr-3">
-                    <CheckCircle2 className="w-3 h-3 text-indigo-300" />
-                  </div>
-                  Massima precisione
-                </li>
-                <li className="flex items-center text-sm text-indigo-100">
-                  <div className="p-1 rounded-full bg-indigo-500/30 mr-3">
-                    <CheckCircle2 className="w-3 h-3 text-indigo-300" />
-                  </div>
-                  Configurazione granulare
-                </li>
-              </ul>
-              <div className="pt-6">
-                <Link to="/" state={{ openWizard: true }}>
-                  <Button className="w-full h-11 bg-indigo-600 hover:bg-indigo-500 text-white border-0 shadow-lg shadow-indigo-900/50 transition-all">
-                    Avvia Wizard
-                  </Button>
-                </Link>
+              <div className="relative z-10 space-y-4">
+                <div className="w-14 h-14 rounded-2xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
+                  <Building2 className="w-7 h-7 text-indigo-400" />
+                </div>
+                <h3 className="text-2xl font-bold">Per l'Agency Owner</h3>
+                <p className="text-indigo-100/90 font-medium">
+                  Governance completa con sistema di locking, gestione ruoli team e protezione dei margini aziendali.
+                </p>
+                <ul className="space-y-3 pt-4">
+                  <li className="flex items-center text-sm text-indigo-100">
+                    <div className="p-1 rounded-full bg-indigo-500/30 mr-3">
+                      <CheckCircle2 className="w-3 h-3 text-indigo-300" />
+                    </div>
+                    Sistema di locking stime
+                  </li>
+                  <li className="flex items-center text-sm text-indigo-100">
+                    <div className="p-1 rounded-full bg-indigo-500/30 mr-3">
+                      <CheckCircle2 className="w-3 h-3 text-indigo-300" />
+                    </div>
+                    Ruoli e permessi team
+                  </li>
+                  <li className="flex items-center text-sm text-indigo-100">
+                    <div className="p-1 rounded-full bg-indigo-500/30 mr-3">
+                      <CheckCircle2 className="w-3 h-3 text-indigo-300" />
+                    </div>
+                    Protezione margini aziendali
+                  </li>
+                </ul>
+                <div className="pt-6">
+                  <Link to={user ? "/dashboard" : "/register"}>
+                    <Button className="w-full h-11 bg-indigo-600 hover:bg-indigo-500 text-white border-0 shadow-lg shadow-indigo-900/50 transition-all">
+                      {user ? "Vai alla Dashboard" : "Inizia ora"}
+                    </Button>
+                  </Link>
+                </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </div>
 
         {/* CTA Footer */}
@@ -305,11 +325,11 @@ export default function HowItWorks() {
           className="text-center space-y-8 py-12 border-t border-slate-200/60"
         >
           <h2 className="text-3xl md:text-4xl font-bold text-slate-900">
-            {user ? "Pronto a stimare?" : "Inizia a stimare oggi"}
+            {user ? "Inizia a standardizzare" : "Standardizza il tuo processo di vendita oggi"}
           </h2>
-          <Link to={user ? "/dashboard" : "/"}>
+          <Link to={user ? "/dashboard" : "/register"}>
             <Button size="lg" className="rounded-full px-10 h-14 text-lg bg-slate-900 hover:bg-slate-800 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
-              {user ? "Vai alla Dashboard" : "Vai alla Home Page"} <ArrowRight className="ml-2 w-5 h-5" />
+              {user ? "Vai alla Dashboard" : "Inizia ora"} <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </Link>
         </motion.div>

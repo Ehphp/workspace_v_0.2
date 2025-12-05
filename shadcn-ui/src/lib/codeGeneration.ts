@@ -74,6 +74,7 @@ function getTechCategoryPrefix(techCategory: string): string {
         'POWER_PLATFORM': 'PP',
         'BACKEND': 'BE',
         'FRONTEND': 'FE',
+        'USU': 'USU',
         'MULTI': 'CRS',
         'DATABASE': 'DB',
         'INFRASTRUCTURE': 'INF',

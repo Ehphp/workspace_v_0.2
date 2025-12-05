@@ -20,6 +20,8 @@ import { DeleteRequirementDialog } from '@/components/requirements/DeleteRequire
 import { BulkEstimateDialog } from '@/components/requirements/BulkEstimateDialog';
 import { Header } from '@/components/layout/Header';
 import { ListTechnologyDialog } from '@/components/lists/ListTechnologyDialog';
+import { useAuthStore } from '@/store/useAuthStore';
+import { ProjectStatusControl } from '@/components/common/ProjectStatusControl';
 import { RequirementsHeader } from '@/components/requirements/RequirementsHeader';
 import { RequirementsFilters } from '@/components/requirements/RequirementsFilters';
 import { PriorityBadge, StateBadge, PRIORITY_CONFIGS } from '@/components/shared/RequirementBadges';
@@ -29,6 +31,8 @@ export default function Requirements() {
     const navigate = useNavigate();
     const { listId } = useParams<{ listId: string }>();
     const { user } = useAuth();
+    const { userRole } = useAuthStore();
+    const canManage = userRole === 'admin' || userRole === 'editor';
 
     // Use custom hook for data management
     const {
@@ -133,6 +137,15 @@ export default function Requirements() {
                 onBulkEstimate={() => setShowBulkEstimate(true)}
                 onCreateRequirement={() => setShowCreateDialog(true)}
                 onRetry={() => loadData()}
+                statusControl={
+                    list && (
+                        <ProjectStatusControl
+                            list={list}
+                            onStatusChange={loadData}
+                            canManage={canManage}
+                        />
+                    )
+                }
             />
 
             {/* Filters Bar */}

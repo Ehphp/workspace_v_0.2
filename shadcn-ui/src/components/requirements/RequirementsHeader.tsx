@@ -14,6 +14,7 @@ interface RequirementsHeaderProps {
     onBulkEstimate: () => void;
     onCreateRequirement: () => void;
     onRetry: () => void;
+    statusControl?: React.ReactNode;
 }
 
 export function RequirementsHeader({
@@ -27,6 +28,7 @@ export function RequirementsHeader({
     onBulkEstimate,
     onCreateRequirement,
     onRetry,
+    statusControl,
 }: RequirementsHeaderProps) {
     return (
         <div className="flex-shrink-0 relative border-b border-slate-200/60 bg-white/95 backdrop-blur-sm shadow-sm z-10">
@@ -69,6 +71,7 @@ export function RequirementsHeader({
 
                     {/* Right side: Actions */}
                     <div className="flex items-center gap-3">
+                        {statusControl}
                         <Button
                             variant="outline"
                             onClick={onSetTechnology}

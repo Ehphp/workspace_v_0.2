@@ -130,18 +130,18 @@ export default function Home() {
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
                   </span>
-                  <span className="text-xs font-medium text-blue-900">AI-Powered Estimation</span>
+                  <span className="text-xs font-medium text-blue-900">B2B SaaS for Software Agencies</span>
                 </div>
 
                 <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 leading-tight">
                   Syntero
                   <span className="block bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-500 bg-clip-text text-transparent">
-                    AI-crafted requirements estimation
+                    Requirements Estimation & Governance
                   </span>
                 </h2>
 
                 <p className="text-sm lg:text-base text-slate-600 leading-relaxed max-w-lg">
-                  Il nuovo spazio di lavoro per raccogliere requisiti, stimare e condividere risultati in pochi minuti, con automazioni AI e trasparenza delle formule.
+                  Standardizza il tuo processo di vendita con stime basate su AI, preset aziendali e governance completa per proteggere i margini del team.
                 </p>
               </div>
 
@@ -180,24 +180,24 @@ export default function Home() {
               <div className="grid grid-cols-3 gap-3 pt-2">
                 <div className="group bg-white/60 backdrop-blur-sm rounded-lg p-3 border border-slate-200/50 hover:border-blue-300/50 transition-all duration-300">
                   <div className="text-2xl font-bold bg-gradient-to-br from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                    98%
+                    AI
                   </div>
-                  <p className="text-xs font-semibold text-slate-900">Accuracy</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Formula-based</p>
+                  <p className="text-xs font-semibold text-slate-900">Normalization</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Smart analysis</p>
                 </div>
                 <div className="group bg-white/60 backdrop-blur-sm rounded-lg p-3 border border-slate-200/50 hover:border-indigo-300/50 transition-all duration-300">
                   <div className="text-2xl font-bold bg-gradient-to-br from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                    5min
+                    Lock
                   </div>
-                  <p className="text-xs font-semibold text-slate-900">Fast Setup</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Quick process</p>
+                  <p className="text-xs font-semibold text-slate-900">Governance</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Protect margins</p>
                 </div>
                 <div className="group bg-white/60 backdrop-blur-sm rounded-lg p-3 border border-slate-200/50 hover:border-purple-300/50 transition-all duration-300">
                   <div className="text-2xl font-bold bg-gradient-to-br from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                    20+
+                    Team
                   </div>
-                  <p className="text-xs font-semibold text-slate-900">Tech Stacks</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">All major tech</p>
+                  <p className="text-xs font-semibold text-slate-900">Collaboration</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Roles & permissions</p>
                 </div>
               </div>
             </motion.div>
@@ -218,49 +218,49 @@ export default function Home() {
                       </svg>
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-slate-900">Smart Estimation Workflow</h3>
-                      <p className="text-[10px] text-slate-500">AI-powered precision</p>
+                      <h3 className="text-lg font-bold text-slate-900">Governance Workflow</h3>
+                      <p className="text-[10px] text-slate-500">Standardization & control</p>
                     </div>
                   </div>
                   <p className="text-xs text-slate-600 mb-3 leading-relaxed">
-                    Il processo guidato dall'AI per stime precise, dettagliate e trasparenti, dal requisito al risultato finale.
+                    Il workflow di governance completo per standardizzare le stime, proteggere i margini e collaborare in team.
                   </p>
 
                   <div className="space-y-2">
                     {[
                       {
                         num: '1',
-                        title: 'Describe Requirement',
-                        desc: 'Define project with ID, title, description',
-                        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />,
+                        title: 'Requirement Normalization',
+                        desc: 'AI analyzes and standardizes requirements',
+                        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />,
                         color: 'from-blue-500 to-cyan-500'
                       },
                       {
                         num: '2',
-                        title: 'Select Technology',
-                        desc: 'Choose from 20+ tech presets',
-                        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />,
+                        title: 'Company Presets',
+                        desc: 'Apply standardized tech & activities',
+                        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />,
                         color: 'from-indigo-500 to-purple-500'
                       },
                       {
                         num: '3',
-                        title: 'AI Suggestions',
-                        desc: 'Get intelligent recommendations',
-                        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />,
+                        title: 'Complexity Drivers',
+                        desc: 'Technical analysis & multipliers',
+                        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />,
                         color: 'from-purple-500 to-pink-500'
                       },
                       {
                         num: '4',
-                        title: 'Configure Drivers',
-                        desc: 'Fine-tune complexity multipliers',
-                        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />,
+                        title: 'Risk & Review',
+                        desc: 'Management review & risk identification',
+                        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />,
                         color: 'from-pink-500 to-rose-500'
                       },
                       {
                         num: '5',
-                        title: 'View Results',
-                        desc: 'Get detailed effort estimation',
-                        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2z" />,
+                        title: 'Lock & Export',
+                        desc: 'Protect margins, export for client',
+                        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />,
                         color: 'from-rose-500 to-orange-500'
                       },
                     ].map((step) => (
@@ -287,21 +287,21 @@ export default function Home() {
               <div className="flex items-center justify-center gap-8 pt-2">
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                   <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  <span className="font-medium">Secure</span>
+                  <span className="font-medium">Governed</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                   <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
                   </svg>
-                  <span className="font-medium">Fast</span>
+                  <span className="font-medium">Team</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                   <svg className="w-5 h-5 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                   </svg>
-                  <span className="font-medium">Accurate</span>
+                  <span className="font-medium">Locked</span>
                 </div>
               </div>
             </motion.div>

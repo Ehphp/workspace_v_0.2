@@ -104,6 +104,7 @@ export default function ConfigurationActivities() {
         { value: 'POWER_PLATFORM', label: 'Power Platform' },
         { value: 'BACKEND', label: 'Backend API' },
         { value: 'FRONTEND', label: 'Frontend' },
+        { value: 'USU', label: 'USU' },
         { value: 'MULTI', label: 'Multi-stack' },
       ]);
     }
