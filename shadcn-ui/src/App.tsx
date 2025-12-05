@@ -4,18 +4,18 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import RootPage from './pages/RootPage';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import Requirements from './pages/Requirements';
-import RequirementDetail from './pages/RequirementDetail';
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import Dashboard from './pages/dashboard/Dashboard';
+import Requirements from './pages/requirements/Requirements';
+import RequirementDetail from './pages/requirements/RequirementDetail';
 import NotFound from './pages/NotFound';
-import Configuration from './pages/Configuration';
-import ConfigurationActivities from './pages/ConfigurationActivities';
-import ConfigurationPresets from './pages/ConfigurationPresets';
+import Configuration from './pages/configuration/Configuration';
+import ConfigurationActivities from './pages/configuration/ConfigurationActivities';
+import ConfigurationPresets from './pages/configuration/ConfigurationPresets';
 import HowItWorks from './pages/HowItWorks';
-import Profile from './pages/Profile';
-import { OrganizationSettings } from './pages/OrganizationSettings';
+import Profile from './pages/configuration/Profile';
+import { OrganizationSettings } from './pages/configuration/OrganizationSettings';
 
 const queryClient = new QueryClient();
 

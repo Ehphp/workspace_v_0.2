@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { User, LogOut, Settings, Command, Sparkles } from 'lucide-react';
 import { SynteroMark } from './SynteroMark';
 
-import { OrganizationSwitcher } from '@/components/common/OrganizationSwitcher';
+import { OrganizationSwitcher } from '@/components/shared/OrganizationSwitcher';
 
 export function Header() {
     const { user } = useAuth();
