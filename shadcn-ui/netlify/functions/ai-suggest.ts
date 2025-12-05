@@ -1,231 +1,14 @@
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
-import OpenAI from 'openai';
-import { validateAISuggestion, sanitizePromptInput } from '../../src/types/ai-validation';
-import { createClient } from '@supabase/supabase-js';
+import { sanitizePromptInput } from '../../src/types/ai-validation';
 
-// Configurable security controls
-const REQUIRE_AUTH = process.env.AI_REQUIRE_AUTH !== 'false'; // default: require auth
-const ALLOWED_ORIGINS = (process.env.AI_ALLOWED_ORIGINS || '')
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean);
-const RATE_LIMIT_MAX = Number(process.env.AI_RATE_LIMIT_MAX || 50);
-const RATE_LIMIT_WINDOW_MS = Number(process.env.AI_RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000);
-
-// Supabase client for token validation (server-side)
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-const supabaseServer = supabaseUrl && supabaseAnonKey
-    ? createClient(supabaseUrl, supabaseAnonKey)
-    : null;
-
-// Initialize OpenAI with server-side API key
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
-
-// In-memory cache for AI responses (24h TTL, resets on cold start)
-const aiCache = new Map<string, { response: any; timestamp: number }>();
-const CACHE_TTL = 24 * 60 * 60 * 1000;
-// Ensures same requirement returns same result within the TTL window
-
-// Simple in-memory rate limiting (per IP or user)
-const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
-
-function getAllowedOrigin(originHeader: string | undefined): string {
-    if (ALLOWED_ORIGINS.length === 0) return '*';
-    if (originHeader && ALLOWED_ORIGINS.includes(originHeader)) return originHeader;
-    // fallback to first allowed origin to avoid null header
-    return ALLOWED_ORIGINS[0];
-}
-
-function isOriginAllowed(originHeader: string | undefined): boolean {
-    if (ALLOWED_ORIGINS.length === 0) return true;
-    if (!originHeader) return false;
-    return ALLOWED_ORIGINS.includes(originHeader);
-}
-
-function checkRateLimit(key: string): { allowed: boolean; retryAfter?: number } {
-    const now = Date.now();
-    const entry = rateLimitMap.get(key);
-    if (!entry) {
-        rateLimitMap.set(key, { count: 1, windowStart: now });
-        return { allowed: true };
-    }
-
-    const elapsed = now - entry.windowStart;
-    if (elapsed > RATE_LIMIT_WINDOW_MS) {
-        rateLimitMap.set(key, { count: 1, windowStart: now });
-        return { allowed: true };
-    }
-
-    if (entry.count >= RATE_LIMIT_MAX) {
-        const retryAfter = Math.ceil((RATE_LIMIT_WINDOW_MS - elapsed) / 1000);
-        return { allowed: false, retryAfter };
-    }
-
-    entry.count += 1;
-    rateLimitMap.set(key, entry);
-    return { allowed: true };
-}
-
-async function validateAuthToken(authHeader: string | undefined) {
-    if (!REQUIRE_AUTH) {
-        return { ok: true, userId: null };
-    }
-
-    if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
-        return { ok: false, statusCode: 401, message: 'Missing bearer token' };
-    }
-
-    if (!supabaseServer) {
-        console.error('Supabase server client not configured');
-        return { ok: false, statusCode: 500, message: 'Server auth not configured' };
-    }
-
-    const token = authHeader.slice(7);
-    const { data, error } = await supabaseServer.auth.getUser(token);
-    if (error || !data?.user) {
-        console.warn('Supabase token validation failed', error);
-        return { ok: false, statusCode: 401, message: 'Invalid or expired token' };
-    }
-
-    return { ok: true, userId: data.user.id };
-}
-
-// Helper to generate cache key with activity codes hash
-function getCacheKey(description: string, presetId: string, activityCodes: string[]): string {
-    const normalizedDesc = description.trim().toLowerCase().substring(0, 200);
-    const activitiesHash = activityCodes.sort().join(',');
-    return `${presetId}:${normalizedDesc}:${activitiesHash}`;
-}
-
-// Helper to get cached response
-function getCachedResponse(key: string): any | null {
-    const cached = aiCache.get(key);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        return cached.response;
-    }
-    if (cached) {
-        aiCache.delete(key); // Remove expired
-    }
-    return null;
-}
-
-// Helper to create descriptive prompt with full activity details
-// This provides GPT with complete context to make accurate suggestions
-function createDescriptivePrompt(activities: any[]): string {
-    // Format: CODE: Name | Description | Effort | Group
-    const activitiesStr = activities.map(a =>
-        `CODE: ${a.code}\n` +
-        `NAME: ${a.name}\n` +
-        `DESCRIPTION: ${a.description}\n` +
-        `EFFORT: ${a.base_days} days | GROUP: ${a.group}\n` +
-        `---`
-    ).join('\n\n');
-
-    return `AVAILABLE ACTIVITIES:\n\n${activitiesStr}`;
-}
-
-// Helper to create JSON schema with strict validation for structured outputs
-// This ensures GPT can ONLY return valid activity codes (no invented codes possible)
-function createActivitySchema(validActivityCodes: string[]) {
-    return {
-        type: "json_schema" as const,
-        json_schema: {
-            name: "activity_suggestion_response",
-            strict: true,  // CRITICAL: Enforces strict schema adherence by OpenAI
-            schema: {
-                type: "object",
-                properties: {
-                    isValidRequirement: {
-                        type: "boolean",
-                        description: "Whether the requirement description is valid and estimable"
-                    },
-                    activityCodes: {
-                        type: "array",
-                        description: "Array of relevant activity codes for this requirement",
-                        items: {
-                            type: "string",
-                            enum: validActivityCodes  //  GPT can ONLY return codes from this list
-                        }
-                    },
-                    reasoning: {
-                        type: "string",
-                        description: "Brief explanation of the activity selection (max 500 characters)"
-                    }
-                },
-                required: ["isValidRequirement", "activityCodes", "reasoning"],
-                additionalProperties: false  //  No extra fields allowed
-            }
-        }
-    };
-}
-
-// Lightweight, deterministic validation to avoid pointless AI calls
-function validateRequirementDescription(description: string): { isValid: boolean; reason?: string } {
-    const normalized = description.trim();
-
-    if (!normalized) {
-        return { isValid: false, reason: 'Description is empty' };
-    }
-
-    if (normalized.length < 6) {
-        return { isValid: false, reason: 'Description is too short to evaluate' };
-    }
-
-    if (!/[a-zA-Z\u00C0-\u017F]/.test(normalized)) {
-        return { isValid: false, reason: 'Description must contain alphabetic characters' };
-    }
-
-    const testInputPatterns = /^(test|aaa+|bbb+|ccc+|qwerty|asdf|lorem ipsum|123+|\d+)$/i;
-    if (testInputPatterns.test(normalized)) {
-        return { isValid: false, reason: 'Description looks like placeholder or test input' };
-    }
-
-    // REMOVED: Verb check was too restrictive. AI will validate if requirement is actionable.
-
-    const words = normalized.split(/\s+/).filter(w => w.length >= 3);
-    if (words.length < 3) {
-        return { isValid: false, reason: 'Description is too short or ambiguous' };
-    }
-
-    const hasTechnicalTarget = /(api|endpoint|service|servizio|microservice|database|db|table|tabella|campo|column|form|pagina|screen|ui|ux|workflow|processo|process|configurazione|report|dashboard|notifica|email|auth|login|registrazione|utente|profilo|integrazione|deploy|pipeline|script|query|data|model|schema|cache|log|monitor|cron|job|batch|trigger|webhook|storage|bucket|file|documento|pdf|excel|csv|import|export|frontend|front-end|backend|back-end|api-gateway|serverless|lambda|function|cloud)/i.test(normalized);
-    // If no technical target found, still accept if there are at least 3 words (let AI decide if it's actionable)
-    if (!hasTechnicalTarget) {
-        if (words.length >= 3) {
-            console.warn('Warning: No technical target detected, but accepting for flexibility.');
-            return { isValid: true };
-        }
-        return { isValid: false, reason: 'Missing technical target (API, form, table, workflow, etc.)' };
-    }
-
-    if (/[?]{2,}$/.test(normalized)) {
-        return { isValid: false, reason: 'Description contains too many question marks' };
-    }
-    // REMOVED: check for single '?' at end. We now allow it and let AI decide.
-
-    return { isValid: true };
-}
-
-// Legacy compact function (kept for reference - can be removed later)
-function createCompactPrompt(activities: any[], drivers: any[], risks: any[]): string {
-    const activitiesStr = activities.map(a => `${a.code}(${a.base_days}d,${a.group})`).join(', ');
-    const driversStr = drivers.map(d => {
-        if (!d.options || !Array.isArray(d.options) || d.options.length === 0) {
-            return `${d.code}(1.0)`;
-        }
-        const multipliers = d.options.map((o: any) => o.multiplier).filter((m: any) => typeof m === 'number');
-        if (multipliers.length === 0) {
-            return `${d.code}(1.0)`;
-        }
-        const minMax = `${Math.min(...multipliers)}-${Math.max(...multipliers)}`;
-        return `${d.code}(${minMax})`;
-    }).join(', ');
-    const risksStr = risks.map(r => `${r.code}(${r.weight})`).join(', ');
-
-    return `Activities: ${activitiesStr}\nDrivers: ${driversStr}\nRisks: ${risksStr}`;
-}
+// Import modular components
+import { validateAuthToken, logAuthDebugInfo } from './lib/auth/auth-validator';
+import { getCorsHeaders, isOriginAllowed } from './lib/security/cors';
+import { checkRateLimit } from './lib/security/rate-limiter';
+import { isOpenAIConfigured } from './lib/ai/openai-client';
+import { suggestActivities } from './lib/ai/actions/suggest-activities';
+import { generateTitle } from './lib/ai/actions/generate-title';
+import { normalizeRequirement } from './lib/ai/actions/normalize-requirement';
 
 interface RequestBody {
     action?: 'suggest-activities' | 'generate-title' | 'normalize-requirement';
@@ -242,6 +25,7 @@ interface RequestBody {
     activities?: Array<{
         code: string;
         name: string;
+        description: string;
         base_days: number;
         group: string;
         tech_category: string;
@@ -261,22 +45,11 @@ export const handler: Handler = async (
     context: HandlerContext
 ) => {
     const originHeader = event.headers.origin || event.headers.Origin;
-    const allowOrigin = getAllowedOrigin(originHeader);
-
-    // CORS headers
-    const headers = {
-        'Access-Control-Allow-Origin': allowOrigin,
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Content-Type': 'application/json',
-    };
+    const headers = getCorsHeaders(originHeader);
 
     // Debug: print presence of important environment variables (mask actual values)
-    console.log('DEBUG ENV - SUPABASE_URL present:', !!process.env.SUPABASE_URL);
-    console.log('DEBUG ENV - SUPABASE_ANON_KEY present:', !!process.env.SUPABASE_ANON_KEY);
+    logAuthDebugInfo();
     console.log('DEBUG ENV - OPENAI_API_KEY present:', !!process.env.OPENAI_API_KEY);
-    console.log('DEBUG ENV - AI_REQUIRE_AUTH:', process.env.AI_REQUIRE_AUTH ?? 'undefined');
-    console.log('DEBUG ENV - supabaseServer configured:', !!supabaseServer);
 
     // Handle preflight requests
     if (event.httpMethod === 'OPTIONS') {
@@ -336,7 +109,7 @@ export const handler: Handler = async (
     }
 
     // Check API key is configured
-    if (!process.env.OPENAI_API_KEY) {
+    if (!isOpenAIConfigured()) {
         console.error('OPENAI_API_KEY not configured');
         return {
             statusCode: 500,
@@ -350,7 +123,7 @@ export const handler: Handler = async (
     try {
         console.log('=== AI Suggest Function Called ===');
         console.log('HTTP Method:', event.httpMethod);
-        console.log('API Key configured:', !!process.env.OPENAI_API_KEY);
+        console.log('API Key configured:', isOpenAIConfigured());
 
         // Parse request body
         const body: RequestBody = JSON.parse(event.body || '{}');
@@ -369,51 +142,18 @@ export const handler: Handler = async (
             }
 
             const sanitizedDescription = sanitizePromptInput(description);
-            console.log('Generating title for description:', sanitizedDescription.substring(0, 100));
-
-            // Check cache first
-            const cacheKey = `title:${sanitizedDescription.substring(0, 200)}`;
-            const cached = getCachedResponse(cacheKey);
-            if (cached) {
-                console.log('Using cached title');
-                return {
-                    statusCode: 200,
-                    headers,
-                    body: JSON.stringify({ title: cached }),
-                };
-            }
-
-            const completion = await openai.chat.completions.create({
-                model: 'gpt-4o-mini',
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'Create concise requirement titles (max 10 words). The description may include sections formatted as "**ColumnName**" followed by the value; use these values and their labels as context but do not repeat the label prefix in the title. Return only the title.',
-                    },
-                    {
-                        role: 'user',
-                        content: sanitizedDescription.substring(0, 500),
-                    },
-                ],
-                temperature: 0.3,
-                max_tokens: 30, // Reduced from 50
-            });
-            const title = completion.choices[0]?.message?.content?.trim() || description.substring(0, 100);
-
-            // Cache the result
-            aiCache.set(cacheKey, { response: title, timestamp: Date.now() });
-            console.log('Generated and cached title:', title);
+            const result = await generateTitle({ description: sanitizedDescription });
 
             return {
                 statusCode: 200,
                 headers,
-                body: JSON.stringify({ title }),
+                body: JSON.stringify(result),
             };
         }
 
         // Handle requirement normalization
         if (action === 'normalize-requirement') {
-            const { description } = body;
+            const { description, testMode } = body;
 
             if (!description) {
                 return {
@@ -424,92 +164,10 @@ export const handler: Handler = async (
             }
 
             const sanitizedDescription = sanitizePromptInput(description);
-            console.log('Normalizing requirement:', sanitizedDescription.substring(0, 100));
-
-            // Check cache first
-            const cacheKey = `normalize:${sanitizedDescription.substring(0, 200)}`;
-            if (!body.testMode) {
-                const cached = getCachedResponse(cacheKey);
-                if (cached) {
-                    console.log('Using cached normalization');
-                    return {
-                        statusCode: 200,
-                        headers,
-                        body: JSON.stringify(cached),
-                    };
-                }
-            }
-
-            const systemPrompt = `You are an expert Business Analyst. Your goal is to normalize and validate a requirement description.
-
-INPUT: A raw requirement description (which may be messy, vague, or structured as key-value pairs from Excel).
-
-OUTPUT: A structured JSON object with the following fields:
-- isValidRequirement: boolean (true if it's a valid technical requirement, false if gibberish/test/question)
-- confidence: number (0.0 to 1.0, how confident you are in the interpretation)
-- originalDescription: string (the input text)
-- normalizedDescription: string (a clear, professional, concise rewrite of the requirement. CRITICAL: Keep the SAME LANGUAGE as the input. DO NOT translate to English or other languages. DO NOT invent new details. DO NOT add systems/APIs not mentioned. Merge scattered info into a cohesive paragraph.)
-- validationIssues: array of strings (list of missing info, ambiguities, or contradictions. If none, empty array.)
-- transformNotes: array of strings (brief notes on what you changed/interpreted, e.g., "Merged 'Notes' column into description", "Clarified user role")
-
-RULES:
-1. DO NOT translate the text. Keep the original language (Italian, English, etc.).
-2. DO NOT invent new constraints, numbers, or systems.
-3. If the input is vague, mark it in validationIssues, don't guess.
-4. Keep the normalizedDescription technical but readable.
-5. If the input is just a title, expand it slightly into a sentence if possible, but don't hallucinate.`;
-
-            const userPrompt = sanitizedDescription.substring(0, 2000);
-
-            const responseSchema = {
-                type: "json_schema" as const,
-                json_schema: {
-                    name: "normalization_response",
-                    strict: true,
-                    schema: {
-                        type: "object",
-                        properties: {
-                            isValidRequirement: { type: "boolean" },
-                            confidence: { type: "number" },
-                            originalDescription: { type: "string" },
-                            normalizedDescription: { type: "string" },
-                            validationIssues: {
-                                type: "array",
-                                items: { type: "string" }
-                            },
-                            transformNotes: {
-                                type: "array",
-                                items: { type: "string" }
-                            }
-                        },
-                        required: ["isValidRequirement", "confidence", "originalDescription", "normalizedDescription", "validationIssues", "transformNotes"],
-                        additionalProperties: false
-                    }
-                }
-            };
-
-            const completion = await openai.chat.completions.create({
-                model: 'gpt-4o-mini',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt },
-                ],
-                response_format: responseSchema,
-                temperature: 0.2, // Low temperature for consistency
-                max_tokens: 1000,
+            const result = await normalizeRequirement({
+                description: sanitizedDescription,
+                testMode
             });
-
-            const parsedContent = completion.choices[0]?.message?.content;
-            if (!parsedContent) {
-                throw new Error('No response from OpenAI for normalization');
-            }
-
-            const result = JSON.parse(parsedContent);
-
-            // Cache the result
-            if (!body.testMode) {
-                aiCache.set(cacheKey, { response: result, timestamp: Date.now() });
-            }
 
             return {
                 statusCode: 200,
@@ -518,7 +176,7 @@ RULES:
             };
         }
 
-        // Handle activity suggestions (original logic)
+        // Handle activity suggestions
         const { description, preset, activities, testMode } = body;
 
         if (!description || !preset || !activities) {
@@ -538,221 +196,17 @@ RULES:
         console.log('- Preset:', preset?.name);
         console.log('- Activities count:', activities?.length);
 
-        const descriptionCheck = validateRequirementDescription(sanitizedDescription);
-        if (!descriptionCheck.isValid) {
-            console.warn('Requirement rejected by deterministic validation:', descriptionCheck.reason);
-            const invalidSuggestion: AIActivitySuggestion = {
-                isValidRequirement: false,
-                activityCodes: [],
-                reasoning: descriptionCheck.reason || 'Requirement description is too vague or looks like test data',
-            };
-            return {
-                statusCode: 200,
-                headers,
-                body: JSON.stringify(invalidSuggestion),
-            };
-        }
-
-        // Filter activities relevant to the preset's tech category
-        const relevantActivities = activities.filter(
-            (a) => a.tech_category === preset.tech_category || a.tech_category === 'MULTI'
-        );
-
-        console.log('Filtered activities:', relevantActivities?.length);
-
-        // Check cache first (skip in test mode)
-        const relevantActivityCodes = relevantActivities.map(a => a.code);
-        const cacheKey = getCacheKey(sanitizedDescription, preset.id, relevantActivityCodes);
-        if (!testMode) {
-            const cached = getCachedResponse(cacheKey);
-            if (cached) {
-                console.log('Using cached AI suggestion');
-                return {
-                    statusCode: 200,
-                    headers,
-                    body: JSON.stringify(cached),
-                };
-            }
-        } else {
-            console.log('Test mode: cache disabled');
-        }
-
-        // Build DESCRIPTIVE system prompt with full activity details
-        console.log('Creating descriptive prompt with full activity details...');
-        console.log('- relevantActivities:', relevantActivities?.length);
-
-        let descriptiveData;
-        try {
-            descriptiveData = createDescriptivePrompt(relevantActivities);
-            console.log('Descriptive prompt created, length:', descriptiveData?.length);
-        } catch (error: any) {
-            console.error('Error in createDescriptivePrompt:', error.message);
-            console.error('Stack:', error.stack);
-            throw new Error(`Failed to create descriptive prompt: ${error.message}`);
-        }
-
-        const systemPrompt = `You are an expert software estimation assistant for ${preset.name} (${preset.tech_category}).
-
-DESCRIPTION FORMAT (READ CAREFULLY):
-- The requirement description may include bullet lines formatted as "- ColumnName: value" coming from Excel column names selected by the user.
-- Treat the column names as signals of the data type/context (e.g., "Feature", "Problem", "Goal", "AcceptanceCriteria").
-- Consider every labeled line; do NOT drop or ignore any labeled segment when evaluating scope.
-
-STEP 1: Validate the requirement description.
-- If it is invalid or unclear, set isValidRequirement to false, return activityCodes as an empty array, and explain why in reasoning.
-- Invalid means: too vague, placeholder/test text, no action verb, no clear technical target (API, form, table, workflow, report, page, endpoint, etc.), gibberish.
-- SPECIAL CASE: If the description is a QUESTION or a DOUBT (e.g., ends with "?", "Check if...", "Verify..."), treat it as a VALID requirement that needs ANALYSIS. Do NOT reject it. Instead, suggest ANALYSIS activities to resolve the doubt.
-
-STEP 2: When valid, suggest ONLY the relevant activity codes needed to implement it.
-
-IMPORTANT CONSTRAINTS:
-- You suggest ONLY activity codes (you NEVER suggest drivers or risks)
-- Drivers and risks will be selected manually by the user
-- Return JSON with: isValidRequirement (boolean), activityCodes (array of strings), reasoning (string)
-- Activity codes MUST be from the available list below
-
-VALIDATION RULES:
-
-ACCEPT if requirement describes:
-- Feature additions or modifications (even if brief)
-- UI/UX changes or updates
-- Data model changes, field additions
-- Workflow or process modifications
-- Bug fixes or improvements
-- Integration or API work
-- Documentation or configuration changes
-- ANY action verb + technical context (update, add, modify, create, fix, change, implement)
-- Questions, doubts, or requests for verification (Treat as ANALYSIS tasks)
-
-REJECT only if:
-- Extremely vague with no technical context (e.g., "make it better", "fix things")
-- Pure test input (e.g., "test", "aaa", "123", "qwerty")
-- No action or technical element
-- Random characters or gibberish
-
-EXAMPLES:
-"Aggiornare la lettera con aggiunta frase" -> accept (action: aggiornare, target: lettera)
-"Add field to profile" -> accept (action: add, target: field)
-"Is this feasible?" -> accept (needs analysis)
-"Check if API exists" -> accept (needs analysis)
-"Make better" -> reject (no specific target or action)
-"test" -> reject (test input)
-
-${descriptiveData}
-
-SELECTION GUIDELINES:
-- Read the activity DESCRIPTION carefully to understand when to use it
-- Consider the EFFORT (base days) to ensure realistic coverage
-- Select activities from appropriate GROUP (ANALYSIS, DEV, TEST, OPS, GOVERNANCE)
-- Choose activities that match the requirement's scope and complexity
-- Include typical SDLC activities: analysis -> development -> testing -> deployment
-
-RETURN FORMAT:
-{"isValidRequirement": true/false, "activityCodes": ["CODE1", "CODE2", ...], "reasoning": "brief explanation of your selection"}`;
-
-        const userPrompt = sanitizedDescription.substring(0, 1000); // Limit to 1000 chars
-
-        console.log('Calling OpenAI API with structured outputs...');
-        console.log('Model: gpt-4o-mini');
-        console.log('Test mode:', testMode ? 'enabled (temp=0.7, no cache)' : 'disabled (temp=0.0, cached)');
-        console.log('System prompt length:', systemPrompt.length, '(optimized)');
-        console.log('User prompt length:', userPrompt.length);
-
-        // Generate strict JSON schema with enum of valid activity codes
-        // This guarantees GPT cannot invent or suggest invalid codes
-        const responseSchema = createActivitySchema(
-            relevantActivities.map(a => a.code)
-        );
-        console.log('Using structured outputs with', relevantActivities.length, 'valid activity codes in enum');
-
-        // Call OpenAI API with structured outputs (Phase 2 improvement)
-        const temperature = testMode ? 0.7 : 0.0; // CHANGED: 0.0 for maximum determinism (was 0.1)
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',  // Supports structured outputs
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt },
-            ],
-            response_format: responseSchema,  // PHASE 2: Strict schema with enum validation
-            temperature,
-            max_tokens: 500, // Limit response size
+        const result = await suggestActivities({
+            description: sanitizedDescription,
+            preset,
+            activities,
+            testMode
         });
 
-        console.log('Using temperature:', temperature, '(determinism level:', temperature === 0 ? 'maximum' : 'test mode', ')');
-
-        console.log('OpenAI response received:');
-        console.log('- Choices count:', response.choices?.length);
-        console.log('- Model used:', response.model);
-        console.log('- Usage:', JSON.stringify(response.usage));
-
-        const message = response.choices[0]?.message;
-        const parsedContent = message?.content;
-
-        // Log basic info for troubleshooting
-        const debugPreview =
-            typeof parsedContent === 'string'
-                ? parsedContent.substring(0, 200)
-                : JSON.stringify(parsedContent)?.substring(0, 200);
-        console.log('Content present:', !!parsedContent);
-        console.log('Content preview:', debugPreview);
-
-        if (!parsedContent) {
-            throw new Error('No response from OpenAI');
-        }
-
-        // Parse structured output: fallback to JSON string
-        let suggestion: any;
-        try {
-            suggestion = JSON.parse(parsedContent);
-        } catch (parseError) {
-            console.error('JSON parse error:', parseError);
-            throw new Error('Invalid JSON response from AI');
-        }
-
-        // PHASE 2 IMPROVEMENT: Minimal validation needed
-        // Structured outputs guarantee:
-        // - activityCodes contains ONLY codes from enum (no invalid codes possible)
-        // - All required fields present (isValidRequirement, activityCodes, reasoning)
-        // - No additional properties
-        // - Correct types for all fields
-
-        console.log(' Structured output received and validated by OpenAI');
-        console.log('- isValidRequirement:', suggestion.isValidRequirement);
-        console.log('- activityCodes count:', suggestion.activityCodes?.length);
-        console.log('- All codes pre-validated by enum constraint');
-
-        // Keep basic Zod validation for extra safety (optional - can be removed)
-
-        // Validazione base solo su activity codes
-        const validatedSuggestion = validateAISuggestion(
-            suggestion,
-            relevantActivities.map((a) => a.code),
-            [],
-            []
-        );
-
-        const finalSuggestion: AIActivitySuggestion = validatedSuggestion.isValidRequirement
-            ? validatedSuggestion
-            : {
-                ...validatedSuggestion,
-                activityCodes: [],
-                reasoning: validatedSuggestion.reasoning || 'Requirement description is invalid or too vague',
-            };
-
-        console.log('Validated suggestion:', JSON.stringify(finalSuggestion, null, 2));
-
-        // Cache the validated result (skip in test mode)
-        if (!testMode) {
-            aiCache.set(cacheKey, { response: finalSuggestion, timestamp: Date.now() });
-            console.log('Cached response for future use');
-        }
-
-        // Return successful response
-        console.log('Returning successful response');
         return {
             statusCode: 200,
             headers,
-            body: JSON.stringify(finalSuggestion),
+            body: JSON.stringify(result),
         };
     } catch (error: any) {
         console.error('=== ERROR in ai-suggest function ===');
