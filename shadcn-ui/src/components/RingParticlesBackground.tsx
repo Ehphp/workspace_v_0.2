@@ -187,7 +187,7 @@ export const RingParticlesBackground: React.FC<RingParticlesBackgroundProps> = (
     return (
         <div
             id="ring-particles-bg"
-            className={`fixed inset-0 -z-10 ${className}`}
+            className={`fixed inset-0 z-[1] ${className}`}
             style={paintWorkletStyle}
         >
             {/* Fallback to Canvas if Paint Worklet not supported */}

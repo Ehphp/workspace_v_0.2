@@ -118,7 +118,7 @@ export function Example6_ColorThemes() {
     return (
         <div className="relative min-h-screen">
             <RingParticlesBackground
-                config={withColorTheme('ocean', {
+                config={withColorTheme('cyan', {
                     particleCount: 500,
                     angularSpeed: 0.02,
                 })}
@@ -275,10 +275,9 @@ export function Example11_UserToggle() {
 // ============================================================================
 // Example 12: Responsive Different Configs (Mobile vs Desktop)
 // ============================================================================
-import { useMediaQuery } from '@/hooks/use-media-query';
 
 export function Example12_ResponsiveConfig() {
-    const isMobile = useMediaQuery('(max-width: 768px)');
+    const isMobile = window.innerWidth < 768;
 
     return (
         <div className="relative min-h-screen">
@@ -323,7 +322,7 @@ export function Example13_CompleteHomepage() {
                     noiseFrequency: 0.9,
                     noiseAmplitude: 6,
                     seed: 42069,
-                    blendMode: 'normal',
+                    blendMode: 'normal' as GlobalCompositeOperation,
                     responsive: {
                         maxParticlesMobile: 200,
                         scaleWithDPR: true

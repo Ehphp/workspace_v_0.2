@@ -17,6 +17,7 @@ import {
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useRef } from 'react';
+import { RingParticlesBackground } from '@/components/RingParticlesBackground';
 
 const steps = [
   {
@@ -88,8 +89,37 @@ export default function HowItWorks() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans overflow-hidden relative">
+      {/* Ring Particles Animated Background */}
+      <RingParticlesBackground
+        usePaintWorklet={false}
+        enableMouseInteraction={true}
+        config={{
+          shape: 'ring',
+          particleCount: 800,
+          radius: 38,
+          thickness: 18,
+          particleSize: [1, 5],
+          alphaRange: [0.5, 1.0],
+          color: { h: 120, s: 80 },
+          drift: 0.1,
+          angularSpeed: 0.03,
+          noiseFrequency: 0.9,
+          noiseAmplitude: 6,
+          seed: 42069,
+          blendMode: 'normal' as GlobalCompositeOperation,
+          repeatPattern: true,
+          responsive: {
+            maxParticlesMobile: 200,
+            scaleWithDPR: true
+          },
+          accessibility: {
+            prefersReducedMotion: true
+          }
+        }}
+      />
+
       {/* Background Pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none z-[2]" />
 
       {/* Animated Background Blobs */}
       <motion.div
@@ -99,7 +129,7 @@ export default function HowItWorks() {
           scale: [1, 1.1, 1],
         }}
         transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-        className="absolute top-0 -left-20 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+        className="absolute top-0 -left-20 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none z-[2]"
       />
       <motion.div
         animate={{
@@ -108,7 +138,7 @@ export default function HowItWorks() {
           scale: [1, 1.2, 1],
         }}
         transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-        className="absolute top-1/3 -right-20 w-[30rem] h-[30rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+        className="absolute top-1/3 -right-20 w-[30rem] h-[30rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none z-[2]"
       />
       <motion.div
         animate={{
@@ -117,7 +147,7 @@ export default function HowItWorks() {
           scale: [1, 1.1, 1],
         }}
         transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
-        className="absolute bottom-0 left-1/3 w-[25rem] h-[25rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+        className="absolute bottom-0 left-1/3 w-[25rem] h-[25rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none z-[2]"
       />
 
       <Header />
