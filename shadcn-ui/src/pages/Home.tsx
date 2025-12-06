@@ -40,7 +40,7 @@ export default function Home() {
         usePaintWorklet={false}
         enableMouseInteraction={true}
         config={{
-          shape: 'ring',
+          shape: 'disk',
           particleCount: 800,
           radius: 38,
           thickness: 18,
@@ -48,8 +48,8 @@ export default function Home() {
           alphaRange: [0.5, 1.0],
           color: { h: 120, s: 80 },
           drift: 0.1,
-          angularSpeed: 0.03,
-          noiseFrequency: 0.9,
+          angularSpeed: 0.13,
+          noiseFrequency: 1.9,
           noiseAmplitude: 6,
           seed: 42069,
           blendMode: 'normal' as GlobalCompositeOperation,

@@ -95,9 +95,8 @@ export const RingParticlesCanvas: React.FC<RingParticlesCanvasProps> = ({
             const jitterAngle = (seededRandom(particleSeed) - 0.5) * 0.3;
             const jitterRadius = (seededRandom(particleSeed + 1) - 0.5);
 
-            // Calculate origin position with spiral offset
-            const spiralFactor = i / count; // 0 to 1
-            const theta = angleBase + jitterAngle + spiralFactor * Math.PI * 0.2; // Slight spiral offset
+            // Calculate origin position
+            const theta = angleBase + jitterAngle;
             const r = baseRadius + jitterRadius * thickness;
             const x0 = cx + r * Math.cos(theta);
             const y0 = cy + r * Math.sin(theta);
@@ -130,12 +129,12 @@ export const RingParticlesCanvas: React.FC<RingParticlesCanvasProps> = ({
         const dy = particle.pos.y - my;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        const repulsionRadius = minDim * 1.20;
+        const repulsionRadius = minDim * 0.20;
         const impulseStrength = reducedMotionRef.current ? 0 : 120 * dpr;
 
         if (dist < repulsionRadius && dist > 0.5) {
             const proximity = 1 - (dist / repulsionRadius);
-            const strength = Math.pow(proximity, 0.6) * impulseStrength / particle.mass;
+            const strength = Math.pow(proximity, 1.6) * impulseStrength / particle.mass;
             const nx = dx / dist;
             const ny = dy / dist;
 
@@ -145,7 +144,7 @@ export const RingParticlesCanvas: React.FC<RingParticlesCanvasProps> = ({
     }, []);
 
     // Update particle physics
-    const updateParticle = useCallback((particle: Particle, dt: number, t: number, dpr: number, cx: number, cy: number, minDim: number) => {
+    const updateParticle = useCallback((particle: Particle, dt: number, t: number, dpr: number) => {
         const springK = reducedMotionRef.current ? 40 : 12;
         const drag = 3.5;
         const gravity = 0;
@@ -154,20 +153,7 @@ export const RingParticlesCanvas: React.FC<RingParticlesCanvasProps> = ({
         const layerFactor = 1 + particle.layer * 0.2;
         const k = springK * layerFactor;
 
-        // MOVIMENTO A SPIRALE CONTINUO: aggiorna l'origine in rotazione
-        const spiralSpeed = config.angularSpeed * 0.5; // Metà della velocità configurata per movimento più lento
-        const baseRadius = (minDim * config.radius) / 100;
-        const thickness = (minDim * config.thickness) / 100;
-
-        // Calcola nuovo angolo per origine che ruota
-        const currentAngle = particle.angleBase + particle.jitterAngle + spiralSpeed * t;
-        const r = baseRadius + particle.jitterRadius * thickness;
-
-        // Aggiorna l'origine in modo che ruoti attorno al centro
-        particle.origin.x = cx + r * Math.cos(currentAngle);
-        particle.origin.y = cy + r * Math.sin(currentAngle);
-
-        // Spring force verso l'origine che si muove
+        // Spring force
         const dx = particle.pos.x - particle.origin.x;
         const dy = particle.pos.y - particle.origin.y;
         const F_spring_x = -k * dx;
@@ -204,7 +190,7 @@ export const RingParticlesCanvas: React.FC<RingParticlesCanvasProps> = ({
         const jitter = Math.sin(t * 0.8 + particle.phase) * 0.25;
         particle.pos.x += jitter * (0.5 + particle.layer * 0.2);
         particle.pos.y += jitter * (0.5 + particle.layer * 0.2);
-    }, [config.angularSpeed, config.radius, config.thickness]);
+    }, []);
 
     // Render frame
     const renderFrame = useCallback(() => {
@@ -242,9 +228,6 @@ export const RingParticlesCanvas: React.FC<RingParticlesCanvasProps> = ({
         const mousePx = mouseX * width;
         const mousePy = mouseY * height;
 
-        const cx = width / 2;
-        const cy = height / 2;
-
         // Apply impulses
         if (mouseEnabled) {
             for (const particle of particlesRef.current) {
@@ -254,7 +237,7 @@ export const RingParticlesCanvas: React.FC<RingParticlesCanvasProps> = ({
 
         // Update physics
         for (const particle of particlesRef.current) {
-            updateParticle(particle, dt, t, dpr, cx, cy, minDim);
+            updateParticle(particle, dt, t, dpr);
         }
 
         // Draw
