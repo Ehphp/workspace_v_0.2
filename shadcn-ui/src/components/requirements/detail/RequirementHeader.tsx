@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { ArrowLeft, Pencil, Save, X, User, Settings } from 'lucide-react';
+import { ArrowLeft, Pencil, Save, X, User, Settings, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useRequirementActions, type EditedData } from '@/hooks/useRequirementActions';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { useRequirementActions } from '@/hooks/useRequirementActions';
 import type { Requirement, TechnologyPreset } from '@/types/database';
 import { useAuth } from '@/hooks/useAuth';
 import { PriorityBadge, StateBadge } from '@/components/shared/RequirementBadges';
+import { useWorkflow } from '@/hooks/workflow/useWorkflow';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface RequirementHeaderProps {
     requirement: Requirement;
@@ -18,12 +19,15 @@ interface RequirementHeaderProps {
 export function RequirementHeader({ requirement, onBack, refetchRequirement, presets = [] }: RequirementHeaderProps) {
     const { user } = useAuth();
     const { saveHeader, isSavingSection } = useRequirementActions({ requirement, user, refetchRequirement });
+    const { availableTransitions, canTransition } = useWorkflow(requirement);
+
     const [isEditing, setIsEditing] = useState(false);
     const [editedData, setEditedData] = useState({
         title: requirement.title,
         priority: requirement.priority,
         state: requirement.state,
     });
+    // Optimistic display data
     const [displayData, setDisplayData] = useState({
         title: requirement.title,
         priority: requirement.priority,
@@ -31,7 +35,17 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
     });
 
     const handleSave = async () => {
-        // Optimistic update - apply immediately to UI
+        // Validation: Check if state change is allowed purely for safety, 
+        // though UI should prevent selection
+        if (editedData.state !== requirement.state) {
+            const check = canTransition(editedData.state as any);
+            if (!check.allowed) {
+                console.error("Transition not allowed:", check.reason);
+                return; // Or show toast
+            }
+        }
+
+        // Optimistic update
         setDisplayData({
             title: editedData.title,
             priority: editedData.priority as typeof requirement.priority,
@@ -39,7 +53,6 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
         });
         setIsEditing(false);
 
-        // Save in background
         await saveHeader(editedData, () => { });
     };
 
@@ -51,6 +64,21 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
         });
         setIsEditing(false);
     };
+
+    // Calculate current state options based on workflow
+    // We always include the CURRENT state + AVAILABLE transitions
+    const stateOptions = [
+        { value: requirement.state, label: 'Current: ' + requirement.state.replace('_', ' '), isAllowed: true },
+        ...availableTransitions.map(t => ({
+            value: t.to,
+            label: t.label,
+            isAllowed: t.isAllowed,
+            reasons: (t as any).reasons // Cast to access extra props from engine
+        }))
+    ];
+    // Remove duplicates if any (e.g. if current state is target of a reflexive transition, though rare)
+    const uniqueStateOptions = stateOptions.filter((v, i, a) => a.findIndex(t => t.value === v.value) === i);
+
 
     return (
         <div className="flex flex-col gap-3 mb-2">
@@ -111,7 +139,7 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
                                                 onValueChange={(value) => setEditedData({ ...editedData, priority: value })}
                                             >
                                                 <SelectTrigger className="w-auto h-auto p-0 border-0 bg-transparent hover:bg-transparent focus:ring-0 [&>svg]:hidden">
-                                                    <PriorityBadge priority={editedData.priority as typeof requirement.priority} />
+                                                    <PriorityBadge priority={editedData.priority as any} />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="LOW">Low Priority</SelectItem>
@@ -131,12 +159,45 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
                                                 onValueChange={(value) => setEditedData({ ...editedData, state: value })}
                                             >
                                                 <SelectTrigger className="w-auto h-auto p-0 border-0 bg-transparent hover:bg-transparent focus:ring-0 [&>svg]:hidden">
-                                                    <StateBadge state={editedData.state as typeof requirement.state} />
+                                                    <StateBadge state={editedData.state as any} />
                                                 </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="CREATED">Created</SelectItem>
-                                                    <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                                                    <SelectItem value="DONE">Done</SelectItem>
+                                                <SelectContent className="min-w-[200px]">
+                                                    {uniqueStateOptions.length === 0 ? (
+                                                        <div className="px-2 py-1.5 text-xs text-slate-500">No transitions available</div>
+                                                    ) : (
+                                                        uniqueStateOptions.map((opt) => (
+                                                            <div key={opt.value}>
+                                                                <TooltipProvider>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <SelectItem
+                                                                                value={opt.value}
+                                                                                disabled={!opt.isAllowed && opt.value !== requirement.state}
+                                                                                className="flex items-center justify-between w-full"
+                                                                            >
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <span>{opt.label}</span>
+                                                                                    {(!opt.isAllowed && opt.value !== requirement.state) && (
+                                                                                        <Lock className="h-3 w-3 text-slate-400" />
+                                                                                    )}
+                                                                                </div>
+                                                                            </SelectItem>
+                                                                        </TooltipTrigger>
+                                                                        {(!opt.isAllowed && opt.value !== requirement.state && (opt as any).reasons?.length > 0) && (
+                                                                            <TooltipContent side="right">
+                                                                                <div className="text-xs">
+                                                                                    {/* @ts-ignore */}
+                                                                                    {(opt as any).reasons.map((r: string, i: number) => (
+                                                                                        <div key={i}>• {r}</div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            </TooltipContent>
+                                                                        )}
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                            </div>
+                                                        ))
+                                                    )}
                                                 </SelectContent>
                                             </Select>
                                         </div>

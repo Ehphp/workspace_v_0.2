@@ -239,7 +239,7 @@ export default function Home() {
               transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
               className="space-y-4"
             >
-              <Card className="border-slate-200/50 bg-white/60 backdrop-blur-md shadow-xl">
+              <Card className="border-white/20 shadow-2xl ring-1 ring-white/30" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(4px)' }}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center flex-shrink-0">

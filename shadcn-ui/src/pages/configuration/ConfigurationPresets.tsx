@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { useAuth } from '@/hooks/useAuth';
+import { RingParticlesBackground } from '@/components/RingParticlesBackground';
 import { usePresetManagement, initialPresetForm, type PresetForm, type PresetView } from '@/hooks/usePresetManagement';
 import { PresetFormDialog } from '@/components/configuration/presets/PresetFormDialog';
 import { PresetPreviewDialog } from '@/components/configuration/presets/PresetPreviewDialog';
@@ -23,7 +24,7 @@ import {
 export default function ConfigurationPresets() {
     const { user } = useAuth();
     const navigate = useNavigate();
-    
+
     const {
         loading,
         saving,
@@ -104,21 +105,52 @@ export default function ConfigurationPresets() {
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans overflow-hidden relative">
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+            {/* Ring Particles Animated Background */}
+            <RingParticlesBackground
+                usePaintWorklet={false}
+                enableMouseInteraction={true}
+                config={{
+                    shape: 'ring',
+                    particleCount: 800,
+                    radius: 38,
+                    thickness: 18,
+                    particleSize: [1, 5],
+                    alphaRange: [0.5, 1.0],
+                    color: { h: 120, s: 80 },
+                    drift: 0.1,
+                    angularSpeed: 0.03,
+                    noiseFrequency: 0.9,
+                    noiseAmplitude: 6,
+                    seed: 42069,
+                    blendMode: 'normal' as GlobalCompositeOperation,
+                    repeatPattern: true,
+                    responsive: {
+                        maxParticlesMobile: 200,
+                        scaleWithDPR: true
+                    },
+                    accessibility: {
+                        prefersReducedMotion: true
+                    }
+                }}
+            />
+
+            {/* Background Pattern */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none z-[2]" />
+            {/* Animated Background Blobs */}
             <motion.div
                 animate={{ x: [0, 100, 0], y: [0, -60, 0], scale: [1, 1.08, 1] }}
                 transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
-                className="absolute top-0 -left-24 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+                className="absolute top-0 -left-24 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none z-[2]"
             />
             <motion.div
                 animate={{ x: [0, -90, 0], y: [0, 60, 0], scale: [1, 1.15, 1] }}
                 transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-                className="absolute top-1/3 -right-24 w-[28rem] h-[28rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+                className="absolute top-1/3 -right-24 w-[28rem] h-[28rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none z-[2]"
             />
             <motion.div
                 animate={{ x: [0, 60, 0], y: [0, 90, 0], scale: [1, 1.1, 1] }}
                 transition={{ duration: 24, repeat: Infinity, ease: "linear" }}
-                className="absolute bottom-0 left-1/3 w-[24rem] h-[24rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+                className="absolute bottom-0 left-1/3 w-[24rem] h-[24rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none z-[2]"
             />
 
             <Header />

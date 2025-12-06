@@ -52,7 +52,7 @@ export function ProjectCard({ project, onEdit, onDelete, layout = 'grid' }: Proj
                 className="group relative flex items-center gap-4 p-3 rounded-lg border border-slate-200/60 bg-white/80 hover:bg-white hover:shadow-sm transition-all duration-200 cursor-pointer backdrop-blur-sm"
                 onClick={() => navigate(`/dashboard/${project.id}/requirements`)}
             >
-                <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-lg ${getStatusColor(project.status)}`} />
+                <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg bg-blue-500" />
 
                 <div className="pl-2">
                     <div className="p-2 rounded-md bg-slate-100 text-slate-500">
@@ -112,7 +112,7 @@ export function ProjectCard({ project, onEdit, onDelete, layout = 'grid' }: Proj
             className="group relative overflow-hidden border-slate-200/60 bg-white/80 hover:bg-white hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col backdrop-blur-sm"
             onClick={() => navigate(`/dashboard/${project.id}/requirements`)}
         >
-            <div className={`absolute top-0 left-0 w-1 h-full ${getStatusColor(project.status)}`} />
+            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
 
             <div className="p-4 pl-5 flex flex-col gap-3">
                 <div className="flex justify-between items-start">
