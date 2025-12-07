@@ -12,6 +12,7 @@ export interface PresetView extends TechnologyPreset {
 export interface PresetForm {
     name: string;
     description: string;
+    detailedDescription?: string; // Optional detailed description (from AI)
     techCategory: string;
     activities: Activity[];
     driverValues: Record<string, string>;
@@ -21,6 +22,7 @@ export interface PresetForm {
 export const initialPresetForm: PresetForm = {
     name: '',
     description: '',
+    detailedDescription: '',
     techCategory: 'MULTI',
     activities: [],
     driverValues: {},
@@ -172,15 +174,33 @@ export function usePresetManagement(userId: string | undefined) {
                 }
 
                 if (form.activities.length > 0) {
-                    const rows = form.activities.map((a, idx) => ({
-                        tech_preset_id: presetId,
-                        activity_id: a.id,
-                        position: idx + 1
-                    }));
-                    const { error } = await supabase
-                        .from('technology_preset_activities')
-                        .insert(rows);
-                    if (error) throw error;
+                    // Map activity codes to IDs from allActivities
+                    const activityCodeToId = new Map<string, string>();
+                    allActivities.forEach(a => activityCodeToId.set(a.code, a.id));
+
+                    const rows = form.activities
+                        .map((a, idx) => {
+                            const activityId = a.id || activityCodeToId.get(a.code);
+                            if (!activityId) {
+                                console.warn(`[savePreset] Activity not found: code=${a.code}`);
+                                return null;
+                            }
+                            return {
+                                tech_preset_id: presetId,
+                                activity_id: activityId,
+                                position: idx + 1
+                            };
+                        })
+                        .filter((row): row is NonNullable<typeof row> => row !== null);
+
+                    console.log(`[savePreset] Inserting ${rows.length} activities for preset ${presetId}`);
+
+                    if (rows.length > 0) {
+                        const { error } = await supabase
+                            .from('technology_preset_activities')
+                            .insert(rows);
+                        if (error) throw error;
+                    }
                 }
             }
 

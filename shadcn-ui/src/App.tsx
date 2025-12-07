@@ -16,6 +16,7 @@ import ConfigurationPresets from './pages/configuration/ConfigurationPresets';
 import HowItWorks from './pages/HowItWorks';
 import Profile from './pages/configuration/Profile';
 import { OrganizationSettings } from './pages/configuration/OrganizationSettings';
+import AiWizardTestPage from './pages/test/AiWizardTestPage';
 
 const queryClient = new QueryClient();
 
@@ -91,6 +92,15 @@ const App = () => (
             element={
               <AuthGuard>
                 <OrganizationSettings />
+              </AuthGuard>
+            }
+          />
+          {/* Test Routes (Development Only) */}
+          <Route
+            path="/test/ai-wizard"
+            element={
+              <AuthGuard>
+                <AiWizardTestPage />
               </AuthGuard>
             }
           />

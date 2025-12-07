@@ -1,8 +1,8 @@
-export interface Activity {
+interface ActivityRef {
     code: string;
     name: string;
     description: string;
-    base_days: number;
+    base_hours: number;
     group: string;
     tech_category: string;
 }
@@ -29,7 +29,7 @@ export function createDescriptivePrompt(activities: Activity[]): string {
         `CODE: ${a.code}\n` +
         `NAME: ${a.name}\n` +
         `DESCRIPTION: ${a.description}\n` +
-        `EFFORT: ${a.base_days} days | GROUP: ${a.group}\n` +
+        `EFFORT: ${(a.base_hours / 8).toFixed(1)} days (${a.base_hours}h) | GROUP: ${a.group}\n` +
         `---`
     ).join('\n\n');
 
@@ -220,7 +220,7 @@ RULES:
  * @returns Compact prompt string
  */
 export function createCompactPrompt(activities: Activity[], drivers: Driver[], risks: Risk[]): string {
-    const activitiesStr = activities.map(a => `${a.code}(${a.base_days}d,${a.group})`).join(', ');
+    const activitiesStr = activities.map(a => `${a.code}(${(a.base_hours / 8).toFixed(1)}d,${a.group})`).join(', ');
     const driversStr = drivers.map(d => {
         if (!d.options || !Array.isArray(d.options) || d.options.length === 0) {
             return `${d.code}(1.0)`;

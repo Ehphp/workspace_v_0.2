@@ -7,10 +7,11 @@ import { usePresetManagement, initialPresetForm, type PresetForm, type PresetVie
 import { TechnologyDialog } from '@/components/configuration/presets/TechnologyDialog';
 import { PresetPreviewDialog } from '@/components/configuration/presets/PresetPreviewDialog';
 import { PresetTableRow } from '@/components/configuration/presets/PresetTableRow';
+import { AiTechnologyWizard } from '@/components/configuration/presets/ai-wizard';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Layers, Plus, CheckCircle2, Sparkles, ArrowLeft } from 'lucide-react';
+import { Layers, Plus, CheckCircle2, Sparkles, ArrowLeft, Wand2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import {
     Table,
@@ -40,6 +41,7 @@ export default function ConfigurationPresets() {
     // UI State
     const [viewFilter, setViewFilter] = useState<'ALL' | 'OOTB' | 'CUSTOM'>('ALL');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isAiWizardOpen, setIsAiWizardOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [form, setForm] = useState<PresetForm>(initialPresetForm);
     const [selectedPreview, setSelectedPreview] = useState<PresetView | null>(null);
@@ -116,6 +118,34 @@ export default function ConfigurationPresets() {
         const success = await savePreset(data, editingId);
         if (success) {
             setIsDialogOpen(false);
+        }
+    };
+
+    const handleAiWizardComplete = async (preset: any) => {
+        // Convert AI preset to PresetForm format
+        const presetForm: PresetForm = {
+            name: preset.name,
+            description: preset.description,
+            detailedDescription: preset.detailedDescription, // Add detailed description
+            techCategory: preset.techCategory || 'MULTI',
+            activities: preset.activities.map((a: any) => ({
+                code: a.code,
+                baseDays: a.baseDays || 0 // baseDays from AI is already in days
+            })),
+            driverValues: preset.driverValues || {},
+            riskCodes: preset.riskCodes || []
+        };
+
+        console.log('[ConfigurationPresets] Saving AI preset:', {
+            name: presetForm.name,
+            activitiesCount: presetForm.activities.length,
+            activities: presetForm.activities
+        });
+
+        const success = await savePreset(presetForm, null);
+        if (success) {
+            setIsAiWizardOpen(false);
+            toast.success('Preset AI creato con successo!');
         }
     };
 
@@ -199,11 +229,19 @@ export default function ConfigurationPresets() {
                         </div>
                         <div className="flex flex-wrap gap-3 pt-2">
                             <Button
+                                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md border-0"
+                                onClick={() => setIsAiWizardOpen(true)}
+                            >
+                                <Wand2 className="w-4 h-4 mr-2" />
+                                ✨ AI Wizard
+                            </Button>
+                            <Button
                                 className="bg-blue-600 hover:bg-blue-700 text-white shadow-md border-0"
                                 onClick={handleCreate}
+                                variant="outline"
                             >
                                 <Plus className="w-4 h-4 mr-2" />
-                                Crea nuova tecnologia
+                                Crea manualmente
                             </Button>
                         </div>
                     </motion.div>
@@ -301,6 +339,12 @@ export default function ConfigurationPresets() {
             <PresetPreviewDialog
                 preset={selectedPreview}
                 onOpenChange={() => setSelectedPreview(null)}
+            />
+
+            <AiTechnologyWizard
+                open={isAiWizardOpen}
+                onClose={() => setIsAiWizardOpen(false)}
+                onPresetCreated={handleAiWizardComplete}
             />
         </div>
     );

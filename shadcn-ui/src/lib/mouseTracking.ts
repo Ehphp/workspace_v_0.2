@@ -193,16 +193,7 @@ export class MouseTracker {
         root.style.setProperty('--mouse-vy', this.state.vy.toFixed(6));
         root.style.setProperty('--mouse-force', this.state.force.toFixed(3));
 
-        // Debug log (throttled)
-        if (Math.random() < 0.1) {
-            console.log('[TRACKER] Mouse state:', {
-                x: this.state.x.toFixed(3),
-                y: this.state.y.toFixed(3),
-                force: this.state.force.toFixed(3),
-                enabled: this.state.enabled,
-                mounted: this.mounted
-            });
-        }
+        // Debug log removed for production
     }
 
     /**
@@ -210,8 +201,6 @@ export class MouseTracker {
      */
     public mount(): void {
         if (this.mounted) return;
-
-        console.log('[TRACKER] Mounting MouseTracker...');
 
         window.addEventListener('mousemove', this.onMouseMove, { passive: true });
         window.addEventListener('touchmove', this.onTouchMove, { passive: true });

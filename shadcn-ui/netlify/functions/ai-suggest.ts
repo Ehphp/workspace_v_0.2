@@ -26,7 +26,7 @@ interface RequestBody {
         code: string;
         name: string;
         description: string;
-        base_days: number;
+        base_hours: number;
         group: string;
         tech_category: string;
     }>;

@@ -14,7 +14,7 @@ CREATE TABLE activities (
     code VARCHAR(50) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    base_days DECIMAL(5,2) NOT NULL,
+    base_hours DECIMAL(5,2) NOT NULL,
     tech_category VARCHAR(50) NOT NULL, -- POWER_PLATFORM, BACKEND, FRONTEND, MULTI
     "group" VARCHAR(50) NOT NULL, -- ANALYSIS, DEV, TEST, OPS, GOVERNANCE
     active BOOLEAN DEFAULT true,
