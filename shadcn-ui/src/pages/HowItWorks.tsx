@@ -31,8 +31,8 @@ const steps = [
   },
   {
     icon: Database,
-    title: 'Company Presets',
-    description: 'Applica i preset aziendali personalizzati: tecnologie standard, attività ricorrenti e metriche di produttività.',
+    title: 'Tecnologie Aziendali',
+    description: 'Applica le tecnologie aziendali personalizzate: standardizza il lavoro, attività ricorrenti e metriche di produttività.',
     color: 'text-indigo-600',
     bg: 'bg-indigo-100',
     border: 'border-indigo-200',

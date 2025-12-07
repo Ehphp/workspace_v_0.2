@@ -229,15 +229,15 @@ export default function RequirementDetail() {
             }
 
             if (!presetIdToUse) {
-                throw new Error('No technology preset available for estimation.');
+                throw new Error('No technology available for estimation.');
             }
 
             const selectedPreset = presets.find(p => p.id === presetIdToUse);
-            if (!selectedPreset) throw new Error('Invalid preset selected.');
+            if (!selectedPreset) throw new Error('Invalid technology selected.');
 
             const activitiesForPreset = filterActivitiesForPreset(selectedPreset);
             if (activitiesForPreset.length === 0) {
-                throw new Error('No activities available for the selected technology preset.');
+                throw new Error('No activities available for the selected technology.');
             }
 
             // 2. Call AI
@@ -270,7 +270,7 @@ export default function RequirementDetail() {
             const activityIdsToApply = suggestedActivityIds.length > 0 ? suggestedActivityIds : fallbackActivityIds;
 
             if (activityIdsToApply.length === 0) {
-                throw new Error('No compatible activities found for the selected technology preset.');
+                throw new Error('No compatible activities found for the selected technology.');
             }
 
             applyAiSuggestions(activityIdsToApply); // This triggers calculation via useEffect/useMemo in hook

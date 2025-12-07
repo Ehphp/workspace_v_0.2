@@ -111,7 +111,7 @@ const mockRisks: Risk[] = [
     },
 ];
 
-const mockPreset: TechnologyPreset = {
+const mockTech: TechnologyPreset = {
     id: '1',
     code: 'PP_BASIC',
     name: 'Power Platform Basic',
@@ -120,6 +120,9 @@ const mockPreset: TechnologyPreset = {
     default_activity_codes: ['PP_ANL_ALIGN', 'PP_DV_FIELD', 'PP_DV_FORM'],
     default_driver_values: { COMPLEXITY: 'MEDIUM' },
     default_risks: ['INTEGRATION'],
+    color: 'green',
+    icon: 'database',
+    sort_order: 1,
     created_at: '2024-01-01',
 };
 
@@ -215,7 +218,7 @@ describe('AI Structured Outputs - Phase 2', () => {
 
             const result = await suggestActivities({
                 description,
-                preset: mockPreset,
+                preset: mockTech,
                 activities: mockActivities,
                 drivers: mockDrivers,
                 risks: mockRisks,
@@ -247,7 +250,7 @@ describe('AI Structured Outputs - Phase 2', () => {
 
             const result = await suggestActivities({
                 description,
-                preset: mockPreset,
+                preset: mockTech,
                 activities: mockActivities,
                 drivers: mockDrivers,
                 risks: mockRisks,
@@ -268,7 +271,7 @@ describe('AI Structured Outputs - Phase 2', () => {
 
             const result = await suggestActivities({
                 description,
-                preset: mockPreset,
+                preset: mockTech,
                 activities: mockActivities,
                 drivers: mockDrivers,
                 risks: mockRisks,
@@ -301,7 +304,7 @@ describe('AI Structured Outputs - Phase 2', () => {
             for (const description of requirements) {
                 const result = await suggestActivities({
                     description,
-                    preset: mockPreset,
+                    preset: mockTech,
                     activities: mockActivities,
                     drivers: mockDrivers,
                     risks: mockRisks,

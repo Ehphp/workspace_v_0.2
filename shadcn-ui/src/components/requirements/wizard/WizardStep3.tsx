@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 import { MOCK_ACTIVITIES, MOCK_TECHNOLOGY_PRESETS } from '@/lib/mockData';
 import type { Activity, TechnologyPreset } from '@/types/database';
 import type { WizardData } from '@/hooks/useWizardState';
@@ -14,6 +15,7 @@ interface WizardStep3Props {
 }
 
 export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props) {
+  const { user } = useAuth();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [preset, setPreset] = useState<TechnologyPreset | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,12 +55,28 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
       setPreset(currentPreset);
 
       if (currentPreset) {
-        const { data: activitiesData, error: activitiesError } = await supabase
+        // Build query to include:
+        // 1. Standard activities matching tech_category or MULTI
+        // 2. Custom activities created by the current user (any tech_category)
+        let query = supabase
           .from('activities')
           .select('*')
-          .or(`tech_category.eq.${currentPreset.tech_category},tech_category.eq.MULTI`)
           .eq('active', true)
           .order('group');
+
+        if (user?.id) {
+          // Include standard activities for tech OR custom activities by user
+          query = query.or(
+            `and(tech_category.eq.${currentPreset.tech_category},is_custom.is.null),` +
+            `and(tech_category.eq.MULTI,is_custom.is.null),` +
+            `and(is_custom.eq.true,created_by.eq.${user.id})`
+          );
+        } else {
+          // No user logged in, only show standard activities
+          query = query.or(`tech_category.eq.${currentPreset.tech_category},tech_category.eq.MULTI`);
+        }
+
+        const { data: activitiesData, error: activitiesError } = await query;
 
         let resolvedActivities: Activity[];
         let effectivePreset: TechnologyPreset | null = currentPreset;
@@ -144,6 +162,7 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
         onUpdate({
           selectedActivityCodes: preset.default_activity_codes,
           aiSuggestedActivityCodes: preset.default_activity_codes,
+          activitySuggestionResult: suggestion,
         });
         setAiUsed(true);
         setAiStatus('success');
@@ -154,6 +173,7 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
       onUpdate({
         selectedActivityCodes: suggestedCodes,
         aiSuggestedActivityCodes: suggestedCodes,
+        activitySuggestionResult: suggestion,
       });
 
       setAiUsed(true);
@@ -178,6 +198,24 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
       acc[activity.group] = [];
     }
     acc[activity.group].push(activity);
+    return acc;
+  }, {} as Record<string, Activity[]>);
+
+  // Sort activities within each group: AI-suggested first, then alphabetically by name
+  const sortedGroupedActivities = Object.entries(groupedActivities).reduce((acc, [group, groupActivities]) => {
+    const sorted = [...groupActivities].sort((a, b) => {
+      const aIsAiSuggested = data.aiSuggestedActivityCodes.includes(a.code);
+      const bIsAiSuggested = data.aiSuggestedActivityCodes.includes(b.code);
+
+      // AI-suggested activities come first
+      if (aIsAiSuggested && !bIsAiSuggested) return -1;
+      if (!aIsAiSuggested && bIsAiSuggested) return 1;
+
+      // Within same category (both AI or both non-AI), sort alphabetically by name
+      return a.name.localeCompare(b.name);
+    });
+
+    acc[group] = sorted;
     return acc;
   }, {} as Record<string, Activity[]>);
 
@@ -313,7 +351,7 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
 
       <div className="flex-1 overflow-y-auto pr-1">
         <div className="space-y-4">
-          {Object.entries(groupedActivities).map(([group, groupActivities]) => (
+          {Object.entries(sortedGroupedActivities).map(([group, groupActivities]) => (
             <div key={group}>
               <h3 className="font-semibold text-xs mb-2 text-slate-800 flex items-center gap-2 sticky top-0 bg-white py-1 z-10">
                 <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500"></div>

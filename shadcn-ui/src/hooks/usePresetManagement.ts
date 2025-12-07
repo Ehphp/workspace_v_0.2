@@ -184,7 +184,7 @@ export function usePresetManagement(userId: string | undefined) {
                 }
             }
 
-            toast.success(editingId ? 'Preset aggiornato' : 'Preset creato');
+            toast.success(editingId ? 'Tecnologia aggiornata' : 'Tecnologia creata');
             loadData();
             return true;
         } catch (err) {
@@ -197,7 +197,7 @@ export function usePresetManagement(userId: string | undefined) {
     };
 
     const deletePreset = async (preset: PresetView) => {
-        if (!confirm('Sei sicuro di voler eliminare questo preset?')) return false;
+        if (!confirm('Sei sicuro di voler eliminare questa tecnologia?')) return false;
 
         try {
             const { error } = await supabase
@@ -208,7 +208,7 @@ export function usePresetManagement(userId: string | undefined) {
 
             if (error) throw error;
 
-            toast.success('Preset eliminato');
+            toast.success('Tecnologia eliminata');
             loadData();
             return true;
         } catch (err) {

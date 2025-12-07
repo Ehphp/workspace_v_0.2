@@ -26,7 +26,7 @@ export function useRequirementActions({ requirement, user, refetchRequirement }:
 
     const isSavingSection = useCallback((section: EditSection) => savingSections.has(section), [savingSections]);
 
-    const saveHeader = useCallback(async (data: Pick<EditedData, 'title' | 'priority' | 'state'>, stopEditing: () => void) => {
+    const saveHeader = useCallback(async (data: Pick<EditedData, 'title' | 'priority' | 'state' | 'business_owner' | 'tech_preset_id'>, stopEditing: () => void) => {
         if (!requirement || !user || isSavingSection('header')) return;
 
         // Validation
@@ -58,6 +58,8 @@ export function useRequirementActions({ requirement, user, refetchRequirement }:
                     title: data.title.trim(),
                     priority: data.priority,
                     state: data.state,
+                    business_owner: data.business_owner?.trim() || null,
+                    tech_preset_id: data.tech_preset_id,
                     updated_at: new Date().toISOString(),
                 })
                 .eq('id', requirement.id)
@@ -68,7 +70,7 @@ export function useRequirementActions({ requirement, user, refetchRequirement }:
 
             showSuccess('Header updated successfully');
             stopEditing();
-            // No refetch - optimistic update already applied
+            await refetchRequirement();
         } catch (error) {
             console.error('Error updating header:', error);
             showApiError(error, 'aggiornamento header');

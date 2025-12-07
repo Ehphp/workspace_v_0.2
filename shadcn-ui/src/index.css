@@ -97,6 +97,25 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold;
   }
+
+  /* Ensure focus rings display on all four sides for all input types */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
+  [role="combobox"]:focus-visible {
+    outline: none;
+    box-shadow: 
+      0 0 0 2px hsl(var(--background)),
+      0 0 0 4px hsl(var(--ring));
+  }
+
+  /* Remove any browser-specific per-side border overrides */
+  input,
+  textarea,
+  select {
+    border-style: solid !important;
+    border-width: 1px !important;
+  }
 }
 
 @layer utilities {

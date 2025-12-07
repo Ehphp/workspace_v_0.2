@@ -71,7 +71,7 @@ export default function Register() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="h-9 border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                className="h-9 text-sm"
               />
             </div>
             <div className="space-y-1.5">
@@ -83,7 +83,7 @@ export default function Register() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="h-9 border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                className="h-9 text-sm"
               />
               <p className="text-[10px] text-slate-500 flex items-center gap-1">
                 <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
@@ -101,7 +101,7 @@ export default function Register() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                className="h-9 border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                className="h-9 text-sm"
               />
             </div>
 

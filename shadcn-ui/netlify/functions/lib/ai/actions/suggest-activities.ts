@@ -30,6 +30,7 @@ export interface AIActivitySuggestion {
     isValidRequirement: boolean;
     activityCodes: string[];
     reasoning?: string;
+    generatedTitle?: string;
 }
 
 /**

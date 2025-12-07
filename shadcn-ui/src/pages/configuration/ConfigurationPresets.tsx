@@ -4,7 +4,7 @@ import { Header } from '@/components/layout/Header';
 import { useAuth } from '@/hooks/useAuth';
 import { RingParticlesBackground } from '@/components/RingParticlesBackground';
 import { usePresetManagement, initialPresetForm, type PresetForm, type PresetView } from '@/hooks/usePresetManagement';
-import { PresetFormDialog } from '@/components/configuration/presets/PresetFormDialog';
+import { TechnologyDialog } from '@/components/configuration/presets/TechnologyDialog';
 import { PresetPreviewDialog } from '@/components/configuration/presets/PresetPreviewDialog';
 import { PresetTableRow } from '@/components/configuration/presets/PresetTableRow';
 import { toast } from 'sonner';
@@ -44,6 +44,30 @@ export default function ConfigurationPresets() {
     const [form, setForm] = useState<PresetForm>(initialPresetForm);
     const [selectedPreview, setSelectedPreview] = useState<PresetView | null>(null);
 
+    const particlesConfig = useMemo(() => ({
+        shape: 'ring' as const,
+        particleCount: 800,
+        radius: 38,
+        thickness: 18,
+        particleSize: [1, 5] as [number, number],
+        alphaRange: [0.5, 1.0] as [number, number],
+        color: { h: 120, s: 80 },
+        drift: 0.1,
+        angularSpeed: 0.03,
+        noiseFrequency: 0.9,
+        noiseAmplitude: 6,
+        seed: 42069,
+        blendMode: 'normal' as GlobalCompositeOperation,
+        repeatPattern: true,
+        responsive: {
+            maxParticlesMobile: 200,
+            scaleWithDPR: true
+        },
+        accessibility: {
+            prefersReducedMotion: true
+        }
+    }), []);
+
     const filteredPresets = useMemo(() => {
         let list = presets;
         if (viewFilter === 'OOTB') list = list.filter(p => !p.is_custom);
@@ -59,7 +83,7 @@ export default function ConfigurationPresets() {
 
     const handleEdit = (preset: PresetView) => {
         if (!preset.is_custom || preset.created_by !== user?.id) {
-            toast.error('Non puoi modificare questo preset');
+            toast.error('Non puoi modificare questa tecnologia');
             return;
         }
         setEditingId(preset.id);
@@ -85,11 +109,11 @@ export default function ConfigurationPresets() {
             riskCodes: [...preset.default_risks],
         });
         setIsDialogOpen(true);
-        toast.message('Preset duplicato', { description: 'Modifica e salva il nuovo preset custom.' });
+        toast.message('Tecnologia duplicata', { description: 'Modifica e salva la nuova tecnologia custom.' });
     };
 
-    const handleSave = async () => {
-        const success = await savePreset(form, editingId);
+    const handleSave = async (data: PresetForm) => {
+        const success = await savePreset(data, editingId);
         if (success) {
             setIsDialogOpen(false);
         }
@@ -108,30 +132,8 @@ export default function ConfigurationPresets() {
             {/* Ring Particles Animated Background */}
             <RingParticlesBackground
                 usePaintWorklet={false}
-                enableMouseInteraction={true}
-                config={{
-                    shape: 'ring',
-                    particleCount: 800,
-                    radius: 38,
-                    thickness: 18,
-                    particleSize: [1, 5],
-                    alphaRange: [0.5, 1.0],
-                    color: { h: 120, s: 80 },
-                    drift: 0.1,
-                    angularSpeed: 0.03,
-                    noiseFrequency: 0.9,
-                    noiseAmplitude: 6,
-                    seed: 42069,
-                    blendMode: 'normal' as GlobalCompositeOperation,
-                    repeatPattern: true,
-                    responsive: {
-                        maxParticlesMobile: 200,
-                        scaleWithDPR: true
-                    },
-                    accessibility: {
-                        prefersReducedMotion: true
-                    }
-                }}
+                enableMouseInteraction={!isDialogOpen}
+                config={particlesConfig}
             />
 
             {/* Background Pattern */}
@@ -177,7 +179,7 @@ export default function ConfigurationPresets() {
                             Configurazione
                         </Badge>
                         <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900">
-                            Preset Tecnologici
+                            Tecnologie
                             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">
                                 standardizza il lavoro
                             </span>
@@ -188,7 +190,7 @@ export default function ConfigurationPresets() {
                         <div className="flex flex-wrap gap-3">
                             <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/80 border border-slate-200 shadow-sm text-sm font-semibold text-slate-700">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                                {presets.length} preset totali
+                                {presets.length} tecnologie totali
                             </div>
                             <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/80 border border-slate-200 shadow-sm text-sm font-semibold text-slate-700">
                                 <Sparkles className="w-4 h-4 text-amber-500" />
@@ -201,7 +203,7 @@ export default function ConfigurationPresets() {
                                 onClick={handleCreate}
                             >
                                 <Plus className="w-4 h-4 mr-2" />
-                                Crea nuovo preset
+                                Crea nuova tecnologia
                             </Button>
                         </div>
                     </motion.div>
@@ -223,7 +225,7 @@ export default function ConfigurationPresets() {
                                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-[11px] uppercase tracking-[0.2em] text-indigo-700 font-semibold">
                                         Libreria
                                     </div>
-                                    <h2 className="text-2xl font-bold mt-2 leading-tight text-slate-900">Elenco Preset</h2>
+                                    <h2 className="text-2xl font-bold mt-2 leading-tight text-slate-900">Elenco Tecnologie</h2>
                                 </div>
                                 <div className="flex gap-1 bg-slate-100 rounded-full p-1 border border-slate-200">
                                     <Button size="sm" variant={viewFilter === 'ALL' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600" onClick={() => setViewFilter('ALL')}>
@@ -253,7 +255,7 @@ export default function ConfigurationPresets() {
                                             {filteredPresets.length === 0 ? (
                                                 <TableRow>
                                                     <TableCell colSpan={4} className="text-center py-8 text-slate-500">
-                                                        Nessun preset trovato
+                                                        Nessuna tecnologia trovata
                                                     </TableCell>
                                                 </TableRow>
                                             ) : (
@@ -278,14 +280,18 @@ export default function ConfigurationPresets() {
                 </div>
             </main>
 
-            <PresetFormDialog
+            <TechnologyDialog
                 open={isDialogOpen}
                 onOpenChange={setIsDialogOpen}
-                form={form}
-                onFormChange={setForm}
-                isEditing={!!editingId}
+                initialData={form}
+                // onFormChange is handled internally by useForm in TechnologyDialog
+                onSave={async (data) => {
+                    setForm(data); // Sync for edit mode if needed, though mostly for re-opening
+                    await handleSave(data);
+                }}
                 saving={saving}
-                onSave={handleSave}
+                isEditing={!!editingId}
+                editingId={editingId}
                 allActivities={allActivities}
                 allDrivers={allDrivers}
                 allRisks={allRisks}

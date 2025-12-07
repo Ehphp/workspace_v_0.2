@@ -116,7 +116,7 @@ export function ListTechnologyDialog({ open, onOpenChange, list, onSaved }: List
 
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                        <Label>Preset tecnologico</Label>
+                        <Label>Tecnologia</Label>
                         <Select value={selectedPresetId} onValueChange={setSelectedPresetId}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Seleziona tecnologia..." />

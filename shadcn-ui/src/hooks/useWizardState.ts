@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { NormalizationResult } from '@/lib/openai';
+import type { AIActivitySuggestion } from '@/types/estimation';
 
 export interface WizardData {
   reqId?: string;
@@ -15,6 +16,7 @@ export interface WizardData {
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
   state: 'PROPOSED' | 'SELECTED' | 'SCHEDULED' | 'DONE';
   normalizationResult?: NormalizationResult | null;
+  activitySuggestionResult?: AIActivitySuggestion | null;
 }
 
 const STORAGE_KEY = 'estimation_wizard_data';
@@ -60,5 +62,6 @@ function getInitialData(): WizardData {
     state: 'PROPOSED',
     business_owner: '',
     normalizationResult: null,
+    activitySuggestionResult: null,
   };
 }

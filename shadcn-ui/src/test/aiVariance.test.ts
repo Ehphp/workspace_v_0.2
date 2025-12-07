@@ -54,7 +54,7 @@ const mockRisks: Risk[] = [
     { id: '3', code: 'R_PERF', name: 'Performance Risk', description: 'Performance concerns', weight: 6, created_at: '2024-01-01' },
 ];
 
-const mockPreset: TechnologyPreset = {
+const mockTech: TechnologyPreset = {
     id: '1',
     code: 'FULLSTACK_WEB',
     name: 'Full Stack Web',
@@ -63,6 +63,9 @@ const mockPreset: TechnologyPreset = {
     default_activity_codes: ['REQ_ANALYSIS', 'DEV_BACKEND', 'DEV_FRONTEND', 'TEST_UNIT'],
     default_driver_values: { COMPLEXITY: 'MEDIUM', INTEGRATION: 'FEW' },
     default_risks: ['R_TECH'],
+    color: 'blue',
+    icon: 'code',
+    sort_order: 1,
     created_at: '2024-01-01',
 }; describe('AI Variance Analysis', () => {
     // NOTA: Questi test sono disabilitati di default perché chiamano API reali
@@ -87,7 +90,7 @@ const mockPreset: TechnologyPreset = {
 
                 const result = await suggestActivities({
                     description: requirement,
-                    preset: mockPreset,
+                    preset: mockTech,
                     activities: mockActivities,
                     drivers: mockDrivers,
                     risks: mockRisks,
@@ -199,7 +202,7 @@ const mockPreset: TechnologyPreset = {
             for (let i = 0; i < 2; i++) {
                 const result = await suggestActivities({
                     description: simpleReq,
-                    preset: mockPreset,
+                    preset: mockTech,
                     activities: mockActivities,
                     drivers: mockDrivers,
                     risks: mockRisks,
@@ -226,7 +229,7 @@ const mockPreset: TechnologyPreset = {
             for (let i = 0; i < 2; i++) {
                 const result = await suggestActivities({
                     description: complexReq,
-                    preset: mockPreset,
+                    preset: mockTech,
                     activities: mockActivities,
                     drivers: mockDrivers,
                     risks: mockRisks,

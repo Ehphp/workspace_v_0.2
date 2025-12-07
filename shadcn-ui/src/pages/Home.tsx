@@ -171,7 +171,7 @@ export default function Home() {
                 </h2>
 
                 <p className="text-sm lg:text-base text-slate-600 leading-relaxed max-w-lg">
-                  Standardizza il tuo processo di vendita con stime basate su AI, preset aziendali e governance completa per proteggere i margini del team.
+                  Standardizza il tuo processo di vendita con stime basate su AI, tecnologie aziendali e governance completa per proteggere i margini del team.
                 </p>
               </div>
 
@@ -267,7 +267,7 @@ export default function Home() {
                       },
                       {
                         num: '2',
-                        title: 'Company Presets',
+                        title: 'Company Technologies',
                         desc: 'Apply standardized tech & activities',
                         icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />,
                         color: 'from-indigo-500 to-purple-500'

@@ -1,6 +1,6 @@
 import type React from 'react';
 import { Button } from '@/components/ui/button';
-import { FileText, Cpu, Zap, Plus } from 'lucide-react';
+import { FileText, Zap, Plus, Settings } from 'lucide-react';
 import type { List } from '@/types/database';
 
 interface RequirementsHeaderProps {
@@ -10,10 +10,10 @@ interface RequirementsHeaderProps {
     notEstimatedCount: number;
     errorMessage: string | null;
     filteredRequirementsCount: number;
-    onSetTechnology: () => void;
     onBulkEstimate: () => void;
     onCreateRequirement: () => void;
     onRetry: () => void;
+    onEditList: () => void;
 }
 
 export function RequirementsHeader({
@@ -23,10 +23,10 @@ export function RequirementsHeader({
     notEstimatedCount,
     errorMessage,
     filteredRequirementsCount,
-    onSetTechnology,
     onBulkEstimate,
     onCreateRequirement,
     onRetry,
+    onEditList,
 }: RequirementsHeaderProps) {
     return (
         <div className="flex-shrink-0 relative border-b border-white/50 bg-white/40 backdrop-blur-md shadow-sm z-10">
@@ -53,14 +53,16 @@ export function RequirementsHeader({
                     {/* Right side: Actions */}
                     <div className="flex items-center gap-3">
                         <Button
-                            variant="outline"
-                            onClick={onSetTechnology}
+                            variant="ghost"
+                            size="icon"
+                            onClick={onEditList}
                             disabled={!list}
-                            className="border-slate-300 text-slate-800 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50/60 shadow-sm"
+                            className="text-slate-400 hover:text-slate-700"
+                            title="Edit Project Settings"
                         >
-                            <Cpu className="mr-2 h-4 w-4" />
-                            Set Technology
+                            <Settings className="h-5 w-5" />
                         </Button>
+                        <div className="h-6 w-px bg-slate-200 mx-1" />
                         <Button
                             onClick={onBulkEstimate}
                             disabled={filteredRequirementsCount === 0}

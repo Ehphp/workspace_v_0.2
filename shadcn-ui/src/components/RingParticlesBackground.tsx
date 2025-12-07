@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { RingParticlesCanvas, RingParticlesConfig } from './RingParticlesCanvas';
 import { MouseTracker } from '@/lib/mouseTracking';
 
@@ -41,7 +41,7 @@ const defaultConfig: RingParticlesConfig = {
     }
 };
 
-export const RingParticlesBackground: React.FC<RingParticlesBackgroundProps> = ({
+export const RingParticlesBackground = React.memo<RingParticlesBackgroundProps>(({
     className = '',
     config: userConfig = {},
     usePaintWorklet = true,
@@ -55,7 +55,7 @@ export const RingParticlesBackground: React.FC<RingParticlesBackgroundProps> = (
         localStorageKey: 'ringParticles_mouseInteraction'
     }));
 
-    const config: RingParticlesConfig = {
+    const config: RingParticlesConfig = useMemo(() => ({
         ...defaultConfig,
         ...userConfig,
         responsive: {
@@ -71,7 +71,7 @@ export const RingParticlesBackground: React.FC<RingParticlesBackgroundProps> = (
             ...userConfig.mouseInteraction,
             enabled: enableMouseInteraction && (userConfig.mouseInteraction?.enabled ?? defaultConfig.mouseInteraction!.enabled)
         }
-    };
+    }), [userConfig, enableMouseInteraction]);
 
     // Check Paint Worklet support and load
     useEffect(() => {
@@ -196,7 +196,7 @@ export const RingParticlesBackground: React.FC<RingParticlesBackgroundProps> = (
             )}
         </div>
     );
-};
+});
 
 // Export configuration utilities for easy customization
 export const createRingConfig = (overrides: Partial<RingParticlesConfig>): Partial<RingParticlesConfig> => {

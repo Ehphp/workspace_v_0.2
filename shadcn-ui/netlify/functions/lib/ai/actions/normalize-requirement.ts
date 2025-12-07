@@ -14,6 +14,7 @@ export interface NormalizeRequirementResponse {
     normalizedDescription: string;
     validationIssues: string[];
     transformNotes: string[];
+    generatedTitle?: string;
 }
 
 /**

@@ -19,8 +19,8 @@ import { ImportRequirementsDialog } from '@/components/requirements/ImportRequir
 import { ClearListDialog } from '@/components/lists/ClearListDialog';
 import { DeleteRequirementDialog } from '@/components/requirements/DeleteRequirementDialog';
 import { BulkEstimateDialog } from '@/components/requirements/BulkEstimateDialog';
+import { EditListDialog } from '@/components/lists/EditListDialog';
 import { Header } from '@/components/layout/Header';
-import { ListTechnologyDialog } from '@/components/lists/ListTechnologyDialog';
 import { useAuthStore } from '@/store/useAuthStore';
 import { RequirementsHeader } from '@/components/requirements/RequirementsHeader';
 import { RequirementsFilters } from '@/components/requirements/RequirementsFilters';
@@ -126,7 +126,7 @@ export default function Requirements() {
     // Dialog state
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [showImportDialog, setShowImportDialog] = useState(false);
-    const [showTechDialog, setShowTechDialog] = useState(false);
+    const [showListEditDialog, setShowListEditDialog] = useState(false);
     const [showClearDialog, setShowClearDialog] = useState(false);
     const [showBulkEstimate, setShowBulkEstimate] = useState(false);
     const [deleteRequirement, setDeleteRequirement] = useState<Requirement | null>(null);
@@ -324,10 +324,10 @@ export default function Requirements() {
                 notEstimatedCount={notEstimatedCount}
                 errorMessage={errorMessage}
                 filteredRequirementsCount={filteredRequirements.length}
-                onSetTechnology={() => setShowTechDialog(true)}
                 onBulkEstimate={() => setShowBulkEstimate(true)}
                 onCreateRequirement={() => setShowCreateDialog(true)}
                 onRetry={() => loadData()}
+                onEditList={() => setShowListEditDialog(true)}
             />
 
             {/* Filters Bar */}
@@ -555,12 +555,6 @@ export default function Requirements() {
                         listId={listId}
                         onImport={handleImportRequirements}
                     />
-                    <ListTechnologyDialog
-                        list={list}
-                        open={showTechDialog}
-                        onOpenChange={setShowTechDialog}
-                        onSuccess={loadData}
-                    />
                     <ClearListDialog
                         open={showClearDialog}
                         onOpenChange={setShowClearDialog}
@@ -575,6 +569,15 @@ export default function Requirements() {
                         requirements={filteredRequirements}
                         listTechPresetId={list?.tech_preset_id}
                         onSuccess={loadData}
+                    />
+                    <EditListDialog
+                        open={showListEditDialog}
+                        onOpenChange={setShowListEditDialog}
+                        list={list}
+                        onSuccess={() => {
+                            setShowListEditDialog(false);
+                            loadData();
+                        }}
                     />
                 </>
             )}

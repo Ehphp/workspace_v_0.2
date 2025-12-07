@@ -103,7 +103,7 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-900 leading-tight">Select Technology</h2>
-            <p className="text-xs text-slate-600">Pick the closest preset to keep activities relevant</p>
+            <p className="text-xs text-slate-600">Pick the closest technology to keep activities relevant</p>
           </div>
         </div>
         {isDemoMode && (

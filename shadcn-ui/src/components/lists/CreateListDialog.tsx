@@ -47,7 +47,7 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
       setPresets(data);
     } catch (error) {
       console.error('Error loading presets:', error);
-      toast.error('Failed to load technology presets');
+      toast.error('Failed to load technologies');
     }
   };
 
@@ -182,7 +182,7 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
               </Label>
               <Select value={techPresetId} onValueChange={setTechPresetId}>
                 <SelectTrigger className="bg-slate-50/50 border-slate-200 focus:bg-white transition-all">
-                  <SelectValue placeholder="Select technology preset" />
+                  <SelectValue placeholder="Select technology" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__NONE__">None (set per requirement)</SelectItem>

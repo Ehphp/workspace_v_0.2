@@ -43,4 +43,5 @@ export interface AIActivitySuggestion {
   suggestedDrivers?: Record<string, string>;
   suggestedRisks?: string[];
   reasoning?: string;
+  generatedTitle?: string;
 }

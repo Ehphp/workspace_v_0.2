@@ -66,9 +66,13 @@ export function createActivitySchema(validActivityCodes: string[]) {
                     reasoning: {
                         type: "string",
                         description: "Brief explanation of the activity selection (max 500 characters)"
+                    },
+                    generatedTitle: {
+                        type: "string",
+                        description: "Concise title for the requirement (3-8 words, same language as input)"
                     }
                 },
-                required: ["isValidRequirement", "activityCodes", "reasoning"],
+                required: ["isValidRequirement", "activityCodes", "reasoning", "generatedTitle"],
                 additionalProperties: false  //  No extra fields allowed
             }
         }
@@ -99,9 +103,10 @@ export function createNormalizationSchema() {
                     transformNotes: {
                         type: "array",
                         items: { type: "string" }
-                    }
+                    },
+                    generatedTitle: { type: "string" }
                 },
-                required: ["isValidRequirement", "confidence", "originalDescription", "normalizedDescription", "validationIssues", "transformNotes"],
+                required: ["isValidRequirement", "confidence", "originalDescription", "normalizedDescription", "validationIssues", "transformNotes", "generatedTitle"],
                 additionalProperties: false
             }
         }
@@ -177,7 +182,7 @@ SELECTION GUIDELINES:
 - Include typical SDLC activities: analysis -> development -> testing -> deployment
 
 RETURN FORMAT:
-{"isValidRequirement": true/false, "activityCodes": ["CODE1", "CODE2", ...], "reasoning": "brief explanation of your selection"}`;
+{"isValidRequirement": true/false, "activityCodes": ["CODE1", "CODE2", ...], "reasoning": "brief explanation of your selection", "generatedTitle": "Concise requirement title (3-8 words, same language as input)"}`;
 }
 
 /**
@@ -196,13 +201,15 @@ OUTPUT: A structured JSON object with the following fields:
 - normalizedDescription: string (a clear, professional, concise rewrite of the requirement. CRITICAL: Keep the SAME LANGUAGE as the input. DO NOT translate to English or other languages. DO NOT invent new details. DO NOT add systems/APIs not mentioned. Merge scattered info into a cohesive paragraph.)
 - validationIssues: array of strings (list of missing info, ambiguities, or contradictions. If none, empty array.)
 - transformNotes: array of strings (brief notes on what you changed/interpreted, e.g., "Merged 'Notes' column into description", "Clarified user role")
+- generatedTitle: string (a concise, descriptive title for the requirement, 3-8 words, in the SAME LANGUAGE as the input. Example: "Add user profile export feature", "Aggiornamento lettera con frase")
 
 RULES:
 1. DO NOT translate the text. Keep the original language (Italian, English, etc.).
 2. DO NOT invent new constraints, numbers, or systems.
 3. If the input is vague, mark it in validationIssues, don't guess.
 4. Keep the normalizedDescription technical but readable.
-5. If the input is just a title, expand it slightly into a sentence if possible, but don't hallucinate.`;
+5. If the input is just a title, expand it slightly into a sentence if possible, but don't hallucinate.
+6. ALWAYS generate a title (generatedTitle) that captures the essence of the requirement in 3-8 words.`;
 }
 
 /**

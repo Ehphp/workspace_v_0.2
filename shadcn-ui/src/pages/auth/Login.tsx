@@ -59,7 +59,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="h-9 border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
+                className="h-9 text-sm"
               />
             </div>
             <div className="space-y-1.5">
@@ -71,7 +71,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="h-9 border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
+                className="h-9 text-sm"
               />
             </div>
 

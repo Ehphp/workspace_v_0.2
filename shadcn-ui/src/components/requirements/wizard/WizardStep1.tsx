@@ -90,27 +90,14 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
       <div className="flex-1 overflow-y-auto pr-1 space-y-3">
         <div className="grid gap-3 md:grid-cols-[1.05fr,0.95fr]">
           <div className="space-y-2.5">
-            <div className="space-y-1.5">
-              <Label htmlFor="title" className="text-xs">Title (optional)</Label>
-              <Input
-                id="title"
-                placeholder="Brief requirement title"
-                value={data.title || ''}
-                onChange={(e) => onUpdate({ title: e.target.value })}
-                className="bg-white h-9 text-sm"
-                autoFocus
-              />
-            </div>
-
             <div className={`relative group rounded-xl border transition-all duration-200 bg-white ${isFocused
-              ? 'border-blue-400 shadow-[0_8px_30px_rgba(59,130,246,0.12)]'
+              ? 'border-blue-400 shadow-[0_0_0_3px_rgba(59,130,246,0.1)]'
               : 'border-slate-200'
               }`}>
               <label
                 htmlFor="description"
-                className={`absolute left-3 transition-all duration-150 pointer-events-none ${isFocused || data.description
-                  ? '-top-2 text-[10px] font-semibold bg-white px-2 text-blue-600'
-                  : 'top-2.5 text-xs text-slate-500'
+                className={`absolute left-3 transition-all duration-150 pointer-events-none z-10 ${isFocused || data.description
+                  ? '-top-1.1 text-[10px] font-semibold bg-white px-2 text-blue-600 ' : 'top-2.5 text-xs text-slate-500'
                   }`}
               >
                 Requirement Description *
@@ -126,6 +113,7 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
                 maxLength={maxChars}
                 className="w-full px-3 pt-6 pb-2 pr-10 bg-transparent border-0 rounded-xl resize-none focus:outline-none focus:ring-0 text-slate-900 placeholder-slate-400 text-xs leading-relaxed"
                 placeholder="Describe scope, constraints, integrations, and outcomes..."
+                autoFocus
               />
 
               <div className="px-3 pb-2 flex items-center justify-between text-[10px] text-slate-500">
@@ -280,7 +268,7 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
                   <textarea
                     value={editedNormalizedDescription}
                     onChange={(e) => setEditedNormalizedDescription(e.target.value)}
-                    className="w-full bg-gradient-to-br from-indigo-50 to-purple-50 p-2.5 rounded-lg border-2 border-indigo-200 text-xs text-slate-800 leading-relaxed font-medium max-h-24 overflow-y-auto shadow-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    className="w-full bg-gradient-to-br from-indigo-50 to-purple-50 p-2.5 rounded-lg border-2 border-indigo-200 text-xs text-slate-800 leading-relaxed font-medium max-h-24 overflow-y-auto shadow-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:border-indigo-400 transition-all duration-200"
                     rows={3}
                   />
                 </div>
