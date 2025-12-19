@@ -63,11 +63,15 @@ export async function generateInterviewQuestions(
     // 5. Parse and validate response
     const data = await response.json();
 
+    console.log('[ai-interview-api] Raw response from server:', JSON.stringify(data, null, 2));
+
     try {
         const validated = QuestionGenerationResponseSchema.parse(data) as QuestionGenerationResponse;
+        console.log('[ai-interview-api] Validation successful');
         return validated;
     } catch (validationError) {
         console.error('[ai-interview-api] Validation failed:', validationError);
+        console.error('[ai-interview-api] Failed data:', JSON.stringify(data, null, 2));
         throw new Error('Risposta del server non valida. Riprova.');
     }
 }
@@ -84,6 +88,6 @@ export function hasQuestions(response: QuestionGenerationResponse): boolean {
  */
 export function getSuggestedCategory(
     response: QuestionGenerationResponse
-): 'FRONTEND' | 'BACKEND' | 'MULTI' {
-    return response.suggestedTechCategory || 'MULTI';
+): string {
+    return response.suggestedTechCategory || 'General'; // Default to General if not detected
 }

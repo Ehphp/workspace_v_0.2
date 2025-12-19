@@ -9,12 +9,29 @@ export interface PresetView extends TechnologyPreset {
     driverDefaults: { code: string; value: string }[];
 }
 
+// Extended Activity type to support AI-generated activities with extra fields
+export interface ActivityFormData {
+    id?: string;
+    code: string;
+    name?: string;
+    title?: string; // From AI generation
+    description?: string;
+    baseDays?: number;
+    baseHours?: number; // From AI generation
+    base_hours?: number;
+    group?: string;
+    tech_category?: string;
+    active?: boolean;
+    is_custom?: boolean;
+    created_by?: string;
+}
+
 export interface PresetForm {
     name: string;
     description: string;
     detailedDescription?: string; // Optional detailed description (from AI)
     techCategory: string;
-    activities: Activity[];
+    activities: ActivityFormData[];
     driverValues: Record<string, string>;
     riskCodes: string[];
 }
@@ -178,22 +195,66 @@ export function usePresetManagement(userId: string | undefined) {
                     const activityCodeToId = new Map<string, string>();
                     allActivities.forEach(a => activityCodeToId.set(a.code, a.id));
 
-                    const rows = form.activities
-                        .map((a, idx) => {
-                            const activityId = a.id || activityCodeToId.get(a.code);
-                            if (!activityId) {
-                                console.warn(`[savePreset] Activity not found: code=${a.code}`);
-                                return null;
+                    // Process activities: create new ones if they don't exist, then link them
+                    const rows: Array<{ tech_preset_id: string; activity_id: string; position: number }> = [];
+
+                    for (let idx = 0; idx < form.activities.length; idx++) {
+                        const activity = form.activities[idx];
+                        let activityId = activity.id || activityCodeToId.get(activity.code);
+
+                        // If activity doesn't exist in database, create it as a custom activity
+                        if (!activityId) {
+                            console.log(`[savePreset] Creating new custom activity: ${activity.code}`);
+
+                            // Check if activity has required fields from AI generation
+                            if (activity.code && (activity.name || activity.title) && (activity.baseDays || activity.baseHours)) {
+                                try {
+                                    const newActivity = {
+                                        code: activity.code,
+                                        name: activity.name || activity.title || activity.code,
+                                        description: activity.description || '',
+                                        base_hours: activity.baseDays || activity.baseHours || 1, // Already in hours from AI
+                                        tech_category: form.techCategory || 'MULTI',
+                                        group: activity.group || 'DEV',
+                                        active: true,
+                                        is_custom: true,
+                                        created_by: userId
+                                    };
+
+                                    const { data: createdActivity, error: createError } = await supabase
+                                        .from('activities')
+                                        .insert(newActivity)
+                                        .select('id')
+                                        .single();
+
+                                    if (createError) {
+                                        console.error(`[savePreset] Failed to create activity ${activity.code}:`, createError);
+                                        continue; // Skip this activity
+                                    }
+
+                                    activityId = createdActivity.id;
+                                    console.log(`[savePreset] Created activity ${activity.code} with ID ${activityId}`);
+                                } catch (err) {
+                                    console.error(`[savePreset] Exception creating activity ${activity.code}:`, err);
+                                    continue; // Skip this activity
+                                }
+                            } else {
+                                console.warn(`[savePreset] Activity ${activity.code} is missing required fields, skipping`);
+                                continue; // Skip this activity
                             }
-                            return {
+                        }
+
+                        // Add to rows for linking
+                        if (activityId) {
+                            rows.push({
                                 tech_preset_id: presetId,
                                 activity_id: activityId,
                                 position: idx + 1
-                            };
-                        })
-                        .filter((row): row is NonNullable<typeof row> => row !== null);
+                            });
+                        }
+                    }
 
-                    console.log(`[savePreset] Inserting ${rows.length} activities for preset ${presetId}`);
+                    console.log(`[savePreset] Inserting ${rows.length} activity links for preset ${presetId}`);
 
                     if (rows.length > 0) {
                         const { error } = await supabase

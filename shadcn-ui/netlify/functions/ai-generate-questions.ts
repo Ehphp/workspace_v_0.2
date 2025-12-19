@@ -32,7 +32,8 @@ function getOpenAIClient(): OpenAI {
 
     return new OpenAI({
         apiKey,
-        timeout: 15000, // 15 second timeout for question generation
+        timeout: 20000, // 20 second timeout for question generation (increased from 15s)
+        maxRetries: 0, // No retries to fail fast
     });
 }
 
@@ -90,21 +91,21 @@ export const handler: Handler = async (
         };
     }
 
-    // Rate limiting - uses global AI_RATE_LIMIT_MAX from env
-    const rateKey = `questions:${authResult.userId || 'anonymous'}`;
-    const rateStatus = checkRateLimit(rateKey);
+    // Rate limiting - DISABLED FOR DEVELOPMENT
+    // const rateKey = `questions:${authResult.userId || 'anonymous'}`;
+    // const rateStatus = checkRateLimit(rateKey);
 
-    if (!rateStatus.allowed) {
-        return {
-            statusCode: 429,
-            headers,
-            body: JSON.stringify({
-                error: 'Rate limit exceeded',
-                message: 'Hai raggiunto il limite di generazione domande. Riprova tra un\'ora.',
-                retryAfter: rateStatus.retryAfter,
-            }),
-        };
-    }
+    // if (!rateStatus.allowed) {
+    //     return {
+    //         statusCode: 429,
+    //         headers,
+    //         body: JSON.stringify({
+    //             error: 'Rate limit exceeded',
+    //             message: 'Hai raggiunto il limite di generazione domande. Riprova tra un\'ora.',
+    //             retryAfter: rateStatus.retryAfter,
+    //         }),
+    //     };
+    // }
 
     try {
         // Parse request body

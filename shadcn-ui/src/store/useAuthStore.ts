@@ -30,8 +30,12 @@ export const useAuthStore = create<AuthState>()(
 
             fetchOrganizations: async () => {
                 const { user } = get();
-                if (!user) return;
+                if (!user) {
+                    console.log('[useAuthStore] fetchOrganizations: No user found');
+                    return;
+                }
 
+                console.log('[useAuthStore] Fetching organizations for user:', user.id);
                 set({ isLoading: true });
                 try {
                     // Fetch orgs where user is a member
@@ -40,9 +44,15 @@ export const useAuthStore = create<AuthState>()(
                         .select('*, organizations(*)')
                         .eq('user_id', user.id);
 
-                    if (memberError) throw memberError;
+                    if (memberError) {
+                        console.error('[useAuthStore] Error fetching members:', memberError);
+                        throw memberError;
+                    }
+
+                    console.log('[useAuthStore] Found members:', members?.length);
 
                     const organizations = members.map((m: any) => m.organizations) as Organization[];
+                    console.log('[useAuthStore] Mapped organizations:', organizations.length);
 
                     // Determine current org (restore from state or pick first)
                     let currentOrg = get().currentOrganization;
@@ -50,13 +60,17 @@ export const useAuthStore = create<AuthState>()(
                         currentOrg = organizations[0] || null;
                     }
 
+                    console.log('[useAuthStore] Current organization:', currentOrg?.id);
+
                     // Determine role in current org
                     const currentMember = members.find((m: any) => m.org_id === currentOrg?.id);
                     const userRole = currentMember ? currentMember.role : null;
 
+                    console.log('[useAuthStore] User role:', userRole);
+
                     set({ organizations, currentOrganization: currentOrg, userRole });
                 } catch (error) {
-                    console.error('Failed to fetch organizations:', error);
+                    console.error('[useAuthStore] Failed to fetch organizations:', error);
                 } finally {
                     set({ isLoading: false });
                 }

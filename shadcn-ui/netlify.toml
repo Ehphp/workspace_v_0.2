@@ -6,6 +6,20 @@
 [build.environment]
   NODE_VERSION = "20"
 
+[functions]
+  # Configuration for all functions (including AI generation)
+  node_bundler = "esbuild"
+
+# Specific configuration for AI functions with longer timeout
+[functions."ai-generate-preset"]
+  timeout = 60
+
+[functions."ai-suggest"]
+  timeout = 60
+
+[functions."ai-generate-questions"]
+  timeout = 60
+
 # Redirect all requests to index.html for SPA routing
 [[redirects]]
   from = "/*"

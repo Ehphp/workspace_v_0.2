@@ -90,23 +90,23 @@ export const handler: Handler = async (
         };
     }
 
-    // Basic rate limiting by user or IP
-    const rateKey =
-        authResult.userId ||
-        (event.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ||
-        event.headers['client-ip'] ||
-        'anonymous';
-    const rateStatus = checkRateLimit(rateKey);
-    if (!rateStatus.allowed) {
-        return {
-            statusCode: 429,
-            headers: {
-                ...headers,
-                'Retry-After': String(rateStatus.retryAfter ?? 60),
-            },
-            body: JSON.stringify({ error: 'Rate limit exceeded' }),
-        };
-    }
+    // Basic rate limiting by user or IP - DISABLED FOR DEVELOPMENT
+    // const rateKey =
+    //     authResult.userId ||
+    //     (event.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ||
+    //     event.headers['client-ip'] ||
+    //     'anonymous';
+    // const rateStatus = checkRateLimit(rateKey);
+    // if (!rateStatus.allowed) {
+    //     return {
+    //         statusCode: 429,
+    //         headers: {
+    //             ...headers,
+    //             'Retry-After': String(rateStatus.retryAfter ?? 60),
+    //         },
+    //         body: JSON.stringify({ error: 'Rate limit exceeded' }),
+    //     };
+    // }
 
     // Check API key is configured
     if (!isOpenAIConfigured()) {

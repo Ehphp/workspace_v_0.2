@@ -19,11 +19,79 @@ import { GenerationProgress } from './GenerationProgress';
 import { ReviewStep } from './ReviewStep';
 import { SaveSuccess } from './SaveSuccess';
 import type { GeneratedPreset } from '@/types/ai-preset-generation';
+import type { AiQuestion, UserAnswer } from '@/types/ai-interview';
 
 interface AiTechnologyWizardProps {
     open: boolean;
     onClose: () => void;
     onPresetCreated?: (preset: GeneratedPreset) => void;
+}
+
+/**
+ * Validate answers before preset generation
+ * Checks types, required fields, and enum values
+ */
+function validateAnswers(
+    answers: Map<string, UserAnswer>,
+    questions: AiQuestion[]
+): string[] {
+    const errors: string[] = [];
+
+    questions.forEach(q => {
+        const answer = answers.get(q.id);
+
+        // Check required questions
+        if (q.required && !answer) {
+            errors.push(`La domanda "${q.question}" è obbligatoria`);
+            return;
+        }
+
+        if (answer) {
+            // Validate based on question type
+            switch (q.type) {
+                case 'single-choice':
+                    if (typeof answer.value !== 'string') {
+                        errors.push(`Risposta "${q.question}" deve essere una scelta singola`);
+                    } else if (q.options && !q.options.some(opt => opt.id === answer.value)) {
+                        errors.push(`Valore non valido per "${q.question}"`);
+                    }
+                    break;
+
+                case 'multiple-choice':
+                    if (!Array.isArray(answer.value)) {
+                        errors.push(`Risposta "${q.question}" deve essere un array di scelte`);
+                    } else if (q.options) {
+                        const validIds = q.options.map(opt => opt.id);
+                        const invalidValues = (answer.value as string[]).filter(v => !validIds.includes(v));
+                        if (invalidValues.length > 0) {
+                            errors.push(`Valori non validi per "${q.question}": ${invalidValues.join(', ')}`);
+                        }
+                    }
+                    break;
+
+                case 'text':
+                    if (typeof answer.value !== 'string') {
+                        errors.push(`Risposta "${q.question}" deve essere testo`);
+                    } else if (q.maxLength && answer.value.length > q.maxLength) {
+                        errors.push(`Risposta "${q.question}" troppo lunga (max ${q.maxLength} caratteri)`);
+                    }
+                    break;
+
+                case 'range':
+                    if (typeof answer.value !== 'number') {
+                        errors.push(`Risposta "${q.question}" deve essere un numero`);
+                    } else {
+                        const numValue = answer.value as number;
+                        if (numValue < q.min || numValue > q.max) {
+                            errors.push(`Risposta "${q.question}" deve essere tra ${q.min} e ${q.max}`);
+                        }
+                    }
+                    break;
+            }
+        }
+    });
+
+    return errors;
 }
 
 export function AiTechnologyWizard({
@@ -96,6 +164,14 @@ export function AiTechnologyWizard({
             return;
         }
 
+        // Validate answers before proceeding
+        const validationErrors = validateAnswers(data.answers, data.questions);
+        if (validationErrors.length > 0) {
+            setGenerationError(validationErrors.join('. '));
+            console.warn('[AiTechnologyWizard] Validation errors:', validationErrors);
+            return;
+        }
+
         startGeneration();
 
         try {
@@ -120,7 +196,16 @@ export function AiTechnologyWizard({
             if (response.success && response.preset) {
                 setGeneratedPreset(response.preset);
             } else {
-                setGenerationError('Non è stato possibile generare il preset. Riprova.');
+                // Use specific error message from response if available
+                const errorMessage = response.error ||
+                    'Non è stato possibile generare il preset. Riprova.';
+                setGenerationError(errorMessage);
+
+                // Additional logging for debugging
+                console.error('[AiTechnologyWizard] Preset generation failed:', {
+                    error: response.error,
+                    metadata: response.metadata
+                });
             }
         } catch (error) {
             console.error('Preset generation error:', error);
@@ -249,23 +334,27 @@ export function AiTechnologyWizard({
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="!max-w-none !w-screen !h-screen !max-h-none !rounded-none !border-0 sm:rounded-none !p-0 overflow-y-auto bg-background/95 backdrop-blur-sm">
                 <VisuallyHidden>
                     <DialogTitle>AI Technology Wizard</DialogTitle>
                 </VisuallyHidden>
-                <div className="py-6">
-                    {renderStep()}
-                </div>
 
-                {/* Progress Indicator (bottom) */}
-                {state === 'interview' && (
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-100">
-                        <div
-                            className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-300"
-                            style={{ width: `${progress}%` }}
-                        />
+                <div className="max-w-5xl mx-auto min-h-full w-full relative flex flex-col p-6 md:p-12">
+                    {/* Close button is automatically rendered by DialogContent but we want to ensure content doesn't overlap */}
+                    <div className="flex-1 py-4">
+                        {renderStep()}
                     </div>
-                )}
+
+                    {/* Progress Indicator (bottom fixed or sticky) */}
+                    {state === 'interview' && (
+                        <div className="fixed bottom-0 left-0 right-0 h-1 bg-slate-100 z-50">
+                            <div
+                                className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-300"
+                                style={{ width: `${progress}%` }}
+                            />
+                        </div>
+                    )}
+                </div>
             </DialogContent>
         </Dialog>
     );

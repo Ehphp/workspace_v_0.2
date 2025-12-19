@@ -11,13 +11,20 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const { user, loading } = useAuth();
-  const { setUser } = useAuthStore();
+  const { setUser, fetchOrganizations, currentOrganization } = useAuthStore();
 
   useEffect(() => {
     if (user) {
+      console.log('[AuthGuard] User found, setting in store and fetching organizations');
       setUser(user);
+
+      // Only fetch if we don't have an organization yet
+      if (!currentOrganization) {
+        console.log('[AuthGuard] No organization, fetching...');
+        fetchOrganizations();
+      }
     }
-  }, [user, setUser]);
+  }, [user, setUser, fetchOrganizations, currentOrganization]);
 
   if (loading) {
     return (

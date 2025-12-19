@@ -39,7 +39,7 @@ interface QuestionGenerationResponse {
     success: boolean;
     questions: AiQuestion[];
     reasoning?: string;
-    suggestedTechCategory?: 'FRONTEND' | 'BACKEND' | 'MULTI';
+    suggestedTechCategory?: string; // Can be: React, Node.js, PowerPlatform, Java, Python, .NET, Mobile, Web, Backend, General, etc.
     error?: string;
 }
 
@@ -86,10 +86,10 @@ function validateDescription(description: string): { valid: boolean; error?: str
  * Validate AI-generated questions structure
  */
 function validateQuestions(questions: AiQuestion[]): { valid: boolean; error?: string } {
-    if (!Array.isArray(questions) || questions.length < 3 || questions.length > 5) {
+    if (!Array.isArray(questions) || questions.length < 3 || questions.length > 7) {
         return {
             valid: false,
-            error: `Expected 3-5 questions, got ${questions?.length || 0}`
+            error: `Expected 3-7 questions, got ${questions?.length || 0}`
         };
     }
 
@@ -161,12 +161,12 @@ export async function generateQuestions(
         console.log('[generate-questions] Generating questions for description length:', sanitizedDescription.length);
 
         // 3. Call OpenAI with JSON mode
-        // Temperature 0.7 for creative and varied questions (was 0.3 - too deterministic)
-        // No seed to ensure different questions each time for same description
+        // Temperature 0.5 for balanced creativity (reduced from 0.7 for speed)
+        // Reduced max_tokens to 1000 for faster response
         const completion = await openaiClient.chat.completions.create({
             model: 'gpt-4o-mini',
-            temperature: 0.7, // Higher temperature for more variety in questions
-            max_tokens: 2000,
+            temperature: 0.5,
+            max_tokens: 1000, // Reduced from 2000 for speed
             response_format: { type: 'json_object' },
             messages: [
                 {
@@ -175,7 +175,7 @@ export async function generateQuestions(
                 },
                 {
                     role: 'user',
-                    content: `Generate unique interview questions for this project description:\n\n${sanitizedDescription}`
+                    content: `Generate 3-4 interview questions for: ${sanitizedDescription}`
                 }
             ]
         });

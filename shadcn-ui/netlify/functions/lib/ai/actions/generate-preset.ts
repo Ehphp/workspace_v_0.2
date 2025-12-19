@@ -2,11 +2,10 @@
  * Preset Generation Action
  * 
  * This module handles the logic for generating technology presets
- * based on user's description, answers, and activity catalog.
+ * using AI-generated custom activities (no catalog needed).
  */
 
 import OpenAI from 'openai';
-import { SupabaseClient } from '@supabase/supabase-js';
 import {
     PRESET_GENERATION_SYSTEM_PROMPT,
     buildPresetGenerationPrompt,
@@ -19,15 +18,6 @@ interface GeneratePresetInput {
     answers: Record<string, any>;
     suggestedTechCategory?: 'FRONTEND' | 'BACKEND' | 'MULTI';
     userId: string;
-}
-
-interface Activity {
-    code: string;
-    name: string;
-    description?: string;
-    group: string;
-    base_hours: number;
-    tech_category: string;
 }
 
 interface PresetGenerationResponse {
@@ -45,70 +35,15 @@ interface PresetGenerationResponse {
 }
 
 /**
- * Load activities from Supabase
+ * Validate generated preset structure (for custom activities)
  */
-async function loadActivities(
-    supabase: SupabaseClient,
-    techCategory?: string
-): Promise<Activity[]> {
-    console.log('[generate-preset] Loading activities, techCategory:', techCategory);
-
-    console.log('[generate-preset] Supabase URL:', process.env.SUPABASE_URL ? 'SET' : 'NOT SET');
-    console.log('[generate-preset] Supabase Key:', process.env.SUPABASE_ANON_KEY ? 'SET' : 'NOT SET');
-
-    // First, try to get all columns to see what's available (no filters)
-    const { data: testData, error: testError } = await supabase
-        .from('activities')
-        .select('*')
-        .limit(5);
-
-    console.log('[generate-preset] Test query result:', {
-        hasData: !!testData,
-        dataLength: testData?.length,
-        testError: testError?.message,
-        columns: testData?.[0] ? Object.keys(testData[0]) : [],
-        firstRow: testData?.[0],
-        activeValues: testData?.map(d => d.active)
-    });
-
-    // Query without active filter to see all records
-    let query = supabase
-        .from('activities')
-        .select('*');
-
-    // Optionally filter by tech category
-    if (techCategory && techCategory !== 'MULTI') {
-        query = query.or(`tech_category.eq.${techCategory},tech_category.eq.MULTI`);
-    }
-
-    const { data, error } = await query; console.log('[generate-preset] Query result:', {
-        dataCount: data?.length,
-        error: error?.message,
-        firstActivity: data?.[0]
-    });
-
-    if (error) {
-        console.error('[generate-preset] Failed to load activities:', error);
-        throw new Error('Failed to load activity catalog');
-    }
-
-    if (!data || data.length === 0) {
-        throw new Error('No activities found in catalog');
-    }
-
-    return data;
-}
-
-/**
- * Validate generated preset structure
- */
-function validatePreset(preset: any, validActivityCodes: string[]): { valid: boolean; error?: string } {
+function validatePreset(preset: any): { valid: boolean; error?: string } {
     if (!preset) {
         return { valid: false, error: 'Preset is null or undefined' };
     }
 
     // Check required fields
-    const requiredFields = ['name', 'description', 'techCategory', 'activities', 'driverValues', 'riskCodes', 'reasoning', 'confidence'];
+    const requiredFields = ['name', 'description', 'detailedDescription', 'techCategory', 'activities', 'driverValues', 'riskCodes', 'reasoning', 'confidence'];
     for (const field of requiredFields) {
         if (!(field in preset)) {
             return { valid: false, error: `Missing required field: ${field}` };
@@ -116,39 +51,44 @@ function validatePreset(preset: any, validActivityCodes: string[]): { valid: boo
     }
 
     // Validate activities
-    if (!Array.isArray(preset.activities) || preset.activities.length < 3) {
-        return { valid: false, error: 'Must have at least 3 activities' };
+    if (!Array.isArray(preset.activities) || preset.activities.length < 5) {
+        return { valid: false, error: 'Must have at least 5 activities' };
     }
 
     if (preset.activities.length > 20) {
         return { valid: false, error: 'Too many activities (max 20)' };
     }
 
-    // Check all activity codes are valid
-    const invalidCodes = preset.activities
-        .map((a: any) => a.code)
-        .filter((code: string) => !validActivityCodes.includes(code));
-
-    if (invalidCodes.length > 0) {
-        return {
-            valid: false,
-            error: `Invalid activity codes: ${invalidCodes.join(', ')}`
-        };
-    }
-
-    // Validate confidence scores
+    // Check all activities have required fields (custom generated activities)
     for (const activity of preset.activities) {
+        // Required fields for custom activities
+        if (!activity.title || typeof activity.title !== 'string') {
+            return { valid: false, error: 'Activity missing title' };
+        }
+
+        if (!activity.description || typeof activity.description !== 'string') {
+            return { valid: false, error: `Activity ${activity.title} missing description` };
+        }
+
+        if (!activity.group || !['ANALYSIS', 'DEV', 'TEST', 'OPS', 'GOVERNANCE'].includes(activity.group)) {
+            return { valid: false, error: `Invalid group for ${activity.title}: ${activity.group}` };
+        }
+
+        if (typeof activity.estimatedHours !== 'number' || activity.estimatedHours < 1 || activity.estimatedHours > 320) {
+            return { valid: false, error: `Invalid estimatedHours for ${activity.title}: ${activity.estimatedHours}` };
+        }
+
         if (typeof activity.confidence !== 'number' || activity.confidence < 0 || activity.confidence > 1) {
             return {
                 valid: false,
-                error: `Invalid confidence for ${activity.code}: ${activity.confidence}`
+                error: `Invalid confidence for ${activity.title}: ${activity.confidence}`
             };
         }
 
         if (!['core', 'recommended', 'optional'].includes(activity.priority)) {
             return {
                 valid: false,
-                error: `Invalid priority for ${activity.code}: ${activity.priority}`
+                error: `Invalid priority for ${activity.title}: ${activity.priority}`
             };
         }
     }
@@ -162,7 +102,7 @@ function validatePreset(preset: any, validActivityCodes: string[]): { valid: boo
 }
 
 /**
- * Calculate metadata from preset
+ * Calculate metadata from preset (with custom activities)
  */
 function calculateMetadata(preset: any, generationTimeMs: number): any {
     const grouped = preset.activities.reduce((acc: any, act: any) => {
@@ -171,7 +111,7 @@ function calculateMetadata(preset: any, generationTimeMs: number): any {
     }, {});
 
     const estimatedDays = preset.activities.reduce(
-        (sum: number, act: any) => sum + ((act.baseHours || 0) / 8),
+        (sum: number, act: any) => sum + ((act.estimatedHours || 0) / 8),
         0
     );
 
@@ -186,12 +126,11 @@ function calculateMetadata(preset: any, generationTimeMs: number): any {
 }
 
 /**
- * Generate technology preset using OpenAI
+ * Generate technology preset using OpenAI (with custom generated activities)
  */
 export async function generatePreset(
     input: GeneratePresetInput,
-    openaiClient: OpenAI,
-    supabaseClient: SupabaseClient
+    openaiClient: OpenAI
 ): Promise<PresetGenerationResponse> {
     const startTime = Date.now();
 
@@ -206,33 +145,17 @@ export async function generatePreset(
             };
         }
 
-        // 2. Load activity catalog
-        console.log('[generate-preset] Loading activities...');
-        const activities = await loadActivities(supabaseClient, input.suggestedTechCategory);
-        console.log(`[generate-preset] Loaded ${activities.length} activities`);
-
-        const validActivityCodes = activities.map(a => a.code);
-
-        // 3. Build enriched prompt
-        const activitiesForPrompt = activities.map(a => ({
-            code: a.code,
-            name: a.name,
-            description: a.description,
-            group: a.group,
-            baseDays: a.base_hours / 8,
-            techCategory: a.tech_category
-        }));
-
+        // 2. Build enriched prompt (no catalog needed)
         const userPrompt = buildPresetGenerationPrompt(
             sanitizedDescription,
             input.answers,
-            activitiesForPrompt
+            input.suggestedTechCategory
         );
 
         console.log('[generate-preset] Calling OpenAI for preset generation...');
         console.log('[generate-preset] Prompt length:', userPrompt.length);
 
-        // 4. Call OpenAI with structured output
+        // 3. Call OpenAI with structured output
         const completion = await openaiClient.chat.completions.create({
             model: 'gpt-4o-mini',
             temperature: 0.2, // Low temperature for consistency
@@ -253,7 +176,7 @@ export async function generatePreset(
         const duration = Date.now() - startTime;
         console.log(`[generate-preset] OpenAI call completed in ${duration}ms`);
 
-        // 5. Parse response
+        // 4. Parse response
         const responseContent = completion.choices[0]?.message?.content;
         if (!responseContent) {
             throw new Error('Empty response from OpenAI');
@@ -261,7 +184,7 @@ export async function generatePreset(
 
         const aiResponse: PresetGenerationResponse = JSON.parse(responseContent);
 
-        // 6. Validate response
+        // 5. Validate response
         if (!aiResponse.success || !aiResponse.preset) {
             console.warn('[generate-preset] AI marked success=false:', aiResponse.error);
             return {
@@ -270,8 +193,8 @@ export async function generatePreset(
             };
         }
 
-        // 7. Post-validation
-        const validation = validatePreset(aiResponse.preset, validActivityCodes);
+        // 6. Post-validation (no code validation needed - custom activities)
+        const validation = validatePreset(aiResponse.preset);
         if (!validation.valid) {
             console.error('[generate-preset] Validation failed:', validation.error);
             return {
@@ -280,10 +203,10 @@ export async function generatePreset(
             };
         }
 
-        // 8. Calculate metadata
+        // 7. Calculate metadata
         const metadata = calculateMetadata(aiResponse.preset, duration);
 
-        // 9. Success - return validated preset
+        // 8. Success - return validated preset
         console.log('[generate-preset] Successfully generated preset:', {
             name: aiResponse.preset.name,
             activities: metadata.totalActivities,

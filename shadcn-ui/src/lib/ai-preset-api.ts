@@ -30,7 +30,7 @@ export async function generateTechnologyPreset(
         throw new Error('Risposte alle domande mancanti.');
     }
 
-    // 3. Call backend endpoint
+    // 3. Call backend endpoint with timeout
     console.log('[ai-preset-api] Sending request:', {
         description: sanitizedDescription.substring(0, 50) + '...',
         answersCount: Object.keys(request.answers).length,
@@ -38,18 +38,44 @@ export async function generateTechnologyPreset(
         suggestedTechCategory: request.suggestedTechCategory
     });
 
-    const response = await fetch('/.netlify/functions/ai-generate-preset', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...(supabaseToken ? { Authorization: `Bearer ${supabaseToken}` } : {}),
-        },
-        body: JSON.stringify({
-            description: sanitizedDescription,
-            answers: request.answers,
-            suggestedTechCategory: request.suggestedTechCategory,
-        }),
-    });    // 4. Handle HTTP errors
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 55000); // 55 second timeout
+
+    try {
+        const response = await fetch('/.netlify/functions/ai-generate-preset', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(supabaseToken ? { Authorization: `Bearer ${supabaseToken}` } : {}),
+            },
+            body: JSON.stringify({
+                description: sanitizedDescription,
+                answers: request.answers,
+                suggestedTechCategory: request.suggestedTechCategory,
+            }),
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        return await handleResponse(response);
+    } catch (error) {
+        clearTimeout(timeoutId);
+
+        // Handle abort/timeout
+        if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error('La richiesta ha impiegato troppo tempo. Prova a semplificare la descrizione o le risposte.');
+        }
+
+        throw error;
+    }
+}
+
+/**
+ * Handle API response parsing and validation
+ */
+async function handleResponse(response: Response): Promise<PresetGenerationResponse> {    // Handle HTTP errors
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
 
@@ -69,12 +95,18 @@ export async function generateTechnologyPreset(
             throw new Error('Non sei autorizzato. Effettua il login e riprova.');
         }
 
+        if (response.status === 504) {
+            throw new Error(
+                errorData.message || 'La generazione ha impiegato troppo tempo. Prova con una descrizione più semplice.'
+            );
+        }
+
         throw new Error(
             errorData.message || errorData.error || `Errore del server (${response.status}). Riprova.`
         );
     }
 
-    // 5. Parse and validate response
+    // Parse and validate response
     const data = await response.json();
 
     try {

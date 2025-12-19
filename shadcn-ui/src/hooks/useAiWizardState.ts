@@ -38,7 +38,7 @@ export interface WizardData {
     // Step 2: AI-generated questions
     questions: AiQuestion[];
     reasoning?: string;
-    suggestedTechCategory?: 'FRONTEND' | 'BACKEND' | 'MULTI';
+    suggestedTechCategory?: string;
 
     // Step 3: User answers
     answers: Map<string, UserAnswer>;
@@ -64,7 +64,7 @@ export interface WizardStateType {
  */
 export type WizardAction =
     | { type: 'START'; description: string }
-    | { type: 'QUESTIONS_LOADED'; questions: AiQuestion[]; reasoning?: string; suggestedTechCategory?: 'FRONTEND' | 'BACKEND' | 'MULTI' }
+    | { type: 'QUESTIONS_LOADED'; questions: AiQuestion[]; reasoning?: string; suggestedTechCategory?: string }
     | { type: 'QUESTIONS_ERROR'; error: string }
     | { type: 'ANSWER_QUESTION'; questionId: string; value: AnswerValue }
     | { type: 'NEXT_QUESTION' }
@@ -288,7 +288,7 @@ export function useAiWizardState() {
     const loadQuestions = useCallback((
         questions: AiQuestion[],
         reasoning?: string,
-        suggestedTechCategory?: 'FRONTEND' | 'BACKEND' | 'MULTI'
+        suggestedTechCategory?: string
     ) => {
         dispatch({ type: 'QUESTIONS_LOADED', questions, reasoning, suggestedTechCategory });
     }, []);

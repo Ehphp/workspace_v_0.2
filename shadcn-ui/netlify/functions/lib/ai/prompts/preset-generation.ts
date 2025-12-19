@@ -5,224 +5,173 @@
  */
 
 /**
- * System prompt for preset generation
- * Instructs the AI to act as a Technical Estimator creating a preset
+ * System prompt for preset generation with REUSABLE ACTIVITY TEMPLATES
+ * GPT generates GENERIC activities that can be reused across multiple projects
+ * IMPORTANT: Must contain "JSON" keyword for OpenAI response_format compatibility
  */
-export const PRESET_GENERATION_SYSTEM_PROMPT = `You are an expert Technical Estimator for software projects. Your task is to generate a comprehensive Technology Preset based on:
-1. The user's original project description
-2. Their answers to clarifying questions
-3. A catalog of available activities
+export const PRESET_GENERATION_SYSTEM_PROMPT = `You are an expert Technical Estimator creating REUSABLE ACTIVITY TEMPLATES for a technology preset. Respond ONLY with valid JSON.
 
-Your goal: 
-1. **Write a detailed technology description** that expands on the user's input
-2. **Select the most appropriate activities** with confidence scoring
-3. **Set driver values** based on complexity and requirements
-4. **Identify risks** that could impact the project
+## 🎯 CRITICAL UNDERSTANDING
 
----
+1. You are NOT describing THIS specific project - you are creating GENERIC BUILDING BLOCKS reusable for MANY projects
+2. Write ALL content (name, descriptions, activities) in the SAME LANGUAGE as the user input
+3. Preset description must describe the TECHNOLOGY/PROJECT capabilities, NOT meta information about reusability
 
-## STEP 1: DETAILED DESCRIPTION
+**THE GOLDEN TEST**: "Can this activity be used for 10+ different projects?"
+- If answer is NO → Make it more generic
+- If it contains specific business terms (Employee, Product, Login) → Too specific, rewrite it
 
-Based on the user's description and answers, write a comprehensive technology description (200-500 words) that includes:
+## ❌ FORBIDDEN: Project-Specific Content
 
-**What to Include:**
-- **Purpose**: What the system does and who uses it
-- **Key Features**: Main functionalities (3-5 bullet points)
-- **Technology Stack**: Frontend, backend, database, infrastructure, third-party integrations
-- **Architecture**: Monolithic vs microservices, API design, data flow
-- **Non-Functional Requirements**: Performance, security, scalability, compliance
-- **Integrations**: External systems, APIs, data sources
-- **Deployment**: Cloud provider, CI/CD, environments
+**Never use these in activity titles or descriptions:**
 
-**Tone**: Professional, technical, detailed. Write as if documenting the technology for a technical team.
+### Business Entity Names
+- ❌ Employee, Dipendente, User, Utente, Customer, Cliente
+- ❌ Product, Prodotto, Order, Ordine, Invoice, Fattura
+- ❌ Department, Project, Task, Contract, Document
 
-**Example Good Description:**
-"React-based dashboard for real-time IoT sensor monitoring. The system collects data from 1000+ industrial sensors via MQTT protocol, processes it through a Node.js backend with Redis for caching, and stores time-series data in TimescaleDB. The frontend displays live charts using D3.js and allows users to configure alerts. Key features include: real-time data visualization with sub-second updates, configurable threshold-based alerting via email/SMS, historical data analysis with custom time ranges, role-based access control for operators vs administrators. The system must handle 10k+ events/second with <100ms latency. Deployed on AWS using ECS for backend services, S3 for static frontend hosting, and RDS for PostgreSQL. Integrates with existing SCADA system via REST API and Twilio for SMS notifications."
+### Specific Features/Screens
+- ❌ Login, Registration, Checkout, Payment, Onboarding
+- ❌ Dashboard, Profile, Settings, Homepage, Admin Panel
 
----
+### Specific Fields/Attributes
+- ❌ Nome, Cognome, Email, Telefono, Indirizzo
+- ❌ Prezzo, Quantità, Data, Codice, Matricola
 
-## STEP 2: ACTIVITY SELECTION RULES
+### Specific Endpoints/Paths
+- ❌ /auth/login, /api/users, /products/list
+- ❌ /checkout, /payment, /admin
 
-**Confidence Scoring (0.0 to 1.0):**
-- 1.0 = Definitely required based on description + answers
-- 0.8-0.9 = Highly likely needed
-- 0.6-0.7 = Probably needed (recommended)
-- 0.4-0.5 = Possibly needed (optional)
-- < 0.4 = Do not include
+**Why forbidden?** These tie the activity to ONE specific use case. We need REUSABLE templates!
 
-**Priority Classification:**
-- **core**: Essential activities without which the project cannot function (confidence ≥ 0.8)
-- **recommended**: Activities that significantly improve quality/maintainability (confidence 0.6-0.79)
-- **optional**: Nice-to-have activities that may be removed to reduce scope (confidence 0.4-0.59)
+## ✅ CORRECT: Generic Technical Patterns
 
-**Selection Strategy:**
-1. Always include core infrastructure activities (e.g., setup, deployment, basic testing)
-2. Match tech stack mentioned in description (e.g., React → frontend activities, Node.js → backend activities)
-3. Compliance requirements → Add governance, audit, security activities
-4. Team size → Affects coordination activities (larger teams need more coordination)
-5. Architecture complexity → More services = more integration/orchestration activities
-6. Quality requirements → Affects testing depth (unit, integration, E2E, performance)
+Use these generic terms instead:
 
-**Activity Groups to Cover:**
-- ANALYSIS: Requirements gathering, technical design, architecture
-- DEV: Implementation activities (frontend, backend, integrations)
-- TEST: Unit, integration, E2E, performance, security testing
-- OPS: Deployment, monitoring, infrastructure setup
-- GOVERNANCE: Documentation, code review, compliance, audit trails
+### Data Layer
+- ✅ "entità custom", "master data", "transactional data"
+- ✅ "relazioni 1:N", "lookup multipli", "campi standard"
+- ✅ "security roles", "business rules", "validation logic"
 
-Aim for 8-20 activities total:
-- 4-8 core activities (priority: core)
-- 3-8 recommended activities (priority: recommended)
-- 0-4 optional activities (priority: optional)
+### UI Layer
+- ✅ "form con validation", "interfaccia multi-step", "componente riusabile"
+- ✅ "layout responsivo", "navigation pattern", "state management"
 
----
+### Integration Layer
+- ✅ "endpoint CRUD", "API con autenticazione", "servizio integrazione"
+- ✅ "background job", "data sync", "webhook handler"
 
-## DRIVER VALUES
+## 📋 Activity Structure by Technology
 
-Common drivers and how to set them based on context:
+### Power Platform Templates
+✅ "Setup entità Dataverse con campi custom e relazioni"
+✅ "Configurazione form multi-tab con business rules"
+✅ "Power Automate flow con approval workflow multi-stage"
+✅ "Canvas App con offline sync e geolocalizzazione"
+✅ "Model-driven App con dashboard e report personalizzati"
+✅ "Configurazione security roles e team permissions"
+✅ "Deploy soluzione tra ambienti con connection references"
 
-**COMPLEXITY:**
-- SIMPLE: Single-page app, CRUD operations, no integrations
-- MEDIUM: Multi-page app with API, 1-2 integrations, standard auth
-- HIGH: Microservices, multiple integrations, complex workflows, real-time features
-- VERY_HIGH: Distributed systems, multiple tech stacks, legacy integrations, AI/ML components
+### React/Frontend Templates
+✅ "Componente React riusabile con state management"
+✅ "Form complesso con validation schema (Yup/Zod)"
+✅ "Integrazione API REST con error handling e retry"
+✅ "Sistema routing protetto con autenticazione"
+✅ "Layout responsivo con grid system e breakpoints"
+✅ "State management globale (Context/Redux/Zustand)"
 
-**TEAM_EXPERIENCE:**
-- SENIOR: Team has done similar projects multiple times
-- MEDIUM: Team has relevant experience but not this exact stack
-- JUNIOR: Team learning the stack or new to project type
+### Backend/API Templates
+✅ "Endpoint REST CRUD con pagination e filtering"
+✅ "Middleware autenticazione e autorizzazione"
+✅ "Servizio integrazione con API esterna"
+✅ "Background job processing con queue management"
+✅ "Database migration e data seeding"
+✅ "API documentation con OpenAPI/Swagger"
 
-**QUALITY_REQUIREMENTS:**
-- BASIC: MVP, internal tool, low risk
-- STANDARD: Production app with normal quality expectations
-- HIGH: Customer-facing, high availability requirements
-- CRITICAL: Financial, healthcare, or safety-critical systems
+### Testing Templates
+✅ "Setup test environment con mock data"
+✅ "Unit test per business logic core"
+✅ "Integration test per API endpoints"
+✅ "E2E test per user flows critici"
 
-Set ALL driver values based on answers. If uncertain, default to MEDIUM/STANDARD.
+## 🔍 Self-Check Before Responding
 
----
+For EACH activity you generate, ask yourself:
 
-## RISK IDENTIFICATION
+1. **Reusability Test**: "Could I use this exact activity for 10+ different projects?"
+   - If NO → Rewrite to be more generic
 
-Common risk codes and when to include them:
+2. **Specificity Check**: "Does this contain ANY business entity, feature name, or specific field?"
+   - If YES → Remove it, use generic terms
 
-- **TECH_DEBT**: Legacy system, technical constraints mentioned
-- **INTEGRATION_RISK**: Multiple external systems, APIs, third-party services
-- **SECURITY_RISK**: Sensitive data (PII, financial), compliance requirements (GDPR, PCI-DSS)
-- **SCALABILITY_RISK**: High user volume, performance requirements mentioned
-- **TEAM_RISK**: Junior team, distributed team, skill gaps
-- **SCOPE_CREEP**: Vague requirements, evolving scope, stakeholder alignment issues
-- **COMPLIANCE_RISK**: Regulatory requirements (HIPAA, SOX, etc.)
-- **DATA_MIGRATION**: Existing data to migrate, data quality concerns
+3. **Pattern vs Requirement**: "Am I describing a technical PATTERN or a business REQUIREMENT?"
+   - Must be technical pattern, not business requirement
 
-Include 2-5 risks that genuinely apply based on description + answers.
+4. **Length Check**: "Is the title short and focused on ONE technical pattern?"
+   - Should be 40-80 chars, focus on one thing
 
----
+## 📤 OUTPUT FORMAT
 
-## OUTPUT FORMAT (strict JSON)
-
+Return ONLY valid JSON (no markdown, no code blocks):
 {
   "success": true,
   "preset": {
-    "name": "React SPA with Node.js API",
-    "description": "Single-page application with REST API backend and PostgreSQL database",
-    "detailedDescription": "React-based single-page application for project management with real-time collaboration features. The frontend uses React 18 with TypeScript, Redux Toolkit for state management, and Material-UI for components. The backend is built with Node.js and Express, using PostgreSQL for data persistence and Redis for session storage. Key features include: real-time task updates via WebSockets, drag-and-drop kanban boards, role-based access control with JWT authentication, file upload to AWS S3, email notifications via SendGrid. The system supports up to 1000 concurrent users with sub-second response times. Deployed on AWS using ECS for containers, RDS for PostgreSQL, and CloudFront for CDN. Integrates with Slack for notifications and Google Calendar for scheduling.",
-    "techCategory": "MULTI",
+    "name": "Brief technology name (40-60 chars)",
+    "description": "Generic summary of technology capabilities (80-150 chars)",
+    "detailedDescription": "Technical context: when to use, key patterns, tech stack (150-250 words MAX)",
+    "techCategory": "FRONTEND" | "BACKEND" | "MULTI",
     "activities": [
       {
-        "code": "REACT_SETUP",
-        "name": "React Project Setup",
-        "description": "Initialize React app with TypeScript, ESLint, Prettier",
-        "group": "DEV",
-        "baseDays": 1.5,
-        "confidence": 1.0,
-        "priority": "core",
-        "reasoning": "React explicitly mentioned in description"
-      },
-      {
-        "code": "API_DESIGN",
-        "name": "REST API Design",
-        "description": "Design RESTful endpoints, OpenAPI spec",
-        "group": "ANALYSIS",
-        "baseDays": 2.0,
-        "confidence": 0.95,
-        "priority": "core",
-        "reasoning": "API backend is core requirement"
-      },
-      {
-        "code": "E2E_TESTING",
-        "name": "End-to-End Testing",
-        "description": "Playwright/Cypress tests for critical flows",
-        "group": "TEST",
-        "baseDays": 3.0,
-        "confidence": 0.7,
-        "priority": "recommended",
-        "reasoning": "Production app benefits from E2E tests"
+        "title": "GENERIC technical pattern (40-80 chars, NO specific names!)",
+        "description": "Implementation approach focusing on HOW, not WHAT specific content (50-120 words MAX)",
+        "estimatedHours": 8,
+        "group": "ANALYSIS" | "DEV" | "TEST" | "OPS" | "GOVERNANCE",
+        "priority": "core" | "recommended" | "optional",
+        "confidence": 0.7
       }
     ],
     "driverValues": {
-      "COMPLEXITY": "MEDIUM",
-      "TEAM_EXPERIENCE": "MEDIUM",
-      "QUALITY_REQUIREMENTS": "STANDARD"
+      "COMPLEXITY": "LOW" | "MEDIUM" | "HIGH",
+      "TEAM_EXPERIENCE": "LOW" | "MEDIUM" | "HIGH",
+      "QUALITY_REQUIREMENTS": "LOW" | "MEDIUM" | "HIGH"
     },
-    "riskCodes": ["INTEGRATION_RISK", "SCALABILITY_RISK"],
-    "suggestedDrivers": [
-      {
-        "code": "COMPLEXITY",
-        "value": "MEDIUM",
-        "reasoning": "Standard SPA with API backend, no extreme complexity"
-      },
-      {
-        "code": "TEAM_EXPERIENCE",
-        "value": "MEDIUM",
-        "reasoning": "Team size suggests mid-level experience"
-      }
-    ],
-    "suggestedRisks": [
-      {
-        "code": "INTEGRATION_RISK",
-        "reasoning": "Third-party API integration mentioned"
-      },
-      {
-        "code": "SCALABILITY_RISK",
-        "reasoning": "User base growth expected"
-      }
-    ],
-    "reasoning": "This preset includes core React and Node.js activities for a full-stack application. Emphasis on API design and testing reflects the need for robust integration between frontend and backend. Medium complexity accounts for standard SPA patterns without excessive architectural overhead.",
-    "confidence": 0.85
-  },
-  "metadata": {
-    "totalActivities": 12,
-    "coreActivities": 6,
-    "recommendedActivities": 4,
-    "optionalActivities": 2,
-    "estimatedDays": 45.5,
-    "generationTimeMs": 0
+    "riskCodes": ["INTEGRATION_RISK", "TECH_STACK_RISK", "COMPLIANCE_RISK"],
+    "reasoning": "Why these generic activities fit this technology type (80-150 words MAX)",
+    "confidence": 0.8
   }
 }
 
----
+This is a JSON response. Always return pure JSON without any formatting.
 
-## CRITICAL CONSTRAINTS
+## 💡 Example Good vs Bad
 
-1. **Only use activity codes from the provided catalog** - never invent codes
-2. **Every activity must have valid group**: ANALYSIS, DEV, TEST, OPS, or GOVERNANCE
-3. **baseDays must match the catalog value** - do not adjust (drivers will adjust later)
-4. **Confidence must be 0.0-1.0** decimal
-5. **Priority must be exactly**: "core", "recommended", or "optional"
-6. **techCategory must be**: "FRONTEND", "BACKEND", or "MULTI"
-7. **Minimum 3 activities, maximum 20 activities**
-8. **All driver values must be strings** (e.g., "MEDIUM", not 2)
-9. **reasoning fields are required** - explain your choices
+### Activities
+❌ BAD (project-specific):
+{
+  "title": "Creazione entità Employee con campi Nome, Email, Matricola",
+  "description": "Implementare la tabella dipendenti nel modulo HR con campi anagrafica e lookup al reparto"
+}
 
-If you cannot generate a valid preset (e.g., no matching activities in catalog), set success: false and provide error message.
+✅ GOOD (generic template):
+{
+  "title": "Setup entità Dataverse con campi custom e relazioni",
+  "description": "Configurazione entità master data con campi standard, relazioni 1:N, security roles e business rules per validation"
+}
 
-Return ONLY valid JSON. Do not include markdown code blocks or explanations outside the JSON.`;
+### Preset Descriptions
+❌ BAD (meta information):
+"This preset focuses on creating reusable activities for integrating various components within the Power Platform."
+
+✅ GOOD (technology description):
+"Soluzione Power Platform per integrazione componenti enterprise con autenticazione OAuth, gestione dati Dataverse e API RESTful."
+
+Remember: GENERIC = REUSABLE = VALUABLE for many future projects!`;
 
 /**
  * JSON Schema for preset generation response validation
+ * Schema for GPT-generated custom activities (no catalog codes)
  */
-export function createPresetGenerationSchema(validActivityCodes: string[]) {
+export function createPresetGenerationSchema() {
     return {
         type: "object",
         properties: {
@@ -243,30 +192,40 @@ export function createPresetGenerationSchema(validActivityCodes: string[]) {
                         minLength: 10,
                         maxLength: 1000
                     },
+                    detailedDescription: {
+                        type: "string",
+                        minLength: 50,
+                        maxLength: 2000
+                    },
                     techCategory: {
                         type: "string",
                         enum: ["FRONTEND", "BACKEND", "MULTI"]
                     },
                     activities: {
                         type: "array",
-                        minItems: 3,
-                        maxItems: 20,
+                        minItems: 6,
+                        maxItems: 10,
                         items: {
                             type: "object",
                             properties: {
-                                code: {
+                                title: {
                                     type: "string",
-                                    enum: validActivityCodes // Only allow codes from DB
+                                    minLength: 10,
+                                    maxLength: 150
                                 },
-                                name: { type: "string" },
-                                description: { type: "string" },
+                                description: {
+                                    type: "string",
+                                    minLength: 20,
+                                    maxLength: 500
+                                },
                                 group: {
                                     type: "string",
                                     enum: ["ANALYSIS", "DEV", "TEST", "OPS", "GOVERNANCE"]
                                 },
-                                baseDays: {
+                                estimatedHours: {
                                     type: "number",
-                                    minimum: 0
+                                    minimum: 1,
+                                    maximum: 320
                                 },
                                 confidence: {
                                     type: "number",
@@ -276,10 +235,9 @@ export function createPresetGenerationSchema(validActivityCodes: string[]) {
                                 priority: {
                                     type: "string",
                                     enum: ["core", "recommended", "optional"]
-                                },
-                                reasoning: { type: "string" }
+                                }
                             },
-                            required: ["code", "name", "group", "baseDays", "confidence", "priority", "reasoning"],
+                            required: ["title", "description", "group", "estimatedHours", "confidence", "priority"],
                             additionalProperties: false
                         }
                     },
@@ -355,43 +313,35 @@ export function createPresetGenerationSchema(validActivityCodes: string[]) {
 
 /**
  * Build enriched user prompt with context
+ * No activities catalog needed - GPT generates custom activities
  */
 export function buildPresetGenerationPrompt(
     description: string,
     answers: Record<string, any>,
-    activities: Array<{ code: string; name: string; description?: string; group: string; baseDays: number; techCategory: string }>
+    suggestedTechCategory?: 'FRONTEND' | 'BACKEND' | 'MULTI'
 ): string {
-    // Group activities by tech category for better context
-    const activitiesByCategory = activities.reduce((acc, act) => {
-        if (!acc[act.techCategory]) acc[act.techCategory] = [];
-        acc[act.techCategory].push(act);
-        return acc;
-    }, {} as Record<string, typeof activities>);
-
     // Format answers for readability
     const formattedAnswers = Object.entries(answers)
         .map(([key, value]) => {
             const formattedValue = Array.isArray(value) ? value.join(', ') : value;
-            return `- ${key}: ${formattedValue}`;
+            return `- ${key}: ${formattedValue} `;
         })
         .join('\n');
+
+    const categoryHint = suggestedTechCategory
+        ? `\n ** SUGGESTED CATEGORY **: ${suggestedTechCategory} `
+        : '';
 
     return `
 ## PROJECT DESCRIPTION
 ${description}
 
-## USER ANSWERS TO CLARIFYING QUESTIONS
-${formattedAnswers}
-
-## AVAILABLE ACTIVITIES (${activities.length} total)
-
-${Object.entries(activitiesByCategory).map(([category, acts]) => `
-### ${category} Activities (${acts.length})
-${acts.map(act => `- **${act.code}** (${act.group}, ${act.baseDays}d): ${act.name}${act.description ? ' - ' + act.description : ''}`).join('\n')}
-`).join('\n')}
+## WIZARD ANSWERS
+${formattedAnswers}${categoryHint}
 
 ---
 
-Based on the above information, generate a comprehensive Technology Preset with appropriate activities, driver values, and risks.
-`;
+    Generate a complete estimation preset with custom activities tailored to this specific project.
+`.trim();
 }
+

@@ -88,7 +88,7 @@ export interface QuestionGenerationResponse {
     success: boolean;
     questions: AiQuestion[];
     reasoning?: string;
-    suggestedTechCategory?: 'FRONTEND' | 'BACKEND' | 'MULTI';
+    suggestedTechCategory?: string; // Tech stack like React, Node.js, PowerPlatform, etc.
     error?: string;
 }
 
@@ -112,7 +112,7 @@ export interface InterviewState {
     currentQuestionIndex: number;
     isComplete: boolean;
     reasoning?: string;
-    suggestedTechCategory?: 'FRONTEND' | 'BACKEND' | 'MULTI';
+    suggestedTechCategory?: string;
 }
 
 /**
@@ -181,7 +181,7 @@ export const QuestionGenerationResponseSchema = z.object({
     success: z.boolean(),
     questions: z.array(AiQuestionSchema),
     reasoning: z.string().optional(),
-    suggestedTechCategory: z.enum(['FRONTEND', 'BACKEND', 'MULTI']).optional(),
+    suggestedTechCategory: z.string().optional(), // Can be any tech like: React, Node.js, PowerPlatform, Java, .NET, Mobile, Web, Backend, etc.
     error: z.string().optional(),
 });
 
@@ -196,11 +196,18 @@ export function validateAnswer(question: AiQuestion, value: AnswerValue): boolea
     switch (question.type) {
         case 'single-choice':
             if (typeof value !== 'string') return false;
-            return question.options.some(opt => opt.id === value);
+            // Allow if value matches an option OR if 'other' option exists (implying custom value allowed)
+            return question.options.some(opt => opt.id === value) ||
+                (question.options.some(opt => opt.id === 'other') && value.length > 0);
 
         case 'multiple-choice':
             if (!Array.isArray(value)) return false;
-            return value.every(v => question.options.some(opt => opt.id === v));
+            // Allow if every value matches an option OR if 'other' option exists
+            const hasOtherOption = question.options.some(opt => opt.id === 'other');
+            return value.every(v =>
+                question.options.some(opt => opt.id === v) ||
+                (hasOtherOption && v.length > 0)
+            );
 
         case 'text':
             if (typeof value !== 'string') return false;

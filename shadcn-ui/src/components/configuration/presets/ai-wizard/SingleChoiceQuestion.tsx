@@ -32,32 +32,66 @@ export function SingleChoiceQuestion({
                 )}
             </div>
 
-            <RadioGroup value={value} onValueChange={onChange} className="space-y-3">
+            <RadioGroup
+                value={value && !question.options.find(o => o.id === value) && question.options.some(o => o.id === 'other') ? 'other' : value}
+                onValueChange={(val) => {
+                    // If 'other' is selected, don't change value immediately to 'other', 
+                    // wait for input or set empty string if current is not custom
+                    if (val === 'other') {
+                        onChange('');
+                    } else {
+                        onChange(val);
+                    }
+                }}
+                className="space-y-3"
+            >
                 {question.options.map((option) => {
                     const IconComponent = option.icon && (Icons as any)[option.icon];
+                    const isOther = option.id === 'other';
+                    const isCustomValue = value && !question.options.find(o => o.id === value);
+                    const isSelected = isOther ? isCustomValue : value === option.id;
 
                     return (
                         <div
                             key={option.id}
-                            className="flex items-start space-x-3 p-4 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 transition-all cursor-pointer"
+                            className={`flex flex-col p-4 rounded-lg border transition-all cursor-pointer ${isSelected
+                                ? 'border-blue-500 bg-blue-50/50'
+                                : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/30'
+                                }`}
                         >
-                            <RadioGroupItem value={option.id} id={`${question.id}-${option.id}`} className="mt-1" />
-                            <Label
-                                htmlFor={`${question.id}-${option.id}`}
-                                className="flex-1 cursor-pointer"
-                            >
-                                <div className="flex items-start gap-3">
-                                    {IconComponent && (
-                                        <IconComponent className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                                    )}
-                                    <div className="space-y-1">
-                                        <div className="font-medium text-slate-900">{option.label}</div>
-                                        {option.description && (
-                                            <div className="text-sm text-slate-600">{option.description}</div>
+                            <div className="flex items-start space-x-3">
+                                <RadioGroupItem value={option.id} id={`${question.id}-${option.id}`} className="mt-1" />
+                                <Label
+                                    htmlFor={`${question.id}-${option.id}`}
+                                    className="flex-1 cursor-pointer"
+                                >
+                                    <div className="flex items-start gap-3">
+                                        {IconComponent && (
+                                            <IconComponent className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                                         )}
+                                        <div className="space-y-1 w-full">
+                                            <div className="font-medium text-slate-900">{option.label}</div>
+                                            {option.description && (
+                                                <div className="text-sm text-slate-600">{option.description}</div>
+                                            )}
+                                        </div>
                                     </div>
+                                </Label>
+                            </div>
+
+                            {/* Input for Other option */}
+                            {isOther && isSelected && (
+                                <div className="ml-8 mt-3">
+                                    <input
+                                        type="text"
+                                        value={isCustomValue ? value : ''}
+                                        onChange={(e) => onChange(e.target.value)}
+                                        placeholder="Specificare altro..."
+                                        className="flex h-9 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                        autoFocus
+                                    />
                                 </div>
-                            </Label>
+                            )}
                         </div>
                     );
                 })}

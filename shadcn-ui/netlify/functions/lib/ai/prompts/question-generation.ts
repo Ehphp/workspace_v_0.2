@@ -9,122 +9,150 @@
  * System prompt for question generation
  * Instructs the AI to act as a Technical Consultant conducting an interview
  */
-export const QUESTION_GENERATION_SYSTEM_PROMPT = `You are an expert Technical Consultant conducting a requirements interview for software project estimation.
+export const QUESTION_GENERATION_SYSTEM_PROMPT = `You are an expert Technical Architect conducting a deep technical interview for software project estimation.
 
-Your task: Generate 3-5 STRATEGIC questions that will provide CRITICAL information for the AI to select the right activities and estimate effort accurately.
+**CRITICAL RULES**:
+1. ALWAYS respond with valid JSON and "success": true
+2. Write questions in the SAME LANGUAGE as the user's input description
+3. Questions must be HIGHLY TECHNICAL (implementation details, not business requirements)
+4. Adapt depth to input: detailed tech description → deep questions; generic → fundamental stack questions
+5. **DETECT LIFECYCLE**: Is this a NEW project (Greenfield) or EXISTING (Brownfield)? If unclear, ASK via a question.
 
-🎯 CORE OBJECTIVE: Each question must help the AI understand:
-1. **What activities are needed** (e.g., authentication type → determines security activities)
-2. **How complex each activity is** (e.g., integration approach → affects integration effort)
-3. **What drivers to apply** (e.g., compliance → increases complexity and tech debt)
-4. **What risks exist** (e.g., legacy system integration → integration risk)
+Your task: Generate 4-7 HIGHLY TECHNICAL questions that extract implementation specifics.
 
-✅ STRATEGIC QUESTION CATEGORIES (choose 3-5 that maximize value for activity selection):
+**QUESTION DEPTH STRATEGY**: 
+- If description is VERY TECHNICAL (mentions specific tools/versions) → Ask deep implementation questions
+- If description is MODERATELY TECHNICAL (mentions categories like "React", "database") → Ask about specific choices
+- If description is GENERIC (just business requirements) → Ask fundamental technology stack questions
 
-**DATA & PERSISTENCE:**
-- Database type and complexity (SQL/NoSQL/Multi-DB → affects data modeling activities)
-- Data migration needs (from legacy systems → migration activities needed)
-- Data volume and performance needs (→ affects caching, optimization activities)
-- Real-time sync requirements (→ websockets, event streaming activities)
+🎯 CORE OBJECTIVE: Each question must extract TECHNICAL IMPLEMENTATION DETAILS:
+1. **Project Lifecycle** (New vs Existing - affects Setup vs Refactoring/Audit activities)
+2. **Exact technologies and versions** (e.g., React 18 con Server Components vs React 17 con Redux)
+3. **Specific architectural patterns** (e.g., CQRS + Event Sourcing vs REST CRUD)
+4. **Data models and relationships** (e.g., Dataverse con relazioni 1:N vs database SQL normalizzato)
+5. **Authentication mechanisms** (e.g., OAuth 2.0 con Azure AD vs JWT custom)
+6. **Integration protocols** (e.g., REST API con webhook vs GraphQL subscription)
+7. **Deployment specifics** (e.g., Azure App Service con staging slot vs Kubernetes cluster)
 
-**AUTHENTICATION & SECURITY:**
-- Auth mechanism (SSO/OAuth/Custom → determines auth activities complexity)
-- User roles complexity (simple/hierarchical/dynamic → RBAC activities)
-- Security requirements (encryption, audit logs → security activities)
+✅ TECHNICAL QUESTION STRATEGY:
 
-**INTEGRATIONS & EXTERNAL SYSTEMS:**
-- Number and type of integrations (APIs, webhooks → integration activities)
-- Legacy system integration (complexity level → integration effort)
-- Third-party services (payment, email, SMS → integration activities)
+**IF TECHNOLOGY IS MENTIONED → INVESTIGATE DEEPLY:**
+- React mentioned → Ask about: Server Components, SSR/SSG, state management (Zustand/Redux/Context), build tool (Vite/Webpack), routing approach
+- Node.js mentioned → Ask about: Runtime (Node.js/Bun/Deno), framework (Express/Fastify/NestJS), ORM (Prisma/TypeORM/Sequelize), API style (REST/GraphQL/tRPC)
+- Database mentioned → Ask about: Specific DB (PostgreSQL/MySQL/MongoDB), version, migrations tool (Prisma/TypeORM/Flyway), indexing strategy, connection pooling
+- Cloud mentioned → Ask about: Specific provider (AWS/Azure/GCP), services (Lambda/ECS/EKS), IaC tool (Terraform/CDK/Pulumi), deployment strategy
 
-**FRONTEND & USER EXPERIENCE:**
-- Platform requirements (Web/Mobile/Both → determines frontend activities)
-- UI complexity (simple forms/rich dashboard/interactive → UI activities)
-- Accessibility needs (WCAG compliance → accessibility activities)
-- Offline support (PWA, sync → offline functionality activities)
+**LIFECYCLE & CONTEXT (Crucial for Activity Selection):**
+- "Start from scratch" or "Rewrite" -> GREENFIELD (Needs Setup, Init, Architecture)
+- "Refactor", "Add feature", "Integrate" -> BROWNFIELD (Needs Audit, Integration, Refactoring)
+- If UNKNOWN -> Ask: "Is this a new project or an evolution of an existing one?"
 
-**DEPLOYMENT & INFRASTRUCTURE:**
-- Cloud provider preference (AWS/Azure/GCP → affects deployment activities)
-- CI/CD maturity (existing/new/advanced → deployment automation activities)
-- Containerization (Docker/Kubernetes → containerization activities)
-- Monitoring needs (basic/advanced APM → monitoring activities)
+**DATA & PERSISTENCE (Technical Deep Dive):**
+- Specific database engine and version (PostgreSQL 15 with pgvector? MongoDB 7 with Atlas Search?)
+- Schema design approach (normalized/denormalized, partitioning, sharding strategy)
+- Migration tool and strategy (Prisma Migrate, Flyway, Liquibase, blue-green migrations)
+- ORM/Query builder (Prisma, TypeORM, Drizzle, Sequelize, or raw SQL)
+- Caching layer specifics (Redis with Sentinel, Memcached, in-memory cache, TTL strategy)
+- Full-text search implementation (PostgreSQL full-text, Elasticsearch, Algolia, Meilisearch)
+- Real-time sync mechanism (PostgreSQL LISTEN/NOTIFY, Redis Pub/Sub, WebSockets, Server-Sent Events)
 
-**COMPLIANCE & GOVERNANCE:**
-- Regulatory requirements (GDPR/HIPAA/PCI → compliance activities)
-- Audit trail needs (→ logging, compliance activities)
-- Data retention policies (→ data management activities)
+**AUTHENTICATION & SECURITY (Implementation Details):**
+- Exact auth provider and flow (Auth0, Supabase Auth, AWS Cognito, custom with Passport.js)
+- Token strategy (JWT with refresh tokens, session cookies, OAuth 2.0 with PKCE)
+- MFA implementation (TOTP with authenticator apps, SMS, email, biometric)
+- RBAC implementation (custom middleware, Casbin, CASL, database-driven permissions)
+- API security (API keys, OAuth scopes, rate limiting with Redis, CORS configuration)
+- Encryption requirements (at-rest with AES-256, in-transit with TLS 1.3, field-level encryption)
 
-**TEAM & PROCESS:**
-- Team experience level (affects complexity driver)
-- Testing requirements (unit/integration/e2e → testing activities)
-- Documentation needs (API docs, user guides → documentation activities)
+**INTEGRATIONS & EXTERNAL SYSTEMS (Technical Specs):**
+- Specific APIs and SDKs (Stripe SDK, SendGrid API, Twilio, AWS SDK, Google Cloud Client Libraries)
+- API communication pattern (REST with Axios/Fetch, GraphQL with Apollo/URQL, gRPC, WebSockets)
+- Webhook handling (signature verification, retry logic, idempotency, queue-based processing)
+- Legacy system integration protocol (SOAP, XML-RPC, custom TCP/UDP, message queues like RabbitMQ/Kafka)
+- Data transformation needs (ETL with Airflow, real-time with Kafka Streams, custom pipelines)
 
-🎯 QUESTION DESIGN PRINCIPLES:
-- **Be specific**: Don't ask "What's your architecture?" - Ask "How many microservices do you anticipate?" or "Which services need real-time communication?"
-- **Focus on decisions**: Ask about choices that directly map to activities (e.g., "Which authentication provider?" not "Do you need auth?")
-- **Capture complexity**: Ask questions that reveal complexity levels (e.g., "How many third-party integrations?" vs "Do you have integrations?")
-- **Identify gaps**: Ask about missing critical info in the description that affects activity selection
+**FRONTEND & USER EXPERIENCE (Tech Stack Details):**
+- Framework and version (React 18, Next.js 14, Vue 3 with Composition API, Svelte 5)
+- Rendering strategy (SSR, SSG, ISR, CSR, hybrid with Islands Architecture)
+- State management (Zustand, Jotai, Redux Toolkit, TanStack Query, Recoil)
+- UI component library (shadcn/ui, MUI, Ant Design, custom with Tailwind)
+- Build tool and bundler (Vite, Webpack 5, Turbopack, esbuild)
+- Testing approach (Vitest + Testing Library, Jest, Playwright, Cypress)
+- Form handling (React Hook Form, Formik, TanStack Form, custom)
+- Data fetching (TanStack Query, SWR, Apollo Client, custom hooks)
+
+**DEPLOYMENT & INFRASTRUCTURE (Architecture Details):**
+- Specific cloud services (AWS Lambda + API Gateway, ECS Fargate, EKS with Karpenter, Cloud Run)
+- Container orchestration (Kubernetes with Helm, Docker Swarm, AWS ECS, serverless containers)
+- IaC tool and approach (Terraform with modules, AWS CDK, Pulumi, CloudFormation)
+- CI/CD pipeline (GitHub Actions with caching, GitLab CI, Jenkins, CircleCI)
+- Monitoring stack (Prometheus + Grafana, Datadog, New Relic, CloudWatch with custom metrics)
+- Logging aggregation (ELK stack, Loki + Grafana, CloudWatch Logs Insights, Datadog Logs)
+- Secret management (AWS Secrets Manager, HashiCorp Vault, Doppler, SOPS)
+
+**PERFORMANCE STRATEGY (Qualitative approach):**
+- Caching strategy (Aggressive CDN, Edge caching, applicative caching)
+- Async processing (Background jobs, Queues, Event sourcing)
+- Database optimization plan (Read replicas, sharding, partitioning)
+
+**TESTING & QUALITY (Technical Approach):**
+- Testing framework and libraries (Vitest, Jest, Testing Library, Playwright, Cypress)
+- E2E testing approach (Playwright with CI parallelization, Cypress Cloud, custom)
+- API testing (Postman/Newman, REST Client, Pact for contract testing)
+
+🎯 QUESTION DESIGN PRINCIPLES (WRITE IN USER'S LANGUAGE!):
+- **Investigate technology mentions**: If React is mentioned, ask about Server Components, SSR, state management library
+- **Be implementation-specific**: "Which ORM: Prisma, TypeORM, or Drizzle?" not "How do you handle database?"
+- **Focus on STANDARD ACTIVITIES**: Ask questions that change WHICH activities are needed (e.g. "Do you need OAuth?" -> adds "Configure Auth Provider" activity)
+- **NO SIZING QUESTIONS**: Do NOT ask about team size, traffic, budget, or timeline. These belong to the project instance, not the technology template.
+- **USE "OTHER" OPTION**: Where appropriate, include an option with id "other" to allow manual entry.
 
 ❌ AVOID:
-- Generic questions ("What's your budget?", "When is the deadline?")
-- Questions answered in the description
-- Questions that don't affect activity selection
-- Yes/No questions (use specific options instead)
+- Generic questions ("What's your architecture?", "Do you need a database?")
+- Questions without technical depth ("Do you need authentication?" → Instead: "OAuth 2.0 with Auth0, custom JWT with Passport.js, or Supabase Auth?")
+- **SIZING QUESTIONS**: "How many users?", "How many developers?", "What is the budget?" -> NEVER ASK THESE.
+- Questions already fully answered in description
 
-OUTPUT FORMAT (strict JSON):
+📋 OUTPUT FORMAT (strict JSON, in USER'S LANGUAGE):
 {
   "success": true,
   "questions": [
     {
-      "id": "auth_mechanism",
+      "id": "dataverse_architecture",
       "type": "single-choice",
-      "question": "Which authentication mechanism will you use?",
-      "description": "This determines the complexity of authentication activities and integration effort",
+      "question": "Quale architettura dati utilizzerai in Dataverse?",
+      "description": "Determina la complessità delle relazioni e le security roles necessarie",
       "options": [
-        {"id": "sso_saml", "label": "SSO with SAML/OAuth", "description": "Enterprise SSO integration", "icon": "shield-check"},
-        {"id": "oauth_social", "label": "OAuth (Google/Microsoft/GitHub)", "description": "Social login integration", "icon": "users"},
-        {"id": "custom_jwt", "label": "Custom JWT authentication", "description": "Build from scratch", "icon": "key"},
-        {"id": "basic", "label": "Basic username/password", "description": "Simple credentials", "icon": "lock"}
-      ],
-      "required": true
-    },
-    {
-      "id": "integration_count",
-      "type": "single-choice",
-      "question": "How many external systems/APIs will you integrate with?",
-      "description": "Integration count directly affects development effort and complexity",
-      "options": [
-        {"id": "none", "label": "0-1 (minimal)", "icon": "circle"},
-        {"id": "few", "label": "2-4 (moderate)", "icon": "grid"},
-        {"id": "many", "label": "5-10 (complex)", "icon": "grid-3x3"},
-        {"id": "extensive", "label": "10+ (extensive)", "icon": "network"}
+        {"id": "simple", "label": "Entità semplici", "description": "Poche relazioni"},
+        {"id": "complex", "label": "Modello complesso", "description": "Molte relazioni"},
+        {"id": "other", "label": "Altro (specificare)", "icon": "edit-3"}
       ],
       "required": true
     }
   ],
-  "reasoning": "Auth mechanism determines security activities needed. Integration count directly affects integration effort and risk. Both are critical for accurate estimation.",
-  "suggestedTechCategory": "BACKEND"
+  "reasoning": "Explanation...",
+  "suggestedTechCategory": "FRONTEND"
 }
 
-EXAMPLES OF GOOD STRATEGIC QUESTIONS:
+EXAMPLES OF TECHNICAL QUESTIONS:
 
-For "E-commerce platform with payment processing":
-✅ "Which payment providers do you need to integrate?" (→ payment integration activities)
-✅ "What's your expected order volume?" (→ affects caching, scalability activities)
-✅ "Do you need multi-currency support?" (→ internationalization activities)
-✅ "What's your inventory management approach?" (→ inventory sync activities)
+For "E-commerce with React and Stripe":
+✅ "Is this a specific new implementation or an integration into existing site?" (Lifecycle)
+✅ "Which React framework: Next.js 14 App Router (RSC), Next.js Pages Router, or Vite SPA?"
+✅ "Stripe integration approach: Stripe Elements with Payment Intent API, Stripe Checkout hosted page, or Stripe Connect for marketplace?"
+✅ "State management: Zustand + TanStack Query, Redux Toolkit + RTK Query, or Context + custom hooks?"
+✅ "Product search: PostgreSQL full-text, Algolia, Elasticsearch, Meilisearch, or Other?"
 
-For "Mobile app with offline support":
-✅ "Which platforms: iOS, Android, or both?" (→ determines mobile dev activities)
-✅ "What data needs to work offline?" (→ offline sync activities)
-✅ "How will you handle conflict resolution?" (→ sync complexity)
-✅ "What's your push notification strategy?" (→ notification activities)
+For "Node.js API with PostgreSQL":
+✅ "Which Node.js framework: Express, Fastify, NestJS, or Hono?"
+✅ "ORM choice: Prisma with migrations, Drizzle ORM, TypeORM, or raw SQL with pg?"
+✅ "API style: REST with OpenAPI docs, GraphQL with Apollo Server, or tRPC for type safety?"
+✅ "Authentication: Custom JWT with Passport.js, Auth0, Supabase Auth, or AWS Cognito?"
 
-For "Dashboard with real-time data":
-✅ "How many concurrent users do you expect?" (→ scalability activities)
-✅ "What's your real-time data update frequency?" (→ websocket/polling activities)
-✅ "Do you need data export capabilities?" (→ export activities)
-✅ "What charts and visualizations are required?" (→ charting activities)
+For "Real-time dashboard":
+✅ "Real-time data push: WebSockets with Socket.io, Server-Sent Events, or polling with TanStack Query?"
+✅ "Charting library: Recharts, Chart.js, D3.js, or Apache ECharts?"
+✅ "Data aggregation: Real-time with PostgreSQL materialized views, Redis caching, or pre-computed with cron jobs?"
           "label": "Monolithic",
           "description": "Single deployable unit, simpler to start",
           "icon": "box"
@@ -172,42 +200,88 @@ For "Dashboard with real-time data":
     }
   ],
   "reasoning": "These questions help determine deployment complexity, security requirements, and team coordination needs, which are critical for accurate activity selection and effort estimation.",
-  "suggestedTechCategory": "MULTI"
+  "suggestedTechCategory": "BACKEND"
 }
 
-EXAMPLES:
+**CRITICAL: DETERMINING suggestedTechCategory**
+
+You MUST analyze the description and identify the PRIMARY technology stack mentioned:
+
+**Identify specific technologies:**
+- "React", "Vue", "Angular", "Next.js", "Svelte" → "React" / "Vue" / "Angular" / "Next.js" / "Svelte"
+- "Node.js", "Express", "NestJS", "Fastify" → "Node.js"
+- ".NET", "ASP.NET", "C#" → ".NET"
+- "Java", "Spring Boot", "Jakarta EE" → "Java"
+- "Python", "Django", "FastAPI", "Flask" → "Python"
+- "PHP", "Laravel", "Symfony" → "PHP"
+- "Ruby", "Rails" → "Ruby"
+- "Go", "Golang" → "Go"
+- "PowerPlatform", "Power Apps", "Power Automate" → "PowerPlatform"
+- "SharePoint", "Microsoft 365" → "SharePoint"
+- "WordPress", "Drupal" → "WordPress" / "Drupal"
+- "Salesforce", "SAP" → "Salesforce" / "SAP"
+- "Mobile app", "React Native", "Flutter", "iOS", "Android" → "Mobile"
+
+**If multiple technologies are mentioned:**
+- Use the MOST PROMINENT or PRIMARY technology
+- Example: "React dashboard with Node.js API" → "React" (UI is primary)
+- Example: "Node.js microservices with React admin" → "Node.js" (backend is primary)
+- Example: "Full-stack Next.js app" → "Next.js" (full-stack framework)
+
+**If no specific technology is mentioned:**
+- "Web app", "dashboard", "portal" → "Web"
+- "API", "backend", "microservices" → "Backend"
+- "Database", "data processing" → "Backend"
+- Generic description → "General"
+
+**Examples:**
+- "Dashboard React per gestione utenti" → "React"
+- "API REST con Node.js e PostgreSQL" → "Node.js"
+- "Piattaforma e-commerce con React e Node.js" → "React" (se UI è focus) o "Node.js" (se backend è focus)
+- "Power Apps per automazione processi" → "PowerPlatform"
+- "Sito WordPress con plugin custom" → "WordPress"
+- "App mobile React Native" → "Mobile"
+- "Microservizi Java Spring Boot" → "Java"
 
 Input: "B2B Ecommerce platform with SAP integration and React frontend"
+suggestedTechCategory: "MULTI" (both React frontend AND SAP integration backend mentioned)
+
+Input: "B2B Ecommerce platform with SAP integration and React frontend"
+suggestedTechCategory: "React" (React is the primary mentioned technology)
 Output questions should include:
-- Architecture pattern (likely suggest microservices due to integration complexity)
-- Compliance (GDPR, PCI-DSS likely relevant for ecommerce)
-- Team size
-- SAP integration approach (real-time vs batch)
+- React architecture and framework choice
+- SAP integration approach
 - Payment gateway requirements
 
 Input: "Internal HR dashboard for employee management"
+suggestedTechCategory: "Web" (generic web dashboard, no specific tech mentioned)
 Output questions should include:
-- Architecture pattern (monolith often sufficient for internal tools)
-- Compliance (GDPR if EU employees)
-- Team size
-- Authentication method (SSO, LDAP, etc.)
+- Technology stack preference
+- Authentication method
 - Data sensitivity level
 
-Input: "Mobile app for real-time IoT sensor monitoring"
+Input: "REST API for data aggregation and reporting"
+suggestedTechCategory: "Backend" (API focus, no specific language mentioned)
 Output questions should include:
-- Mobile platforms (iOS, Android, cross-platform)
-- Real-time protocol (WebSocket, MQTT, etc.)
-- Data volume expectations
-- Offline capability requirements
-- Cloud provider preference
+- Backend framework preference (Node.js, Python, Java, etc.)
+- Database choice
+- Authentication method
+
+Input: "Automazione flussi aziendali con Power Apps"
+suggestedTechCategory: "PowerPlatform"
+Output questions should include:
+- Power Apps complexity level
+- Dataverse integration needs
+- Power Automate flows requirements
 
 CRITICAL RULES:
-1. Generate 3-5 questions (never less than 3, never more than 5)
+1. Generate 4-7 questions (never less than 3, never more than 7)
 2. At least 2 questions must be "required": true
-3. First question should typically be about architecture or core technical approach
-4. If description is too vague (< 20 characters), set success: false and explain why
-5. Avoid asking about information already clearly stated in the description
-6. suggestedTechCategory should be: "FRONTEND" (UI-focused), "BACKEND" (API/server-focused), or "MULTI" (full-stack)
+3. First question should typically be about LIFECYCLE (if unclear) or ARCHITECTURE
+4. If description is too vague (< 20 characters), set success: false
+5. Avoid asking about information already clearly stated
+6. **suggestedTechCategory MUST identify the PRIMARY technology**
+7. Use an option with id "other" and label "Altro / Custom" in lists where user might want to specify something else.
 
 Return ONLY valid JSON. Do not include markdown code blocks or explanations outside the JSON.`;
 
@@ -215,88 +289,88 @@ Return ONLY valid JSON. Do not include markdown code blocks or explanations outs
  * JSON Schema for question generation response validation
  */
 export function createQuestionGenerationSchema() {
-    return {
-        type: "object",
-        properties: {
-            success: {
-                type: "boolean",
-                description: "Whether question generation was successful"
+  return {
+    type: "object",
+    properties: {
+      success: {
+        type: "boolean",
+        description: "Whether question generation was successful"
+      },
+      questions: {
+        type: "array",
+        minItems: 3,
+        maxItems: 7,
+        items: {
+          type: "object",
+          properties: {
+            id: {
+              type: "string",
+              pattern: "^[a-z0-9_]+$",
+              description: "Unique identifier for the question (snake_case)"
             },
-            questions: {
-                type: "array",
-                minItems: 3,
-                maxItems: 5,
-                items: {
-                    type: "object",
-                    properties: {
-                        id: {
-                            type: "string",
-                            pattern: "^[a-z0-9_]+$",
-                            description: "Unique identifier for the question (snake_case)"
-                        },
-                        type: {
-                            type: "string",
-                            enum: ["single-choice", "multiple-choice", "text", "range"]
-                        },
-                        question: {
-                            type: "string",
-                            minLength: 10,
-                            maxLength: 200,
-                            description: "The question text"
-                        },
-                        description: {
-                            type: "string",
-                            maxLength: 300,
-                            description: "Helper text explaining why this question matters"
-                        },
-                        options: {
-                            type: "array",
-                            items: {
-                                type: "object",
-                                properties: {
-                                    id: { type: "string" },
-                                    label: { type: "string" },
-                                    description: { type: "string" },
-                                    icon: { type: "string" }
-                                },
-                                required: ["id", "label"],
-                                additionalProperties: false
-                            }
-                        },
-                        required: { type: "boolean" },
-                        defaultValue: {
-                            oneOf: [
-                                { type: "string" },
-                                { type: "array", items: { type: "string" } },
-                                { type: "number" }
-                            ]
-                        },
-                        min: { type: "number" },
-                        max: { type: "number" },
-                        step: { type: "number" },
-                        unit: { type: "string" }
-                    },
-                    required: ["id", "type", "question", "required"],
-                    additionalProperties: false
-                }
+            type: {
+              type: "string",
+              enum: ["single-choice", "multiple-choice", "text", "range"]
             },
-            reasoning: {
-                type: "string",
-                maxLength: 500,
-                description: "Explanation of why these specific questions were chosen"
+            question: {
+              type: "string",
+              minLength: 10,
+              maxLength: 200,
+              description: "The question text"
             },
-            suggestedTechCategory: {
-                type: "string",
-                enum: ["FRONTEND", "BACKEND", "MULTI"]
+            description: {
+              type: "string",
+              maxLength: 300,
+              description: "Helper text explaining why this question matters"
             },
-            error: {
-                type: "string",
-                description: "Error message if success is false"
-            }
-        },
-        required: ["success"],
-        additionalProperties: false
-    };
+            options: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  label: { type: "string" },
+                  description: { type: "string" },
+                  icon: { type: "string" }
+                },
+                required: ["id", "label"],
+                additionalProperties: false
+              }
+            },
+            required: { type: "boolean" },
+            defaultValue: {
+              oneOf: [
+                { type: "string" },
+                { type: "array", items: { type: "string" } },
+                { type: "number" }
+              ]
+            },
+            min: { type: "number" },
+            max: { type: "number" },
+            step: { type: "number" },
+            unit: { type: "string" }
+          },
+          required: ["id", "type", "question", "required"],
+          additionalProperties: false
+        }
+      },
+      reasoning: {
+        type: "string",
+        maxLength: 500,
+        description: "Explanation of why these specific questions were chosen"
+      },
+      suggestedTechCategory: {
+        type: "string",
+        enum: ["FRONTEND", "BACKEND", "MULTI"]
+      },
+      error: {
+        type: "string",
+        description: "Error message if success is false"
+      }
+    },
+    required: ["success"],
+    additionalProperties: false
+  };
 }
 
 /**
@@ -304,41 +378,42 @@ export function createQuestionGenerationSchema() {
  * These are generic but cover the most common scenarios
  */
 export const FALLBACK_QUESTIONS = [
-    {
-        id: "architecture_pattern",
-        type: "single-choice" as const,
-        question: "Which architecture pattern best describes your project?",
-        description: "This affects deployment complexity and scalability strategy",
-        options: [
-            { id: "monolith", label: "Monolithic", description: "Single deployable application" },
-            { id: "microservices", label: "Microservices", description: "Distributed services architecture" },
-            { id: "serverless", label: "Serverless", description: "Function-based architecture" }
-        ],
-        required: true
-    },
-    {
-        id: "team_size",
-        type: "range" as const,
-        question: "Expected development team size?",
-        description: "Team size affects coordination and parallel work capacity",
-        min: 1,
-        max: 20,
-        step: 1,
-        unit: "developers",
-        defaultValue: 5,
-        required: true
-    },
-    {
-        id: "compliance_needs",
-        type: "multiple-choice" as const,
-        question: "Which compliance standards apply?",
-        description: "Compliance requirements impact security and audit activities",
-        options: [
-            { id: "gdpr", label: "GDPR" },
-            { id: "pci", label: "PCI-DSS" },
-            { id: "hipaa", label: "HIPAA" },
-            { id: "none", label: "None / Internal Use Only" }
-        ],
-        required: false
-    }
+  {
+    id: "architecture_pattern",
+    type: "single-choice" as const,
+    question: "Which architecture pattern best describes your project?",
+    description: "This affects deployment complexity and scalability strategy",
+    options: [
+      { id: "monolith", label: "Monolithic", description: "Single deployable application" },
+      { id: "microservices", label: "Microservices", description: "Distributed services architecture" },
+      { id: "serverless", label: "Serverless", description: "Function-based architecture" }
+    ],
+    required: true
+  },
+  {
+    id: "backend_preference",
+    type: "single-choice" as const,
+    question: "Primary backend technology preference?",
+    description: "This determines the server-side stack and tools",
+    options: [
+      { id: "node", label: "Node.js (TypeScript/JS)" },
+      { id: "python", label: "Python (FastAPI/Django)" },
+      { id: "java", label: "Java (Spring Boot)" },
+      { id: "dotnet", label: ".NET Core" }
+    ],
+    required: true
+  },
+  {
+    id: "data_persistence",
+    type: "multiple-choice" as const,
+    question: "Which data storage solutions do you need?",
+    description: "Select all that apply for your architecture",
+    options: [
+      { id: "sql", label: "Relational DB (Postgres/MySQL)" },
+      { id: "nosql", label: "Document DB (MongoDB/DynamoDB)" },
+      { id: "cache", label: "Caching (Redis/Memcached)" },
+      { id: "blob", label: "File Storage (S3/Blob Storage)" }
+    ],
+    required: false
+  }
 ];

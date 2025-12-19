@@ -57,10 +57,10 @@ export function ReviewStep({
         }
     };
 
-    const handleToggleActivity = (activityCode: string) => {
-        const newActivities = preset.activities.some(a => a.code === activityCode)
-            ? preset.activities.filter(a => a.code !== activityCode)
-            : [...preset.activities, preset.activities.find(a => a.code === activityCode)!];
+    const handleToggleActivity = (activityTitle: string) => {
+        const newActivities = preset.activities.some(a => a.title === activityTitle)
+            ? preset.activities.filter(a => a.title !== activityTitle)
+            : [...preset.activities, preset.activities.find(a => a.title === activityTitle)!];
 
         onEdit({ ...preset, activities: newActivities });
     };
@@ -80,14 +80,14 @@ export function ReviewStep({
                 <div className="space-y-2">
                     {activities.map((activity) => (
                         <div
-                            key={activity.code}
+                            key={activity.title}
                             className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 bg-white hover:border-blue-300 transition-all"
                         >
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-start gap-2">
-                                    <div className="font-medium text-slate-900">{activity.name}</div>
+                                    <div className="font-medium text-slate-900">{activity.title}</div>
                                     <Badge variant="secondary" className="text-xs">
-                                        {activity.baseDays}d
+                                        {Math.round(activity.estimatedHours)}h
                                     </Badge>
                                     <Badge
                                         variant="outline"
@@ -99,8 +99,8 @@ export function ReviewStep({
                                         {Math.round(activity.confidence * 100)}% conf.
                                     </Badge>
                                 </div>
-                                {activity.reasoning && (
-                                    <p className="text-sm text-slate-600 mt-1">{activity.reasoning}</p>
+                                {activity.description && (
+                                    <p className="text-sm text-slate-600 mt-1">{activity.description}</p>
                                 )}
                             </div>
                         </div>

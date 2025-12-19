@@ -29,7 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user, currentOrganization } = useAuthStore();
+  const { user, currentOrganization, fetchOrganizations } = useAuthStore();
   const { stats } = useDashboardData();
   const [lists, setLists] = useState<List[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,8 +43,17 @@ export default function Dashboard() {
   const [techData, setTechData] = useState<{ name: string; value: number }[]>([]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+  // Load organizations if not loaded
+  useEffect(() => {
+    if (user && !currentOrganization) {
+      console.log('[Dashboard] No organization found, fetching...');
+      fetchOrganizations();
+    }
+  }, [user, currentOrganization, fetchOrganizations]);
+
   useEffect(() => {
     if (user && currentOrganization) {
+      console.log('[Dashboard] Loading data for organization:', currentOrganization.id);
       loadLists();
       loadChartData();
     }

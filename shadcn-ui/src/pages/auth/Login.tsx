@@ -5,9 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { setUser, fetchOrganizations } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,7 +20,7 @@ export default function Login() {
     setLoading(true);
     setError('');
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -26,7 +28,11 @@ export default function Login() {
     if (error) {
       setError(error.message);
       setLoading(false);
-    } else {
+    } else if (data.user) {
+      console.log('[Login] User logged in, fetching organizations...');
+      setUser(data.user);
+      await fetchOrganizations();
+      console.log('[Login] Organizations fetched, navigating to dashboard...');
       navigate('/dashboard');
     }
   };
