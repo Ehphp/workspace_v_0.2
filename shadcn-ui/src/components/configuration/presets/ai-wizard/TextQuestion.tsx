@@ -7,6 +7,7 @@
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import type { TextQuestion } from '@/types/ai-interview';
+import { WIZARD_DESIGN } from './wizard-design-system';
 
 interface TextQuestionProps {
     question: TextQuestion;
@@ -22,14 +23,14 @@ export function TextQuestion({
     const remainingChars = question.maxLength ? question.maxLength - value.length : null;
 
     return (
-        <div className="space-y-4">
-            <div className="space-y-2">
-                <Label htmlFor={question.id} className="text-lg font-semibold text-slate-900">
+        <div className={WIZARD_DESIGN.spacing.card}>
+            <div className={WIZARD_DESIGN.spacing.tight}>
+                <Label htmlFor={question.id} className={WIZARD_DESIGN.typography.questionTitle}>
                     {question.question}
                     {question.required && <span className="text-destructive ml-1">*</span>}
                 </Label>
                 {question.description && (
-                    <p className="text-sm text-slate-600">{question.description}</p>
+                    <p className={WIZARD_DESIGN.typography.description}>{question.description}</p>
                 )}
             </div>
 
@@ -45,8 +46,7 @@ export function TextQuestion({
                 />
                 {remainingChars !== null && (
                     <div className="flex justify-end">
-                        <span className={`text-xs ${remainingChars < 20 ? 'text-destructive' : 'text-slate-500'
-                            }`}>
+                        <span className={`${WIZARD_DESIGN.typography.help} ${remainingChars < 20 ? 'text-destructive' : ''}`}>
                             {remainingChars} caratteri rimanenti
                         </span>
                     </div>

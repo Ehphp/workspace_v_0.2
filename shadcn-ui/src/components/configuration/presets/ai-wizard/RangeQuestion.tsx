@@ -7,6 +7,7 @@
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import type { RangeQuestion } from '@/types/ai-interview';
+import { WIZARD_DESIGN } from './wizard-design-system';
 
 interface RangeQuestionProps {
     question: RangeQuestion;
@@ -22,14 +23,14 @@ export function RangeQuestion({
     const currentValue = value ?? question.defaultValue ?? question.min;
 
     return (
-        <div className="space-y-6">
-            <div className="space-y-2">
-                <Label htmlFor={question.id} className="text-lg font-semibold text-slate-900">
+        <div className={WIZARD_DESIGN.spacing.section}>
+            <div className={WIZARD_DESIGN.spacing.tight}>
+                <Label htmlFor={question.id} className={WIZARD_DESIGN.typography.questionTitle}>
                     {question.question}
                     {question.required && <span className="text-destructive ml-1">*</span>}
                 </Label>
                 {question.description && (
-                    <p className="text-sm text-slate-600">{question.description}</p>
+                    <p className={WIZARD_DESIGN.typography.description}>{question.description}</p>
                 )}
             </div>
 
@@ -60,7 +61,7 @@ export function RangeQuestion({
                 </div>
 
                 {/* Min/Max Labels */}
-                <div className="flex justify-between text-xs text-slate-500 px-2">
+                <div className={`flex justify-between ${WIZARD_DESIGN.typography.help} px-2`}>
                     <span>
                         {question.min} {question.unit && `${question.unit}`}
                     </span>

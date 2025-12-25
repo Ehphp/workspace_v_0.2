@@ -122,30 +122,55 @@ export default function ConfigurationPresets() {
     };
 
     const handleAiWizardComplete = async (preset: any) => {
+        console.log('[ConfigurationPresets] AI preset received:', preset);
+
         // Convert AI preset to PresetForm format
         const presetForm: PresetForm = {
             name: preset.name,
             description: preset.description,
-            detailedDescription: preset.detailedDescription, // Add detailed description
+            detailedDescription: preset.detailedDescription,
             techCategory: preset.techCategory || 'MULTI',
-            activities: preset.activities.map((a: any) => ({
-                code: a.code,
-                baseDays: a.baseDays || 0 // baseDays from AI is already in days
-            })),
+            activities: preset.activities.map((a: any, idx: number) => {
+                // AI activities have: title, description, group, estimatedHours, priority
+                // We need to create a unique code for each activity
+                const techPrefix = preset.name.toUpperCase().replace(/[^A-Z0-9]/g, '_').substring(0, 10);
+                const activitySuffix = a.title.toUpperCase().replace(/[^A-Z0-9]/g, '_').substring(0, 15);
+                const activityCode = `${techPrefix}_${activitySuffix}_${idx + 1}`;
+
+                return {
+                    code: activityCode,
+                    title: a.title,
+                    name: a.title,
+                    description: a.description || '',
+                    group: a.group || 'DEV',
+                    baseHours: a.estimatedHours || 1,
+                    priority: a.priority || 'core'
+                };
+            }),
             driverValues: preset.driverValues || {},
             riskCodes: preset.riskCodes || []
         };
 
-        console.log('[ConfigurationPresets] Saving AI preset:', {
+        console.log('[ConfigurationPresets] Mapped preset form:', {
             name: presetForm.name,
+            techCategory: presetForm.techCategory,
             activitiesCount: presetForm.activities.length,
-            activities: presetForm.activities
+            sampleActivity: presetForm.activities[0]
         });
 
-        const success = await savePreset(presetForm, null);
-        if (success) {
-            setIsAiWizardOpen(false);
-            toast.success('Preset AI creato con successo!');
+        try {
+            const success = await savePreset(presetForm, null);
+            if (success) {
+                setIsAiWizardOpen(false);
+                toast.success('Preset AI creato con successo!');
+            } else {
+                toast.error('Errore durante il salvataggio del preset');
+            }
+        } catch (error) {
+            console.error('[ConfigurationPresets] Save error:', error);
+            toast.error('Errore durante il salvataggio', {
+                description: error instanceof Error ? error.message : 'Errore sconosciuto'
+            });
         }
     };
 

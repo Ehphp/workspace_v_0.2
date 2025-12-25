@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import type { SingleChoiceQuestion } from '@/types/ai-interview';
 import * as Icons from 'lucide-react';
+import { WIZARD_DESIGN, combineClasses } from './wizard-design-system';
 
 interface SingleChoiceQuestionProps {
     question: SingleChoiceQuestion;
@@ -21,14 +22,14 @@ export function SingleChoiceQuestion({
     onChange,
 }: SingleChoiceQuestionProps) {
     return (
-        <div className="space-y-4">
-            <div className="space-y-2">
-                <h3 className="text-lg font-semibold text-slate-900">
+        <div className={WIZARD_DESIGN.spacing.card}>
+            <div className={WIZARD_DESIGN.spacing.tight}>
+                <h3 className={WIZARD_DESIGN.typography.questionTitle}>
                     {question.question}
                     {question.required && <span className="text-destructive ml-1">*</span>}
                 </h3>
                 {question.description && (
-                    <p className="text-sm text-slate-600">{question.description}</p>
+                    <p className={WIZARD_DESIGN.typography.description}>{question.description}</p>
                 )}
             </div>
 
@@ -54,10 +55,13 @@ export function SingleChoiceQuestion({
                     return (
                         <div
                             key={option.id}
-                            className={`flex flex-col p-4 rounded-lg border transition-all cursor-pointer ${isSelected
-                                ? 'border-blue-500 bg-blue-50/50'
-                                : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/30'
-                                }`}
+                            className={combineClasses(
+                                'flex flex-col p-4',
+                                WIZARD_DESIGN.borders.option,
+                                WIZARD_DESIGN.interactive.transition,
+                                WIZARD_DESIGN.interactive.cursor,
+                                isSelected ? WIZARD_DESIGN.borders.optionSelected : WIZARD_DESIGN.borders.optionHover
+                            )}
                         >
                             <div className="flex items-start space-x-3">
                                 <RadioGroupItem value={option.id} id={`${question.id}-${option.id}`} className="mt-1" />
@@ -67,7 +71,7 @@ export function SingleChoiceQuestion({
                                 >
                                     <div className="flex items-start gap-3">
                                         {IconComponent && (
-                                            <IconComponent className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                                            <IconComponent className={`${WIZARD_DESIGN.icons.medium} text-blue-600 flex-shrink-0 mt-0.5`} />
                                         )}
                                         <div className="space-y-1 w-full">
                                             <div className="font-medium text-slate-900">{option.label}</div>

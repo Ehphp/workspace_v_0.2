@@ -144,7 +144,37 @@ export function usePresetManagement(userId: string | undefined) {
         return name.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 10);
     };
 
+    const generateUniqueCode = async (name: string): Promise<string> => {
+        const baseCode = generateCode(name);
+
+        // Check if code already exists
+        const { data: existing } = await supabase
+            .from('technology_presets')
+            .select('code')
+            .eq('code', baseCode)
+            .single();
+
+        // If code doesn't exist, use it
+        if (!existing) {
+            return baseCode;
+        }
+
+        // Otherwise, add timestamp suffix to make it unique
+        const timestamp = Date.now().toString().slice(-6); // Last 6 digits
+        const uniqueCode = `${baseCode.substring(0, 4)}_${timestamp}`;
+        console.log(`[generateUniqueCode] Code ${baseCode} exists, using ${uniqueCode}`);
+        return uniqueCode;
+    };
+
     const savePreset = async (form: PresetForm, editingId: string | null) => {
+        console.log('[usePresetManagement] savePreset called:', {
+            name: form.name,
+            techCategory: form.techCategory,
+            activitiesCount: form.activities.length,
+            sampleActivity: form.activities[0],
+            editingId
+        });
+
         if (!form.name.trim()) {
             toast.error('Il nome è obbligatorio');
             return false;
@@ -172,7 +202,8 @@ export function usePresetManagement(userId: string | undefined) {
                     .eq('id', editingId);
                 if (error) throw error;
             } else {
-                const code = generateCode(form.name);
+                const code = await generateUniqueCode(form.name);
+                console.log(`[savePreset] Using code: ${code}`);
                 const { data, error } = await supabase
                     .from('technology_presets')
                     .insert({ ...presetData, code })
@@ -204,7 +235,7 @@ export function usePresetManagement(userId: string | undefined) {
 
                         // If activity doesn't exist in database, create it as a custom activity
                         if (!activityId) {
-                            console.log(`[savePreset] Creating new custom activity: ${activity.code}`);
+                            console.log(`[savePreset] Activity not found, creating: ${activity.code}`, activity);
 
                             // Check if activity has required fields from AI generation
                             if (activity.code && (activity.name || activity.title) && (activity.baseDays || activity.baseHours)) {

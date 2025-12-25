@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Sparkles, ArrowRight, Lightbulb } from 'lucide-react';
 import { sanitizePromptInput } from '@/types/ai-validation';
+import { WIZARD_DESIGN } from './wizard-design-system';
 
 interface DescriptionInputProps {
     initialValue?: string;
@@ -60,16 +61,16 @@ export function DescriptionInput({
     };
 
     return (
-        <div className="space-y-6 max-w-3xl mx-auto">
+        <div className={`${WIZARD_DESIGN.spacing.section} ${WIZARD_DESIGN.containers.medium} mx-auto`}>
             {/* Header */}
-            <div className="text-center space-y-3">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg">
+            <div className={`text-center ${WIZARD_DESIGN.spacing.items}`}>
+                <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br ${WIZARD_DESIGN.gradients.primary} shadow-lg`}>
                     <Sparkles className="w-8 h-8 text-white" />
                 </div>
                 <h2 className="text-3xl font-bold text-slate-900">
                     Descrivi il tuo progetto
                 </h2>
-                <p className="text-lg text-slate-600">
+                <p className={`text-lg ${WIZARD_DESIGN.typography.subtitle}`}>
                     L'AI genererà domande personalizzate per creare il preset perfetto
                 </p>
             </div>
@@ -94,8 +95,8 @@ export function DescriptionInput({
                 />
                 <div className="flex items-center justify-between text-sm">
                     <span className={`font-medium ${charCount < 20 ? 'text-destructive' :
-                            charCount > 900 ? 'text-amber-600' :
-                                'text-slate-500'
+                        charCount > 900 ? 'text-amber-600' :
+                            'text-slate-500'
                         }`}>
                         {charCount} / 1000 caratteri
                         {charCount < 20 && ` (minimo 20, mancano ${20 - charCount})`}

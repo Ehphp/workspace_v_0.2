@@ -1,7 +1,17 @@
+import { useState } from 'react';
 import { RequirementEstimation } from '../RequirementEstimation';
-import { Download } from 'lucide-react';
+import { Download, FileText, FileSpreadsheet } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ExportDialog } from '@/components/export/ExportDialog';
 import type { Requirement, Activity, Driver, Risk, TechnologyPreset } from '@/types/database';
 import type { UseEstimationStateReturn } from '@/hooks/useEstimationState';
+import type { ExportableEstimation } from '@/types/export';
 
 interface EstimationTabProps {
     requirement: Requirement;
@@ -31,34 +41,68 @@ export function EstimationTab({
     isAiLoading,
     requirementDescription,
 }: EstimationTabProps) {
-    const handleExportCSV = () => {
-        if (!estimationState.estimationResult) return;
+    const [exportDialogOpen, setExportDialogOpen] = useState(false);
+
+    // Build exportable estimation for dialog
+    const getExportableEstimation = (): ExportableEstimation | null => {
+        if (!estimationState.estimationResult) return null;
 
         const result = estimationState.estimationResult;
-        const activities = estimationState.selectedActivityIds.map(id => {
-            const act = data.activities.find(a => a.id === id);
-            return act ? `"${act.name}"` : 'Unknown';
-        }).join(';');
+        const selectedPreset = data.presets.find(p => p.id === estimationState.selectedPresetId);
 
-        const csvContent = [
-            ['Metric', 'Value'],
-            ['Total Days', result.totalDays.toFixed(2)],
-            ['Base Days', result.baseDays.toFixed(2)],
-            ['Driver Multiplier', result.driverMultiplier.toFixed(3)],
-            ['Risk Score', result.riskScore],
-            ['Contingency', `${(result.contingencyPercent * 100)}%`],
-            ['Activities', activities]
-        ].map(e => e.join(',')).join('\n');
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `estimation_${requirement.title.substring(0, 20)}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        return {
+            requirement: {
+                id: requirement.id,
+                reqId: requirement.req_id,
+                title: requirement.title,
+                description: requirement.description || undefined,
+                priority: requirement.priority as 'HIGH' | 'MEDIUM' | 'LOW',
+                state: requirement.state,
+                businessOwner: requirement.business_owner || undefined,
+            },
+            estimation: {
+                totalDays: result.totalDays,
+                baseDays: result.baseDays,
+                driverMultiplier: result.driverMultiplier,
+                subtotal: result.subtotal,
+                riskScore: result.riskScore,
+                contingencyPercent: result.contingencyPercent,
+                contingencyDays: result.contingencyDays,
+            },
+            technology: selectedPreset ? {
+                name: selectedPreset.name,
+                category: selectedPreset.tech_category,
+            } : undefined,
+            activities: estimationState.selectedActivityIds.map(id => {
+                const activity = data.activities.find(a => a.id === id);
+                return {
+                    code: activity?.code || id,
+                    name: activity?.name || 'Unknown',
+                    group: activity?.group || 'DEV',
+                    hours: activity?.base_hours || 0,
+                    isAiSuggested: false, // TODO: Track AI suggestions
+                };
+            }),
+            drivers: Object.entries(estimationState.selectedDriverValues).map(([code, value]) => {
+                const driver = data.drivers.find(d => d.code === code);
+                const option = driver?.options.find(o => o.value === value);
+                return {
+                    code,
+                    name: driver?.name || code,
+                    value,
+                    label: option?.label || value,
+                    multiplier: option?.multiplier || 1.0,
+                };
+            }),
+            risks: estimationState.selectedRiskIds.map(id => {
+                const risk = data.risks.find(r => r.id === id);
+                return {
+                    code: risk?.code || id,
+                    name: risk?.name || 'Unknown',
+                    weight: risk?.weight || 0,
+                };
+            }),
+        };
     };
 
     return (
@@ -66,14 +110,35 @@ export function EstimationTab({
             {/* Toolbar */}
             <div className="flex-shrink-0 bg-white border-b border-slate-200">
                 <div className="container mx-auto px-6 py-2 flex justify-end">
-                    <button
-                        onClick={handleExportCSV}
-                        className="text-xs flex items-center gap-1 text-slate-600 hover:text-blue-600 transition-colors"
-                        title="Export to CSV"
-                    >
-                        <Download className="w-3.5 h-3.5" />
-                        Export CSV
-                    </button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs text-slate-600 hover:text-blue-600"
+                                disabled={!estimationState.estimationResult}
+                            >
+                                <Download className="w-3.5 h-3.5 mr-1" />
+                                Esporta
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem
+                                onClick={() => setExportDialogOpen(true)}
+                                className="flex items-center gap-2"
+                            >
+                                <FileText className="w-4 h-4 text-red-500" />
+                                <span>Esporta PDF</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => setExportDialogOpen(true)}
+                                className="flex items-center gap-2"
+                            >
+                                <FileSpreadsheet className="w-4 h-4 text-green-500" />
+                                <span>Esporta Excel</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
 
@@ -94,6 +159,16 @@ export function EstimationTab({
                     </div>
                 </div>
             </div>
+
+            {/* Export Dialog */}
+            {getExportableEstimation() && (
+                <ExportDialog
+                    open={exportDialogOpen}
+                    onOpenChange={setExportDialogOpen}
+                    estimations={[getExportableEstimation()!]}
+                    projectName={requirement.title}
+                />
+            )}
         </div>
     );
 }

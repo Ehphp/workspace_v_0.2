@@ -9,6 +9,8 @@ import { generateTitleFromDescription } from '@/lib/openai';
 import type { Activity, Driver, Risk } from '@/types/database';
 import type { WizardData } from '@/hooks/useWizardState';
 import type { EstimationResult } from '@/types/estimation';
+import type { ExportableEstimation } from '@/types/export';
+import { ExportDialog } from '@/components/export/ExportDialog';
 import { useNavigate } from 'react-router-dom';
 
 interface WizardStep5Props {
@@ -29,6 +31,7 @@ export function WizardStep5({ data, onUpdate, onBack, onReset, onSave }: WizardS
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [generatedTitle, setGeneratedTitle] = useState<string>('');
   const [titleLoading, setTitleLoading] = useState(true);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
   useEffect(() => {
     calculateResult();
@@ -179,11 +182,69 @@ export function WizardStep5({ data, onUpdate, onBack, onReset, onSave }: WizardS
   };
 
   const handleDownloadPDF = () => {
-    alert('PDF export coming soon in Phase 2!');
+    setExportDialogOpen(true);
   };
 
   const handleDownloadCSV = () => {
-    alert('CSV export coming soon in Phase 2!');
+    setExportDialogOpen(true);
+  };
+
+  // Build exportable estimation for dialog
+  const getExportableEstimation = (): ExportableEstimation | null => {
+    if (!result) return null;
+
+    return {
+      requirement: {
+        id: 'wizard-temp',
+        reqId: data.reqId || 'NEW',
+        title: generatedTitle || data.title || 'Senza titolo',
+        description: data.description,
+        priority: (data.priority as 'HIGH' | 'MEDIUM' | 'LOW') || 'MEDIUM',
+        state: data.state || 'PROPOSED',
+      },
+      estimation: {
+        totalDays: result.totalDays,
+        baseDays: result.baseDays,
+        driverMultiplier: result.driverMultiplier,
+        subtotal: result.subtotal,
+        riskScore: result.riskScore,
+        contingencyPercent: result.contingencyPercent,
+        contingencyDays: result.contingencyDays,
+      },
+      technology: data.techPresetId ? {
+        name: data.techPresetId,
+        category: 'Custom',
+      } : undefined,
+      activities: data.selectedActivityCodes.map(code => {
+        const activity = activities.find(a => a.code === code);
+        return {
+          code,
+          name: activity?.name || code,
+          group: activity?.group || 'DEV',
+          hours: activity?.base_hours || 0,
+          isAiSuggested: data.aiSuggestedActivityCodes.includes(code),
+        };
+      }),
+      drivers: Object.entries(data.selectedDriverValues).map(([code, value]) => {
+        const driver = drivers.find(d => d.code === code);
+        const option = driver?.options.find(o => o.value === value);
+        return {
+          code,
+          name: driver?.name || code,
+          value,
+          label: option?.label || value,
+          multiplier: option?.multiplier || 1.0,
+        };
+      }),
+      risks: data.selectedRiskCodes.map(code => {
+        const risk = risks.find(r => r.code === code);
+        return {
+          code,
+          name: risk?.name || code,
+          weight: risk?.weight || 0,
+        };
+      }),
+    };
   };
 
   if (loading || !result) {
@@ -362,6 +423,15 @@ export function WizardStep5({ data, onUpdate, onBack, onReset, onSave }: WizardS
           </Button>
         </div>
       </div>
+
+      {/* Export Dialog */}
+      {getExportableEstimation() && (
+        <ExportDialog
+          open={exportDialogOpen}
+          onOpenChange={setExportDialogOpen}
+          estimations={[getExportableEstimation()!]}
+        />
+      )}
     </div>
   );
 }
