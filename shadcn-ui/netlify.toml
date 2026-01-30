@@ -20,6 +20,12 @@
 [functions."ai-generate-questions"]
   timeout = 60
 
+[functions."ai-requirement-interview"]
+  timeout = 60
+
+[functions."ai-estimate-from-interview"]
+  timeout = 60
+
 # Redirect all requests to index.html for SPA routing
 [[redirects]]
   from = "/*"

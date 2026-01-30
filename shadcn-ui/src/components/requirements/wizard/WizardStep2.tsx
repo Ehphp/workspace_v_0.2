@@ -122,7 +122,13 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
         ) : (
           <RadioGroup
             value={data.techPresetId}
-            onValueChange={(value) => onUpdate({ techPresetId: value })}
+            onValueChange={(value) => {
+              const selectedPreset = presets.find(p => p.id === value);
+              onUpdate({
+                techPresetId: value,
+                techCategory: selectedPreset?.tech_category || '',
+              });
+            }}
           >
             <div className="grid gap-3 md:grid-cols-2">
               {presets.map((preset) => {
@@ -135,7 +141,12 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
                       ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 via-purple-50 to-indigo-50 shadow-md ring-2 ring-indigo-100'
                       : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm'
                       }`}
-                    onClick={() => onUpdate({ techPresetId: preset.id })}
+                    onClick={() => {
+                      onUpdate({
+                        techPresetId: preset.id,
+                        techCategory: preset.tech_category || '',
+                      });
+                    }}
                   >
                     <div className="flex items-start gap-3">
                       <div className={`flex-shrink-0 w-9 h-9 rounded-lg border-2 flex items-center justify-center ${isSelected
@@ -207,7 +218,7 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
             size="lg"
             className="h-11 px-5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed group"
           >
-            <span className="font-semibold text-sm">Next: Select Activities</span>
+            <span className="font-semibold text-sm">Next: Technical Interview</span>
             <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>

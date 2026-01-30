@@ -547,6 +547,7 @@ export default function Requirements() {
                         open={showCreateDialog}
                         onOpenChange={setShowCreateDialog}
                         listId={listId}
+                        list={list || undefined}
                         onSuccess={loadData}
                     />
                     <ImportRequirementsDialog

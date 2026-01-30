@@ -5,11 +5,13 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { RequirementWizard } from './RequirementWizard';
+import type { List } from '@/types/database';
 
 interface CreateRequirementDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     listId: string;
+    list?: List;
     onSuccess: () => void;
 }
 
@@ -17,6 +19,7 @@ export function CreateRequirementDialog({
     open,
     onOpenChange,
     listId,
+    list,
     onSuccess,
 }: CreateRequirementDialogProps) {
     return (
@@ -30,6 +33,12 @@ export function CreateRequirementDialog({
                     <RequirementWizard
                         isOpen={open}
                         listId={listId}
+                        projectContext={list ? {
+                            name: list.name,
+                            description: list.description,
+                            owner: list.owner,
+                            defaultTechPresetId: list.tech_preset_id || undefined,
+                        } : undefined}
                         onSuccess={() => {
                             onSuccess();
                             onOpenChange(false);

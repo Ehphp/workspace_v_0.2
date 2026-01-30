@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useWizardState } from '@/hooks/useWizardState';
 import { WizardStep1 } from './wizard/WizardStep1';
 import { WizardStep2 } from './wizard/WizardStep2';
-import { WizardStep3 } from './wizard/WizardStep3';
+import { WizardStepInterview } from './wizard/WizardStepInterview';
 import { WizardStep4 } from './wizard/WizardStep4';
 import { WizardStep5 } from './wizard/WizardStep5';
 import { createRequirement, saveEstimation } from '@/lib/api';
@@ -12,23 +12,40 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { EstimationResult } from '@/types/estimation';
 
+/** Project context for AI to avoid redundant questions */
+export interface ProjectContext {
+    name: string;
+    description: string;
+    owner?: string;
+    defaultTechPresetId?: string;
+}
+
 interface RequirementWizardProps {
     listId: string;
+    projectContext?: ProjectContext;
     onSuccess: () => void;
     onCancel: () => void;
     isOpen?: boolean;
 }
 
-export function RequirementWizard({ listId, onSuccess, onCancel, isOpen }: RequirementWizardProps) {
+export function RequirementWizard({ listId, projectContext, onSuccess, onCancel, isOpen }: RequirementWizardProps) {
     const [currentStep, setCurrentStep] = useState(0);
     const { data, updateData, resetData } = useWizardState();
     const { user } = useAuth();
     const { toast } = useToast();
     const [saving, setSaving] = useState(false);
+
+    // Store project context in wizard state on first render
+    useEffect(() => {
+        if (projectContext && !data.projectContext) {
+            updateData({ projectContext });
+        }
+    }, [projectContext, data.projectContext, updateData]);
+
     const steps = [
         { title: 'Requirement', component: WizardStep1 },
         { title: 'Technology', component: WizardStep2 },
-        { title: 'Activities', component: WizardStep3 },
+        { title: 'Technical Interview', component: WizardStepInterview },
         { title: 'Drivers & Risks', component: WizardStep4 },
         { title: 'Results', component: WizardStep5 },
     ];
@@ -65,12 +82,16 @@ export function RequirementWizard({ listId, onSuccess, onCancel, isOpen }: Requi
 
         try {
             // Determine title with fallback logic:
-            // 1. Try generatedTitle from normalizationResult (first GPT call)
-            // 2. If not available, try generatedTitle from activitySuggestionResult (second GPT call)
-            // 3. If still not available, use fallback "Requisito senza titolo"
+            // 1. Try title from interview estimate (new AI flow)
+            // 2. Try generatedTitle from normalizationResult (first GPT call - legacy)
+            // 3. If not available, try generatedTitle from activitySuggestionResult (legacy)
+            // 4. If still not available, use fallback "Requisito senza titolo"
             let finalTitle = 'Requisito senza titolo';
 
-            if (data.normalizationResult?.generatedTitle) {
+            if (data.title) {
+                finalTitle = data.title;
+                console.log('Using title from interview estimate:', finalTitle);
+            } else if (data.normalizationResult?.generatedTitle) {
                 finalTitle = data.normalizationResult.generatedTitle;
                 console.log('Using title from normalization:', finalTitle);
             } else if (data.activitySuggestionResult?.generatedTitle) {
