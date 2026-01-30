@@ -507,7 +507,7 @@ Genera domande tecniche SPECIFICHE per ${techCategoryDescription} che chiariscon
 
         // Call OpenAI
         const response = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
+            model: 'gpt-4-turbo',
             temperature: 0.3, // Slightly creative for contextual questions
             max_tokens: 2000,
             messages: [

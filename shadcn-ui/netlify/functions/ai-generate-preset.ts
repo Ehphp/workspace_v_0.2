@@ -244,7 +244,7 @@ Generate a preset with 6-10 ATOMIC ESTIMATION ACTIVITIES optimized for estimatin
         const startTime = Date.now();
 
         const response = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
+            model: 'gpt-4-turbo',
             temperature: 0.2, // Lower for faster, more deterministic responses
             max_tokens: 1500, // Further reduced for speed
             messages: [

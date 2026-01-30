@@ -370,7 +370,7 @@ Collega ogni attività alla risposta che l'ha motivata.`;
 
         // Call OpenAI with dynamic schema containing enum constraint
         const response = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
+            model: 'gpt-4-turbo',
             temperature: 0.1, // Low temperature for consistent estimates
             max_tokens: 2500,
             messages: [
