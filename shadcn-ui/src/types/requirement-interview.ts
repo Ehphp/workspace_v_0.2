@@ -22,8 +22,9 @@ export type TechnicalQuestionCategory =
 
 /**
  * Question types supported by the interview system
+ * NOTE: "text" type is intentionally excluded to avoid open-ended questions
  */
-export type InterviewQuestionType = 'single-choice' | 'multiple-choice' | 'text' | 'range';
+export type InterviewQuestionType = 'single-choice' | 'multiple-choice' | 'range';
 
 /**
  * Option for choice-based questions

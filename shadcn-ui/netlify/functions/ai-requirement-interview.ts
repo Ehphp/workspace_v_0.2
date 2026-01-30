@@ -49,20 +49,24 @@ REGOLE FONDAMENTALI:
 5. Genera tra 4 e 6 domande (non di più per non rallentare il processo)
 6. NON fare domande generiche - ogni domanda deve menzionare componenti/tool specifici di {TECH_CATEGORY}
 
+⚠️ REGOLA CRITICA: EVITA DOMANDE APERTE!
+- NON usare type "text" - le domande aperte rallentano l'utente e sono vaghe
+- Usa SEMPRE scelte predefinite: single-choice, multiple-choice, range
+- Se pensi serva una domanda aperta, trasformala in multiple-choice con opzioni comuni
+
 FORMATO OUTPUT (JSON):
 {
   "questions": [
     {
       "id": "q1_specifico_tecnologia",
-      "type": "single-choice" | "multiple-choice" | "range" | "text",
+      "type": "single-choice" | "multiple-choice" | "range",
       "category": "INTEGRATION" | "DATA" | "SECURITY" | "PERFORMANCE" | "UI_UX" | "ARCHITECTURE" | "TESTING" | "DEPLOYMENT",
       "question": "Domanda SPECIFICA per {TECH_CATEGORY}",
       "technicalContext": "Perché questo impatta {TECH_CATEGORY} specificamente",
       "impactOnEstimate": "Come cambia la stima in termini di attività {TECH_CATEGORY}",
       "options": [{"id": "opt1", "label": "Opzione tecnica", "description": "Impatto specifico"}],
       "required": true,
-      "min": null, "max": null, "step": null, "unit": null,
-      "placeholder": null, "maxLength": null
+      "min": null, "max": null, "step": null, "unit": null
     }
   ],
   "reasoning": "Spiegazione di perché queste domande sono rilevanti per {TECH_CATEGORY}",
@@ -70,16 +74,16 @@ FORMATO OUTPUT (JSON):
   "suggestedActivities": []
 }
 
-TIPI DI DOMANDA:
-- single-choice: Per decisioni tecniche con opzioni discrete (2-4 opzioni)
-- multiple-choice: Per selezione multipla di pattern/componenti
+TIPI DI DOMANDA CONSENTITI (⛔ NO "text"):
+- single-choice: Per decisioni tecniche binarie o con poche opzioni (2-5 opzioni)
+- multiple-choice: Per selezione multipla di componenti/pattern/requisiti (3+ opzioni)
 - range: Per quantità numeriche (con min, max, step, unit)
-- text: SOLO se serve input tecnico libero
 
 IMPORTANTE:
 - Ogni opzione deve riflettere scelte implementative reali in {TECH_CATEGORY}
 - Per campi non usati (es. min/max per single-choice), metti null
-- Il campo "required" deve essere true per domande critiche`;
+- Il campo "required" deve essere true per domande critiche
+- Fornisci SEMPRE almeno 2 opzioni per single-choice e 3+ per multiple-choice`;
 
 /**
  * Technology-specific question templates
@@ -251,7 +255,8 @@ const RESPONSE_SCHEMA = {
                             id: { type: 'string' },
                             type: {
                                 type: 'string',
-                                enum: ['single-choice', 'multiple-choice', 'range', 'text']
+                                // NO "text" - only structured question types allowed
+                                enum: ['single-choice', 'multiple-choice', 'range']
                             },
                             category: {
                                 type: 'string',
@@ -277,11 +282,9 @@ const RESPONSE_SCHEMA = {
                             min: { type: ['number', 'null'] },
                             max: { type: ['number', 'null'] },
                             step: { type: ['number', 'null'] },
-                            unit: { type: ['string', 'null'] },
-                            placeholder: { type: ['string', 'null'] },
-                            maxLength: { type: ['number', 'null'] }
+                            unit: { type: ['string', 'null'] }
                         },
-                        required: ['id', 'type', 'category', 'question', 'technicalContext', 'impactOnEstimate', 'required', 'options', 'min', 'max', 'step', 'unit', 'placeholder', 'maxLength'],
+                        required: ['id', 'type', 'category', 'question', 'technicalContext', 'impactOnEstimate', 'required', 'options', 'min', 'max', 'step', 'unit'],
                         additionalProperties: false
                     }
                 },

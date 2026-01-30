@@ -7,13 +7,17 @@
   NODE_VERSION = "20"
 
 [dev]
-  # Timeout for local development (netlify dev)
-  # Default is 30s, we need more for AI functions
-  timeoutSeconds = 120
+  # Timeout for local development functions (in seconds)
+  # lambda-local uses this setting
+  functionsTimeout = 120
+  # Alternative key for some versions
+  timeout = 120
 
 [functions]
   # Configuration for all functions (including AI generation)
   node_bundler = "esbuild"
+  # External modules that should not be bundled
+  external_node_modules = ["openai"]
 
 # Specific configuration for AI functions with longer timeout
 [functions."ai-generate-preset"]
