@@ -6,6 +6,11 @@
 [build.environment]
   NODE_VERSION = "20"
 
+[dev]
+  # Timeout for local development (netlify dev)
+  # Default is 30s, we need more for AI functions
+  timeoutSeconds = 120
+
 [functions]
   # Configuration for all functions (including AI generation)
   node_bundler = "esbuild"
