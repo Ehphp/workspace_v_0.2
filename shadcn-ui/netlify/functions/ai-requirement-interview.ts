@@ -505,10 +505,11 @@ ${sanitizedDescription}
 
 Genera domande tecniche SPECIFICHE per ${techCategoryDescription} che chiariscono gli aspetti implementativi.`;
 
-        // Call OpenAI
+        // Call OpenAI with deterministic settings
         const response = await openai.chat.completions.create({
             model: 'gpt-4o',
-            temperature: 0.3, // Slightly creative for contextual questions
+            temperature: 0, // Zero temperature for deterministic questions
+            seed: 42, // Fixed seed for reproducible results
             max_tokens: 2000,
             messages: [
                 {

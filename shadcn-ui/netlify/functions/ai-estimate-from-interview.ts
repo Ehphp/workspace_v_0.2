@@ -58,27 +58,30 @@ IL TUO COMPITO:
 4. Collega ogni attività alla risposta che l'ha triggerata (quando applicabile)
 5. Calcola un confidence score basato sulla completezza delle risposte
 
-REGOLE IMPORTANTI:
-- Usa SOLO codici attività presenti nel catalogo fornito
-- Non inventare attività o codici
-- Sii conservativo: meglio una stima accurata che ottimistica
-- Se una risposta indica alta complessità, includi attività extra (testing, review, documentation)
-- Considera dipendenze e integrazioni menzionate nelle risposte
-- Se le risposte sono incomplete o vaghe, abbassa il confidence score
+⚠️ REGOLE DETERMINISTICHE PER RIDURRE VARIANZA ⚠️
 
-ANALISI DELLE RISPOSTE:
-- Risposte che indicano integrazioni → aggiungi attività di integrazione e testing
-- Risposte che indicano alti volumi → aggiungi attività di performance/ottimizzazione
-- Risposte che indicano sicurezza → aggiungi attività di security review
-- Risposte che indicano UI complessa → aggiungi attività frontend aggiuntive
-- Risposte che indicano requisiti di testing → aggiungi attività QA
+SELEZIONE ATTIVITÀ OBBLIGATORIE (se il requisito le richiede):
+1. Se menziona "email", "notifica", "invio", "flusso automatico" → INCLUDI attività FLOW (PP_FLOW_* o equivalente)
+2. Se menziona "form", "schermata", "interfaccia", "UI" → INCLUDI attività FORM (PP_DV_FORM_* o equivalente)
+3. Se menziona "dati", "campi", "tabella", "entità" → INCLUDI attività FIELD/DATA (PP_DV_FIELD_* o equivalente)
+4. Se menziona "test", "validazione", "UAT" → INCLUDI attività TEST (PP_E2E_TEST_* o equivalente)
+5. Se menziona "deploy", "rilascio", "ambiente" → INCLUDI attività DEPLOY (PP_DEPLOY_* o equivalente)
 
-CONFIDENCE SCORE:
-- 0.9-1.0: Tutte le risposte chiare e complete, requisito ben definito
-- 0.7-0.9: Risposte sufficienti, qualche ambiguità minore
-- 0.5-0.7: Alcune risposte vaghe, stima approssimativa
-- 0.3-0.5: Molte risposte mancanti, stima molto approssimativa
-- <0.3: Informazioni insufficienti per una stima affidabile
+SCELTA VARIANTE _SM vs _LG (BASATA SULLE RISPOSTE, NON SUL TUO GIUDIZIO):
+- Se la risposta indica "semplice", "pochi", "1-2", "base", "minimo" → USA variante _SM
+- Se la risposta indica "complesso", "molti", "5+", "avanzato", "multipli" → USA variante _LG  
+- Se la risposta è neutra o assente → USA la variante BASE (senza suffisso)
+
+REGOLE DI COERENZA:
+- Per lo STESSO tipo di requisito con le STESSE risposte, seleziona SEMPRE le stesse attività
+- NON aggiungere attività "per sicurezza" - includi SOLO quelle giustificate dalle risposte
+- Se non sei sicuro, usa la variante BASE (senza _SM/_LG)
+
+CONFIDENCE SCORE (DETERMINISTICO):
+- 0.90: Tutte le domande hanno risposta chiara e coerente
+- 0.80: 80%+ domande con risposta chiara
+- 0.70: 60-80% domande con risposta chiara
+- 0.60: Meno del 60% domande con risposta chiara
 
 FORMATO OUTPUT (JSON):
 {
@@ -90,7 +93,7 @@ FORMATO OUTPUT (JSON):
       "baseHours": 8,
       "reason": "Perché questa attività è necessaria",
       "fromAnswer": "Valore della risposta che ha triggerato questa selezione",
-      "fromQuestionId": "q1_integration" // ID della domanda correlata
+      "fromQuestionId": "q1_integration"
     }
   ],
   "totalBaseDays": 5.5,
@@ -369,9 +372,11 @@ Analizza le risposte e seleziona le attività necessarie per implementare questo
 Collega ogni attività alla risposta che l'ha motivata.`;
 
         // Call OpenAI with dynamic schema containing enum constraint
+        // Using temperature=0 and seed for deterministic responses
         const response = await openai.chat.completions.create({
             model: 'gpt-4o',
-            temperature: 0.1, // Low temperature for consistent estimates
+            temperature: 0, // Zero temperature for maximum determinism
+            seed: 42, // Fixed seed for reproducible results
             max_tokens: 2500,
             messages: [
                 {
