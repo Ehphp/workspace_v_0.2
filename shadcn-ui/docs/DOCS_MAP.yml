@@ -1,0 +1,37 @@
+# Documentation Mapping Configuration
+# Maps code paths to documentation files that should be updated
+
+mappings:
+  - pattern: "shadcn-ui/netlify/functions/**"
+    docs:
+      - docs/ai-integration.md
+      - docs/architecture.md
+
+  - pattern: "shadcn-ui/src/lib/**estimation**"
+    docs:
+      - docs/estimation-engine.md
+
+  - pattern: "shadcn-ui/supabase/**"
+    docs:
+      - docs/data-model.md
+
+  - pattern: "shadcn-ui/src/components/configuration/presets/ai-wizard/**"
+    docs:
+      - docs/ai-integration.md
+      - docs/architecture.md
+
+  - pattern: "shadcn-ui/src/components/estimation/interview/**"
+    docs:
+      - docs/ai-integration.md
+
+  - pattern: "shadcn-ui/src/lib/ai-*.ts"
+    docs:
+      - docs/ai-integration.md
+
+  - pattern: "shadcn-ui/src/hooks/use*Interview*.ts"
+    docs:
+      - docs/ai-integration.md
+
+  - pattern: "shadcn-ui/src/types/ai-*.ts"
+    docs:
+      - docs/ai-integration.md
