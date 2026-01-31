@@ -1,0 +1,437 @@
+import { supabase } from './supabase';
+import type {
+  Activity,
+  Driver,
+  List,
+  Requirement,
+  RequirementDriverValue,
+  TechnologyPreset,
+  Risk,
+  Organization,
+  OrganizationMember
+} from '@/types/database';
+
+export class ApiError extends Error {
+  status?: number;
+  details?: unknown;
+
+  constructor(message: string, status?: number, details?: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.details = details;
+  }
+}
+
+async function requireSingle<T>(promise: PromiseLike<{ data: T | null; error: unknown; status: number }>): Promise<T> {
+  const { data, error, status } = await promise;
+  if (error || !data) {
+    const message = error && typeof error === 'object' && 'message' in error ? (error as { message: string }).message : 'Resource not found';
+    throw new ApiError(message, status, error);
+  }
+  return data;
+}
+
+export async function fetchList(listId: string): Promise<List> {
+  return requireSingle(
+    supabase
+      .from('lists')
+      .select('*')
+      .eq('id', listId)
+      .single(),
+  );
+}
+
+export async function fetchRequirement(listId: string, reqId: string): Promise<Requirement> {
+  return requireSingle(
+    supabase
+      .from('requirements')
+      .select('*')
+      .eq('id', reqId)
+      .eq('list_id', listId)
+      .single(),
+  );
+}
+
+export async function fetchTechnologyPreset(presetId: string): Promise<TechnologyPreset | null> {
+  const { data, error } = await supabase
+    .from('technology_presets')
+    .select('*')
+    .eq('id', presetId)
+    .single();
+
+  if (error) {
+    console.warn('Failed to fetch technology preset', error);
+    return null;
+  }
+  return data;
+}
+
+export interface EstimationMasterData {
+  presets: TechnologyPreset[];
+  activities: Activity[];
+  drivers: Driver[];
+  risks: Risk[];
+}
+
+export async function fetchEstimationMasterData(): Promise<EstimationMasterData> {
+  const [presetsRes, activitiesRes, driversRes, risksRes, tpaRes] = await Promise.all([
+    supabase.from('technology_presets').select('*').order('name'),
+    supabase.from('activities').select('*').eq('active', true).order('group, name'),
+    supabase.from('drivers').select('*').order('code'),
+    supabase.from('risks').select('*').order('weight'),
+    supabase.from('technology_preset_activities').select('tech_preset_id, activity_id, position'),
+  ]);
+
+  if (presetsRes.error) throw presetsRes.error;
+  if (activitiesRes.error) throw activitiesRes.error;
+  if (driversRes.error) throw driversRes.error;
+  if (risksRes.error) throw risksRes.error;
+  if (tpaRes.error) throw tpaRes.error;
+
+  const activityById = new Map<string, Activity>();
+  (activitiesRes.data || []).forEach((a) => activityById.set(a.id, a));
+
+  const pivotByPreset = new Map<string, { activity_id: string; position: number | null }[]>();
+  (tpaRes.data as { tech_preset_id: string; activity_id: string; position: number | null }[] | null || []).forEach((row) => {
+    if (!pivotByPreset.has(row.tech_preset_id)) {
+      pivotByPreset.set(row.tech_preset_id, []);
+    }
+    pivotByPreset.get(row.tech_preset_id)!.push({
+      activity_id: row.activity_id,
+      position: row.position ?? null,
+    });
+  });
+
+  const normalizedPresets: TechnologyPreset[] = (presetsRes.data || []).map((p) => {
+    const rows = pivotByPreset.get(p.id) || [];
+    if (rows.length === 0) return p;
+
+    const codes = rows
+      .sort((a, b) => {
+        const pa = a.position ?? Number.MAX_SAFE_INTEGER;
+        const pb = b.position ?? Number.MAX_SAFE_INTEGER;
+        return pa - pb;
+      })
+      .map((r) => activityById.get(r.activity_id)?.code)
+      .filter((code): code is string => Boolean(code));
+
+    if (codes.length === 0) return p;
+    return { ...p, default_activity_codes: codes };
+  });
+
+  return {
+    presets: normalizedPresets,
+    activities: activitiesRes.data || [],
+    drivers: driversRes.data || [],
+    risks: risksRes.data || [],
+  };
+}
+
+export async function fetchPresets(): Promise<TechnologyPreset[]> {
+  const { data, error, status } = await supabase.from('technology_presets').select('*').order('name');
+  if (error) {
+    throw new ApiError(error.message || 'Unable to load technology presets', status, error);
+  }
+  return data || [];
+}
+
+export interface CreateListInput {
+  userId: string;
+  organizationId: string;
+  name: string;
+  description?: string;
+  owner?: string;
+  techPresetId?: string | null;
+  status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+}
+
+export async function createList(input: CreateListInput): Promise<List> {
+  const payload = {
+    user_id: input.userId,
+    organization_id: input.organizationId,
+    name: input.name,
+    description: input.description || '',
+    owner: input.owner || '',
+    tech_preset_id: input.techPresetId ?? null,
+    status: input.status,
+  };
+
+  return requireSingle(
+    supabase
+      .from('lists')
+      .insert(payload)
+      .select('*')
+      .single(),
+  );
+}
+
+export async function generateNextRequirementId(listId: string): Promise<string> {
+  const { data, error, status } = await supabase
+    .from('requirements')
+    .select('req_id')
+    .eq('list_id', listId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new ApiError(error.message || 'Unable to generate requirement id', status, error);
+  }
+
+  if (!data || data.length === 0) return 'REQ-001';
+
+  const numbers = data
+    .map((req) => {
+      const match = req.req_id?.match(/REQ-(\d+)/);
+      return match ? parseInt(match[1], 10) : 0;
+    })
+    .filter((num) => num > 0);
+
+  const nextNumber = (numbers.length > 0 ? Math.max(...numbers) : 0) + 1;
+  return `REQ-${String(nextNumber).padStart(3, '0')}`;
+}
+
+export interface CreateRequirementInput {
+  listId: string;
+  title: string;
+  description?: string;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  state: 'PROPOSED' | 'SELECTED' | 'SCHEDULED' | 'DONE';
+  business_owner?: string;
+  tech_preset_id?: string | null;
+  req_id?: string;
+}
+
+export async function createRequirement(input: CreateRequirementInput): Promise<Requirement> {
+  const reqId = input.req_id || (await generateNextRequirementId(input.listId));
+  const payload = {
+    list_id: input.listId,
+    req_id: reqId,
+    title: input.title,
+    description: input.description || '',
+    priority: input.priority,
+    state: input.state,
+    business_owner: input.business_owner || '',
+    tech_preset_id: input.tech_preset_id ?? null,
+    labels: [],
+  };
+
+  return requireSingle(
+    supabase
+      .from('requirements')
+      .insert(payload)
+      .select('*')
+      .single(),
+  );
+}
+
+export async function fetchEstimationDetails(estimationId: string) {
+  const { data: estimation, error } = await supabase
+    .from('estimations')
+    .select(`
+      *,
+      estimation_activities(*),
+      estimation_drivers(*),
+      estimation_risks(*)
+    `)
+    .eq('id', estimationId)
+    .single();
+
+  if (error) throw error;
+  return estimation;
+}
+
+export async function fetchRequirementBundle(listId: string, reqId: string, _userId: string) {
+  const list = await fetchList(listId);
+  const requirement = await fetchRequirement(listId, reqId);
+
+  const techPresetId = requirement.tech_preset_id || list.tech_preset_id;
+  const preset = techPresetId ? await fetchTechnologyPreset(techPresetId) : null;
+
+  const { data: driverValues, error: driverErr } = await supabase
+    .from('requirement_driver_values')
+    .select('*')
+    .eq('requirement_id', requirement.id);
+  if (driverErr) {
+    console.warn('Failed to load requirement driver values', driverErr);
+  }
+
+  let assignedEstimation = null;
+  if (requirement.assigned_estimation_id) {
+    try {
+      assignedEstimation = await fetchEstimationDetails(requirement.assigned_estimation_id);
+    } catch (e) {
+      console.warn('Failed to load assigned estimation', e);
+    }
+  }
+
+  return {
+    list,
+    requirement,
+    preset,
+    driverValues: (driverValues || []) as RequirementDriverValue[],
+    assignedEstimation
+  };
+}
+export interface SaveEstimationInput {
+  requirementId: string;
+  userId: string;
+  totalDays: number;
+  baseDays: number;
+  driverMultiplier: number;
+  riskScore: number;
+  contingencyPercent: number;
+  aiReasoning?: string;
+  activities: {
+    code: string;
+    isAiSuggested: boolean;
+  }[];
+  drivers: {
+    code: string;
+    value: string;
+  }[];
+  risks: {
+    code: string;
+  }[];
+}
+
+export async function saveEstimation(input: SaveEstimationInput): Promise<void> {
+  // 0. Validate input
+  if (!input.activities || input.activities.length === 0) {
+    throw new ApiError('Cannot save an estimation without activities', 400);
+  }
+
+  // 1. Create estimation record
+  const { data: estimation, error: estError } = await supabase
+    .from('estimations')
+    .insert({
+      requirement_id: input.requirementId,
+      user_id: input.userId,
+      total_days: input.totalDays,
+      base_hours: input.baseDays * 8,
+      driver_multiplier: input.driverMultiplier,
+      risk_score: input.riskScore,
+      contingency_percent: input.contingencyPercent,
+      scenario_name: 'Initial Estimation',
+      ai_reasoning: input.aiReasoning || null,
+    })
+    .select()
+    .single();
+
+  if (estError) throw new ApiError(estError.message, parseInt(estError.code), estError);
+
+  // 2. Get master data to map codes to IDs
+  const masterData = await fetchEstimationMasterData();
+
+  // 3. Prepare activities
+  const activityInserts = input.activities.map((a) => {
+    const activity = masterData.activities.find((ma) => ma.code === a.code);
+    if (!activity) return null;
+    return {
+      estimation_id: estimation.id,
+      activity_id: activity.id,
+      is_ai_suggested: a.isAiSuggested,
+    };
+  }).filter((i): i is NonNullable<typeof i> => i !== null);
+
+  // 4. Prepare drivers
+  const driverInserts = input.drivers.map((d) => {
+    const driver = masterData.drivers.find((md) => md.code === d.code);
+    if (!driver) return null;
+    return {
+      estimation_id: estimation.id,
+      driver_id: driver.id,
+      selected_value: d.value,
+    };
+  }).filter((i): i is NonNullable<typeof i> => i !== null);
+
+  // 5. Prepare risks
+  const riskInserts = input.risks.map((r) => {
+    const risk = masterData.risks.find((mr) => mr.code === r.code);
+    if (!risk) return null;
+    return {
+      estimation_id: estimation.id,
+      risk_id: risk.id,
+    };
+  }).filter((i): i is NonNullable<typeof i> => i !== null);
+
+  // 6. Insert details in parallel
+  await Promise.all([
+    activityInserts.length > 0 ? supabase.from('estimation_activities').insert(activityInserts) : Promise.resolve(),
+    driverInserts.length > 0 ? supabase.from('estimation_drivers').insert(driverInserts) : Promise.resolve(),
+    riskInserts.length > 0 ? supabase.from('estimation_risks').insert(riskInserts) : Promise.resolve(),
+  ]);
+
+  // 7. Also update requirement_driver_values for persistence across sessions if needed
+  // (Optional, but good for consistency)
+  const reqDriverInserts = input.drivers.map((d) => {
+    const driver = masterData.drivers.find((md) => md.code === d.code);
+    if (!driver) return null;
+    return {
+      requirement_id: input.requirementId,
+      driver_id: driver.id,
+      selected_value: d.value,
+      source: 'USER',
+    };
+  }).filter((i): i is NonNullable<typeof i> => i !== null);
+
+  if (reqDriverInserts.length > 0) {
+    // First delete existing to avoid duplicates/conflicts
+    await supabase.from('requirement_driver_values').delete().eq('requirement_id', input.requirementId);
+    await supabase.from('requirement_driver_values').insert(reqDriverInserts);
+  }
+}
+
+// --- Organization Management ---
+
+export async function createTeamOrganization(name: string): Promise<string> {
+  const { data, error } = await supabase.rpc('create_team_organization', {
+    org_name: name,
+  });
+
+  if (error) throw new ApiError(error.message, parseInt(error.code), error);
+  return data; // Returns the new org ID
+}
+
+export async function getOrganizationMembers(orgId: string): Promise<{
+  user_id: string;
+  email: string;
+  role: 'admin' | 'editor' | 'viewer';
+  joined_at: string;
+}[]> {
+  const { data, error } = await supabase.rpc('get_org_members_details', {
+    target_org_id: orgId,
+  });
+
+  if (error) throw new ApiError(error.message, parseInt(error.code), error);
+  return data;
+}
+
+export async function addMemberByEmail(orgId: string, email: string, role: 'admin' | 'editor' | 'viewer'): Promise<{ success: boolean; message: string }> {
+  const { data, error } = await supabase.rpc('add_member_by_email', {
+    target_org_id: orgId,
+    target_email: email,
+    target_role: role,
+  });
+
+  if (error) throw new ApiError(error.message, parseInt(error.code), error);
+  return data;
+}
+
+export async function removeMember(orgId: string, userId: string): Promise<void> {
+  const { error } = await supabase.rpc('remove_org_member', {
+    target_org_id: orgId,
+    target_user_id: userId,
+  });
+
+  if (error) throw new ApiError(error.message, parseInt(error.code), error);
+}
+
+export async function updateMemberRole(orgId: string, userId: string, newRole: 'admin' | 'editor' | 'viewer'): Promise<void> {
+  const { error } = await supabase.rpc('update_org_member_role', {
+    target_org_id: orgId,
+    target_user_id: userId,
+    new_role: newRole,
+  });
+
+  if (error) throw new ApiError(error.message, parseInt(error.code), error);
+}

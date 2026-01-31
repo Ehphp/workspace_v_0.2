@@ -1,0 +1,32 @@
+version: 1
+canonical_docs_root: "workspace/shadcn-ui/docs"
+
+rules:
+  - when_changed:
+      - "workspace/shadcn-ui/netlify/functions/**"
+    docs_should_update:
+      - "workspace/shadcn-ui/docs/ai-integration.md"
+      - "workspace/shadcn-ui/docs/architecture.md"
+
+  - when_changed:
+      - "workspace/shadcn-ui/src/components/estimation/**"
+      - "workspace/shadcn-ui/src/components/configuration/presets/**"
+      - "workspace/shadcn-ui/src/lib/**interview**"
+      - "workspace/shadcn-ui/src/lib/**ai**"
+      - "workspace/shadcn-ui/src/hooks/**interview**"
+    docs_should_update:
+      - "workspace/shadcn-ui/docs/ai-integration.md"
+      - "workspace/shadcn-ui/docs/architecture.md"
+
+  - when_changed:
+      - "workspace/shadcn-ui/src/lib/estimation/**"
+      - "workspace/shadcn-ui/src/lib/**estimation**"
+    docs_should_update:
+      - "workspace/shadcn-ui/docs/estimation-engine.md"
+
+  - when_changed:
+      - "workspace/shadcn-ui/supabase/**"
+      - "workspace/shadcn-ui/**supabase_schema**"
+      - "workspace/shadcn-ui/**migrations**"
+    docs_should_update:
+      - "workspace/shadcn-ui/docs/data-model.md"
