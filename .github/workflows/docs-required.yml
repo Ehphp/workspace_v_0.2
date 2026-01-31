@@ -1,0 +1,57 @@
+name: docs-required
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  enforce-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enforce docs update when code changes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner,
+              repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+
+            const changed = files.map(f => f.filename);
+
+            // Code areas that require docs updates
+            const codePatterns = [
+              /^shadcn-ui\/src\//,
+              /^shadcn-ui\/netlify\/functions\//,
+              /^shadcn-ui\/supabase\//,
+            ];
+
+            // Canonical docs
+            const docsPattern = /^shadcn-ui\/docs\//;
+
+            const codeChanged = changed.some(p => codePatterns.some(rx => rx.test(p)));
+            const docsChanged = changed.some(p => docsPattern.test(p));
+
+            // Allow explicit skip with label OR skip file
+            const labels = (pr.labels || []).map(l => l.name);
+            const skipByLabel = labels.includes("skip-docs");
+
+            const skipFile = "shadcn-ui/docs/NO_DOCS_NEEDED.md";
+            const skipByFile = changed.includes(skipFile);
+
+            if (codeChanged && !docsChanged && !skipByLabel && !skipByFile) {
+              core.setFailed(
+                "Docs required: code changed under shadcn-ui (src/netlify/supabase) but no changes under shadcn-ui/docs/. " +
+                "Update docs OR add label 'skip-docs' OR add shadcn-ui/docs/NO_DOCS_NEEDED.md with a short justification."
+              );
+            } else {
+              core.info("Docs requirement satisfied (or explicitly skipped).");
+            }
