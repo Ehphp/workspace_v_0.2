@@ -111,6 +111,7 @@ export function WizardStepInterview({
                 suggestedDrivers: result.suggestedDrivers,
                 suggestedRisks: result.suggestedRisks,
                 confidenceScore: result.confidenceScore,
+                aiAnalysis: result.reasoning, // Save AI reasoning/analysis
             });
 
             setPhase('result');

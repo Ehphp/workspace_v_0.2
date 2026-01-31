@@ -49,8 +49,8 @@ export function RequirementsFilters({
     };
 
     return (
-        <div className="flex-shrink-0 relative border-b border-slate-200/60 bg-white/80 backdrop-blur-md z-10">
-            <div className="container mx-auto px-6 py-3">
+        <div className="flex-shrink-0 relative border-b border-slate-200/50 bg-white/60 backdrop-blur-xl z-10">
+            <div className="container mx-auto px-6 py-4">
                 <div className="flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
 
                     {/* Left Side: Search & Filters */}
@@ -59,48 +59,48 @@ export function RequirementsFilters({
                         <div className="relative w-full sm:w-[280px] lg:w-[320px]">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                             <Input
-                                placeholder="Search requirements..."
+                                placeholder="Cerca requisiti..."
                                 value={searchTerm}
                                 onChange={(e) => onSearchChange(e.target.value)}
-                                className="pl-9 h-9 bg-white/80"
+                                className="pl-10 h-10 bg-white/80 border-slate-200/80 rounded-xl focus:ring-2 focus:ring-blue-500/20"
                             />
                         </div>
 
                         <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
                             {/* Priority Filter */}
                             <Select value={filterPriority} onValueChange={onPriorityChange}>
-                                <SelectTrigger className="w-[130px] h-9 bg-white/80 border-dashed">
+                                <SelectTrigger className="w-[130px] h-10 bg-white/80 border-slate-200/80 rounded-xl">
                                     <div className="flex items-center gap-2 truncate">
                                         <Filter className="h-3.5 w-3.5 text-slate-500" />
                                         <span className="truncate">
-                                            {filterPriority === 'all' ? 'Priority' : filterPriority}
+                                            {filterPriority === 'all' ? 'Priorità' : filterPriority}
                                         </span>
                                     </div>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Priorities</SelectItem>
-                                    <SelectItem value="HIGH">High</SelectItem>
-                                    <SelectItem value="MEDIUM">Medium</SelectItem>
-                                    <SelectItem value="LOW">Low</SelectItem>
+                                    <SelectItem value="all">Tutte</SelectItem>
+                                    <SelectItem value="HIGH">Alta</SelectItem>
+                                    <SelectItem value="MEDIUM">Media</SelectItem>
+                                    <SelectItem value="LOW">Bassa</SelectItem>
                                 </SelectContent>
                             </Select>
 
                             {/* State Filter */}
                             <Select value={filterState} onValueChange={onStateChange}>
-                                <SelectTrigger className="w-[130px] h-9 bg-white/80 border-dashed">
+                                <SelectTrigger className="w-[130px] h-10 bg-white/80 border-slate-200/80 rounded-xl">
                                     <div className="flex items-center gap-2 truncate">
                                         <Filter className="h-3.5 w-3.5 text-slate-500" />
                                         <span className="truncate">
-                                            {filterState === 'all' ? 'State' : filterState}
+                                            {filterState === 'all' ? 'Stato' : filterState}
                                         </span>
                                     </div>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All States</SelectItem>
-                                    <SelectItem value="PROPOSED">Proposed</SelectItem>
-                                    <SelectItem value="SELECTED">Selected</SelectItem>
-                                    <SelectItem value="SCHEDULED">Scheduled</SelectItem>
-                                    <SelectItem value="DONE">Done</SelectItem>
+                                    <SelectItem value="all">Tutti</SelectItem>
+                                    <SelectItem value="PROPOSED">Proposto</SelectItem>
+                                    <SelectItem value="SELECTED">Selezionato</SelectItem>
+                                    <SelectItem value="SCHEDULED">Pianificato</SelectItem>
+                                    <SelectItem value="DONE">Completato</SelectItem>
                                 </SelectContent>
                             </Select>
 
@@ -110,7 +110,7 @@ export function RequirementsFilters({
                                     variant="ghost"
                                     size="sm"
                                     onClick={handleResetFilters}
-                                    className="h-9 px-2 lg:px-3 text-slate-500 hover:text-slate-900"
+                                    className="h-10 px-3 text-slate-500 hover:text-slate-900 rounded-xl"
                                 >
                                     Reset
                                     <X className="ml-2 h-4 w-4" />
@@ -125,23 +125,23 @@ export function RequirementsFilters({
 
                         {/* Sort */}
                         <Select value={sortBy} onValueChange={onSortChange}>
-                            <SelectTrigger className="w-[160px] h-9 bg-white/80 border-none shadow-none hover:bg-slate-100/50 transition-colors">
+                            <SelectTrigger className="w-[160px] h-10 bg-white/80 border-slate-200/80 rounded-xl">
                                 <div className="flex items-center gap-2 text-slate-600">
                                     <ArrowUpDown className="h-3.5 w-3.5" />
-                                    <span className="truncate">Sort by</span>
+                                    <span className="truncate">Ordina</span>
                                 </div>
                             </SelectTrigger>
                             <SelectContent align="end">
-                                <SelectItem value="updated-desc">Most Recent</SelectItem>
-                                <SelectItem value="updated-asc">Oldest</SelectItem>
-                                <SelectItem value="title-asc">Title A→Z</SelectItem>
-                                <SelectItem value="title-desc">Title Z→A</SelectItem>
-                                <SelectItem value="priority-desc">Priority High→Low</SelectItem>
-                                <SelectItem value="priority-asc">Priority Low→High</SelectItem>
-                                <SelectItem value="estimation-desc">Estimation High→Low</SelectItem>
-                                <SelectItem value="estimation-asc">Estimation Low→High</SelectItem>
-                                <SelectItem value="state-asc">State A→Z</SelectItem>
-                                <SelectItem value="state-desc">State Z→A</SelectItem>
+                                <SelectItem value="updated-desc">Più recenti</SelectItem>
+                                <SelectItem value="updated-asc">Meno recenti</SelectItem>
+                                <SelectItem value="title-asc">Titolo A→Z</SelectItem>
+                                <SelectItem value="title-desc">Titolo Z→A</SelectItem>
+                                <SelectItem value="priority-desc">Priorità Alta→Bassa</SelectItem>
+                                <SelectItem value="priority-asc">Priorità Bassa→Alta</SelectItem>
+                                <SelectItem value="estimation-desc">Stima Alta→Bassa</SelectItem>
+                                <SelectItem value="estimation-asc">Stima Bassa→Alta</SelectItem>
+                                <SelectItem value="state-asc">Stato A→Z</SelectItem>
+                                <SelectItem value="state-desc">Stato Z→A</SelectItem>
                             </SelectContent>
                         </Select>
 
@@ -150,8 +150,8 @@ export function RequirementsFilters({
                                 size="sm"
                                 variant="outline"
                                 onClick={onImport}
-                                className="h-9 w-9 p-0"
-                                title="Import Requirements"
+                                className="h-10 w-10 p-0 border-slate-200/80 rounded-xl hover:bg-slate-100"
+                                title="Importa Requisiti"
                             >
                                 <Upload className="h-4 w-4" />
                             </Button>
@@ -161,20 +161,20 @@ export function RequirementsFilters({
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="h-9 w-9 p-0"
-                                        aria-label="More options"
+                                        className="h-10 w-10 p-0 border-slate-200/80 rounded-xl hover:bg-slate-100"
+                                        aria-label="Altre opzioni"
                                     >
                                         <MoreVertical className="h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuContent align="end" className="w-52 rounded-xl border-slate-200/80 shadow-lg">
                                     <DropdownMenuItem
-                                        className="text-destructive focus:text-destructive cursor-pointer"
+                                        className="text-destructive focus:text-destructive cursor-pointer rounded-lg"
                                         onClick={onClearAll}
                                         disabled={requirementsCount === 0}
                                     >
                                         <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete All Requirements
+                                        Elimina Tutti
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>

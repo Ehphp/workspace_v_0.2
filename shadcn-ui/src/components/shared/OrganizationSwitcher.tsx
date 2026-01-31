@@ -22,7 +22,8 @@ export function OrganizationSwitcher() {
         currentOrganization,
         setCurrentOrganization,
         fetchOrganizations,
-        isLoading
+        isLoading,
+        isSwitchingOrg
     } = useAuthStore();
 
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -43,25 +44,26 @@ export function OrganizationSwitcher() {
             <div className="flex items-center gap-2">
                 <Select
                     value={currentOrganization?.id}
-                    onValueChange={(val) => {
+                    onValueChange={async (val) => {
                         if (val === 'create_new') {
                             setCreateDialogOpen(true);
                         } else if (val === 'settings') {
                             navigate('/organization');
                         } else {
-                            setCurrentOrganization(val);
+                            await setCurrentOrganization(val);
                         }
                         setIsOpen(false);
                     }}
                     open={isOpen}
                     onOpenChange={setIsOpen}
+                    disabled={isSwitchingOrg}
                 >
-                    <SelectTrigger className={`h-10 bg-gradient-to-br from-white to-slate-50/80 hover:from-slate-50 hover:to-slate-100/80 shadow-sm hover:shadow-md transition-all duration-300 ease-in-out rounded-lg backdrop-blur-sm overflow-hidden ${isOpen ? 'w-[220px] border-slate-200/60' : 'w-[44px] border-transparent'
+                    <SelectTrigger className={`h-10 bg-gradient-to-br from-white to-slate-50/80 hover:from-slate-50 hover:to-slate-100/80 shadow-sm hover:shadow-md transition-all duration-300 ease-in-out rounded-lg backdrop-blur-sm overflow-hidden ${isOpen ? 'w-[220px] border-slate-200/60' : 'w-[44px] border-transparent'} ${isSwitchingOrg ? 'opacity-70 cursor-wait' : ''
                         }`}>
                         <div className={`flex items-center w-full ${isOpen ? 'gap-3 justify-start' : 'justify-center'}`}>
                             <div className={`flex items-center justify-center w-7 h-7 rounded-md flex-shrink-0 ${currentOrganization?.type === 'personal'
-                                    ? 'bg-blue-50 text-blue-600'
-                                    : 'bg-purple-50 text-purple-600'
+                                ? 'bg-blue-50 text-blue-600'
+                                : 'bg-purple-50 text-purple-600'
                                 } transition-colors`}>
                                 {currentOrganization?.type === 'personal' ? (
                                     <User className="h-4 w-4" />

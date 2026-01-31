@@ -19,6 +19,7 @@ import { ImportRequirementsDialog } from '@/components/requirements/ImportRequir
 import { ClearListDialog } from '@/components/lists/ClearListDialog';
 import { DeleteRequirementDialog } from '@/components/requirements/DeleteRequirementDialog';
 import { BulkEstimateDialog } from '@/components/requirements/BulkEstimateDialog';
+import { BulkInterviewDialog } from '@/components/requirements/BulkInterviewDialog';
 import { EditListDialog } from '@/components/lists/EditListDialog';
 import { Header } from '@/components/layout/Header';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -129,7 +130,28 @@ export default function Requirements() {
     const [showListEditDialog, setShowListEditDialog] = useState(false);
     const [showClearDialog, setShowClearDialog] = useState(false);
     const [showBulkEstimate, setShowBulkEstimate] = useState(false);
+    const [showBulkInterview, setShowBulkInterview] = useState(false);
     const [deleteRequirement, setDeleteRequirement] = useState<Requirement | null>(null);
+    const [listTechCategory, setListTechCategory] = useState<string>('MULTI');
+
+    // Fetch tech_category from preset when list changes
+    useEffect(() => {
+        async function fetchTechCategory() {
+            if (list?.tech_preset_id) {
+                const { data: preset } = await supabase
+                    .from('technology_presets')
+                    .select('tech_category')
+                    .eq('id', list.tech_preset_id)
+                    .single();
+                if (preset?.tech_category) {
+                    setListTechCategory(preset.tech_category);
+                }
+            } else {
+                setListTechCategory('MULTI');
+            }
+        }
+        fetchTechCategory();
+    }, [list?.tech_preset_id]);
 
     const handleImportRequirements = async (parsedRequirements: any[]) => {
         if (!user || !listId) return;
@@ -325,6 +347,7 @@ export default function Requirements() {
                 errorMessage={errorMessage}
                 filteredRequirementsCount={filteredRequirements.length}
                 onBulkEstimate={() => setShowBulkEstimate(true)}
+                onBulkInterview={() => setShowBulkInterview(true)}
                 onCreateRequirement={() => setShowCreateDialog(true)}
                 onRetry={() => loadData()}
                 onEditList={() => setShowListEditDialog(true)}
@@ -360,49 +383,54 @@ export default function Requirements() {
                     {filteredRequirements.length === 0 ? (
                         <div className="max-w-4xl mx-auto">
                             {requirements.length === 0 ? (
-                                <Card className="border-slate-200/60 bg-white/80 backdrop-blur-md shadow-sm">
+                                <Card className="border-slate-200/50 bg-white/80 backdrop-blur-xl shadow-lg rounded-2xl">
                                     <div className="p-12 text-center">
                                         <div className="max-w-md mx-auto space-y-6">
-                                            <div className="mx-auto w-24 h-24 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center border-2 border-slate-300/50">
-                                                <svg className="h-12 w-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            <div className="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+                                                <svg className="h-10 w-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                 </svg>
                                             </div>
                                             <div className="space-y-2">
-                                                <h3 className="text-2xl font-bold text-slate-900">No Requirements Yet</h3>
-                                                <p className="text-slate-600">
-                                                    This project is empty. Start by adding your first requirement or import them from an Excel file.
+                                                <h3 className="text-2xl font-bold text-slate-900">Nessun Requisito</h3>
+                                                <p className="text-slate-500">
+                                                    Questo progetto è vuoto. Inizia aggiungendo il primo requisito o importali da un file Excel.
                                                 </p>
                                             </div>
                                             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
                                                 <Button
                                                     size="lg"
                                                     onClick={() => setShowCreateDialog(true)}
-                                                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                                                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 rounded-xl"
                                                 >
                                                     <Plus className="mr-2 h-5 w-5" />
-                                                    Create Requirement
+                                                    Crea Requisito
                                                 </Button>
                                                 <Button
                                                     size="lg"
                                                     variant="outline"
                                                     onClick={() => setShowImportDialog(true)}
-                                                    className="border-slate-300"
+                                                    className="border-slate-200 rounded-xl hover:bg-slate-50"
                                                 >
                                                     <Upload className="mr-2 h-5 w-5" />
-                                                    Import from Excel
+                                                    Importa da Excel
                                                 </Button>
                                             </div>
                                         </div>
                                     </div>
                                 </Card>
                             ) : (
-                                <Card className="border-slate-200/60 bg-white/80 backdrop-blur-md shadow-sm">
+                                <Card className="border-slate-200/50 bg-white/80 backdrop-blur-xl shadow-lg rounded-2xl">
                                     <div className="p-12 text-center">
                                         <div className="max-w-md mx-auto space-y-6">
-                                            <h3 className="text-2xl font-bold text-slate-900">No Matching Requirements</h3>
-                                            <p className="text-slate-600">
-                                                Try adjusting your search filters or criteria to find what you're looking for.
+                                            <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                                                <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                </svg>
+                                            </div>
+                                            <h3 className="text-xl font-bold text-slate-900">Nessun Requisito Trovato</h3>
+                                            <p className="text-slate-500">
+                                                Prova a modificare i filtri di ricerca per trovare quello che stai cercando.
                                             </p>
                                             <Button
                                                 variant="outline"
@@ -411,8 +439,9 @@ export default function Requirements() {
                                                     setFilterPriority('all');
                                                     setFilterState('all');
                                                 }}
+                                                className="rounded-xl"
                                             >
-                                                Clear Filters
+                                                Resetta Filtri
                                             </Button>
                                         </div>
                                     </div>
@@ -422,7 +451,7 @@ export default function Requirements() {
                     ) : (
                         <div className="max-w-7xl mx-auto">
                             {/* Requirements Grid */}
-                            <div className="grid gap-5">
+                            <div className="grid gap-4">
                                 {filteredRequirements.map((req) => {
                                     const estimation = req.latest_estimation;
                                     const hasEstimation = !!estimation;
@@ -432,7 +461,7 @@ export default function Requirements() {
                                     return (
                                         <Card
                                             key={req.id}
-                                            className="group relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-md hover:bg-white hover:shadow-md transition-all duration-300 ease-out cursor-pointer"
+                                            className="group relative overflow-hidden border-slate-200/50 bg-gradient-to-r from-white/90 to-white/80 backdrop-blur-xl hover:from-white hover:to-blue-50/30 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 ease-out cursor-pointer rounded-2xl"
                                             onClick={() => navigate(`/dashboard/${listId}/requirements/${req.id}`)}
                                             role="button"
                                             tabIndex={0}
@@ -443,14 +472,14 @@ export default function Requirements() {
                                                 }
                                             }}
                                         >
-                                            <div className="flex items-center p-3 gap-4">
-                                                {/* Priority Indicator Strip */}
-                                                <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${priorityConfig.gradient}`} />
+                                            {/* Status Bar on Top */}
+                                            <div className={`absolute left-0 right-0 top-0 h-1 bg-gradient-to-r ${priorityConfig.gradient}`} />
 
+                                            <div className="flex items-center p-4 gap-4">
                                                 {/* ID & Priority Icon */}
-                                                <div className="flex items-center gap-3 w-[100px] shrink-0 pl-2">
-                                                    <span className="font-mono text-xs font-semibold text-slate-500">{req.req_id}</span>
-                                                    <div className="text-xs" title={`Priority: ${req.priority}`}>
+                                                <div className="flex items-center gap-3 w-[100px] shrink-0">
+                                                    <span className="font-mono text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">{req.req_id}</span>
+                                                    <div className="text-xs" title={`Priorità: ${req.priority}`}>
                                                         {priorityConfig.icon}
                                                     </div>
                                                 </div>
@@ -460,7 +489,7 @@ export default function Requirements() {
                                                     {isGeneratingTitle ? (
                                                         <div className="flex items-center gap-2 text-slate-500 italic">
                                                             <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
-                                                            <span className="text-sm">Generating title with AI...</span>
+                                                            <span className="text-sm">Generazione titolo in corso...</span>
                                                         </div>
                                                     ) : (
                                                         <span
@@ -485,22 +514,22 @@ export default function Requirements() {
                                                             <span className="font-medium text-slate-700 max-w-[100px] truncate">{req.business_owner}</span>
                                                         </div>
                                                     )}
-                                                    <div className="flex items-center gap-1.5" title="Last Updated">
+                                                    <div className="flex items-center gap-1.5" title="Ultimo Aggiornamento">
                                                         <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                         </svg>
-                                                        <span>{new Date(req.updated_at).toLocaleDateString()}</span>
+                                                        <span>{new Date(req.updated_at).toLocaleDateString('it-IT')}</span>
                                                     </div>
                                                 </div>
 
                                                 {/* Estimation */}
-                                                <div className="w-[80px] text-right shrink-0">
+                                                <div className="w-[90px] text-right shrink-0">
                                                     {hasEstimation ? (
                                                         <div className="flex flex-col items-end">
-                                                            <span className="font-bold text-sm text-blue-600">{estimation.total_days.toFixed(1)}d</span>
+                                                            <span className="font-bold text-sm text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">{estimation.total_days.toFixed(1)} gg</span>
                                                         </div>
                                                     ) : (
-                                                        <span className="text-slate-400 text-xs">-</span>
+                                                        <span className="text-slate-400 text-xs italic">Non stimato</span>
                                                     )}
                                                 </div>
 
@@ -511,21 +540,21 @@ export default function Requirements() {
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                aria-label="More options"
+                                                                className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg hover:bg-slate-100"
+                                                                aria-label="Altre opzioni"
                                                             >
                                                                 <MoreVertical className="h-4 w-4" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()} className="rounded-xl">
                                                             <DropdownMenuItem
-                                                                className="text-destructive focus:text-destructive"
+                                                                className="text-destructive focus:text-destructive rounded-lg"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     setDeleteRequirement(req);
                                                                 }}
                                                             >
-                                                                Delete
+                                                                Elimina
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
@@ -569,6 +598,15 @@ export default function Requirements() {
                         listId={listId}
                         requirements={filteredRequirements}
                         listTechPresetId={list?.tech_preset_id}
+                        onSuccess={loadData}
+                    />
+                    <BulkInterviewDialog
+                        open={showBulkInterview}
+                        onOpenChange={setShowBulkInterview}
+                        listId={listId}
+                        requirements={filteredRequirements}
+                        listTechPresetId={list?.tech_preset_id}
+                        techCategory={listTechCategory}
                         onSuccess={loadData}
                     />
                     <EditListDialog

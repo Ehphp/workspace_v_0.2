@@ -1,13 +1,41 @@
-# Archival of `.storage` and generated snapshots
+# Archived Documentation
 
-This folder documents the archived snapshots and generated `.storage` artifacts that were present in the repository at the time of the documentation revision (2025-11-28).
+This folder contains historical documentation that has been superseded by the current documentation structure.
 
-Why archive: `.storage` contained generated snapshots and historical versions of documentation and built files (`build/`,`assets/`). These files can confuse contributors and accidentally introduce outdated guidance (like `VITE_OPENAI_API_KEY` in demos).
+## Why Archive?
 
-Action taken:
-- The repository now enforces CI checks for leaked keys.
-- We recommend deleting the workspace root `.storage` folder with the cleanup script `scripts/cleanup_storage.ps1` or by running an equivalent command.
+Documents are archived when:
+- Content has been consolidated into a single authoritative document
+- Implementation details have changed significantly
+- Content was duplicated across multiple files
+- Content described planned features rather than implemented functionality
 
-If you need to recover archived `.storage` files later, contact the maintainers — they can re-generate snapshots.
+## Archived Files
 
-Last updated: 2025-11-28
+The following files from the repository root and various locations have been superseded:
+
+| Original File | Superseded By | Reason |
+|---------------|---------------|--------|
+| `ANALISI_FUNZIONALE.md` | [architecture.md](../architecture.md) | Functional analysis consolidated |
+| `ANALISI_FUNZIONALE_AGGIORNATA.md` | [README.md](../README.md) | Updated version, now consolidated |
+| `ANALISI_NAVBAR_UI_UX.md` | N/A (historical) | UI/UX analysis during development |
+| `ANALISI_ROUTING_NAVIGAZIONE.md` | N/A (historical) | Routing analysis during development |
+| `DOCUMENTAZIONE_FUNZIONALITA_COMPLETE.md` | Multiple docs | Content spread across specialized docs |
+| `MIGLIORAMENTI_E_CRITICITA.md` | N/A (historical) | Point-in-time improvement analysis |
+| `ROOT_LEVEL_FILES_NOTE.md` | N/A | Migration tracking note |
+
+## Storage Cleanup
+
+The `.storage` folder contained generated snapshots. Use the cleanup script to remove:
+
+```powershell
+./scripts/cleanup_storage.ps1
+```
+
+## Recovery
+
+If you need historical documentation, check git history or contact maintainers.
+
+---
+
+**Last Updated**: 2026-01-31

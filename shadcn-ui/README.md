@@ -1,92 +1,151 @@
-# Requirements Estimation System
+# Syntero — Requirements Estimation System
 
-Enterprise-grade requirements estimation with AI-assisted activity selection, a deterministic calculation engine, and full auditability through estimation history and comparisons.
+A requirements estimation platform combining AI-assisted activity suggestions with a deterministic calculation engine.
 
-## Core Capabilities
-- Public 5-step estimation wizard (no login) plus authenticated workspace with projects, requirements, and scenarios.
-- Deterministic engine with activities, drivers, risks, contingency, and real-time summaries.
-- AI-assisted activity suggestions via OpenAI (temperature 0 for consistent outputs) proxied through Netlify Functions.
-- Multi-technology presets (Power Platform, Backend API, Frontend React, Multi-stack).
-- Import/export: Excel/CSV imports with auto-mapping and AI title generation; PDF/Excel exports.
-- Estimation history: named scenarios, timeline, and comparisons.
-- Security: Supabase Auth with Row Level Security on user data; caching and input sanitization around AI calls.
-- Custom activities: authenticated users can add/edit their own activities (with weights) and toggle availability; system activities remain read-only.
-  - Override/fork: è possibile duplicare un’attività OOTB in una custom collegata tramite `base_activity_id` per personalizzare peso/nome senza toccare il catalogo di sistema.
+## What It Does
 
-## Navigazione UI (stato attuale)
-- Header autenticato: Home `/`, Lists `/lists`, Admin `/admin`, Presets `/presets`, guida `/how-it-works`; dropdown account con Profile `/profile` e sign out.
-- Stato attivo copre sottorotte: `/admin/activities` e `/presets` restano evidenziate; `/lists/:id/requirements[...]` resta sotto Lists con breadcrumb dinamico.
-- Flussi di ritorno: da Custom Activities e Presets i CTA riportano alla dashboard Admin (`/admin`) per evitare deviazioni verso le liste.
+1. **Collects** requirement descriptions from users
+2. **Proposes** relevant activities via AI (user reviews and confirms)
+3. **Calculates** estimates using a deterministic formula
+4. **Stores** estimation history for audit and comparison
+
+## What It Does NOT Do
+
+- AI does not calculate estimates — the engine does
+- AI does not set final driver/risk values — the user confirms all selections
+- AI does not make final decisions — the user always confirms
+
+---
 
 ## Quick Start
-1. **Install dependencies**
-   ```bash
-   pnpm install
-   ```
-2. **Database**
-   - In Supabase SQL Editor run `supabase_schema.sql`, then `supabase_seed.sql`.
-   - Optional performance add-ons: `estimation_history_optimizations.sql`.
-3. **Environment**
-   Create `.env` in the project root:
-   ```env
-   VITE_SUPABASE_URL=https://<your-project>.supabase.co
-   VITE_SUPABASE_ANON_KEY=<your-anon-key>
-   OPENAI_API_KEY=sk-<your-openai-key>   # server-side only
-   ```
-4. **Run**
-   ```bash
-   pnpm run dev
-   # or with Netlify functions locally
-   pnpm run dev:netlify
-   ```
 
-## Custom activities panel
-- Route: `/admin/activities` (visible once logged in).
-- Access: all authenticated users can create/edit only their `is_custom=true` activities; others remain view-only.
-- DB prerequisites (if your DB was created before this feature):
-  ```sql
-  alter table activities add column if not exists is_custom boolean default false;
-  alter table activities add column if not exists created_by uuid references auth.users(id);
-  alter table activities add column if not exists base_activity_id uuid references activities(id);
-  create index if not exists idx_activities_is_custom on activities(is_custom);
-  create index if not exists idx_activities_created_by on activities(created_by);
-  create index if not exists idx_activities_base_activity on activities(base_activity_id);
-  create policy "Users can insert custom activities" on activities
-    for insert with check (auth.role() = 'authenticated' and is_custom = true and (created_by = auth.uid() or created_by is null));
-  create policy "Users can update their custom activities" on activities
-    for update using (auth.role() = 'authenticated' and is_custom = true and created_by = auth.uid())
-    with check (auth.role() = 'authenticated' and is_custom = true and created_by = auth.uid());
-  ```
+### Prerequisites
+- Node.js 18+ and pnpm
+- Supabase account
+- OpenAI API key
 
-## Useful Scripts
-- `pnpm run dev` — Vite dev server.
-- `pnpm run dev:netlify` — Netlify dev server with functions.
-- `pnpm run lint` — lint checks.
-- `pnpm run build` / `pnpm run preview` — production build and local preview.
+### 1. Database Setup
+```bash
+# In Supabase SQL Editor:
+1. Run supabase_schema.sql
+2. Run supabase_seed.sql
+3. (Optional) Run estimation_history_optimizations.sql
+```
+
+### 2. Environment Variables
+Create `.env` in project root:
+```env
+VITE_SUPABASE_URL=https://<project>.supabase.co
+VITE_SUPABASE_ANON_KEY=<anon-key>
+OPENAI_API_KEY=sk-<your-key>  # Server-side only
+```
+
+### 3. Install and Run
+```bash
+pnpm install
+pnpm run dev:netlify  # Includes serverless functions
+```
+
+Visit `http://localhost:5173`
+
+---
+
+## Key Features
+
+| Feature | Description |
+|---------|-------------|
+| Public Wizard | 5-step estimation without login |
+| Authenticated Workspace | Projects, requirements, history |
+| Deterministic Engine | Activities + drivers + risks → total days |
+| AI Suggestions | GPT-4o-mini proposes activities (temperature=0) |
+| Technology Presets | Pre-configured stacks (Power Platform, Backend, Frontend, Multi) |
+| Import/Export | Excel/CSV import with auto-mapping |
+| Custom Activities | Users create and manage own activities |
+
+---
+
+## Estimation Formula
+
+```
+Total Days = Subtotal × (1 + Contingency%)
+
+Where:
+  Subtotal = Base Days × Driver Multiplier
+  Base Days = Σ(activity.base_hours) / 8
+  Driver Multiplier = Π(driver.multiplier)
+  Contingency% = f(Risk Score)
+```
+
+See [docs/estimation-engine.md](docs/estimation-engine.md) for details.
+
+---
 
 ## Project Structure
-- `src/` — React app (pages, components, hooks, lib, types).
-- `netlify/functions/` — serverless functions (OpenAI proxy and helpers).
-- `public/` — static assets.
-- `docs/` — organized documentation (see below).
-- `supabase_*.sql` — schema, seed, and optimization scripts.
+
+```
+src/
+├── components/         # React components
+│   ├── wizard/         # 5-step estimation wizard
+│   └── estimation/     # QuickEstimate, comparison
+├── lib/
+│   ├── estimationEngine.ts  # Deterministic calculations
+│   ├── openai.ts            # AI client wrapper
+│   └── supabase.ts          # Database client
+├── pages/              # Route components
+└── types/              # TypeScript definitions
+
+netlify/functions/
+├── ai-suggest.ts       # AI proxy entry point
+└── lib/ai/             # AI logic modules
+
+docs/                   # Documentation
+supabase_*.sql          # Database scripts
+```
+
+---
 
 ## Documentation
-- Start with `docs/README.md` for the full map of guides.
-- Setup: `docs/setup/setup-guide.md`
-- Deployment: `docs/deployment/deployment.md`
-- Estimation history: `docs/architecture/estimation-history.md`
-- **AI System** (see `docs/ai/README.md` for complete index):
-  - `docs/ai/ai-system-overview.md` — ⭐ Come funziona il sistema AI (inizia da qui)
-  - `docs/ai/ai-input-validation.md` — Validazione e sanitizzazione (4 livelli)
-  - `docs/ai/ai-variance-testing.md` — Test di consistenza AI
-- Testing: `docs/testing/testing-guide.md`
 
-## Deployment
-- Preferred hosts: Vercel or Netlify.
-- Follow `docs/deployment/deployment.md` for environment variables, history rollout checks, and monitoring.
+| Document | Description |
+|----------|-------------|
+| [docs/README.md](docs/README.md) | Documentation index |
+| [docs/architecture.md](docs/architecture.md) | System architecture |
+| [docs/estimation-engine.md](docs/estimation-engine.md) | Calculation logic |
+| [docs/ai-integration.md](docs/ai-integration.md) | AI scope and limits |
+| [docs/data-model.md](docs/data-model.md) | Database schema |
+| [docs/technology-presets.md](docs/technology-presets.md) | Preset configuration |
+| [docs/setup/setup-guide.md](docs/setup/setup-guide.md) | Installation guide |
+
+---
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm run dev` | Vite dev server |
+| `pnpm run dev:netlify` | Dev with serverless functions |
+| `pnpm run build` | Production build |
+| `pnpm run lint` | ESLint check |
+
+---
 
 ## Troubleshooting
-Ensure `OPENAI_API_KEY` is server-side only. See `docs/ai/KEY_POLICY.md` for migration guidance.
-Note: This repository includes a GitHub Action that scans for obvious secrets (e.g., `sk-` tokens) and patterns such as `VITE_OPENAI_API_KEY` or `dangerouslyAllowBrowser` to prevent accidental key leakage.
-- Use `pnpm run dev:netlify` if AI suggestions fail locally; check Netlify function logs for errors.
+
+| Issue | Solution |
+|-------|----------|
+| AI suggestions fail | Check `OPENAI_API_KEY` in server environment |
+| Empty dropdowns | Run `supabase_seed.sql` |
+| RLS errors | Verify `supabase_schema.sql` executed |
+| Local AI not working | Use `pnpm run dev:netlify` |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | React, TypeScript, Vite, Tailwind, shadcn/ui |
+| Serverless | Netlify Functions |
+| AI | OpenAI GPT-4o-mini |
+| Database | Supabase (PostgreSQL) |
+| Auth | Supabase Auth |

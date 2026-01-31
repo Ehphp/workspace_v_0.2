@@ -109,54 +109,55 @@ export function ProjectCard({ project, onEdit, onDelete, layout = 'grid' }: Proj
 
     return (
         <Card
-            className="group relative overflow-hidden border-slate-200/60 bg-white/80 hover:bg-white hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col backdrop-blur-sm"
+            className="group relative overflow-hidden border-slate-200/50 bg-white hover:bg-gradient-to-br hover:from-white hover:to-blue-50/30 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 cursor-pointer flex flex-col backdrop-blur-xl rounded-xl"
             onClick={() => navigate(`/dashboard/${project.id}/requirements`)}
         >
-            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
+            {/* Status indicator line */}
+            <div className={`absolute top-0 left-0 w-full h-1 ${getStatusColor(project.status)}`} />
 
-            <div className="p-4 pl-5 flex flex-col gap-3">
+            <div className="p-5 flex flex-col gap-4">
                 <div className="flex justify-between items-start">
                     <div className="flex items-start gap-3 min-w-0">
-                        <div className="mt-0.5 p-1.5 rounded-md bg-slate-100 text-slate-500 group-hover:text-blue-600 transition-colors">
-                            <FolderOpen className="w-4 h-4" />
+                        <div className="mt-0.5 p-2 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 text-slate-500 group-hover:from-blue-100 group-hover:to-indigo-50 group-hover:text-blue-600 transition-all duration-300 shadow-sm">
+                            <FolderOpen className="w-5 h-5" />
                         </div>
                         <div className="min-w-0">
-                            <h3 className="font-semibold text-slate-900 truncate text-sm leading-tight">
+                            <h3 className="font-bold text-slate-900 truncate text-sm leading-tight group-hover:text-blue-700 transition-colors">
                                 {project.name}
                             </h3>
-                            <p className="text-xs text-slate-500 mt-1 line-clamp-1">
-                                {project.description || 'No description'}
+                            <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">
+                                {project.description || 'Nessuna descrizione'}
                             </p>
                         </div>
                     </div>
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 -mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <MoreVertical className="h-3.5 w-3.5 text-slate-400" />
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 -mr-1 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg hover:bg-slate-100">
+                                <MoreVertical className="h-4 w-4 text-slate-400" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(project); }}>
-                                <Edit className="mr-2 h-4 w-4" /> Edit
+                                <Edit className="mr-2 h-4 w-4" /> Modifica
                             </DropdownMenuItem>
                             <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
                                 onClick={(e) => { e.stopPropagation(); onDelete(project); }}
                             >
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                <Trash2 className="mr-2 h-4 w-4" /> Elimina
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${getStatusBadgeColor(project.status)}`}>
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100/80">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border ${getStatusBadgeColor(project.status)}`}>
                         {project.status}
                     </span>
-                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {new Date(project.updated_at).toLocaleDateString()}
+                    <span className="text-xs text-slate-400 flex items-center gap-1.5 font-medium">
+                        <Calendar className="w-3.5 h-3.5" />
+                        {new Date(project.updated_at).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}
                     </span>
                 </div>
             </div>

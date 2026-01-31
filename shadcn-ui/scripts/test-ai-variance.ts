@@ -122,7 +122,7 @@ function calculateStats(values: number[]): { mean: number; stdDev: number; varia
     const stdDev = Math.sqrt(variance);
     const min = Math.min(...values);
     const max = Math.max(...values);
-    
+
     return { mean, stdDev, variance, min, max };
 }
 
@@ -139,28 +139,28 @@ function calculateCV(values: number[]): number {
  */
 function compareActivitySets(results: TestResult[]): { identical: boolean; commonActivities: string[]; variance: Map<string, number> } {
     const activityCounts = new Map<string, number>();
-    
+
     results.forEach(r => {
         r.activityCodes.forEach(code => {
             activityCounts.set(code, (activityCounts.get(code) || 0) + 1);
         });
     });
-    
+
     const n = results.length;
     const commonActivities = Array.from(activityCounts.entries())
         .filter(([_, count]) => count === n)
         .map(([code]) => code);
-    
+
     const variance = new Map<string, number>();
     activityCounts.forEach((count, code) => {
         variance.set(code, count / n);
     });
-    
-    const identical = results.every(r => 
+
+    const identical = results.every(r =>
         r.activityCodes.length === results[0].activityCodes.length &&
         r.activityCodes.every(code => results[0].activityCodes.includes(code))
     );
-    
+
     return { identical, commonActivities, variance };
 }
 
@@ -175,22 +175,22 @@ async function runVarianceTest() {
     console.log(`🔧 Tech Category: ${TEST_REQUIREMENT.techCategory}`);
     console.log(`🔄 Iterazioni: ${NUM_ITERATIONS}`);
     console.log(`📊 Varianza massima accettabile: ${MAX_ACCEPTABLE_VARIANCE * 100}%\n`);
-    
+
     const results: TestResult[] = [];
-    
+
     for (let i = 1; i <= NUM_ITERATIONS; i++) {
         console.log(`\n▶ Iterazione ${i}/${NUM_ITERATIONS}...`);
-        
+
         const startTime = Date.now();
         try {
             const result = await callEstimationAPI();
             const responseTime = Date.now() - startTime;
-            
+
             if (!result.success) {
                 console.log(`  ❌ Errore: ${result.error}`);
                 continue;
             }
-            
+
             const testResult: TestResult = {
                 iteration: i,
                 totalBaseDays: result.totalBaseDays,
@@ -198,50 +198,50 @@ async function runVarianceTest() {
                 confidenceScore: result.confidenceScore,
                 responseTimeMs: responseTime,
             };
-            
+
             results.push(testResult);
-            
+
             console.log(`  ✅ ${result.totalBaseDays}d | ${result.activities.length} attività | confidence: ${result.confidenceScore} | ${responseTime}ms`);
             console.log(`     Attività: ${testResult.activityCodes.join(', ')}`);
-            
+
         } catch (error) {
             console.log(`  ❌ Errore: ${error instanceof Error ? error.message : 'Unknown'}`);
         }
-        
+
         // Small delay between calls
         if (i < NUM_ITERATIONS) {
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
     }
-    
+
     // Analyze results
     console.log('\n═══════════════════════════════════════════════════════════════');
     console.log('   RISULTATI ANALISI');
     console.log('═══════════════════════════════════════════════════════════════\n');
-    
+
     if (results.length < 2) {
         console.log('❌ Insufficienti risultati per analisi (servono almeno 2)');
         process.exit(1);
     }
-    
+
     // Days variance
     const daysValues = results.map(r => r.totalBaseDays);
     const daysStats = calculateStats(daysValues);
     const daysCV = calculateCV(daysValues);
-    
+
     console.log('📊 VARIANZA GIORNI:');
     console.log(`   Media: ${daysStats.mean.toFixed(2)}d`);
     console.log(`   Min: ${daysStats.min.toFixed(2)}d | Max: ${daysStats.max.toFixed(2)}d`);
     console.log(`   Deviazione std: ${daysStats.stdDev.toFixed(3)}`);
     console.log(`   Coefficiente di variazione: ${(daysCV * 100).toFixed(1)}%`);
-    
+
     // Activity comparison
     const activityAnalysis = compareActivitySets(results);
-    
+
     console.log('\n📋 VARIANZA ATTIVITÀ:');
     console.log(`   Set identici: ${activityAnalysis.identical ? '✅ SÌ' : '❌ NO'}`);
     console.log(`   Attività comuni (100%): ${activityAnalysis.commonActivities.length}`);
-    
+
     if (!activityAnalysis.identical) {
         console.log('\n   Dettaglio frequenza attività:');
         activityAnalysis.variance.forEach((freq, code) => {
@@ -251,36 +251,36 @@ async function runVarianceTest() {
             console.log(`   ${status} ${code.padEnd(25)} ${bar.padEnd(10)} ${percentage}%`);
         });
     }
-    
+
     // Confidence score variance
     const confidenceValues = results.map(r => r.confidenceScore);
     const confidenceStats = calculateStats(confidenceValues);
-    
+
     console.log('\n🎯 VARIANZA CONFIDENCE SCORE:');
     console.log(`   Media: ${confidenceStats.mean.toFixed(2)}`);
     console.log(`   Min: ${confidenceStats.min.toFixed(2)} | Max: ${confidenceStats.max.toFixed(2)}`);
-    
+
     // Response time
     const responseTimeValues = results.map(r => r.responseTimeMs);
     const responseTimeStats = calculateStats(responseTimeValues);
-    
+
     console.log('\n⏱️  TEMPO DI RISPOSTA:');
     console.log(`   Media: ${(responseTimeStats.mean / 1000).toFixed(1)}s`);
     console.log(`   Min: ${(responseTimeStats.min / 1000).toFixed(1)}s | Max: ${(responseTimeStats.max / 1000).toFixed(1)}s`);
-    
+
     // Final verdict
     console.log('\n═══════════════════════════════════════════════════════════════');
     console.log('   VERDETTO FINALE');
     console.log('═══════════════════════════════════════════════════════════════\n');
-    
+
     const daysPass = daysCV <= MAX_ACCEPTABLE_VARIANCE;
     const activitiesPass = activityAnalysis.identical;
     const overallPass = daysPass && activitiesPass;
-    
+
     console.log(`   Varianza giorni ≤ ${MAX_ACCEPTABLE_VARIANCE * 100}%: ${daysPass ? '✅ PASS' : '❌ FAIL'} (${(daysCV * 100).toFixed(1)}%)`);
     console.log(`   Attività identiche: ${activitiesPass ? '✅ PASS' : '❌ FAIL'}`);
     console.log(`\n   ${overallPass ? '🎉 TEST SUPERATO!' : '⚠️  TEST FALLITO - Necessario migliorare determinismo'}`);
-    
+
     // Export results
     const report = {
         timestamp: new Date().toISOString(),
@@ -305,7 +305,7 @@ async function runVarianceTest() {
             overallPass,
         },
     };
-    
+
     const reportPath = `./test-results/variance-test-${Date.now()}.json`;
     try {
         const fs = await import('fs');
@@ -319,7 +319,7 @@ async function runVarianceTest() {
     } catch (e) {
         // Ignore file write errors
     }
-    
+
     process.exit(overallPass ? 0 : 1);
 }
 

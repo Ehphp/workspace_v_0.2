@@ -3,17 +3,24 @@ import { persist } from 'zustand/middleware';
 import { supabase } from '@/lib/supabase';
 import type { Organization, OrganizationMember } from '@/types/database';
 
+// Cache structure to store user roles per organization
+interface MembershipCache {
+    [orgId: string]: 'admin' | 'editor' | 'viewer';
+}
+
 interface AuthState {
     user: any | null;
     organizations: Organization[];
     currentOrganization: Organization | null;
     userRole: 'admin' | 'editor' | 'viewer' | null;
     isLoading: boolean;
+    isSwitchingOrg: boolean; // New: track org switch state
+    membershipCache: MembershipCache; // New: cache roles per org
 
     // Actions
     setUser: (user: any) => void;
     fetchOrganizations: () => Promise<void>;
-    setCurrentOrganization: (orgId: string) => void;
+    setCurrentOrganization: (orgId: string) => Promise<void>; // Now async
     signOut: () => Promise<void>;
 }
 
@@ -25,6 +32,8 @@ export const useAuthStore = create<AuthState>()(
             currentOrganization: null,
             userRole: null,
             isLoading: false,
+            isSwitchingOrg: false,
+            membershipCache: {},
 
             setUser: (user) => set({ user }),
 
@@ -54,6 +63,12 @@ export const useAuthStore = create<AuthState>()(
                     const organizations = members.map((m: any) => m.organizations) as Organization[];
                     console.log('[useAuthStore] Mapped organizations:', organizations.length);
 
+                    // Build membership cache for instant role lookups
+                    const membershipCache: MembershipCache = {};
+                    members.forEach((m: any) => {
+                        membershipCache[m.org_id] = m.role;
+                    });
+
                     // Determine current org (restore from state or pick first)
                     let currentOrg = get().currentOrganization;
                     if (!currentOrg || !organizations.find(o => o.id === currentOrg?.id)) {
@@ -62,13 +77,12 @@ export const useAuthStore = create<AuthState>()(
 
                     console.log('[useAuthStore] Current organization:', currentOrg?.id);
 
-                    // Determine role in current org
-                    const currentMember = members.find((m: any) => m.org_id === currentOrg?.id);
-                    const userRole = currentMember ? currentMember.role : null;
+                    // Determine role in current org from cache
+                    const userRole = currentOrg ? membershipCache[currentOrg.id] || null : null;
 
                     console.log('[useAuthStore] User role:', userRole);
 
-                    set({ organizations, currentOrganization: currentOrg, userRole });
+                    set({ organizations, currentOrganization: currentOrg, userRole, membershipCache });
                 } catch (error) {
                     console.error('[useAuthStore] Failed to fetch organizations:', error);
                 } finally {
@@ -76,41 +90,70 @@ export const useAuthStore = create<AuthState>()(
                 }
             },
 
-            setCurrentOrganization: (orgId: string) => {
-                const { organizations, user } = get();
+            setCurrentOrganization: async (orgId: string) => {
+                const { organizations, user, membershipCache } = get();
                 const org = organizations.find(o => o.id === orgId);
-                if (org) {
-                    // We need to re-fetch the role for this org, but we can optimize if we stored members
-                    // For now, let's just trigger a fetch or store members in state. 
-                    // Simpler: Just fetch members again or store them. 
-                    // Let's assume we want to keep it simple and just update the role from a fresh fetch or derived.
-                    // Actually, let's just re-run fetchOrganizations or better, store members map.
-                    // For MVP, let's just set it and let the component trigger a refresh if needed, 
-                    // BUT we need the role immediately.
 
-                    // Let's do a quick fetch for the role to be safe
-                    supabase
-                        .from('organization_members')
-                        .select('role')
-                        .eq('org_id', orgId)
-                        .eq('user_id', user.id)
-                        .single()
-                        .then(({ data }) => {
-                            set({ currentOrganization: org, userRole: data?.role as any });
+                if (!org || !user) return;
+
+                // First, check if we have the role in cache
+                let role = membershipCache[orgId];
+
+                if (role) {
+                    // Instant switch - role is cached
+                    console.log('[useAuthStore] Switching org (cached):', orgId, 'role:', role);
+                    set({ currentOrganization: org, userRole: role });
+                } else {
+                    // Need to fetch role - show loading state
+                    console.log('[useAuthStore] Switching org (fetching role):', orgId);
+                    set({ isSwitchingOrg: true, userRole: null }); // Clear role during fetch
+
+                    try {
+                        const { data, error } = await supabase
+                            .from('organization_members')
+                            .select('role')
+                            .eq('org_id', orgId)
+                            .eq('user_id', user.id)
+                            .single();
+
+                        if (error) throw error;
+
+                        role = data?.role as 'admin' | 'editor' | 'viewer';
+
+                        // Update cache and state atomically
+                        set({
+                            currentOrganization: org,
+                            userRole: role,
+                            membershipCache: { ...get().membershipCache, [orgId]: role }
                         });
+                    } catch (error) {
+                        console.error('[useAuthStore] Failed to fetch role for org:', error);
+                        // Fallback to viewer for safety
+                        set({ currentOrganization: org, userRole: 'viewer' });
+                    } finally {
+                        set({ isSwitchingOrg: false });
+                    }
                 }
             },
 
             signOut: async () => {
                 await supabase.auth.signOut();
-                set({ user: null, organizations: [], currentOrganization: null, userRole: null });
+                set({
+                    user: null,
+                    organizations: [],
+                    currentOrganization: null,
+                    userRole: null,
+                    membershipCache: {},
+                    isSwitchingOrg: false
+                });
             },
         }),
         {
             name: 'auth-storage',
             partialize: (state) => ({
-                currentOrganization: state.currentOrganization
-            }), // Only persist the selected org preference
+                currentOrganization: state.currentOrganization,
+                membershipCache: state.membershipCache // Persist cache for faster startup
+            }),
         }
     )
 );

@@ -305,6 +305,7 @@ export function BulkEstimateDialog({
                         p_activities: activitiesPayload,
                         p_drivers: null,
                         p_risks: null,
+                        p_ai_reasoning: aiSuggestion.reasoning || null,
                     });
 
                     if (saveError) {

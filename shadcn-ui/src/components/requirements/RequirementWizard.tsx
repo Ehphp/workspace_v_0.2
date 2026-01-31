@@ -121,6 +121,7 @@ export function RequirementWizard({ listId, projectContext, onSuccess, onCancel,
                 driverMultiplier: estimationResult.driverMultiplier,
                 riskScore: estimationResult.riskScore,
                 contingencyPercent: estimationResult.contingencyPercent,
+                aiReasoning: data.aiAnalysis, // Pass AI analysis text
                 activities: data.selectedActivityCodes.map(code => ({
                     code,
                     isAiSuggested: data.aiSuggestedActivityCodes.includes(code)

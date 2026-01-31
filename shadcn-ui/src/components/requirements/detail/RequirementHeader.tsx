@@ -187,20 +187,20 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
     const currentPreset = presets.find(p => p.id === currentTechId);
 
     return (
-        <div className="flex flex-col gap-3 mb-2">
-            <div className="flex items-start gap-4">
+        <div className="flex flex-col gap-4">
+            <div className="flex items-start gap-5">
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="mt-1 shrink-0 hover:bg-slate-100 rounded-full transition-colors"
+                    className="mt-1 shrink-0 hover:bg-slate-100 rounded-xl transition-all duration-200 w-10 h-10"
                     onClick={onBack}
                 >
-                    <ArrowLeft className="h-5 w-5 text-slate-500" />
+                    <ArrowLeft className="h-5 w-5 text-slate-600" />
                 </Button>
 
                 <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-2 flex-1">
+                        <div className="space-y-3 flex-1">
                             {/* Title Section */}
                             <div className="flex items-center gap-3 min-h-[40px]">
                                 {isEditingTitle ? (
@@ -209,7 +209,7 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
                                         type="text"
                                         value={tempTitle}
                                         onChange={(e) => setTempTitle(e.target.value)}
-                                        className="text-3xl font-bold text-slate-900 tracking-tight leading-tight outline-none bg-white border-b-2 border-blue-500 w-full px-1"
+                                        className="text-2xl font-bold text-slate-900 tracking-tight leading-tight outline-none bg-white border-b-2 border-blue-500 w-full px-1 rounded-lg"
                                         onBlur={handleSaveTitle}
                                         onKeyDown={handleKeyDownTitle}
                                     />
@@ -217,10 +217,10 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
                                     <h1
                                         onClick={() => setIsEditingTitle(true)}
                                         className={cn(
-                                            "text-3xl font-bold text-slate-900 tracking-tight leading-tight cursor-pointer hover:bg-slate-100/50 rounded px-1 -ml-1 transition-colors border border-transparent hover:border-slate-200",
+                                            "text-2xl font-bold text-slate-900 tracking-tight leading-tight cursor-pointer hover:bg-slate-100/70 rounded-xl px-2 py-1 -ml-2 transition-all duration-200 border border-transparent hover:border-slate-200",
                                             !titleInputRef.current && "truncate"
                                         )}
-                                        title="Click to edit title"
+                                        title="Clicca per modificare il titolo"
                                     >
                                         {requirement.title}
                                     </h1>
@@ -234,13 +234,13 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
                                     value={currentPriority}
                                     onValueChange={handlePriorityChange}
                                 >
-                                    <SelectTrigger className="w-auto h-auto p-0 border-0 bg-transparent hover:bg-slate-100/50 rounded focus:ring-0 [&>svg]:hidden transition-colors">
+                                    <SelectTrigger className="w-auto h-auto p-0 border-0 bg-transparent hover:bg-slate-100/70 rounded-lg focus:ring-0 [&>svg]:hidden transition-all duration-200">
                                         <PriorityBadge priority={currentPriority as any} />
                                     </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="LOW">Low Priority</SelectItem>
-                                        <SelectItem value="MEDIUM">Medium Priority</SelectItem>
-                                        <SelectItem value="HIGH">High Priority</SelectItem>
+                                    <SelectContent className="rounded-xl">
+                                        <SelectItem value="LOW">Priorità Bassa</SelectItem>
+                                        <SelectItem value="MEDIUM">Priorità Media</SelectItem>
+                                        <SelectItem value="HIGH">Priorità Alta</SelectItem>
                                     </SelectContent>
                                 </Select>
 
@@ -249,12 +249,12 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
                                     value={currentState}
                                     onValueChange={handleStateChange}
                                 >
-                                    <SelectTrigger className="w-auto h-auto p-0 border-0 bg-transparent hover:bg-slate-100/50 rounded focus:ring-0 [&>svg]:hidden transition-colors">
+                                    <SelectTrigger className="w-auto h-auto p-0 border-0 bg-transparent hover:bg-slate-100/70 rounded-lg focus:ring-0 [&>svg]:hidden transition-all duration-200">
                                         <StateBadge state={currentState as any} />
                                     </SelectTrigger>
-                                    <SelectContent className="min-w-[200px]">
+                                    <SelectContent className="min-w-[200px] rounded-xl">
                                         {uniqueStateOptions.length === 0 ? (
-                                            <div className="px-2 py-1.5 text-xs text-slate-500">No transitions available</div>
+                                            <div className="px-2 py-1.5 text-xs text-slate-500">Nessuna transizione disponibile</div>
                                         ) : (
                                             uniqueStateOptions.map((opt) => (
                                                 <div key={opt.value}>
@@ -299,54 +299,54 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
                         </div>
 
                         {/* Owner and Technology Inline Editing */}
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-4">
                             {/* Owner Field */}
-                            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white shadow-sm border border-slate-200 min-w-[150px]">
-                                <div className="p-1.5 bg-blue-50 rounded">
-                                    <User className="h-4 w-4 text-blue-600" />
+                            <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 shadow-lg border border-slate-200/50 min-w-[160px] backdrop-blur-sm">
+                                <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
+                                    <User className="h-4 w-4 text-white" />
                                 </div>
                                 <div className="leading-tight flex-1">
-                                    <div className="text-[10px] uppercase text-slate-500 font-medium">Owner</div>
+                                    <div className="text-[10px] uppercase text-slate-500 font-semibold tracking-wide">Responsabile</div>
                                     {isEditingOwner ? (
                                         <input
                                             ref={ownerInputRef}
                                             type="text"
                                             value={tempOwner}
                                             onChange={(e) => setTempOwner(e.target.value)}
-                                            className="text-sm font-semibold text-slate-900 outline-none bg-transparent border-b border-blue-500 w-full px-0 py-0"
+                                            className="text-sm font-bold text-slate-900 outline-none bg-transparent border-b border-blue-500 w-full px-0 py-0"
                                             onBlur={handleSaveOwner}
                                             onKeyDown={handleKeyDownOwner}
                                         />
                                     ) : (
                                         <div
                                             onClick={() => setIsEditingOwner(true)}
-                                            className="text-sm font-semibold text-slate-900 cursor-pointer hover:bg-slate-50 rounded px-1 -ml-1 transition-colors truncate"
-                                            title="Click to edit owner"
+                                            className="text-sm font-bold text-slate-900 cursor-pointer hover:bg-slate-50 rounded-lg px-1 -ml-1 transition-all duration-200 truncate"
+                                            title="Clicca per modificare il responsabile"
                                         >
-                                            {requirement.business_owner || 'N/A'}
+                                            {requirement.business_owner || 'N/D'}
                                         </div>
                                     )}
                                 </div>
                             </div>
 
                             {/* Technology Field */}
-                            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white shadow-sm border border-slate-200 min-w-[180px]">
-                                <div className="p-1.5 bg-purple-50 rounded">
-                                    <Settings className="h-4 w-4 text-purple-600" />
+                            <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 shadow-lg border border-slate-200/50 min-w-[180px] backdrop-blur-sm">
+                                <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-md">
+                                    <Settings className="h-4 w-4 text-white" />
                                 </div>
                                 <div className="leading-tight flex-1">
-                                    <div className="text-[10px] uppercase text-slate-500 font-medium">Technology</div>
+                                    <div className="text-[10px] uppercase text-slate-500 font-semibold tracking-wide">Tecnologia</div>
                                     <Select
                                         value={currentTechId || 'none'}
                                         onValueChange={handleTechnologyChange}
                                     >
-                                        <SelectTrigger className="w-full h-auto p-0 border-0 bg-transparent hover:bg-slate-50 rounded focus:ring-0 [&>svg]:hidden transition-colors px-1 -ml-1">
-                                            <div className="text-sm font-semibold text-slate-900 truncate text-left">
-                                                {currentPreset?.name || 'Not set'}
+                                        <SelectTrigger className="w-full h-auto p-0 border-0 bg-transparent hover:bg-slate-50 rounded-lg focus:ring-0 [&>svg]:hidden transition-all duration-200 px-1 -ml-1">
+                                            <div className="text-sm font-bold text-slate-900 truncate text-left">
+                                                {currentPreset?.name || 'Non impostato'}
                                             </div>
                                         </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">Not set</SelectItem>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="none">Non impostato</SelectItem>
                                             {presets.map((preset) => (
                                                 <SelectItem key={preset.id} value={preset.id}>
                                                     {preset.name}

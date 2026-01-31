@@ -411,8 +411,8 @@ export default function RequirementDetail() {
             </div>
 
             {/* Page specific info bar - flex-shrink-0 */}
-            <div className="flex-shrink-0 relative z-10 border-b border-white/50 bg-white/40 backdrop-blur-md shadow-sm">
-                <div className="container mx-auto px-6 py-3">
+            <div className="flex-shrink-0 relative z-10 border-b border-white/50 bg-white/60 backdrop-blur-xl">
+                <div className="container mx-auto px-6 py-4">
                     <RequirementHeader
                         requirement={requirement}
                         onBack={handleBack}
@@ -426,29 +426,29 @@ export default function RequirementDetail() {
             <div className="flex-1 relative z-10 flex flex-col min-h-0">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
                     {/* Tab Navigation */}
-                    <div className="flex-shrink-0 border-b border-slate-200 bg-white/40 backdrop-blur-sm">
+                    <div className="flex-shrink-0 border-b border-slate-200/50 bg-white/60 backdrop-blur-xl">
                         <div className="container mx-auto px-6">
-                            <TabsList className="h-12 bg-transparent border-0 gap-1">
+                            <TabsList className="h-14 bg-transparent border-0 gap-2">
                                 <TabsTrigger
                                     value="info"
-                                    className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-t-lg border-b-2 border-transparent data-[state=active]:border-blue-600"
+                                    className="data-[state=active]:bg-white/90 data-[state=active]:shadow-md rounded-xl border-2 border-transparent data-[state=active]:border-blue-500/20 px-5 py-2.5 transition-all duration-200"
                                 >
                                     <FileText className="w-4 h-4 mr-2" />
-                                    Overview
+                                    Panoramica
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="estimation"
-                                    className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-t-lg border-b-2 border-transparent data-[state=active]:border-blue-600"
+                                    className="data-[state=active]:bg-white/90 data-[state=active]:shadow-md rounded-xl border-2 border-transparent data-[state=active]:border-blue-500/20 px-5 py-2.5 transition-all duration-200"
                                 >
                                     <Calculator className="w-4 h-4 mr-2" />
-                                    Estimation
+                                    Stima
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="history"
-                                    className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-t-lg border-b-2 border-transparent data-[state=active]:border-blue-600"
+                                    className="data-[state=active]:bg-white/90 data-[state=active]:shadow-md rounded-xl border-2 border-transparent data-[state=active]:border-blue-500/20 px-5 py-2.5 transition-all duration-200"
                                 >
                                     <History className="w-4 h-4 mr-2" />
-                                    History
+                                    Storico
                                 </TabsTrigger>
                             </TabsList>
                         </div>

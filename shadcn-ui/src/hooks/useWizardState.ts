@@ -43,6 +43,8 @@ export interface WizardData {
   suggestedDrivers?: SuggestedDriver[];
   suggestedRisks?: string[];
   confidenceScore?: number;
+  // AI analysis from estimation (the reasoning text shown in UI)
+  aiAnalysis?: string;
 }
 
 const STORAGE_KEY = 'estimation_wizard_data';
@@ -101,5 +103,6 @@ function getInitialData(): WizardData {
     suggestedDrivers: undefined,
     suggestedRisks: undefined,
     confidenceScore: undefined,
+    aiAnalysis: undefined,
   };
 }

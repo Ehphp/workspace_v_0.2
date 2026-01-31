@@ -110,6 +110,7 @@ export interface Estimation {
   risk_score: number;
   contingency_percent: number;
   scenario_name: string;
+  ai_reasoning?: string | null;
   created_at: string;
 }
 

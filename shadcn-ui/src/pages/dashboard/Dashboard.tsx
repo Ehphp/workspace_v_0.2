@@ -227,28 +227,29 @@ export default function Dashboard() {
 
         {/* Top Bar: KPIs & Actions - Fixed Height */}
         {/* Top Bar: Headers - Fixed Height */}
-        <div className="flex-shrink-0 relative z-10 border-b border-white/50 bg-white/40 backdrop-blur-md shadow-sm">
-          <div className="container mx-auto max-w-7xl px-6 py-3">
+        <div className="flex-shrink-0 relative z-10 border-b border-white/50 bg-white/60 backdrop-blur-xl">
+          <div className="container mx-auto max-w-7xl px-6 py-5">
             <div className="flex justify-between items-center">
               <div>
                 <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
+                <p className="text-slate-500 text-sm mt-1">Gestisci i tuoi progetti e requisiti</p>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="relative w-56">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <div className="flex items-center gap-3">
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
-                    placeholder="Search projects..."
+                    placeholder="Cerca progetti..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8 h-8 text-xs bg-white/60 border-slate-200"
+                    className="pl-10 h-10 bg-white/80 border-slate-200/80 rounded-xl focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
                 <Button
                   onClick={() => setShowCreateDialog(true)}
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 shadow-sm h-8 text-xs"
+                  size="lg"
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 h-10 px-5 rounded-xl"
                 >
-                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  <Plus className="mr-2 h-4 w-4" />
                   New Project
                 </Button>
               </div>
@@ -258,87 +259,104 @@ export default function Dashboard() {
 
         {/* Content Grid - Flex 1 with internal scrolling */}
         <div className="flex-1 overflow-y-auto relative z-0">
-          <div className="container mx-auto max-w-7xl px-6 py-6 space-y-6">
+          <div className="container mx-auto max-w-7xl px-6 py-6 space-y-8">
 
-            {/* KPI Cards (Moved from Header) */}
-            <div className="grid grid-cols-4 gap-3">
+            {/* KPI Cards - Larger and more prominent */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <KpiCard
                 icon={Layers}
-                label="Total Projects"
+                label="Progetti"
                 value={stats.totalProjects}
-                gradient="from-white to-blue-50"
-                iconGradient="from-blue-500 to-indigo-500"
+                gradient="from-white to-blue-50/80"
+                iconGradient="from-blue-500 to-indigo-600"
+                subtitle="totali"
               />
               <KpiCard
                 icon={ListChecks}
-                label="Active Requirements"
+                label="Requisiti"
                 value={stats.activeRequirements}
-                gradient="from-white to-emerald-50"
-                iconGradient="from-emerald-500 to-teal-500"
+                gradient="from-white to-emerald-50/80"
+                iconGradient="from-emerald-500 to-teal-600"
+                subtitle="attivi"
               />
               <KpiCard
                 icon={TrendingUp}
-                label="Total Days"
+                label="Giorni Stimati"
                 value={stats.totalEstimatedDays}
-                gradient="from-white to-purple-50"
-                iconGradient="from-purple-500 to-pink-500"
+                gradient="from-white to-purple-50/80"
+                iconGradient="from-purple-500 to-pink-600"
+                subtitle="totali"
               />
               <KpiCard
                 icon={BarChart3}
-                label="Avg Days/Req"
+                label="Media"
                 value={stats.averageDaysPerReq}
-                gradient="from-white to-amber-50"
-                iconGradient="from-amber-500 to-orange-500"
+                gradient="from-white to-amber-50/80"
+                iconGradient="from-amber-500 to-orange-600"
+                subtitle="giorni/requisito"
               />
             </div>
 
-            <div className="grid grid-cols-12 gap-4 h-[calc(100vh-320px)]">
+            <div className="grid grid-cols-12 gap-6 min-h-[500px]">
 
-              {/* Left Column: Projects List - Scrollable */}
-              <div className="col-span-8 flex flex-col h-full min-h-0 bg-white/60 backdrop-blur-md rounded-xl border border-slate-200/50 shadow-sm overflow-hidden hover:border-blue-300/50 transition-all duration-300">
-                <div className="flex-shrink-0 px-3 py-2 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                  <div className="flex items-center gap-2">
-                    <Layers className="w-3.5 h-3.5 text-slate-500" />
-                    <h2 className="font-semibold text-slate-700 text-sm">Projects</h2>
-                    <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full text-[10px] font-medium border border-slate-200">
-                      {filteredLists.length}
-                    </span>
+              {/* Left Column: Projects List */}
+              <div className="col-span-12 lg:col-span-8 flex flex-col bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300">
+                <div className="flex-shrink-0 px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50/80 to-white">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                      <Layers className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="font-bold text-slate-800">I tuoi Progetti</h2>
+                      <p className="text-xs text-slate-500">{filteredLists.length} progetti</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger className="w-28 h-7 text-[10px] border-slate-200 bg-white">
-                        <SelectValue placeholder="Sort" />
+                      <SelectTrigger className="w-32 h-9 text-xs border-slate-200 bg-white rounded-lg">
+                        <SelectValue placeholder="Ordina" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="updated-desc">Recent</SelectItem>
-                        <SelectItem value="name-asc">Name A-Z</SelectItem>
+                        <SelectItem value="updated-desc">Più recenti</SelectItem>
+                        <SelectItem value="name-asc">Nome A-Z</SelectItem>
                       </SelectContent>
                     </Select>
-                    <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                    <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
                       <button
                         onClick={() => setViewMode('grid')}
-                        className={`p-1 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                        className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
                       >
-                        <LayoutGrid className="w-3.5 h-3.5" />
+                        <LayoutGrid className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => setViewMode('list')}
-                        className={`p-1 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                        className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
                       >
-                        <ListIcon className="w-3.5 h-3.5" />
+                        <ListIcon className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                   {filteredLists.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-slate-400">
-                      <Layers className="w-12 h-12 mb-2 opacity-20" />
-                      <p>No projects found</p>
+                    <div className="flex flex-col items-center justify-center h-full text-slate-400 py-12">
+                      <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                        <Layers className="w-8 h-8 opacity-40" />
+                      </div>
+                      <p className="font-medium">Nessun progetto trovato</p>
+                      <p className="text-sm text-slate-400 mt-1">Crea il tuo primo progetto per iniziare</p>
+                      <Button
+                        onClick={() => setShowCreateDialog(true)}
+                        className="mt-4 bg-blue-600 hover:bg-blue-700"
+                        size="sm"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Crea Progetto
+                      </Button>
                     </div>
                   ) : (
-                    <div className={viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-3 gap-3" : "flex flex-col gap-2"}>
+                    <div className={viewMode === 'grid' ? "grid grid-cols-2 xl:grid-cols-3 gap-4" : "flex flex-col gap-3"}>
                       {filteredLists.map((list) => (
                         <ProjectCard
                           key={list.id}
@@ -353,15 +371,20 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Right Column: Sidebar - Scrollable */}
-              <div className="col-span-4 flex flex-col gap-3 h-full min-h-0 overflow-y-auto custom-scrollbar pr-1">
+              {/* Right Column: Sidebar */}
+              <div className="col-span-12 lg:col-span-4 flex flex-col gap-4">
 
                 {/* Recent Activity */}
-                <div className="bg-white/60 backdrop-blur-md rounded-xl border border-slate-200/50 shadow-sm overflow-hidden flex-1 hover:border-blue-300/50 transition-all duration-300">
-                  <div className="px-3 py-2 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <h3 className="font-semibold text-slate-700 text-xs">Recent Activity</h3>
+                <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-lg overflow-hidden flex-1 hover:shadow-xl transition-all duration-300">
+                  <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50/80 to-white">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                        <TrendingUp className="w-4 h-4 text-white" />
+                      </div>
+                      <h3 className="font-bold text-slate-800">Attività Recente</h3>
+                    </div>
                   </div>
-                  <div className="p-2">
+                  <div className="p-3 max-h-[400px] overflow-y-auto custom-scrollbar">
                     <RecentRequirements />
                   </div>
                 </div>

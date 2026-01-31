@@ -8,10 +8,10 @@
 
 [dev]
   # Timeout for local development functions (in seconds)
-  # lambda-local uses this setting
+  # Try multiple keys for compatibility
   functionsTimeout = 120
-  # Alternative key for some versions
   timeout = 120
+  timeoutSeconds = 120
 
 [functions]
   # Configuration for all functions (including AI generation)
@@ -34,6 +34,12 @@
 
 [functions."ai-estimate-from-interview"]
   timeout = 60
+
+[functions."ai-bulk-interview"]
+  timeout = 90
+
+[functions."ai-bulk-estimate-with-answers"]
+  timeout = 90
 
 # Redirect all requests to index.html for SPA routing
 [[redirects]]

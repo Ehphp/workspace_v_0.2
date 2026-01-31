@@ -280,6 +280,7 @@ export interface SaveEstimationInput {
   driverMultiplier: number;
   riskScore: number;
   contingencyPercent: number;
+  aiReasoning?: string;
   activities: {
     code: string;
     isAiSuggested: boolean;
@@ -311,6 +312,7 @@ export async function saveEstimation(input: SaveEstimationInput): Promise<void> 
       risk_score: input.riskScore,
       contingency_percent: input.contingencyPercent,
       scenario_name: 'Initial Estimation',
+      ai_reasoning: input.aiReasoning || null,
     })
     .select()
     .single();

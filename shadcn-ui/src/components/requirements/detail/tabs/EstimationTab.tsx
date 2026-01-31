@@ -108,31 +108,31 @@ export function EstimationTab({
     return (
         <div className="h-full flex flex-col overflow-hidden">
             {/* Toolbar */}
-            <div className="flex-shrink-0 bg-white border-b border-slate-200">
-                <div className="container mx-auto px-6 py-2 flex justify-end">
+            <div className="flex-shrink-0 bg-white/60 backdrop-blur-xl border-b border-slate-200/50">
+                <div className="container mx-auto px-6 py-3 flex justify-end">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                className="text-xs text-slate-600 hover:text-blue-600"
+                                className="text-sm text-slate-600 hover:text-blue-600 rounded-xl border-slate-200 hover:border-blue-200 hover:bg-blue-50/50 transition-all duration-200"
                                 disabled={!estimationState.estimationResult}
                             >
-                                <Download className="w-3.5 h-3.5 mr-1" />
+                                <Download className="w-4 h-4 mr-2" />
                                 Esporta
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuContent align="end" className="w-52 rounded-xl">
                             <DropdownMenuItem
                                 onClick={() => setExportDialogOpen(true)}
-                                className="flex items-center gap-2"
+                                className="flex items-center gap-3 rounded-lg py-2"
                             >
                                 <FileText className="w-4 h-4 text-red-500" />
                                 <span>Esporta PDF</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem
                                 onClick={() => setExportDialogOpen(true)}
-                                className="flex items-center gap-2"
+                                className="flex items-center gap-3 rounded-lg py-2"
                             >
                                 <FileSpreadsheet className="w-4 h-4 text-green-500" />
                                 <span>Esporta Excel</span>
@@ -144,7 +144,7 @@ export function EstimationTab({
 
             {/* Main Workspace - Full height */}
             <div className="flex-1 min-h-0">
-                <div className="container mx-auto px-6 py-3 h-full">
+                <div className="container mx-auto px-6 py-4 h-full">
                     <div className="h-full overflow-y-auto">
                         <RequirementEstimation
                             estimationState={estimationState}
