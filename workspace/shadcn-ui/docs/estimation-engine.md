@@ -198,6 +198,76 @@ console.log(result.totalDays); // Deterministic output
 
 ---
 
+## Estimation Flows
+
+The system provides three distinct entry points for creating estimations, each using the same deterministic engine but with different levels of automation.
+
+### Flow Comparison
+
+| Aspect | **AI Bulk Estimate** | **Wizard** | **Manual Edit** |
+|--------|---------------------|------------|-----------------|
+| File | `BulkEstimateDialog.tsx` | `RequirementWizard.tsx` | `RequirementDetail.tsx` |
+| Entry Point | "Stima Tutti" button | "Nuovo Requisito" button | Estimation tab |
+| AI Endpoint | `ai-suggest` | Interview + `ai-suggest` | `ai-suggest` (optional) |
+| Activities | AI-suggested | AI-suggested + manual | Manual + AI optional |
+| Drivers | Preset defaults | User-selected via wizard | User-selected |
+| Risks | Preset defaults | User-selected via wizard | User-selected |
+| `scenario_name` | `"AI Bulk Estimate"` | `"Wizard"` | `"Manual Edit"` |
+| User Interaction | Zero (automatic) | 5-step wizard | Full manual control |
+
+### Flow Details
+
+#### 1. AI Bulk Estimate (Stima Tutti)
+
+Fast batch processing for multiple requirements:
+
+1. Pre-loads all catalogs (activities, drivers, risks, presets) once
+2. For each requirement in parallel (max 3):
+   - Calls `ai-suggest` to get activity recommendations
+   - Falls back to preset default activities if AI returns none
+   - Applies preset `default_driver_values` and `default_risks`
+   - Calculates estimation with full formula
+   - Saves automatically
+
+**Use case**: Quick initial estimates for imported requirements.
+
+#### 2. Wizard (Nuovo Requisito)
+
+Guided creation with AI interview:
+
+1. **Step 1**: Enter requirement description
+2. **Step 2**: Select technology preset
+3. **Step 3**: AI interview (contextual questions)
+4. **Step 4**: Review/adjust drivers and risks
+5. **Step 5**: Review estimation and save
+
+**Use case**: Creating new requirements with accurate estimates.
+
+#### 3. Manual Edit
+
+Full control over existing requirements:
+
+1. User selects activities, drivers, risks manually
+2. Can optionally trigger AI suggestions
+3. Real-time calculation updates
+4. Explicit save action
+
+**Use case**: Refining estimates or re-estimating requirements.
+
+### AI Suggestion Tracking
+
+All flows track which activities were AI-suggested via `is_ai_suggested` flag:
+
+```typescript
+p_activities: selectedActivityIds.map(id => ({
+    activity_id: id,
+    is_ai_suggested: aiSuggestedIds.includes(id),
+    notes: null
+}))
+```
+
+---
+
 ## What the Engine Does NOT Do
 
 | Responsibility | Owner |

@@ -311,7 +311,7 @@ export async function saveEstimation(input: SaveEstimationInput): Promise<void> 
       driver_multiplier: input.driverMultiplier,
       risk_score: input.riskScore,
       contingency_percent: input.contingencyPercent,
-      scenario_name: 'Initial Estimation',
+      scenario_name: 'Wizard',
       ai_reasoning: input.aiReasoning || null,
     })
     .select()

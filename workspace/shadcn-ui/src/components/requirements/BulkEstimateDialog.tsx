@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { calculateEstimation } from '@/lib/estimationEngine';
-import type { Activity } from '@/types/database';
+import type { Activity, Driver, Risk, TechnologyPreset } from '@/types/database';
 import { sanitizePromptInput } from '@/types/ai-validation';
 import {
     Dialog,
@@ -277,14 +277,34 @@ export function BulkEstimateDialog({
 
                     const aiCodesSet = new Set(aiActivityCodes);
 
+                    // Apply preset default drivers (map codes to multipliers)
+                    const presetDriverValues = (preset as TechnologyPreset).default_driver_values || {};
+                    const driversForCalc = Object.entries(presetDriverValues)
+                        .map(([driverCode, selectedValue]) => {
+                            const driver = sharedDrivers.find((d: Driver) => d.code === driverCode);
+                            if (!driver) return null;
+                            const option = driver.options.find(opt => opt.value === selectedValue);
+                            return option ? { multiplier: option.multiplier } : null;
+                        })
+                        .filter((d): d is { multiplier: number } => d !== null);
+
+                    // Apply preset default risks
+                    const presetRiskCodes = (preset as TechnologyPreset).default_risks || [];
+                    const risksForCalc = presetRiskCodes
+                        .map(code => {
+                            const risk = sharedRisks.find((r: Risk) => r.code === code);
+                            return risk ? { weight: risk.weight } : null;
+                        })
+                        .filter((r): r is { weight: number } => r !== null);
+
                     const estimation = calculateEstimation({
                         activities: selectedActivities.map((a: Activity) => ({
                             code: a.code,
                             baseHours: a.base_hours,
                             isAiSuggested: aiCodesSet.has(a.code),
                         })),
-                        drivers: [],
-                        risks: [],
+                        drivers: driversForCalc,
+                        risks: risksForCalc,
                     });
 
                     const activitiesPayload = selectedActivities.map((a: Activity) => ({
@@ -292,6 +312,26 @@ export function BulkEstimateDialog({
                         is_ai_suggested: aiCodesSet.has(a.code),
                         notes: '',
                     }));
+
+                    // Prepare drivers payload from preset defaults
+                    const driversPayload = Object.entries(presetDriverValues)
+                        .map(([driverCode, selectedValue]) => {
+                            const driver = sharedDrivers.find((d: Driver) => d.code === driverCode);
+                            if (!driver) return null;
+                            return {
+                                driver_id: driver.id,
+                                selected_value: selectedValue,
+                            };
+                        })
+                        .filter((d): d is { driver_id: string; selected_value: string } => d !== null);
+
+                    // Prepare risks payload from preset defaults
+                    const risksPayload = presetRiskCodes
+                        .map(code => {
+                            const risk = sharedRisks.find((r: Risk) => r.code === code);
+                            return risk ? { risk_id: risk.id } : null;
+                        })
+                        .filter((r): r is { risk_id: string } => r !== null);
 
                     const { error: saveError } = await supabase.rpc('save_estimation_atomic', {
                         p_requirement_id: req.id,
@@ -301,10 +341,10 @@ export function BulkEstimateDialog({
                         p_driver_multiplier: estimation.driverMultiplier,
                         p_risk_score: estimation.riskScore,
                         p_contingency_percent: estimation.contingencyPercent,
-                        p_scenario_name: 'AI Generated (Bulk)',
+                        p_scenario_name: 'AI Bulk Estimate',
                         p_activities: activitiesPayload,
-                        p_drivers: null,
-                        p_risks: null,
+                        p_drivers: driversPayload.length > 0 ? driversPayload : null,
+                        p_risks: risksPayload.length > 0 ? risksPayload : null,
                         p_ai_reasoning: aiSuggestion.reasoning || null,
                     });
 

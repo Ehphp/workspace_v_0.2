@@ -64,6 +64,7 @@ export default function RequirementDetail() {
     const {
         selectedPresetId,
         selectedActivityIds,
+        aiSuggestedIds,
         selectedDriverValues,
         selectedRiskIds,
         setSelectedPresetId,
@@ -306,7 +307,7 @@ export default function RequirementDetail() {
 
         setIsSaving(true);
         try {
-            const autoScenarioName = `Auto - ${new Date().toLocaleString()}`;
+            const autoScenarioName = 'Manual Edit';
             // Prepare data for RPC
             const estimationData = {
                 p_requirement_id: requirement.id,
@@ -319,7 +320,7 @@ export default function RequirementDetail() {
                 p_scenario_name: autoScenarioName,
                 p_activities: selectedActivityIds.map(id => ({
                     activity_id: id,
-                    is_ai_suggested: false, // We don't track this granularly in state yet, simplified
+                    is_ai_suggested: aiSuggestedIds.includes(id),
                     notes: null
                 })),
                 p_drivers: Object.entries(selectedDriverValues).map(([driverId, value]) => ({
