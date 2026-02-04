@@ -1,0 +1,13 @@
+# Vite-specific build output
+dist-ssr
+
+# Allow sharing recommended VSCode extensions
+.vscode/*
+!.vscode/extensions.json
+
+# Environment files with example exception
+.env.*
+!.env.example
+
+# Project-specific generated files
+.storage/
