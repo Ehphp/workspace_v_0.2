@@ -27,20 +27,22 @@ jobs:
 
             const changed = files.map(f => f.filename);
 
-            // Code areas that require docs updates
+            // Code that should require docs
             const codePatterns = [
               /^shadcn-ui\/src\//,
               /^shadcn-ui\/netlify\/functions\//,
               /^shadcn-ui\/supabase\//,
+              /^supabase_.*\.sql$/,
+              /^estimation_history_optimizations\.sql$/,
             ];
 
-            // Canonical docs
+            // Canonical docs root
             const docsPattern = /^shadcn-ui\/docs\//;
 
             const codeChanged = changed.some(p => codePatterns.some(rx => rx.test(p)));
             const docsChanged = changed.some(p => docsPattern.test(p));
 
-            // Allow explicit skip with label OR skip file
+            // Skip mechanisms
             const labels = (pr.labels || []).map(l => l.name);
             const skipByLabel = labels.includes("skip-docs");
 
@@ -49,8 +51,8 @@ jobs:
 
             if (codeChanged && !docsChanged && !skipByLabel && !skipByFile) {
               core.setFailed(
-                "Docs required: code changed under shadcn-ui (src/netlify/supabase) but no changes under shadcn-ui/docs/. " +
-                "Update docs OR add label 'skip-docs' OR add shadcn-ui/docs/NO_DOCS_NEEDED.md with a short justification."
+                "Docs required: code changed but no changes under shadcn-ui/docs/. " +
+                "Update docs OR add label 'skip-docs' OR add shadcn-ui/docs/NO_DOCS_NEEDED.md with justification."
               );
             } else {
               core.info("Docs requirement satisfied (or explicitly skipped).");
