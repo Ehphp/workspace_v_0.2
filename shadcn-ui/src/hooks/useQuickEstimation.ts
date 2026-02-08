@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { MOCK_TECHNOLOGY_PRESETS, MOCK_ACTIVITIES, MOCK_DRIVERS, MOCK_RISKS } from '@/lib/mockData';
-import { calculateEstimation } from '@/lib/estimationEngine';
+import { quickFinalizeEstimation } from '@/lib/estimation-utils';
 import { suggestActivities } from '@/lib/openai';
 import type { TechnologyPreset, Activity, Driver, Risk } from '@/types/database';
 import type { EstimationResult } from '@/types/estimation';
+import type { FinalizedEstimation } from '@/lib/estimation-utils';
 
 export function useQuickEstimation() {
     const [loading, setLoading] = useState(false);
     const [calculating, setCalculating] = useState(false);
-    const [result, setResult] = useState<EstimationResult | null>(null);
+    const [result, setResult] = useState<FinalizedEstimation | null>(null);
     const [isDemoMode, setIsDemoMode] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedActivities, setSelectedActivities] = useState<Array<{ code: string; name: string; baseHours: number }>>([]);
@@ -156,15 +157,6 @@ export function useQuickEstimation() {
                 }
             }
 
-            const selectedActivitiesForCalc = chosenCodes.map((code) => {
-                const activity = allowedActivities.find((a) => a.code === code);
-                return {
-                    code,
-                    baseHours: activity?.base_hours || 0,
-                    isAiSuggested: aiSuggestion.isValidRequirement ?? false,
-                };
-            });
-
             const activitiesWithDetails = chosenCodes.map((code) => {
                 const activity = allowedActivities.find((a) => a.code === code);
                 return {
@@ -174,11 +166,14 @@ export function useQuickEstimation() {
                 };
             });
 
-            const estimationResult = calculateEstimation({
-                activities: selectedActivitiesForCalc,
-                drivers: [],
-                risks: [],
-            });
+            // Use finalizeEstimation with preset defaults for drivers and risks
+            const estimationResult = quickFinalizeEstimation(
+                chosenCodes,
+                allActivities,
+                selectedPreset,
+                allDrivers,
+                allRisks
+            );
 
             setResult(estimationResult);
             setSelectedActivities(activitiesWithDetails);

@@ -15,6 +15,7 @@ import OpenAI from 'openai';
 import { sanitizePromptInput } from '../../src/types/ai-validation';
 import { validateAuthToken } from './lib/auth/auth-validator';
 import { getCorsHeaders, isOriginAllowed } from './lib/security/cors';
+import { createBulkInterviewPrompt, TECH_SPECIFIC_BULK_FOCUS } from './lib/ai/prompt-templates';
 
 interface RequirementInput {
     id: string;
@@ -35,22 +36,12 @@ interface RequestBody {
 }
 
 /**
- * System prompt for generating aggregated interview questions - ULTRA FAST
+ * Get system prompt for bulk interview using shared templates
  */
-const SYSTEM_PROMPT = `Genera 6-8 domande per stimare requisiti {TECH_CATEGORY}.
-Scope: global(tutti), multi-requirement(subset), specific(ambigui).
-Tipi: single-choice, multiple-choice, range.
-{TECH_SPECIFIC_GUIDANCE}`;
-
-/**
- * Technology-specific guidance for bulk interview - MINIMAL
- */
-const TECH_SPECIFIC_GUIDANCE: Record<string, string> = {
-    'POWER_PLATFORM': `Focus: Dataverse, Power Apps, Power Automate, Security`,
-    'BACKEND': `Focus: API, DB, Integrazioni, Testing`,
-    'FRONTEND': `Focus: UI, State, API, Responsive`,
-    'MULTI': `Focus: Frontend/Backend/Integration`
-};
+function getSystemPrompt(techCategory: string): string {
+    const techFocus = TECH_SPECIFIC_BULK_FOCUS[techCategory] || TECH_SPECIFIC_BULK_FOCUS['MULTI'];
+    return createBulkInterviewPrompt(techCategory, techFocus);
+}
 
 /**
  * Initialize OpenAI client
@@ -166,16 +157,11 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
             hasProjectContext: !!body.projectContext,
         });
 
-        // Get tech-specific guidance
-        const techGuidance = TECH_SPECIFIC_GUIDANCE[body.techCategory] || TECH_SPECIFIC_GUIDANCE['MULTI'];
-
         const openai = getOpenAIClient();
         const startTime = Date.now();
 
-        // Build ultra-minimal prompt
-        const systemPrompt = SYSTEM_PROMPT
-            .replace(/{TECH_CATEGORY}/g, body.techCategory)
-            .replace('{TECH_SPECIFIC_GUIDANCE}', techGuidance) + '\n' + OUTPUT_SCHEMA;
+        // Build system prompt using shared templates
+        const systemPrompt = getSystemPrompt(body.techCategory);
 
         const requirementsText = formatRequirementsForPrompt(body.requirements);
         const userPrompt = `${body.requirements.length} req: ${requirementsText}`;

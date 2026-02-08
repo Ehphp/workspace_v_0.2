@@ -423,6 +423,8 @@ For the same input, 9/10 calls should return the same activityCodes (90%+ consis
 | `netlify/functions/lib/ai/actions/generate-title.ts` | Title generation logic |
 | `netlify/functions/lib/ai/actions/generate-questions.ts` | Question generation logic |
 | `netlify/functions/lib/ai/prompt-builder.ts` | Prompt construction |
+| `netlify/functions/lib/ai/prompt-templates.ts` | **Unified Italian prompt templates** |
+| `netlify/functions/lib/ai/deterministic-rules.ts` | **Shared deterministic rules for activity selection** |
 | `netlify/functions/lib/ai/ai-cache.ts` | Response caching (24h TTL) |
 | `netlify/functions/lib/security/cors.ts` | Origin validation |
 | `netlify/functions/lib/security/rate-limiter.ts` | Redis-backed rate limiting |
@@ -435,6 +437,7 @@ For the same input, 9/10 calls should return the same activityCodes (90%+ consis
 | `src/lib/openai.ts` | Client wrapper for ai-suggest actions |
 | `src/lib/ai-interview-api.ts` | Client API for single-requirement interview |
 | `src/lib/bulk-interview-api.ts` | Client API for bulk interview flow |
+| `src/lib/estimation-utils.ts` | **Unified estimation finalization wrapper** |
 
 ### Frontend - Types
 
@@ -457,6 +460,77 @@ For the same input, 9/10 calls should return the same activityCodes (90%+ consis
 | `src/components/estimation/interview/` | Single-requirement interview UI |
 | `src/components/requirements/BulkInterviewDialog.tsx` | Bulk interview dialog |
 | `src/components/configuration/presets/ai-wizard/` | Preset wizard UI |
+
+---
+
+## Unified Architecture
+
+All AI endpoints share a consistent approach for prompt construction and estimation calculation.
+
+### Shared Prompt Templates
+
+**File**: `netlify/functions/lib/ai/prompt-templates.ts`
+
+All AI prompts are:
+- Written in **Italian** for consistency with user interface
+- Shared across endpoints to avoid drift
+- Technology-aware with specific guidance per `tech_category`
+
+| Export | Used By |
+|--------|---------|
+| `createActivitySuggestionPrompt()` | Quick Estimate, ai-suggest |
+| `NORMALIZATION_PROMPT` | ai-suggest (normalize action) |
+| `createInterviewQuestionsPrompt()` | ai-requirement-interview |
+| `ESTIMATE_FROM_INTERVIEW_PROMPT` | ai-estimate-from-interview |
+| `createBulkInterviewPrompt()` | ai-bulk-interview |
+| `createBulkEstimatePrompt()` | ai-bulk-estimate-with-answers |
+
+### Shared Deterministic Rules
+
+**File**: `netlify/functions/lib/ai/deterministic-rules.ts`
+
+Activity selection follows consistent rules:
+
+| Keyword Pattern | Size Variant |
+|-----------------|--------------|
+| "simple", "few", "1-2", "basic" | `_SM` |
+| "complex", "many", "5+", "advanced" | `_LG` |
+| neutral/absent | base (no suffix) |
+
+Functions:
+- `matchesActivityCategory(text)`: Returns relevant activity category
+- `determineSizeVariant(text)`: Returns `_SM`, `_LG`, or empty
+- `calculateConfidenceScore(factors)`: Computes confidence 0.6-0.9
+
+### Unified Estimation Finalization
+
+**File**: `src/lib/estimation-utils.ts`
+
+All estimation flows converge to `finalizeEstimation()`:
+
+```typescript
+import { finalizeEstimation } from '@/lib/estimation-utils';
+
+const result = finalizeEstimation(
+  aiResponse,           // { activities, totalBaseDays, suggestedDrivers?, suggestedRisks? }
+  preset,               // Preset with default drivers/risks
+  availableActivities   // Activity catalog
+);
+// Returns: { activities[], baseResult, finalResult, drivers[], risks[], confidenceScore }
+```
+
+**Why this matters:**
+- **Quick Estimate** now applies preset default drivers/risks (previously used empty arrays)
+- **Interview** and **Bulk** flows use the same calculation path
+- All methods produce consistent `FinalizedEstimation` output
+
+### Calculation Consistency
+
+| Flow | Pre-Change | Post-Change |
+|------|------------|-------------|
+| Quick Estimate | Empty drivers/risks → baseDays only | Preset defaults applied |
+| Interview | Full drivers/risks from AI | Unchanged (already correct) |
+| Bulk | Full drivers/risks from AI | Unchanged (already correct) |
 
 ---
 

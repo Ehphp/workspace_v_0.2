@@ -4,16 +4,21 @@
 
 This documentation describes the Syntero requirements estimation system. All claims are verifiable against the codebase.
 
+> **New here?** Start with [START_HERE.md](START_HERE.md) for onboarding, reading paths, and quick start.
+
 ## Documentation Map
 
 | Document | Description | Primary Audience |
 |----------|-------------|------------------|
+| [START_HERE.md](START_HERE.md) | **Onboarding, reading paths, quick start** | All (start here) |
 | [../README.md](../README.md) | Quick start, installation, project overview | All |
 | [architecture.md](architecture.md) | System architecture, component responsibilities | Developers |
 | [estimation-engine.md](estimation-engine.md) | Deterministic calculation model | Developers, Technical Leads |
 | [ai-integration.md](ai-integration.md) | AI assistance: scope, limits, implementation | Developers |
 | [data-model.md](data-model.md) | Database schema, entities, relationships | Developers, DBAs |
 | [technology-presets.md](technology-presets.md) | Preset system, configuration, maintenance | Developers, Admins |
+| [api/ai-endpoints.md](api/ai-endpoints.md) | AI endpoint reference | Backend/AI Developers |
+| [data/integrity-playbook.md](data/integrity-playbook.md) | Data integrity and troubleshooting | Developers, DBAs |
 | [setup/setup-guide.md](setup/setup-guide.md) | Installation and configuration | Developers |
 | [deployment/deployment.md](deployment/deployment.md) | Production deployment | DevOps |
 
@@ -62,11 +67,14 @@ Historical and implementation-specific documents are in [archive/](archive/).
 
 ## Quick Links
 
+- **Onboarding**: [START_HERE.md](START_HERE.md) — New developers start here
+- **AI Endpoints**: [api/ai-endpoints.md](api/ai-endpoints.md) — Complete AI endpoint reference
+- **Data Integrity**: [data/integrity-playbook.md](data/integrity-playbook.md) — Troubleshooting and diagnostics
 - **AI System**: [ai/README.md](ai/README.md) — Full AI documentation index
 - **Testing**: [testing/testing-guide.md](testing/testing-guide.md)
 - **Architecture Decisions**: [architecture/](architecture/)
 
 ---
 
-**Last Updated**: 2026-01-31  
+**Last Updated**: 2026-02-08  
 **Maintainer**: Development Team

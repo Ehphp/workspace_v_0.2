@@ -329,7 +329,8 @@ export default function RequirementDetail() {
                 })),
                 p_risks: selectedRiskIds.map(id => ({
                     risk_id: id
-                }))
+                })),
+                p_ai_reasoning: null // Not from AI interview flow
             };
 
             const { error } = await supabase.rpc('save_estimation_atomic', estimationData);

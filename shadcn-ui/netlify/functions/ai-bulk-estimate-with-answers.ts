@@ -12,6 +12,7 @@ import OpenAI from 'openai';
 import { sanitizePromptInput } from '../../src/types/ai-validation';
 import { validateAuthToken } from './lib/auth/auth-validator';
 import { getCorsHeaders, isOriginAllowed } from './lib/security/cors';
+import { createBulkEstimatePrompt } from './lib/ai/prompt-templates';
 
 interface RequirementInput {
     id: string;
@@ -46,10 +47,11 @@ interface RequestBody {
 }
 
 /**
- * System prompt for generating bulk estimates - ULTRA FAST
+ * Get system prompt for bulk estimation using shared templates
  */
-const SYSTEM_PROMPT = `Stima TUTTI i {TECH_CATEGORY} req (idx 0 a N-1). Per OGNI req: attività + totalBaseDays=sum(h)/8.
-JSON:{"estimations":[{"idx":0,"activities":[{"code":"X","baseHours":4}],"totalBaseDays":0.5,"confidenceScore":0.8},{"idx":1,...},...]}`;
+function getSystemPrompt(techCategory: string, requirementCount: number): string {
+    return createBulkEstimatePrompt(techCategory, requirementCount);
+}
 
 /**
  * Initialize OpenAI client
@@ -179,8 +181,8 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
             techCategory: body.techCategory,
         });
 
-        // Build system prompt
-        const systemPrompt = SYSTEM_PROMPT.replace(/{TECH_CATEGORY}/g, body.techCategory);
+        // Build system prompt using shared templates
+        const systemPrompt = getSystemPrompt(body.techCategory, body.requirements.length);
 
         // Build user prompt - ULTRA COMPACT with count
         const requirementsText = formatRequirementsForPrompt(body.requirements);

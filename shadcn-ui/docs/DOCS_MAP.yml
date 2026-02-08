@@ -7,6 +7,7 @@ rules:
     docs_should_update:
       - "workspace/shadcn-ui/docs/ai-integration.md"
       - "workspace/shadcn-ui/docs/architecture.md"
+      - "workspace/shadcn-ui/docs/api/ai-endpoints.md"
 
   - when_changed:
       - "workspace/shadcn-ui/src/components/estimation/**"
@@ -30,3 +31,4 @@ rules:
       - "workspace/shadcn-ui/**migrations**"
     docs_should_update:
       - "workspace/shadcn-ui/docs/data-model.md"
+      - "workspace/shadcn-ui/docs/data/integrity-playbook.md"
