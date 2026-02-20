@@ -1,34 +1,34 @@
 version: 1
-canonical_docs_root: "workspace/shadcn-ui/docs"
+canonical_docs_root: "shadcn-ui/docs"
 
 rules:
   - when_changed:
-      - "workspace/shadcn-ui/netlify/functions/**"
+      - "shadcn-ui/netlify/functions/**"
     docs_should_update:
-      - "workspace/shadcn-ui/docs/ai-integration.md"
-      - "workspace/shadcn-ui/docs/architecture.md"
-      - "workspace/shadcn-ui/docs/api/ai-endpoints.md"
+      - "shadcn-ui/docs/ai-integration.md"
+      - "shadcn-ui/docs/architecture.md"
+      - "shadcn-ui/docs/api/ai-endpoints.md"
 
   - when_changed:
-      - "workspace/shadcn-ui/src/components/estimation/**"
-      - "workspace/shadcn-ui/src/components/configuration/presets/**"
-      - "workspace/shadcn-ui/src/lib/**interview**"
-      - "workspace/shadcn-ui/src/lib/**ai**"
-      - "workspace/shadcn-ui/src/hooks/**interview**"
+      - "shadcn-ui/src/components/estimation/**"
+      - "shadcn-ui/src/components/configuration/presets/**"
+      - "shadcn-ui/src/lib/**interview**"
+      - "shadcn-ui/src/lib/**ai**"
+      - "shadcn-ui/src/hooks/**interview**"
     docs_should_update:
-      - "workspace/shadcn-ui/docs/ai-integration.md"
-      - "workspace/shadcn-ui/docs/architecture.md"
+      - "shadcn-ui/docs/ai-integration.md"
+      - "shadcn-ui/docs/architecture.md"
 
   - when_changed:
-      - "workspace/shadcn-ui/src/lib/estimation/**"
-      - "workspace/shadcn-ui/src/lib/**estimation**"
+      - "shadcn-ui/src/lib/estimation/**"
+      - "shadcn-ui/src/lib/**estimation**"
     docs_should_update:
-      - "workspace/shadcn-ui/docs/estimation-engine.md"
+      - "shadcn-ui/docs/estimation-engine.md"
 
   - when_changed:
-      - "workspace/shadcn-ui/supabase/**"
-      - "workspace/shadcn-ui/**supabase_schema**"
-      - "workspace/shadcn-ui/**migrations**"
+      - "shadcn-ui/supabase/**"
+      - "shadcn-ui/**supabase_schema**"
+      - "shadcn-ui/**migrations**"
     docs_should_update:
-      - "workspace/shadcn-ui/docs/data-model.md"
-      - "workspace/shadcn-ui/docs/data/integrity-playbook.md"
+      - "shadcn-ui/docs/data-model.md"
+      - "shadcn-ui/docs/data/integrity-playbook.md"

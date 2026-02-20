@@ -58,3 +58,6 @@ __pycache__
 .MGXTools/
 .timeline.json
 .mgx/
+
+# Duplicate workspace folder (artifact from dev environment)
+workspace/
