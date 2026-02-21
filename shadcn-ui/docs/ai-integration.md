@@ -239,7 +239,7 @@ Questions are technology-specific (e.g., Dataverse entities, Power Automate flow
 | Property | Value |
 |----------|-------|
 | Endpoint | `POST /.netlify/functions/ai-estimate-from-interview` |
-| Input | `description`, `techCategory`, `answers`, `activities[]` |
+| Input | `description`, `techCategory`, `answers`, `activities[]`, `projectContext?` |
 | Output | `activities[]`, `totalBaseDays`, `confidenceScore`, `suggestedDrivers[]`, `suggestedRisks[]` |
 
 Activity selection follows deterministic rules based on answers:

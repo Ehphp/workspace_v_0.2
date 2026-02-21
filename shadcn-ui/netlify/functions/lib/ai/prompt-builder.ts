@@ -1,4 +1,4 @@
-interface ActivityRef {
+export interface Activity {
     code: string;
     name: string;
     description: string;

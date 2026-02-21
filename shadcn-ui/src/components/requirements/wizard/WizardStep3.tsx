@@ -109,6 +109,8 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
 
             if (codes.length > 0) {
               effectivePreset = { ...effectivePreset, default_activity_codes: codes };
+              // Filter activities to only those in the preset
+              resolvedActivities = resolvedActivities.filter(a => codes.includes(a.code));
             }
           }
         }
@@ -144,6 +146,7 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
         description: data.description,
         preset,
         activities,
+        projectContext: data.projectContext,
       });
       console.log('AI activity suggestion response:', suggestion);
 

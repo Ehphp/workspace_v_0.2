@@ -67,10 +67,12 @@ export async function suggestActivities(input: SuggestActivitiesInput) {
 // 1. Sanitizza nuovamente (defense in depth)
 const sanitizedDescription = sanitizePromptInput(description);
 
-// 2. Filtra attività per tech_category
-const relevantActivities = activities.filter(
-  a => a.tech_category === preset.tech_category || a.tech_category === 'MULTI'
-);
+// 2. Filtra attività: preferisce preset specifico, fallback a tech_category
+const relevantActivities = preset.default_activity_codes?.length > 0
+  ? activities.filter(a => preset.default_activity_codes.includes(a.code))
+  : activities.filter(
+      a => a.tech_category === preset.tech_category || a.tech_category === 'MULTI'
+    );
 
 // 3. Crea prompt descrittivo
 const descriptiveData = createDescriptivePrompt(relevantActivities);

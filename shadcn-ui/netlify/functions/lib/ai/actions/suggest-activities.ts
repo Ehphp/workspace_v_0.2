@@ -21,10 +21,17 @@ export interface Preset {
     default_risks: string[];
 }
 
+export interface ProjectContext {
+    name: string;
+    description: string;
+    owner?: string;
+}
+
 export interface SuggestActivitiesRequest {
     description: string;
     preset: Preset;
     activities: Activity[];
+    projectContext?: ProjectContext;
     testMode?: boolean;
 }
 
@@ -41,7 +48,7 @@ export interface AIActivitySuggestion {
  * @returns AI activity suggestion
  */
 export async function suggestActivities(request: SuggestActivitiesRequest): Promise<AIActivitySuggestion> {
-    const { description, preset, activities, testMode } = request;
+    const { description, preset, activities, projectContext, testMode } = request;
 
     // Validate requirement description
     const descriptionCheck = validateRequirementDescription(description);
@@ -93,12 +100,17 @@ export async function suggestActivities(request: SuggestActivitiesRequest): Prom
         }
     }
 
-    // Fallback: use provided activities filtered by tech category
+    // Fallback: use provided activities filtered by preset's specific activities or tech category
     if (relevantActivities.length === 0) {
-        relevantActivities = activities.filter(
-            (a) => a.tech_category === preset.tech_category || a.tech_category === 'MULTI'
-        );
-        console.log('[suggest-activities] Using fallback category filter, activities:', relevantActivities.length);
+        if (preset.default_activity_codes && preset.default_activity_codes.length > 0) {
+            relevantActivities = activities.filter((a) => preset.default_activity_codes!.includes(a.code));
+            console.log('[suggest-activities] Using preset default_activity_codes filter, activities:', relevantActivities.length);
+        } else {
+            relevantActivities = activities.filter(
+                (a) => a.tech_category === preset.tech_category || a.tech_category === 'MULTI'
+            );
+            console.log('[suggest-activities] Using fallback category filter, activities:', relevantActivities.length);
+        }
     }
 
     console.log('Filtered activities:', relevantActivities?.length);
@@ -146,8 +158,14 @@ export async function suggestActivities(request: SuggestActivitiesRequest): Prom
         systemPrompt = systemPrompt + '\n' + getRAGSystemPromptAddition();
     }
 
+    // Build project context section if available
+    let projectContextSection = '';
+    if (projectContext) {
+        projectContextSection = `\n\nCONTESTO PROGETTO:\n- Nome: ${projectContext.name}\n- Descrizione: ${projectContext.description}${projectContext.owner ? `\n- Responsabile: ${projectContext.owner}` : ''}\n\nUsa il contesto del progetto per capire meglio lo scope e le convenzioni già stabilite.\n`;
+    }
+
     // Include RAG examples in user prompt
-    let userPrompt = description.substring(0, 1000); // Limit to 1000 chars
+    let userPrompt = description.substring(0, 1000) + projectContextSection; // Limit description to 1000 chars
     if (ragContext.hasExamples && ragContext.promptFragment) {
         userPrompt = userPrompt + '\n' + ragContext.promptFragment;
     }

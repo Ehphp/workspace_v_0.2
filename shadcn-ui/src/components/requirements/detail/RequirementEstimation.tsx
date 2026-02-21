@@ -5,6 +5,7 @@ import { RisksSection } from '@/components/estimation/RisksSection';
 import { CalculationSummary } from '@/components/estimation/CalculationSummary';
 import type { UseEstimationStateReturn } from '@/hooks/useEstimationState';
 import type { TechnologyPreset, Activity, Driver, Risk } from '@/types/database';
+import { FileText } from 'lucide-react';
 
 interface RequirementEstimationProps {
     estimationState: UseEstimationStateReturn;
@@ -60,6 +61,19 @@ export function RequirementEstimation({
 
     return (
         <div className="h-full flex flex-col">
+            {/* Requirement Description Header */}
+            {requirementDescription && (
+                <div className="shrink-0 mb-4 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                        <FileText className="h-4 w-4 text-slate-500 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                            <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Requisito</span>
+                            <p className="text-sm text-slate-700 mt-0.5 line-clamp-2">{requirementDescription}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="flex-1 min-h-0 grid grid-cols-12 gap-4">
                 {/* Column 1: Technology + Drivers + Risks (3 cols) */}
                 <div className="col-span-3 flex flex-col gap-3 border-r border-slate-100 pr-4 overflow-hidden">

@@ -62,7 +62,8 @@ interface UseRequirementInterviewReturn {
     generateEstimate: (
         description: string,
         techPresetId: string,
-        techCategory: string
+        techCategory: string,
+        projectContext?: { name: string; description: string; owner?: string }
     ) => Promise<EstimationFromInterviewResponse | null>;
     reset: () => void;
 }
@@ -201,7 +202,8 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
     const generateEstimate = useCallback(async (
         description: string,
         techPresetId: string,
-        techCategory: string
+        techCategory: string,
+        projectContext?: { name: string; description: string; owner?: string }
     ): Promise<EstimationFromInterviewResponse | null> => {
         setPhase('generating-estimate');
         setError(null);
@@ -245,6 +247,7 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
                 techCategory,
                 answers: answersMapToRecord(answers),
                 activities,
+                projectContext,
             });
 
             if (response.success) {

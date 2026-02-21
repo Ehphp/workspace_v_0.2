@@ -40,15 +40,22 @@ Defined in [supabase_seed.sql](../supabase_seed.sql):
 
 ### 1. Activity Filtering
 
-When a preset is selected, only activities matching the preset's `tech_category` are shown:
+When a preset is selected, only the preset's specific activities are shown:
 
 ```typescript
-const relevantActivities = activities.filter(
-  a => a.tech_category === preset.tech_category || a.tech_category === 'MULTI'
-);
+// Primary filter: use preset's default_activity_codes
+const relevantActivities = preset.default_activity_codes?.length > 0
+  ? activities.filter(a => preset.default_activity_codes.includes(a.code))
+  // Fallback: filter by tech_category (legacy behavior)
+  : activities.filter(
+      a => a.tech_category === preset.tech_category || a.tech_category === 'MULTI'
+    );
 ```
 
-Activities with `tech_category = 'MULTI'` are always included (e.g., meetings, documentation).
+**Key behaviors:**
+- If preset has specific `default_activity_codes` (via pivot table), only those activities are available
+- Fallback to `tech_category` matching only if no specific activities are defined
+- Activities are shown but **not pre-selected**—user must select manually or use AI suggestion
 
 ### 2. AI Suggestions
 

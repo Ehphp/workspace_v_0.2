@@ -96,7 +96,8 @@ export function WizardStepInterview({
         const result = await interview.generateEstimate(
             data.description,
             data.techPresetId,
-            data.techCategory
+            data.techCategory,
+            data.projectContext
         );
 
         if (result && result.success) {

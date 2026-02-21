@@ -36,12 +36,19 @@ interface Activity {
     tech_category: string;
 }
 
+interface ProjectContext {
+    name: string;
+    description: string;
+    owner?: string;
+}
+
 interface RequestBody {
     description: string;
     techPresetId: string;
     techCategory: string;
     answers: Record<string, InterviewAnswer>;
     activities: Activity[];
+    projectContext?: ProjectContext;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -52,8 +59,9 @@ const SYSTEM_PROMPT = `Sei un Tech Lead esperto che deve selezionare le attivit�
 
 HAI A DISPOSIZIONE:
 1. Descrizione del requisito originale
-2. Risposte a domande tecniche specifiche fornite dallo sviluppatore
-3. Catalogo delle attività disponibili per lo stack tecnologico
+2. Contesto del progetto (se fornito) - aiuta a capire lo scope generale
+3. Risposte a domande tecniche specifiche fornite dallo sviluppatore
+4. Catalogo delle attività disponibili per lo stack tecnologico
 
 IL TUO COMPITO:
 1. Analizza le risposte per capire la complessità REALE del requisito
@@ -299,6 +307,7 @@ export const handler = createAIHandler<RequestBody>({
             answersCount: Object.keys(body.answers).length,
             activitiesCount: activitiesToUse.length,
             techCategory: body.techCategory,
+            hasProjectContext: !!body.projectContext,
             searchMethod,
             ragExamples: ragContext.examples?.length || 0,
             validCodes: validActivityCodes.slice(0, 5).join(', ') + (validActivityCodes.length > 5 ? '...' : ''),
@@ -308,10 +317,20 @@ export const handler = createAIHandler<RequestBody>({
         // This is CRITICAL to prevent AI from inventing codes
         const responseSchema = buildResponseSchema(validActivityCodes);
 
+        // Build project context section if available
+        let projectContextSection = '';
+        if (body.projectContext) {
+            projectContextSection = `\nCONTESTO PROGETTO:
+- Nome: ${body.projectContext.name}
+- Descrizione: ${body.projectContext.description}${body.projectContext.owner ? `\n- Responsabile: ${body.projectContext.owner}` : ''}
+
+NOTA: Usa il contesto del progetto per capire meglio lo scope e le convenzioni già stabilite.\n`;
+        }
+
         // Build user prompt with optional RAG context
         let userPrompt = `REQUISITO:
 ${sanitizedDescription}
-
+${projectContextSection}
 RISPOSTE INTERVIEW TECNICA:
 ${interviewAnswers}
 

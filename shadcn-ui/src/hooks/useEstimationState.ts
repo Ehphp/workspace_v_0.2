@@ -58,10 +58,18 @@ export function useEstimationState({
         return presets.find((p) => p.id === selectedPresetId) || null;
     }, [presets, selectedPresetId]);
 
-    // Helper: check if an activity is compatible with the selected preset category
+    // Helper: check if an activity is compatible with the selected preset
+    // Prefers preset's specific activities (default_activity_codes), falls back to tech_category
     const isActivityAllowed = useCallback((activity: Activity | undefined) => {
         if (!activity) return false;
         if (!selectedPreset) return true; // No preset selected yet -> allow all
+
+        // Use preset's specific activities if available
+        if (selectedPreset.default_activity_codes && selectedPreset.default_activity_codes.length > 0) {
+            return selectedPreset.default_activity_codes.includes(activity.code);
+        }
+
+        // Fallback to tech_category
         return activity.tech_category === 'MULTI' || activity.tech_category === selectedPreset.tech_category;
     }, [selectedPreset]);
 

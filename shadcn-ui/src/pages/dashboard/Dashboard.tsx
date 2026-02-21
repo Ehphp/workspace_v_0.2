@@ -297,23 +297,23 @@ export default function Dashboard() {
               />
             </div>
 
-            <div className="grid grid-cols-12 gap-6 min-h-[500px]">
+            <div className="grid grid-cols-12 gap-4">
 
               {/* Left Column: Projects List */}
-              <div className="col-span-12 lg:col-span-8 flex flex-col bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300">
-                <div className="flex-shrink-0 px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50/80 to-white">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                      <Layers className="w-4 h-4 text-white" />
-                    </div>
+              <div className="col-span-12 lg:col-span-8 flex flex-col rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white overflow-hidden">
+                <div className="flex-shrink-0 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                      <Layers className="w-3.5 h-3.5" />
+                    </span>
                     <div>
-                      <h2 className="font-bold text-slate-800">I tuoi Progetti</h2>
+                      <h2 className="font-semibold text-slate-800 text-sm">I tuoi Progetti</h2>
                       <p className="text-xs text-slate-500">{filteredLists.length} progetti</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger className="w-32 h-9 text-xs border-slate-200 bg-white rounded-lg">
+                      <SelectTrigger className="w-28 h-8 text-xs border-slate-200 bg-white/80 rounded-lg">
                         <SelectValue placeholder="Ordina" />
                       </SelectTrigger>
                       <SelectContent>
@@ -321,42 +321,42 @@ export default function Dashboard() {
                         <SelectItem value="name-asc">Nome A-Z</SelectItem>
                       </SelectContent>
                     </Select>
-                    <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                    <div className="flex bg-slate-100/80 p-0.5 rounded-lg border border-slate-200">
                       <button
                         onClick={() => setViewMode('grid')}
-                        className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                        className={`p-1.5 rounded transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
                       >
-                        <LayoutGrid className="w-4 h-4" />
+                        <LayoutGrid className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => setViewMode('list')}
-                        className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                        className={`p-1.5 rounded transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
                       >
-                        <ListIcon className="w-4 h-4" />
+                        <ListIcon className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
                   {filteredLists.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-slate-400 py-12">
-                      <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-                        <Layers className="w-8 h-8 opacity-40" />
+                    <div className="flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-lg p-8">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-sm mb-4">
+                        <Layers className="h-6 w-6 text-white" />
                       </div>
-                      <p className="font-medium">Nessun progetto trovato</p>
-                      <p className="text-sm text-slate-400 mt-1">Crea il tuo primo progetto per iniziare</p>
+                      <p className="font-semibold text-slate-800 text-sm">Nessun progetto trovato</p>
+                      <p className="text-xs text-slate-500 mt-1">Crea il tuo primo progetto per iniziare</p>
                       <Button
                         onClick={() => setShowCreateDialog(true)}
-                        className="mt-4 bg-blue-600 hover:bg-blue-700"
+                        className="mt-4 h-8 text-xs bg-blue-600 hover:bg-blue-700"
                         size="sm"
                       >
-                        <Plus className="mr-2 h-4 w-4" />
+                        <Plus className="mr-1.5 h-3.5 w-3.5" />
                         Crea Progetto
                       </Button>
                     </div>
                   ) : (
-                    <div className={viewMode === 'grid' ? "grid grid-cols-2 xl:grid-cols-3 gap-4" : "flex flex-col gap-3"}>
+                    <div className={viewMode === 'grid' ? "grid grid-cols-2 xl:grid-cols-3 gap-3" : "flex flex-col gap-2"}>
                       {filteredLists.map((list) => (
                         <ProjectCard
                           key={list.id}
@@ -372,19 +372,17 @@ export default function Dashboard() {
               </div>
 
               {/* Right Column: Sidebar */}
-              <div className="col-span-12 lg:col-span-4 flex flex-col gap-4">
+              <div className="col-span-12 lg:col-span-4 flex flex-col">
 
                 {/* Recent Activity */}
-                <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-lg overflow-hidden flex-1 hover:shadow-xl transition-all duration-300">
-                  <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50/80 to-white">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                        <TrendingUp className="w-4 h-4 text-white" />
-                      </div>
-                      <h3 className="font-bold text-slate-800">Attività Recente</h3>
-                    </div>
+                <div className="rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white overflow-hidden flex-1">
+                  <div className="px-4 py-3 border-b border-slate-200 flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shadow-sm">
+                      <TrendingUp className="w-3.5 h-3.5" />
+                    </span>
+                    <h3 className="font-semibold text-slate-800 text-sm">Attività Recente</h3>
                   </div>
-                  <div className="p-3 max-h-[400px] overflow-y-auto custom-scrollbar">
+                  <div className="p-3 max-h-[450px] overflow-y-auto custom-scrollbar">
                     <RecentRequirements />
                   </div>
                 </div>

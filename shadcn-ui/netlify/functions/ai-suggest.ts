@@ -14,6 +14,12 @@ import { suggestActivities } from './lib/ai/actions/suggest-activities';
 import { generateTitle } from './lib/ai/actions/generate-title';
 import { normalizeRequirement } from './lib/ai/actions/normalize-requirement';
 
+interface ProjectContext {
+    name: string;
+    description: string;
+    owner?: string;
+}
+
 interface RequestBody {
     action?: 'suggest-activities' | 'generate-title' | 'normalize-requirement';
     description: string;
@@ -34,6 +40,7 @@ interface RequestBody {
         group: string;
         tech_category: string;
     }>;
+    projectContext?: ProjectContext;
     testMode?: boolean;
 }
 
@@ -76,12 +83,13 @@ export const handler = createAIHandler<RequestBody>({
         }
 
         // Handle activity suggestions (default)
-        console.log(`[ai-suggest] Preset: ${body.preset!.name}, Activities: ${body.activities!.length}`);
+        console.log(`[ai-suggest] Preset: ${body.preset!.name}, Activities: ${body.activities!.length}, HasProjectContext: ${!!body.projectContext}`);
 
         return suggestActivities({
             description: sanitizedDescription,
             preset: body.preset!,
             activities: body.activities!,
+            projectContext: body.projectContext,
             testMode: body.testMode
         });
     }

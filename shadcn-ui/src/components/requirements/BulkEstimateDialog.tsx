@@ -190,12 +190,19 @@ export function BulkEstimateDialog({
                         throw new Error('Technology preset not found');
                     }
 
-                    // Reuse pre-loaded data (no DB calls!) and filter by tech category
-                    const activities = sharedActivities.filter(
-                        (a: Activity) =>
-                            a.tech_category === preset.tech_category ||
-                            a.tech_category === 'MULTI'
-                    );
+                    // Filter activities: prefer preset's specific activities, fallback to tech_category
+                    const activities = (() => {
+                        if (preset.default_activity_codes && preset.default_activity_codes.length > 0) {
+                            return sharedActivities.filter((a: Activity) =>
+                                preset.default_activity_codes!.includes(a.code)
+                            );
+                        }
+                        return sharedActivities.filter(
+                            (a: Activity) =>
+                                a.tech_category === preset.tech_category ||
+                                a.tech_category === 'MULTI'
+                        );
+                    })();
                     if (activities.length === 0) {
                         return {
                             requirementId: req.id,

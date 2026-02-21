@@ -220,6 +220,7 @@ export async function generateEstimateFromInterview(
                 techCategory: request.techCategory,
                 answers: request.answers,
                 activities: formattedActivities,
+                projectContext: request.projectContext,
             }),
         });
 

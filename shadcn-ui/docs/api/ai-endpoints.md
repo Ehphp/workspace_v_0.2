@@ -257,6 +257,11 @@ Endpoints that select activities based on gathered information.
     group: string;
     tech_category: string;
   }>;
+  projectContext?: {            // Optional project metadata for better context
+    name: string;
+    description: string;
+    owner?: string;
+  };
 }
 ```
 
@@ -382,6 +387,11 @@ Endpoints that select activities based on gathered information.
     group: string;
     tech_category: string;
   }>;
+  projectContext?: {            // Optional project metadata for better context
+    name: string;
+    description: string;
+    owner?: string;
+  };
   testMode?: boolean;           // Disable cache, higher temperature
 }
 ```

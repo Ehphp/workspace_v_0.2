@@ -97,9 +97,15 @@ export function useQuickEstimation() {
                 allRisks = risksResult.data;
             }
 
-            const allowedActivities = allActivities.filter(
-                (a) => a.tech_category === selectedPreset.tech_category || a.tech_category === 'MULTI'
-            );
+            // Filter activities: prefer preset's specific activities, fallback to tech_category
+            const allowedActivities = (() => {
+                if (selectedPreset.default_activity_codes && selectedPreset.default_activity_codes.length > 0) {
+                    return allActivities.filter((a) => selectedPreset.default_activity_codes!.includes(a.code));
+                }
+                return allActivities.filter(
+                    (a) => a.tech_category === selectedPreset.tech_category || a.tech_category === 'MULTI'
+                );
+            })();
 
             if (allowedActivities.length === 0) {
                 setError('No activities available for the selected technology preset. Please choose another preset.');

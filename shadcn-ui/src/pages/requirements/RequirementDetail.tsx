@@ -113,6 +113,15 @@ export default function RequirementDetail() {
 
     const filterActivitiesForPreset = useCallback((presetToFilter: typeof activePreset) => {
         if (!presetToFilter) return activities;
+
+        // Use preset's specific activities (from pivot table) if available
+        if (presetToFilter.default_activity_codes && presetToFilter.default_activity_codes.length > 0) {
+            return activities.filter(
+                (activity) => presetToFilter.default_activity_codes!.includes(activity.code)
+            );
+        }
+
+        // Fallback to tech_category if preset has no specific activities
         return activities.filter(
             (activity) =>
                 activity.tech_category === presetToFilter.tech_category ||
@@ -125,19 +134,13 @@ export default function RequirementDetail() {
         [filterActivitiesForPreset, activePreset]
     );
 
-    // Initialize preset when requirement loads
+    // Initialize preset when requirement loads (only sets preset ID, does NOT auto-select activities)
+    // User can manually select activities or use AI suggestion / "Applica Template" button
     useEffect(() => {
         if (!fallbackPresetId || selectedPresetId || presets.length === 0) return;
 
         setSelectedPresetId(fallbackPresetId);
-        if (requirement?.tech_preset_id) {
-            // Optionally apply defaults if no selections made yet
-            const hasRequirementDrivers = (requirementDriverValues?.length || 0) > 0;
-            if (!hasSelections && !hasRequirementDrivers) {
-                applyPresetDefaults(fallbackPresetId);
-            }
-        }
-    }, [fallbackPresetId, presets, selectedPresetId, hasSelections, applyPresetDefaults, requirementDriverValues, requirement?.tech_preset_id, setSelectedPresetId]);
+    }, [fallbackPresetId, presets, selectedPresetId, setSelectedPresetId]);
 
     // Apply requirement-scoped driver defaults when available
     useEffect(() => {
@@ -197,6 +200,11 @@ export default function RequirementDetail() {
                 description: requirement.description,
                 preset: activePreset,
                 activities: filteredActivities,
+                projectContext: list ? {
+                    name: list.name,
+                    description: list.description,
+                    owner: list.owner || undefined,
+                } : undefined,
             });
 
             if (!selectedPresetId && activePreset.id) {
@@ -271,6 +279,11 @@ export default function RequirementDetail() {
                 description: requirement.description,
                 preset: selectedPreset,
                 activities: activitiesForPreset,
+                projectContext: list ? {
+                    name: list.name,
+                    description: list.description,
+                    owner: list.owner || undefined,
+                } : undefined,
             });
 
             if (!suggestion.isValidRequirement) {

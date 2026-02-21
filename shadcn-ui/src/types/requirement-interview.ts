@@ -138,6 +138,12 @@ export interface EstimationFromInterviewRequest {
     techCategory: string;
     /** All interview answers */
     answers: Record<string, InterviewAnswer>;
+    /** Optional project context to improve AI understanding */
+    projectContext?: {
+        name: string;
+        description: string;
+        owner?: string;
+    };
 }
 
 /**

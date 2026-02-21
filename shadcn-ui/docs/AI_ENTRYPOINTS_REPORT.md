@@ -41,6 +41,7 @@ Il sistema Syntero espone **7 endpoint AI** in `netlify/functions/` che vengono 
   description: string;
   preset?: TechnologyPreset;
   activities?: Activity[];
+  projectContext?: { name: string; description: string; owner?: string };
   testMode?: boolean;
 }
 ```
@@ -103,6 +104,7 @@ Il sistema Syntero espone **7 endpoint AI** in `netlify/functions/` che vengono 
   techCategory: string;
   answers: Record<string, InterviewAnswer>;
   activities: Activity[];
+  projectContext?: { name: string; description: string; owner?: string };
 }
 ```
 
