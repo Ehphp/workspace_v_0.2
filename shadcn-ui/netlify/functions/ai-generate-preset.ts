@@ -4,11 +4,14 @@
  * Endpoint for generating technology presets based on user's description and interview answers.
  * This is Stage 2 of the two-stage AI preset generation flow.
  * 
+ * HYBRID APPROACH: AI can select activities from catalog OR create new ones.
+ * 
  * POST /.netlify/functions/ai-generate-preset
  */
 
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import OpenAI from 'openai';
+import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 import { sanitizePromptInput } from '../../src/types/ai-validation';
 import { validateAuthToken, logAuthDebugInfo } from './lib/auth/auth-validator';
@@ -18,7 +21,97 @@ import { checkRateLimit } from './lib/security/rate-limiter';
 interface RequestBody {
     description: string;
     answers: Record<string, any>;
-    suggestedTechCategory?: 'FRONTEND' | 'BACKEND' | 'MULTI';
+    suggestedTechCategory?: 'FRONTEND' | 'BACKEND' | 'MULTI' | 'POWER_PLATFORM';
+}
+
+interface CatalogActivity {
+    code: string;
+    name: string;
+    description: string;
+    base_hours: number;
+    tech_category: string;
+    group: string;
+}
+
+/**
+ * Initialize Supabase client for fetching activity catalog
+ */
+function getSupabaseClient() {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+        return null;
+    }
+
+    return createClient(supabaseUrl, supabaseKey);
+}
+
+/**
+ * Fetch activities from catalog filtered by tech category
+ * Returns activities for the specified category + MULTI (cross-stack)
+ */
+async function fetchCatalogActivities(
+    techCategory: string
+): Promise<CatalogActivity[]> {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+        console.warn('[ai-generate-preset] Supabase not configured, skipping catalog fetch');
+        return [];
+    }
+
+    try {
+        const categories = [techCategory, 'MULTI'];
+        const { data, error } = await supabase
+            .from('activities')
+            .select('code, name, description, base_hours, tech_category, group')
+            .in('tech_category', categories)
+            .eq('active', true)
+            .order('group')
+            .order('base_hours');
+
+        if (error) {
+            console.error('[ai-generate-preset] Error fetching activities:', error);
+            return [];
+        }
+
+        console.log(`[ai-generate-preset] Fetched ${data?.length || 0} activities for categories: ${categories.join(', ')}`);
+        return data || [];
+    } catch (err) {
+        console.error('[ai-generate-preset] Exception fetching activities:', err);
+        return [];
+    }
+}
+
+/**
+ * Format activities catalog in compact format for AI prompt
+ * Groups by phase (group) and uses compact notation to minimize tokens
+ */
+function formatCatalogForPrompt(activities: CatalogActivity[]): string {
+    if (activities.length === 0) {
+        return 'CATALOG: No activities available - create all activities as new.';
+    }
+
+    // Group by phase
+    const byGroup: Record<string, CatalogActivity[]> = {};
+    for (const act of activities) {
+        const group = act.group || 'OTHER';
+        if (!byGroup[group]) byGroup[group] = [];
+        byGroup[group].push(act);
+    }
+
+    const lines: string[] = ['ACTIVITY CATALOG (select by code when applicable):'];
+
+    for (const [group, acts] of Object.entries(byGroup)) {
+        lines.push(`\n[${group}]`);
+        for (const a of acts) {
+            // Compact format: CODE|hours|name - description (truncated)
+            const desc = a.description?.slice(0, 80) || '';
+            lines.push(`- ${a.code}|${a.base_hours}h|${a.name}: ${desc}`);
+        }
+    }
+
+    return lines.join('\n');
 }
 
 /**
@@ -178,37 +271,42 @@ export const handler: Handler = async (
         // Generate unique request ID
         const requestId = randomUUID();
 
-        // SIMPLIFIED: Single-pass generation with reduced output
-        console.log('[ai-generate-preset] Calling OpenAI for preset generation...', { requestId });
+        // Fetch activity catalog filtered by tech category (HYBRID APPROACH)
+        const techCategory = body.suggestedTechCategory || 'MULTI';
+        const catalogActivities = await fetchCatalogActivities(techCategory);
+        const catalogForPrompt = formatCatalogForPrompt(catalogActivities);
+
+        console.log('[ai-generate-preset] Calling OpenAI for preset generation...', {
+            requestId,
+            catalogSize: catalogActivities.length,
+            techCategory
+        });
 
         const systemPrompt = `You are a Technical Estimator creating ACTIVITY PRESETS for estimating SOFTWARE REQUIREMENTS. Respond with JSON only.
 
 **GOAL**:
-Generate a list of standard activities that a developer performs when implementing a SINGLE REQUIREMENT (e.g., "Add Login Form", "Create API", "Fix Bug") using the specified technology.
-DO NOT generate high-level project phases (like "Project Setup", "Infrastructure", "Deployment"). Focus on ATOMIC WORK UNITS.
+Generate a list of standard activities for implementing SINGLE REQUIREMENTS using the specified technology.
+Focus on ATOMIC WORK UNITS, not project phases.
+
+**HYBRID ACTIVITY SELECTION** (IMPORTANT):
+1. FIRST check the ACTIVITY CATALOG below - if a suitable activity exists, SELECT IT by code
+2. ONLY create NEW activities if nothing in the catalog fits the need
+3. For existing activities, you can suggest different hours if context requires it
+4. Prefer catalog activities for consistency and reusability
 
 **CONTEXT AWARENESS (LIFECYCLE)**:
-- **Greenfield (New Project)**: Include basic setup/scaffolding activities IF RELEVANT for single features (e.g. "Create new Component", "Setup Route").
-- **Brownfield (Existing Project)**: Focus on Integration, Refactoring, and Extending existing code.
-- **Custom Inputs**: If user provided custom answers ("Other: ..."), incorporate them into the activity descriptions.
+- **Greenfield**: Include setup/scaffolding activities if relevant
+- **Brownfield**: Focus on Integration, Refactoring, Extending existing code
+
+**ACTIVITY TYPES IN OUTPUT**:
+- FOR EXISTING (from catalog): set "existingCode" to the activity code
+- FOR NEW (AI-generated): set "isNew": true and provide title/description
 
 **CRITICAL RULES**:
-1. Activities must be REUSABLE building blocks for estimating features (e.g., "Develop UI", "Implement Business Logic", "Write Tests").
-2. Language: SAME AS USER INPUT.
-3. Preset Description: Describe the TECHNOLOGY/STACK context (e.g "Microservices Java Stack"), NOT the preset itself.
-
-**Examples of Good Requirement Activities**:
-- "Sviluppo parziale API Backend" (Generic, reusable)
-- "Implementazione logica Frontend"
-- "Stesura Unit Test"
-- "Analisi e Design Tecnico"
-- "Refactoring e Code Review" (Essential for Brownfield)
-- "Integrazione con Legacy System" (If context suggests legacy)
-
-**Examples of BAD (Project-level) Activities**:
-- "Project Initialization" (Happens once per project, not per requirement)
-- "Server Provisioning"
-- "Release to Production"
+1. Activities must be REUSABLE building blocks
+2. Language: SAME AS USER INPUT
+3. Select 8-15 activities total (prefer 60%+ from catalog if applicable)
+4. **group** MUST be one of: ANALYSIS, DEV, TEST, OPS, GOVERNANCE (never use QA, TESTING, or other values)
 
 **OUTPUT FORMAT (valid JSON)**:
 {
@@ -216,15 +314,28 @@ DO NOT generate high-level project phases (like "Project Setup", "Infrastructure
   "preset": {
     "name": "Technology name (max 50 chars)",
     "description": "Tech stack description (80-120 chars)",
-    "detailedDescription": "Technical details about the stack (150-200 words MAX)",
-    "techCategory": "FRONTEND" | "BACKEND" | "MULTI",
+    "detailedDescription": "Technical details (150-200 words MAX)",
+    "techCategory": "FRONTEND" | "BACKEND" | "MULTI" | "POWER_PLATFORM",
     "activities": [
       {
-        "title": "Activity Name (e.g. 'Sviluppo UI Component')",
-        "description": "What is done in this step",
-        "group": "DEV" | "ANALYSIS" | "TEST" | "GOVERNANCE",
-        "estimatedHours": 2-8,
-        "priority": "core"
+        "existingCode": "PP_DV_FORM_SM",
+        "title": "Configurazione form Dataverse (Simple)",
+        "description": "Form con pochi campi e layout standard",
+        "group": "DEV",
+        "estimatedHours": 16,
+        "priority": "core",
+        "confidence": 0.9,
+        "reasoning": "Selected from catalog - matches form requirements"
+      },
+      {
+        "isNew": true,
+        "title": "Custom Activity Name",
+        "description": "What is done in this activity",
+        "group": "TEST",
+        "estimatedHours": 8,
+        "priority": "recommended",
+        "confidence": 0.7,
+        "reasoning": "Created new - no catalog match for this specific need"
       }
     ],
     "driverValues": {"COMPLEXITY": 0.5},
@@ -237,16 +348,18 @@ DO NOT generate high-level project phases (like "Project Setup", "Infrastructure
         const userPrompt = `Context Description: ${sanitizedDescription}
 
 Questions & Answers: ${JSON.stringify(body.answers)}
-Suggested Category: ${body.suggestedTechCategory || 'MULTI'}
+Suggested Category: ${techCategory}
 
-Generate a preset with 6-10 ATOMIC ESTIMATION ACTIVITIES optimized for estimating requirements in this stack. Return JSON only.`;
+${catalogForPrompt}
+
+Generate a preset with 8-15 activities. Prefer selecting from the catalog above when appropriate. Return JSON only.`;
 
         const startTime = Date.now();
 
         const response = await openai.chat.completions.create({
             model: 'gpt-4o',
-            temperature: 0.2, // Lower for faster, more deterministic responses
-            max_tokens: 1500, // Further reduced for speed
+            temperature: 0.2,
+            max_tokens: 2000, // Slightly increased to accommodate catalog + hybrid output
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt }
@@ -293,6 +406,17 @@ Generate a preset with 6-10 ATOMIC ESTIMATION ACTIVITIES optimized for estimatin
                     requestId
                 });
             }
+
+            // Track hybrid activity breakdown
+            const existingCount = result.preset.activities.filter((a: any) => a.existingCode).length;
+            const newCount = result.preset.activities.filter((a: any) => a.isNew).length;
+            console.log('[ai-generate-preset] Hybrid activity breakdown:', {
+                total: result.preset.activities.length,
+                fromCatalog: existingCount,
+                newlyCreated: newCount,
+                catalogPercentage: ((existingCount / result.preset.activities.length) * 100).toFixed(0) + '%',
+                requestId
+            });
         }
 
         // Log metadata (no PII)

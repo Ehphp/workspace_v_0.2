@@ -199,6 +199,29 @@ Saved calculation snapshots.
 | `estimation_id` | UUID | FK to estimations |
 | `risk_id` | UUID | FK to risks |
 
+### technology_preset_activities
+
+Links activities to technology presets with optional per-technology overrides. 
+This allows customizing activity names, descriptions, and effort estimates for each technology 
+without modifying the base activity catalog.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `tech_preset_id` | UUID | FK to technology_presets |
+| `activity_id` | UUID | FK to activities |
+| `position` | INTEGER | Display order within preset |
+| `name_override` | VARCHAR(255) | Custom name for this preset (null = use base) |
+| `description_override` | TEXT | Custom description (null = use base) |
+| `base_hours_override` | DECIMAL(5,2) | Custom hours (null = use base) |
+
+**Override Behavior**:
+- When override columns are `NULL`, the base activity values are used.
+- When a preset is edited, overrides are saved to the pivot table, not the activity catalog.
+- This ensures activities can be customized independently per technology.
+
+**Migration**: [20260220_activity_overrides.sql](../supabase/migrations/20260220_activity_overrides.sql)
+
 ---
 
 ## Row Level Security (RLS)

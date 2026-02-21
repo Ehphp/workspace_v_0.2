@@ -30,6 +30,30 @@ export interface Activity {
   created_at: string;
 }
 
+// Pivot table linking activities to technology presets with optional overrides
+export interface TechnologyPresetActivity {
+  tech_preset_id: string;
+  activity_id: string;
+  position: number | null;
+  name_override: string | null;
+  description_override: string | null;
+  base_hours_override: number | null;
+}
+
+// Activity with resolved values (base + override applied)
+export interface ActivityWithOverride extends Activity {
+  // Original values from base activity (for reference/reset)
+  original_name: string;
+  original_description: string;
+  original_base_hours: number;
+  // Whether this activity has been customized for this technology
+  has_override: boolean;
+  // The override values (null if using base)
+  name_override: string | null;
+  description_override: string | null;
+  base_hours_override: number | null;
+}
+
 export interface DriverOption {
   value: string;
   label: string;

@@ -366,39 +366,73 @@ Endpoints for AI-assisted custom preset creation (two-stage flow).
 
 #### `POST /.netlify/functions/ai-generate-preset`
 
-**Purpose**: Stage 2 — Generate a complete preset from description and interview answers.
+**Purpose**: Stage 2 — Generate a complete preset from description and interview answers using **HYBRID activity selection**.
 
 **When Used**: After user completes preset wizard questions.
+
+**Hybrid Approach**: The AI receives a filtered activity catalog and can:
+1. **Select existing activities** from the catalog (by code)
+2. **Create new activities** when nothing in the catalog fits
+
+This maximizes reuse of validated activities while allowing AI to fill gaps.
 
 **Input**:
 ```typescript
 {
   description: string;
   answers: Record<string, any>;     // Interview answers
-  suggestedTechCategory?: "FRONTEND" | "BACKEND" | "MULTI";
+  suggestedTechCategory?: "FRONTEND" | "BACKEND" | "MULTI" | "POWER_PLATFORM";
 }
 ```
+
+**Internal Flow**:
+1. Fetch activities from DB filtered by `suggestedTechCategory` + `MULTI`
+2. Format catalog in compact notation for prompt (saves tokens)
+3. AI returns mixed activities: some with `existingCode`, some with `isNew: true`
 
 **Output**:
 ```typescript
 {
   success: boolean;
   preset: {
-    code: string;                   // Generated unique code
     name: string;
     description: string;
-    tech_category: string;
-    default_activity_codes: string[];
-    default_driver_values: Record<string, string>;
-    default_risks: string[];
+    detailedDescription: string;
+    techCategory: "FRONTEND" | "BACKEND" | "MULTI" | "POWER_PLATFORM";
+    activities: Array<{
+      // For catalog activities
+      existingCode?: string;           // e.g., "PP_DV_FORM_SM"
+      // For new activities
+      isNew?: boolean;                 // true if AI-generated
+      title: string;
+      description: string;
+      group: "ANALYSIS" | "DEV" | "TEST" | "OPS" | "GOVERNANCE";
+      estimatedHours: number;
+      priority: "core" | "recommended" | "optional";
+      confidence: number;              // 0.0 - 1.0
+      reasoning?: string;              // Why selected/created
+    }>;
+    driverValues: Record<string, string>;
+    riskCodes: string[];
+    reasoning: string;
+    confidence: number;
   };
-  reasoning: string;
+  metadata: {
+    cached: boolean;
+    generationTimeMs: number;
+  };
 }
 ```
 
+**Token Optimization**:
+- Catalog filtered by tech category (reduces ~75% of activities)
+- Compact notation: `CODE|hours|name: description_truncated`
+- Estimated additional cost: ~$0.004/request
+
 **Validation/Fallback**:
 - Requires description and answers object
-- Generated preset must be saved by frontend via Supabase (AI doesn't write to DB)
+- New activities marked with `isNew: true` are created in DB when preset is saved
+- Existing activities are linked via `existingCode`
 
 ---
 

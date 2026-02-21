@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { TechnologyPreset, Activity, Driver, Risk } from '@/types/database';
+import type { TechnologyPreset, Activity, Driver, Risk, ActivityWithOverride } from '@/types/database';
 import { toast } from 'sonner';
 
 export interface PresetView extends TechnologyPreset {
-    defaultActivities: Activity[];
+    defaultActivities: ActivityWithOverride[];
     defaultRisks: Risk[];
     driverDefaults: { code: string; value: string }[];
 }
@@ -24,6 +24,14 @@ export interface ActivityFormData {
     active?: boolean;
     is_custom?: boolean;
     created_by?: string;
+    // Override fields for technology-specific customization
+    name_override?: string | null;
+    description_override?: string | null;
+    base_hours_override?: number | null;
+    has_override?: boolean;
+    original_name?: string;
+    original_description?: string;
+    original_base_hours?: number;
 }
 
 export interface PresetForm {
@@ -66,7 +74,8 @@ export function usePresetManagement(userId: string | undefined) {
                 supabase.from('activities').select('*').eq('active', true).order('name'),
                 supabase.from('drivers').select('*'),
                 supabase.from('risks').select('*'),
-                supabase.from('technology_preset_activities').select('tech_preset_id, activity_id, position'),
+                // Fetch pivot table with override columns
+                supabase.from('technology_preset_activities').select('tech_preset_id, activity_id, position, name_override, description_override, base_hours_override'),
             ]);
 
             if (presetsRes.error) throw presetsRes.error;
@@ -86,27 +95,57 @@ export function usePresetManagement(userId: string | undefined) {
             const activityById = new Map<string, Activity>();
             activities.forEach((a) => activityById.set(a.id, a));
 
-            const pivotByPreset = new Map<string, { activity_id: string; position: number | null }[]>();
-            ((pivotRes.data as { tech_preset_id: string; activity_id: string; position: number | null }[] | null) || []).forEach((row) => {
+            // Pivot rows now include override columns
+            interface PivotRow {
+                tech_preset_id: string;
+                activity_id: string;
+                position: number | null;
+                name_override: string | null;
+                description_override: string | null;
+                base_hours_override: number | null;
+            }
+
+            const pivotByPreset = new Map<string, PivotRow[]>();
+            ((pivotRes.data as PivotRow[] | null) || []).forEach((row) => {
                 if (!pivotByPreset.has(row.tech_preset_id)) {
                     pivotByPreset.set(row.tech_preset_id, []);
                 }
-                pivotByPreset.get(row.tech_preset_id)!.push({
-                    activity_id: row.activity_id,
-                    position: row.position ?? null,
-                });
+                pivotByPreset.get(row.tech_preset_id)!.push(row);
             });
 
             const presetViews: PresetView[] = (presetsRes.data || []).map((p) => {
                 const pivots = pivotByPreset.get(p.id) || [];
-                const defaultActivities = pivots
+                const defaultActivities: ActivityWithOverride[] = pivots
                     .sort((a, b) => {
                         const pa = a.position ?? Number.MAX_SAFE_INTEGER;
                         const pb = b.position ?? Number.MAX_SAFE_INTEGER;
                         return pa - pb;
                     })
-                    .map((row) => activityById.get(row.activity_id))
-                    .filter((a): a is Activity => Boolean(a));
+                    .map((row) => {
+                        const baseActivity = activityById.get(row.activity_id);
+                        if (!baseActivity) return null;
+
+                        // Merge base activity with overrides
+                        const hasOverride = !!(row.name_override || row.description_override || row.base_hours_override !== null);
+
+                        return {
+                            ...baseActivity,
+                            // Apply overrides (use override if set, otherwise use base)
+                            name: row.name_override ?? baseActivity.name,
+                            description: row.description_override ?? baseActivity.description,
+                            base_hours: row.base_hours_override ?? baseActivity.base_hours,
+                            // Store original values for reference/reset
+                            original_name: baseActivity.name,
+                            original_description: baseActivity.description,
+                            original_base_hours: baseActivity.base_hours,
+                            // Store override values
+                            name_override: row.name_override,
+                            description_override: row.description_override,
+                            base_hours_override: row.base_hours_override,
+                            has_override: hasOverride,
+                        } as ActivityWithOverride;
+                    })
+                    .filter((a): a is ActivityWithOverride => Boolean(a));
 
                 const driverDefaults = Object.entries(p.default_driver_values || {}).map(([code, value]) => ({ code, value }));
                 const defaultRisks = risks.filter((r) => p.default_risks?.includes(r.code));
@@ -226,25 +265,36 @@ export function usePresetManagement(userId: string | undefined) {
                     const activityCodeToId = new Map<string, string>();
                     allActivities.forEach(a => activityCodeToId.set(a.code, a.id));
 
-                    // Process activities: create new ones if they don't exist, then link them
-                    const rows: Array<{ tech_preset_id: string; activity_id: string; position: number }> = [];
+                    // Process activities: create new ones if they don't exist, then link them with overrides
+                    interface PivotRowToInsert {
+                        tech_preset_id: string;
+                        activity_id: string;
+                        position: number;
+                        name_override: string | null;
+                        description_override: string | null;
+                        base_hours_override: number | null;
+                    }
+                    const rows: PivotRowToInsert[] = [];
 
                     for (let idx = 0; idx < form.activities.length; idx++) {
                         const activity = form.activities[idx];
-                        let activityId = activity.id || activityCodeToId.get(activity.code);
+
+                        // Check if activity ID is a valid UUID (not a temporary "new-*" ID)
+                        const isValidUuid = activity.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activity.id);
+                        let activityId = isValidUuid ? activity.id : activityCodeToId.get(activity.code);
 
                         // If activity doesn't exist in database, create it as a custom activity
                         if (!activityId) {
                             console.log(`[savePreset] Activity not found, creating: ${activity.code}`, activity);
 
                             // Check if activity has required fields from AI generation
-                            if (activity.code && (activity.name || activity.title) && (activity.baseDays || activity.baseHours)) {
+                            if (activity.code && (activity.name || activity.title) && (activity.baseDays || activity.baseHours || activity.base_hours)) {
                                 try {
                                     const newActivity = {
                                         code: activity.code,
                                         name: activity.name || activity.title || activity.code,
                                         description: activity.description || '',
-                                        base_hours: activity.baseDays || activity.baseHours || 1, // Already in hours from AI
+                                        base_hours: activity.baseDays || activity.baseHours || activity.base_hours || 1, // Already in hours from AI
                                         tech_category: form.techCategory || 'MULTI',
                                         group: activity.group || 'DEV',
                                         active: true,
@@ -275,12 +325,16 @@ export function usePresetManagement(userId: string | undefined) {
                             }
                         }
 
-                        // Add to rows for linking
+                        // Add to rows for linking - include override columns
                         if (activityId) {
                             rows.push({
                                 tech_preset_id: presetId,
                                 activity_id: activityId,
-                                position: idx + 1
+                                position: idx + 1,
+                                // Save override values (null means use base activity values)
+                                name_override: activity.name_override ?? null,
+                                description_override: activity.description_override ?? null,
+                                base_hours_override: activity.base_hours_override ?? null,
                             });
                         }
                     }

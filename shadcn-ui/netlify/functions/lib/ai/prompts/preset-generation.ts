@@ -203,8 +203,8 @@ export function createPresetGenerationSchema() {
                     },
                     activities: {
                         type: "array",
-                        minItems: 6,
-                        maxItems: 10,
+                        minItems: 8,
+                        maxItems: 15,
                         items: {
                             type: "object",
                             properties: {
