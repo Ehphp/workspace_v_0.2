@@ -7,11 +7,9 @@ import { usePresetManagement, initialPresetForm, type PresetForm, type PresetVie
 import { TechnologyDialog } from '@/components/configuration/presets/TechnologyDialog';
 import { PresetPreviewDialog } from '@/components/configuration/presets/PresetPreviewDialog';
 import { PresetTableRow } from '@/components/configuration/presets/PresetTableRow';
-import { AiTechnologyWizard } from '@/components/configuration/presets/ai-wizard';
 import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Layers, Plus, CheckCircle2, Sparkles, ArrowLeft, Wand2 } from 'lucide-react';
+import { Layers, Plus, CheckCircle2, Sparkles, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import {
     Table,
@@ -41,7 +39,6 @@ export default function ConfigurationPresets() {
     // UI State
     const [viewFilter, setViewFilter] = useState<'ALL' | 'OOTB' | 'CUSTOM'>('ALL');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [isAiWizardOpen, setIsAiWizardOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [form, setForm] = useState<PresetForm>(initialPresetForm);
     const [selectedPreview, setSelectedPreview] = useState<PresetView | null>(null);
@@ -121,59 +118,6 @@ export default function ConfigurationPresets() {
         }
     };
 
-    const handleAiWizardComplete = async (preset: any) => {
-        console.log('[ConfigurationPresets] AI preset received:', preset);
-
-        // Convert AI preset to PresetForm format
-        const presetForm: PresetForm = {
-            name: preset.name,
-            description: preset.description,
-            detailedDescription: preset.detailedDescription,
-            techCategory: preset.techCategory || 'MULTI',
-            activities: preset.activities.map((a: any, idx: number) => {
-                // AI activities have: title, description, group, estimatedHours, priority
-                // We need to create a unique code for each activity
-                const techPrefix = preset.name.toUpperCase().replace(/[^A-Z0-9]/g, '_').substring(0, 10);
-                const activitySuffix = a.title.toUpperCase().replace(/[^A-Z0-9]/g, '_').substring(0, 15);
-                const activityCode = `${techPrefix}_${activitySuffix}_${idx + 1}`;
-
-                return {
-                    code: activityCode,
-                    title: a.title,
-                    name: a.title,
-                    description: a.description || '',
-                    group: a.group || 'DEV',
-                    baseHours: a.estimatedHours || 1,
-                    priority: a.priority || 'core'
-                };
-            }),
-            driverValues: preset.driverValues || {},
-            riskCodes: preset.riskCodes || []
-        };
-
-        console.log('[ConfigurationPresets] Mapped preset form:', {
-            name: presetForm.name,
-            techCategory: presetForm.techCategory,
-            activitiesCount: presetForm.activities.length,
-            sampleActivity: presetForm.activities[0]
-        });
-
-        try {
-            const success = await savePreset(presetForm, null);
-            if (success) {
-                setIsAiWizardOpen(false);
-                toast.success('Preset AI creato con successo!');
-            } else {
-                toast.error('Errore durante il salvataggio del preset');
-            }
-        } catch (error) {
-            console.error('[ConfigurationPresets] Save error:', error);
-            toast.error('Errore durante il salvataggio', {
-                description: error instanceof Error ? error.message : 'Errore sconosciuto'
-            });
-        }
-    };
-
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -212,144 +156,118 @@ export default function ConfigurationPresets() {
 
             <Header />
 
-            <main className="container mx-auto px-4 pt-4 pb-4 max-w-7xl relative z-10 h-[calc(100vh-64px)] flex flex-col">
-                <div className="flex flex-col lg:flex-row gap-6 items-start h-full">
-                    {/* Hero Section */}
-                    <motion.div
-                        initial={{ opacity: 0, x: -30 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.35, ease: 'easeOut' }}
-                        className="space-y-5 relative lg:flex-1 pt-4"
-                    >
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => navigate('/configuration')}
-                            className="absolute -left-2 -top-2 h-9 w-9 rounded-full hover:bg-slate-200/70"
-                        >
-                            <ArrowLeft className="h-4 w-4" />
-                        </Button>
-                        <Badge variant="secondary" className="w-fit px-4 py-1.5 text-sm font-semibold bg-white/80 backdrop-blur-sm border-slate-200 text-slate-700 shadow-sm">
-                            <Layers className="w-4 h-4 mr-2 text-blue-600" />
-                            Configurazione
-                        </Badge>
-                        <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900">
-                            Tecnologie
-                            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">
-                                standardizza il lavoro
-                            </span>
-                        </h1>
-                        <p className="text-lg text-slate-600 max-w-2xl leading-relaxed font-medium">
-                            Gestisci i template di stima per le diverse tecnologie. Un punto di partenza solido per ogni nuovo progetto.
-                        </p>
-                        <div className="flex flex-wrap gap-3">
-                            <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/80 border border-slate-200 shadow-sm text-sm font-semibold text-slate-700">
-                                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                                {presets.length} tecnologie totali
-                            </div>
-                            <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/80 border border-slate-200 shadow-sm text-sm font-semibold text-slate-700">
-                                <Sparkles className="w-4 h-4 text-amber-500" />
-                                {presets.filter(p => p.is_custom).length} custom
-                            </div>
-                        </div>
-                        <div className="flex flex-wrap gap-3 pt-2">
-                            <Button
-                                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md border-0"
-                                onClick={() => setIsAiWizardOpen(true)}
-                            >
-                                <Wand2 className="w-4 h-4 mr-2" />
-                                ✨ AI Wizard
-                            </Button>
-                            <Button
-                                className="bg-blue-600 hover:bg-blue-700 text-white shadow-md border-0"
-                                onClick={handleCreate}
-                                variant="outline"
-                            >
-                                <Plus className="w-4 h-4 mr-2" />
-                                Crea manualmente
-                            </Button>
-                        </div>
-                    </motion.div>
+            <main className="container mx-auto px-4 pt-4 pb-4 max-w-6xl relative z-10 h-[calc(100vh-64px)] flex flex-col">
+                {/* Main Content Card - Full Width */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, ease: 'easeInOut' }}
+                    className="group relative p-5 rounded-3xl bg-white/95 backdrop-blur-xl border border-slate-200 shadow-2xl overflow-hidden w-full h-full flex flex-col"
+                >
+                    <div className="absolute -right-8 -top-8 text-indigo-500/5 pointer-events-none">
+                        <Layers className="w-40 h-40" />
+                    </div>
 
-                    {/* Main Content Card */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.35, delay: 0.1, ease: 'easeInOut' }}
-                        className="group relative p-6 rounded-3xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl overflow-hidden w-full lg:flex-[1.5] h-full flex flex-col"
-                    >
-                        <div className="absolute -right-8 -top-8 text-indigo-500/5 pointer-events-none">
-                            <Layers className="w-40 h-40" />
-                        </div>
-
-                        <div className="relative z-10 flex flex-col h-full">
-                            <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                    <div className="relative z-10 flex flex-col h-full">
+                        {/* Header Section - Matching Dialog Style */}
+                        <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
+                            <div className="flex items-center gap-4">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => navigate('/configuration')}
+                                    className="h-8 w-8 rounded-full hover:bg-slate-100"
+                                >
+                                    <ArrowLeft className="h-4 w-4" />
+                                </Button>
                                 <div>
-                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-[11px] uppercase tracking-[0.2em] text-indigo-700 font-semibold">
-                                        Libreria
-                                    </div>
-                                    <h2 className="text-2xl font-bold mt-2 leading-tight text-slate-900">Elenco Tecnologie</h2>
-                                </div>
-                                <div className="flex gap-1 bg-slate-100 rounded-full p-1 border border-slate-200">
-                                    <Button size="sm" variant={viewFilter === 'ALL' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600" onClick={() => setViewFilter('ALL')}>
-                                        Tutti
-                                    </Button>
-                                    <Button size="sm" variant={viewFilter === 'OOTB' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600" onClick={() => setViewFilter('OOTB')}>
-                                        Sistema
-                                    </Button>
-                                    <Button size="sm" variant={viewFilter === 'CUSTOM' ? 'default' : 'ghost'} className="h-7 px-2 text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600" onClick={() => setViewFilter('CUSTOM')}>
-                                        Custom
-                                    </Button>
+                                    <h1 className="text-base font-semibold text-slate-900">Gestione Tecnologie</h1>
+                                    <p className="text-xs text-slate-500">Configura i template di stima predefiniti per ogni tecnologia.</p>
                                 </div>
                             </div>
+                            <Button
+                                className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm text-xs h-8"
+                                onClick={handleCreate}
+                            >
+                                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                                Nuova Tecnologia
+                            </Button>
+                        </div>
 
-                            <div className="rounded-2xl border border-slate-200 bg-white/50 flex-1 overflow-hidden flex flex-col min-h-0">
-                                <div className="overflow-y-auto overflow-x-hidden flex-1 [scrollbar-width:thin]">
-                                    <Table className="table-fixed w-full">
-                                        <TableHeader className="sticky top-0 bg-slate-50/90 backdrop-blur z-10 shadow-sm">
-                                            <TableRow className="hover:bg-slate-100/50 border-slate-200">
-                                                <TableHead className="text-slate-700 font-semibold w-[30%]">Nome</TableHead>
-                                                <TableHead className="text-slate-700 font-semibold w-[20%]">Categoria</TableHead>
-                                                <TableHead className="text-slate-700 font-semibold w-[25%] hidden md:table-cell">Contenuto</TableHead>
-                                                <TableHead className="text-right text-slate-700 font-semibold w-[25%]">Azioni</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {filteredPresets.length === 0 ? (
-                                                <TableRow>
-                                                    <TableCell colSpan={4} className="text-center py-8 text-slate-500">
-                                                        Nessuna tecnologia trovata
-                                                    </TableCell>
-                                                </TableRow>
-                                            ) : (
-                                                filteredPresets.map((preset) => (
-                                                    <PresetTableRow
-                                                        key={preset.id}
-                                                        preset={preset}
-                                                        userId={user?.id}
-                                                        onPreview={setSelectedPreview}
-                                                        onEdit={handleEdit}
-                                                        onDuplicate={handleDuplicate}
-                                                        onDelete={deletePreset}
-                                                    />
-                                                ))
-                                            )}
-                                        </TableBody>
-                                    </Table>
+                        {/* Stats & Filters Row */}
+                        <div className="flex items-center justify-between py-3 shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-xs font-medium text-slate-600">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                    {presets.length} totali
                                 </div>
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-xs font-medium text-slate-600">
+                                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                                    {presets.filter(p => p.is_custom).length} custom
+                                </div>
+                            </div>
+                            <div className="flex gap-1 bg-slate-100 rounded-full p-0.5 border border-slate-200">
+                                <Button size="sm" variant={viewFilter === 'ALL' ? 'default' : 'ghost'} className="h-6 px-2.5 text-[11px] rounded-full" onClick={() => setViewFilter('ALL')}>
+                                    Tutti
+                                </Button>
+                                <Button size="sm" variant={viewFilter === 'OOTB' ? 'default' : 'ghost'} className="h-6 px-2.5 text-[11px] rounded-full" onClick={() => setViewFilter('OOTB')}>
+                                    Sistema
+                                </Button>
+                                <Button size="sm" variant={viewFilter === 'CUSTOM' ? 'default' : 'ghost'} className="h-6 px-2.5 text-[11px] rounded-full" onClick={() => setViewFilter('CUSTOM')}>
+                                    Custom
+                                </Button>
                             </div>
                         </div>
-                    </motion.div>
-                </div>
+
+                        {/* Table Section */}
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50/30 flex-1 overflow-hidden flex flex-col min-h-0">
+                            <div className="overflow-y-auto overflow-x-hidden flex-1 [scrollbar-width:thin]">
+                                <Table className="table-fixed w-full">
+                                    <TableHeader className="sticky top-0 bg-slate-50/95 backdrop-blur z-10 shadow-sm">
+                                        <TableRow className="hover:bg-slate-100/50 border-slate-200">
+                                            <TableHead className="text-slate-700 font-semibold text-xs w-[30%]">Nome</TableHead>
+                                            <TableHead className="text-slate-700 font-semibold text-xs w-[15%]">Categoria</TableHead>
+                                            <TableHead className="text-slate-700 font-semibold text-xs w-[30%] hidden md:table-cell">Contenuto</TableHead>
+                                            <TableHead className="text-right text-slate-700 font-semibold text-xs w-[25%]">Azioni</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredPresets.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center py-12 text-slate-400">
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <Layers className="w-8 h-8 opacity-30" />
+                                                        <p className="text-sm">Nessuna tecnologia trovata</p>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            filteredPresets.map((preset) => (
+                                                <PresetTableRow
+                                                    key={preset.id}
+                                                    preset={preset}
+                                                    userId={user?.id}
+                                                    onPreview={setSelectedPreview}
+                                                    onEdit={handleEdit}
+                                                    onDuplicate={handleDuplicate}
+                                                    onDelete={deletePreset}
+                                                />
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
             </main>
 
             <TechnologyDialog
                 open={isDialogOpen}
                 onOpenChange={setIsDialogOpen}
                 initialData={form}
-                // onFormChange is handled internally by useForm in TechnologyDialog
                 onSave={async (data) => {
-                    setForm(data); // Sync for edit mode if needed, though mostly for re-opening
+                    setForm(data);
                     await handleSave(data);
                 }}
                 saving={saving}
@@ -364,12 +282,6 @@ export default function ConfigurationPresets() {
             <PresetPreviewDialog
                 preset={selectedPreview}
                 onOpenChange={() => setSelectedPreview(null)}
-            />
-
-            <AiTechnologyWizard
-                open={isAiWizardOpen}
-                onClose={() => setIsAiWizardOpen(false)}
-                onPresetCreated={handleAiWizardComplete}
             />
         </div>
     );

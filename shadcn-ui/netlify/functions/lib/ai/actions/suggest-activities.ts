@@ -8,6 +8,8 @@ import {
 } from '../prompt-builder';
 import { validateAISuggestion } from '../../../../../src/types/ai-validation';
 import { validateRequirementDescription } from '../../validation/requirement-validator';
+import { searchSimilarActivities, isVectorSearchEnabled } from '../vector-search';
+import { retrieveRAGContext, getRAGSystemPromptAddition } from '../rag';
 
 export interface Preset {
     id: string;
@@ -53,9 +55,51 @@ export async function suggestActivities(request: SuggestActivitiesRequest): Prom
     }
 
     // Filter activities relevant to the preset's tech category
-    const relevantActivities = activities.filter(
-        (a) => a.tech_category === preset.tech_category || a.tech_category === 'MULTI'
-    );
+    // Try vector search first for more accurate results (Phase 2)
+    let relevantActivities: Activity[] = [];
+    let vectorSearchMetrics: { method: string; latencyMs: number; usedFallback: boolean } | undefined;
+
+    if (isVectorSearchEnabled()) {
+        try {
+            console.log('[suggest-activities] Using vector search for activity retrieval');
+            const techCategories = [preset.tech_category, 'MULTI'];
+            const searchResult = await searchSimilarActivities(
+                description,
+                techCategories,
+                30, // Top-30 most similar activities
+                0.45 // Lower threshold for broader matches
+            );
+
+            vectorSearchMetrics = {
+                method: searchResult.metrics.method,
+                latencyMs: searchResult.metrics.latencyMs,
+                usedFallback: searchResult.metrics.usedFallback,
+            };
+
+            if (searchResult.results.length > 0) {
+                // Map search results to Activity format
+                relevantActivities = searchResult.results.map(r => ({
+                    code: r.code,
+                    name: r.name,
+                    description: r.description || '',
+                    base_hours: r.base_hours,
+                    group: r.group,
+                    tech_category: r.tech_category,
+                }));
+                console.log(`[suggest-activities] Vector search returned ${relevantActivities.length} activities in ${searchResult.metrics.latencyMs}ms`);
+            }
+        } catch (err) {
+            console.warn('[suggest-activities] Vector search failed, using fallback:', err);
+        }
+    }
+
+    // Fallback: use provided activities filtered by tech category
+    if (relevantActivities.length === 0) {
+        relevantActivities = activities.filter(
+            (a) => a.tech_category === preset.tech_category || a.tech_category === 'MULTI'
+        );
+        console.log('[suggest-activities] Using fallback category filter, activities:', relevantActivities.length);
+    }
 
     console.log('Filtered activities:', relevantActivities?.length);
 
@@ -72,18 +116,41 @@ export async function suggestActivities(request: SuggestActivitiesRequest): Prom
         console.log('Test mode: cache disabled');
     }
 
+    // Retrieve RAG context (Phase 4: Historical Learning)
+    let ragContext = { hasExamples: false, promptFragment: '', searchLatencyMs: 0 } as any;
+    if (isVectorSearchEnabled()) {
+        try {
+            ragContext = await retrieveRAGContext(description);
+            if (ragContext.hasExamples) {
+                console.log(`[suggest-activities] RAG: found ${ragContext.examples?.length || 0} historical examples`);
+            }
+        } catch (err) {
+            console.warn('[suggest-activities] RAG retrieval failed:', err);
+        }
+    }
+
     // Build DESCRIPTIVE system prompt with full activity details
     console.log('Creating descriptive prompt with full activity details...');
     const descriptiveData = createDescriptivePrompt(relevantActivities);
     console.log('Descriptive prompt created, length:', descriptiveData?.length);
 
-    const systemPrompt = createActivitySuggestionSystemPrompt(
+    // Build system prompt with optional RAG enhancement
+    let systemPrompt = createActivitySuggestionSystemPrompt(
         preset.name,
         preset.tech_category,
         descriptiveData
     );
 
-    const userPrompt = description.substring(0, 1000); // Limit to 1000 chars
+    // Add RAG system prompt addition if we have historical data
+    if (ragContext.hasExamples) {
+        systemPrompt = systemPrompt + '\n' + getRAGSystemPromptAddition();
+    }
+
+    // Include RAG examples in user prompt
+    let userPrompt = description.substring(0, 1000); // Limit to 1000 chars
+    if (ragContext.hasExamples && ragContext.promptFragment) {
+        userPrompt = userPrompt + '\n' + ragContext.promptFragment;
+    }
 
     console.log('Calling OpenAI API with structured outputs...');
     console.log('Model: gpt-4o-mini');

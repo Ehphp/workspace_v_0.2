@@ -24,9 +24,10 @@ import { EditListDialog } from '@/components/lists/EditListDialog';
 import { Header } from '@/components/layout/Header';
 import { useAuthStore } from '@/store/useAuthStore';
 import { RequirementsHeader } from '@/components/requirements/RequirementsHeader';
-import { RequirementsFilters } from '@/components/requirements/RequirementsFilters';
+import { RequirementsFilters, type ViewMode } from '@/components/requirements/RequirementsFilters';
 import { RequirementsStats } from '@/components/requirements/RequirementsStats';
-import { PriorityBadge, StateBadge, PRIORITY_CONFIGS } from '@/components/shared/RequirementBadges';
+import { RequirementsDashboardView } from '@/components/requirements/RequirementsDashboardView';
+import { PriorityBadge, PRIORITY_CONFIGS } from '@/components/shared/RequirementBadges';
 import { Plus, Upload, MoreVertical, Loader2, Sparkles } from 'lucide-react';
 import { generateTitleFromDescription } from '@/lib/openai';
 import { supabase } from '@/lib/supabase';
@@ -133,6 +134,7 @@ export default function Requirements() {
     const [showBulkInterview, setShowBulkInterview] = useState(false);
     const [deleteRequirement, setDeleteRequirement] = useState<Requirement | null>(null);
     const [listTechCategory, setListTechCategory] = useState<string>('MULTI');
+    const [viewMode, setViewMode] = useState<ViewMode>('list');
 
     // Fetch tech_category from preset when list changes
     useEffect(() => {
@@ -364,6 +366,8 @@ export default function Requirements() {
                     onStateChange={setFilterState}
                     sortBy={sortBy}
                     onSortChange={setSortBy}
+                    viewMode={viewMode}
+                    onViewModeChange={setViewMode}
                     onImport={() => setShowImportDialog(true)}
                     onClearAll={() => setShowClearDialog(true)}
                     requirementsCount={requirements.length}
@@ -373,198 +377,204 @@ export default function Requirements() {
             {/* Main Content */}
             <div className="flex-1 overflow-y-auto relative z-0">
                 <div className="container mx-auto px-6 py-6">
-                    {/* Stats Summary (Moved from Header) */}
-                    <RequirementsStats
-                        totalEstimation={totalEstimation}
-                        estimatedCount={estimatedCount}
-                        notEstimatedCount={notEstimatedCount}
-                    />
+                    {/* Dashboard View */}
+                    {viewMode === 'dashboard' && requirements.length > 0 ? (
+                        <RequirementsDashboardView
+                            requirements={filteredRequirements}
+                            listId={listId || ''}
+                            totalEstimation={totalEstimation}
+                            estimatedCount={estimatedCount}
+                            notEstimatedCount={notEstimatedCount}
+                        />
+                    ) : (
+                        <>
+                            {/* Stats Summary (Moved from Header) */}
+                            <RequirementsStats
+                                totalEstimation={totalEstimation}
+                                estimatedCount={estimatedCount}
+                                notEstimatedCount={notEstimatedCount}
+                            />
 
-                    {filteredRequirements.length === 0 ? (
-                        <div className="max-w-4xl mx-auto">
-                            {requirements.length === 0 ? (
-                                <Card className="border-slate-200/50 bg-white/80 backdrop-blur-xl shadow-lg rounded-2xl">
-                                    <div className="p-12 text-center">
-                                        <div className="max-w-md mx-auto space-y-6">
-                                            <div className="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
-                                                <svg className="h-10 w-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                </svg>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <h3 className="text-2xl font-bold text-slate-900">Nessun Requisito</h3>
-                                                <p className="text-slate-500">
-                                                    Questo progetto è vuoto. Inizia aggiungendo il primo requisito o importali da un file Excel.
+                            {filteredRequirements.length === 0 ? (
+                                <div className="max-w-4xl mx-auto">
+                                    {requirements.length === 0 ? (
+                                        <div className="rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-8">
+                                            <div className="flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-lg p-8">
+                                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-sm mb-4">
+                                                    <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    </svg>
+                                                </div>
+                                                <h3 className="text-sm font-semibold text-slate-800 mb-1">Nessun Requisito</h3>
+                                                <p className="text-xs text-slate-500 text-center max-w-xs mb-4">
+                                                    Questo progetto è vuoto. Inizia aggiungendo il primo requisito.
                                                 </p>
-                                            </div>
-                                            <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-                                                <Button
-                                                    size="lg"
-                                                    onClick={() => setShowCreateDialog(true)}
-                                                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 rounded-xl"
-                                                >
-                                                    <Plus className="mr-2 h-5 w-5" />
-                                                    Crea Requisito
-                                                </Button>
-                                                <Button
-                                                    size="lg"
-                                                    variant="outline"
-                                                    onClick={() => setShowImportDialog(true)}
-                                                    className="border-slate-200 rounded-xl hover:bg-slate-50"
-                                                >
-                                                    <Upload className="mr-2 h-5 w-5" />
-                                                    Importa da Excel
-                                                </Button>
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => setShowCreateDialog(true)}
+                                                        className="h-7 text-xs bg-blue-600 hover:bg-blue-700"
+                                                    >
+                                                        <Plus className="mr-1.5 h-3.5 w-3.5" />
+                                                        Crea
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => setShowImportDialog(true)}
+                                                        className="h-7 text-xs border-slate-200"
+                                                    >
+                                                        <Upload className="mr-1.5 h-3.5 w-3.5" />
+                                                        Importa
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </Card>
-                            ) : (
-                                <Card className="border-slate-200/50 bg-white/80 backdrop-blur-xl shadow-lg rounded-2xl">
-                                    <div className="p-12 text-center">
-                                        <div className="max-w-md mx-auto space-y-6">
-                                            <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-                                                <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    ) : (
+                                        <div className="rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-8">
+                                            <div className="flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-lg p-6">
+                                                <svg className="w-8 h-8 opacity-30 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                                 </svg>
+                                                <h3 className="text-sm font-semibold text-slate-800 mb-1">Nessun Risultato</h3>
+                                                <p className="text-xs text-slate-500 text-center mb-3">
+                                                    Prova a modificare i filtri.
+                                                </p>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setSearchTerm('');
+                                                        setFilterPriority('all');
+                                                        setFilterState('all');
+                                                    }}
+                                                    className="h-7 text-xs"
+                                                >
+                                                    Resetta Filtri
+                                                </Button>
                                             </div>
-                                            <h3 className="text-xl font-bold text-slate-900">Nessun Requisito Trovato</h3>
-                                            <p className="text-slate-500">
-                                                Prova a modificare i filtri di ricerca per trovare quello che stai cercando.
-                                            </p>
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => {
-                                                    setSearchTerm('');
-                                                    setFilterPriority('all');
-                                                    setFilterState('all');
-                                                }}
-                                                className="rounded-xl"
-                                            >
-                                                Resetta Filtri
-                                            </Button>
                                         </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="max-w-7xl mx-auto">
+                                    {/* Requirements List - Card style like Dashboard */}
+                                    <div className="grid gap-3">
+                                        {filteredRequirements.map((req, idx) => {
+                                            const estimation = req.latest_estimation;
+                                            const hasEstimation = !!estimation;
+                                            const priorityConfig = PRIORITY_CONFIGS[req.priority as keyof typeof PRIORITY_CONFIGS] || PRIORITY_CONFIGS.MEDIUM;
+                                            const isGeneratingTitle = req.labels?.includes('AI_TITLE_PENDING');
+
+                                            // State colors for inline badge
+                                            const stateColors: Record<string, { bg: string; text: string; dot: string }> = {
+                                                PROPOSED: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
+                                                SELECTED: { bg: 'bg-violet-50', text: 'text-violet-700', dot: 'bg-violet-500' },
+                                                SCHEDULED: { bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500' },
+                                                DONE: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+                                            };
+                                            const stateStyle = stateColors[req.state] || stateColors.PROPOSED;
+
+                                            // Priority border colors
+                                            const priorityBorders: Record<string, string> = {
+                                                HIGH: 'border-t-red-500',
+                                                MEDIUM: 'border-t-amber-500',
+                                                LOW: 'border-t-emerald-500',
+                                            };
+                                            const priorityBorder = priorityBorders[req.priority] || 'border-t-slate-300';
+
+                                            return (
+                                                <div
+                                                    key={req.id}
+                                                    className={`group bg-white rounded-xl border border-slate-200 border-t-4 ${priorityBorder} shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-pointer overflow-hidden`}
+                                                    onClick={() => navigate(`/dashboard/${listId}/requirements/${req.id}`)}
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter' || e.key === ' ') {
+                                                            e.preventDefault();
+                                                            navigate(`/dashboard/${listId}/requirements/${req.id}`);
+                                                        }
+                                                    }}
+                                                >
+                                                    <div className="p-4">
+                                                        {/* Header row: ID + State badge + Actions */}
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-mono text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                                                                    {req.req_id}
+                                                                </span>
+                                                                <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${stateStyle.bg} ${stateStyle.text}`}>
+                                                                    <span className={`w-1.5 h-1.5 rounded-full ${stateStyle.dot}`}></span>
+                                                                    {req.state}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                {hasEstimation && (
+                                                                    <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">
+                                                                        {estimation.total_days.toFixed(1)} gg
+                                                                    </span>
+                                                                )}
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-7 w-7 text-slate-400 hover:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                        >
+                                                                            <MoreVertical className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </DropdownMenuTrigger>
+                                                                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()} className="rounded-lg">
+                                                                        <DropdownMenuItem
+                                                                            className="text-destructive focus:text-destructive"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setDeleteRequirement(req);
+                                                                            }}
+                                                                        >
+                                                                            Elimina
+                                                                        </DropdownMenuItem>
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Title */}
+                                                        {isGeneratingTitle ? (
+                                                            <div className="flex items-center gap-2 text-slate-500 mb-2">
+                                                                <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                                                                <span className="text-sm">Generazione titolo...</span>
+                                                            </div>
+                                                        ) : (
+                                                            <h3 className="text-sm font-semibold text-slate-800 leading-snug group-hover:text-blue-700 transition-colors mb-2 line-clamp-2">
+                                                                {req.title}
+                                                            </h3>
+                                                        )}
+
+                                                        {/* Footer: metadata */}
+                                                        <div className="flex items-center gap-3 text-xs text-slate-500">
+                                                            <span className="inline-flex items-center gap-1">
+                                                                <span className="text-sm">{priorityConfig.icon}</span>
+                                                                <span className="capitalize">{req.priority.toLowerCase()}</span>
+                                                            </span>
+                                                            {req.business_owner && (
+                                                                <>
+                                                                    <span className="text-slate-300">|</span>
+                                                                    <span className="truncate max-w-[150px]">{req.business_owner}</span>
+                                                                </>
+                                                            )}
+                                                            <span className="text-slate-300">|</span>
+                                                            <span>{new Date(req.updated_at).toLocaleDateString('it-IT')}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
-                                </Card>
+                                </div>
                             )}
-                        </div>
-                    ) : (
-                        <div className="max-w-7xl mx-auto">
-                            {/* Requirements Grid */}
-                            <div className="grid gap-4">
-                                {filteredRequirements.map((req) => {
-                                    const estimation = req.latest_estimation;
-                                    const hasEstimation = !!estimation;
-                                    const priorityConfig = PRIORITY_CONFIGS[req.priority as keyof typeof PRIORITY_CONFIGS] || PRIORITY_CONFIGS.MEDIUM;
-                                    const isGeneratingTitle = req.labels?.includes('AI_TITLE_PENDING');
-
-                                    return (
-                                        <Card
-                                            key={req.id}
-                                            className="group relative overflow-hidden border-slate-200/50 bg-gradient-to-r from-white/90 to-white/80 backdrop-blur-xl hover:from-white hover:to-blue-50/30 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 ease-out cursor-pointer rounded-2xl"
-                                            onClick={() => navigate(`/dashboard/${listId}/requirements/${req.id}`)}
-                                            role="button"
-                                            tabIndex={0}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter' || e.key === ' ') {
-                                                    e.preventDefault();
-                                                    navigate(`/dashboard/${listId}/requirements/${req.id}`);
-                                                }
-                                            }}
-                                        >
-                                            {/* Status Bar on Top */}
-                                            <div className={`absolute left-0 right-0 top-0 h-1 bg-gradient-to-r ${priorityConfig.gradient}`} />
-
-                                            <div className="flex items-center p-4 gap-4">
-                                                {/* ID & Priority Icon */}
-                                                <div className="flex items-center gap-3 w-[100px] shrink-0">
-                                                    <span className="font-mono text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">{req.req_id}</span>
-                                                    <div className="text-xs" title={`Priorità: ${req.priority}`}>
-                                                        {priorityConfig.icon}
-                                                    </div>
-                                                </div>
-
-                                                {/* Main Content: Title & State */}
-                                                <div className="flex-1 min-w-0 flex items-center gap-3">
-                                                    {isGeneratingTitle ? (
-                                                        <div className="flex items-center gap-2 text-slate-500 italic">
-                                                            <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
-                                                            <span className="text-sm">Generazione titolo in corso...</span>
-                                                        </div>
-                                                    ) : (
-                                                        <span
-                                                            className="font-semibold text-sm text-slate-900 truncate group-hover:text-blue-700 transition-colors"
-                                                            title={req.title}
-                                                        >
-                                                            {req.title}
-                                                        </span>
-                                                    )}
-                                                    <div className="scale-90 origin-left shrink-0">
-                                                        <StateBadge state={req.state} />
-                                                    </div>
-                                                </div>
-
-                                                {/* Metadata */}
-                                                <div className="hidden md:flex items-center gap-6 text-xs text-slate-500 shrink-0">
-                                                    {req.business_owner && (
-                                                        <div className="flex items-center gap-1.5" title="Business Owner">
-                                                            <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                            </svg>
-                                                            <span className="font-medium text-slate-700 max-w-[100px] truncate">{req.business_owner}</span>
-                                                        </div>
-                                                    )}
-                                                    <div className="flex items-center gap-1.5" title="Ultimo Aggiornamento">
-                                                        <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        <span>{new Date(req.updated_at).toLocaleDateString('it-IT')}</span>
-                                                    </div>
-                                                </div>
-
-                                                {/* Estimation */}
-                                                <div className="w-[90px] text-right shrink-0">
-                                                    {hasEstimation ? (
-                                                        <div className="flex flex-col items-end">
-                                                            <span className="font-bold text-sm text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">{estimation.total_days.toFixed(1)} gg</span>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-slate-400 text-xs italic">Non stimato</span>
-                                                    )}
-                                                </div>
-
-                                                {/* Actions */}
-                                                <div className="shrink-0">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg hover:bg-slate-100"
-                                                                aria-label="Altre opzioni"
-                                                            >
-                                                                <MoreVertical className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()} className="rounded-xl">
-                                                            <DropdownMenuItem
-                                                                className="text-destructive focus:text-destructive rounded-lg"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setDeleteRequirement(req);
-                                                                }}
-                                                            >
-                                                                Elimina
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </div>
-                                            </div>
-                                        </Card>
-                                    );
-                                })}
-                            </div>
-                        </div>
+                        </>
                     )}
                 </div>
             </div>

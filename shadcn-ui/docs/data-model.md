@@ -67,8 +67,12 @@ Atomic work units with fixed effort.
 | `is_custom` | BOOLEAN | `false` = system, `true` = user-created |
 | `base_activity_id` | UUID | Reference to forked system activity (nullable) |
 | `created_by` | UUID | User who created custom activity |
+| `embedding` | vector(1536) | OpenAI text-embedding-3-small vector (Phase 2) |
+| `embedding_updated_at` | TIMESTAMP | When embedding was last generated |
 
 *Custom activities (`is_custom=true`) are editable by their creator.
+
+**Vector Index**: `idx_activities_embedding` (ivfflat, cosine similarity)
 
 ### drivers
 
@@ -154,6 +158,10 @@ Individual requirements within a list.
 | `state` | VARCHAR(20) | `PROPOSED`, `SELECTED`, `SCHEDULED`, `DONE` |
 | `business_owner` | VARCHAR(255) | Stakeholder |
 | `labels` | JSONB | Tag array |
+| `embedding` | vector(1536) | OpenAI text-embedding-3-small vector (Phase 4 RAG) |
+| `embedding_updated_at` | TIMESTAMP | When embedding was last generated |
+
+**Vector Index**: `idx_requirements_embedding` (ivfflat, cosine similarity)
 
 ### estimations
 
@@ -298,7 +306,70 @@ CREATE INDEX idx_requirements_list_id ON requirements(list_id);
 CREATE INDEX idx_estimations_requirement_id ON estimations(requirement_id);
 CREATE INDEX idx_activities_tech_category ON activities(tech_category);
 CREATE INDEX idx_activities_is_custom ON activities(is_custom);
+
+-- Vector indexes for semantic search (Phase 2)
+CREATE INDEX idx_activities_embedding ON activities USING ivfflat (embedding vector_cosine_ops);
+CREATE INDEX idx_requirements_embedding ON requirements USING ivfflat (embedding vector_cosine_ops);
 ```
+
+---
+
+## Vector Search Functions (pgvector)
+
+Added in migration `20260221_pgvector_embeddings.sql`.
+
+### search_similar_activities
+
+Top-K retrieval for activity suggestions based on requirement description.
+
+```sql
+search_similar_activities(
+    query_embedding vector(1536),
+    match_threshold float DEFAULT 0.5,
+    match_count int DEFAULT 30,
+    tech_categories text[] DEFAULT ARRAY['MULTI']
+) RETURNS TABLE (
+    id uuid, code varchar, name varchar, description text,
+    base_hours decimal, tech_category varchar, "group" varchar,
+    similarity float
+)
+```
+
+**Usage**: Called by `ai-suggest` and `ai-generate-preset` for semantic activity matching.
+
+### search_similar_requirements
+
+RAG search to find similar past requirements for few-shot learning.
+
+```sql
+search_similar_requirements(
+    query_embedding vector(1536),
+    user_id_filter uuid DEFAULT NULL,
+    match_threshold float DEFAULT 0.6,
+    match_count int DEFAULT 5
+) RETURNS TABLE (
+    id uuid, req_id varchar, title varchar, description text,
+    similarity float
+)
+```
+
+**Usage**: Called by RAG module to enrich prompts with historical examples.
+
+### find_duplicate_activities
+
+Deduplication check for new custom activities.
+
+```sql
+find_duplicate_activities(
+    query_embedding vector(1536),
+    similarity_threshold float DEFAULT 0.8
+) RETURNS TABLE (
+    id uuid, code varchar, name varchar, description text,
+    similarity float
+)
+```
+
+**Usage**: Called by `ai-check-duplicates` to prevent catalog bloat.
 
 ---
 
@@ -307,6 +378,7 @@ CREATE INDEX idx_activities_is_custom ON activities(is_custom);
 - **Schema changes**: Run migration SQL in Supabase SQL Editor.
 - **Seed data**: [supabase_seed.sql](../supabase_seed.sql) contains initial activities, drivers, risks, presets.
 - **History optimizations**: [estimation_history_optimizations.sql](../estimation_history_optimizations.sql) adds helper views.
+- **Vector embeddings**: Run `ai-generate-embeddings` endpoint after migration to populate embedding columns.
 
 ---
 
@@ -314,3 +386,4 @@ CREATE INDEX idx_activities_is_custom ON activities(is_custom);
 - Adding new tables or columns
 - Modifying RLS policies
 - Changing relationships between entities
+- Adding new vector search functions

@@ -9,14 +9,11 @@
  * POST /.netlify/functions/ai-generate-preset
  */
 
-import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
-import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
-import { sanitizePromptInput } from '../../src/types/ai-validation';
-import { validateAuthToken, logAuthDebugInfo } from './lib/auth/auth-validator';
-import { getCorsHeaders, isOriginAllowed } from './lib/security/cors';
-import { checkRateLimit } from './lib/security/rate-limiter';
+import { createAIHandler } from './lib/handler';
+import { getOpenAIClient } from './lib/ai/openai-client';
+import { searchSimilarActivities, isVectorSearchEnabled } from './lib/ai/vector-search';
 
 interface RequestBody {
     description: string;
@@ -115,174 +112,9 @@ function formatCatalogForPrompt(activities: CatalogActivity[]): string {
 }
 
 /**
- * Initialize OpenAI client
+ * System prompt for preset generation
  */
-function getOpenAIClient(): OpenAI {
-    const apiKey = process.env.OPENAI_API_KEY;
-
-    if (!apiKey) {
-        throw new Error('OPENAI_API_KEY environment variable is not set');
-    }
-
-    return new OpenAI({
-        apiKey,
-        timeout: 50000, // 50 second timeout (increased for preset generation)
-        maxRetries: 1, // One retry for timeout cases
-    });
-}
-
-/**
- * Main handler
- */
-export const handler: Handler = async (
-    event: HandlerEvent,
-    context: HandlerContext
-) => {
-    const originHeader = event.headers.origin || event.headers.Origin;
-    const headers = getCorsHeaders(originHeader);
-
-    // Debug logging
-    logAuthDebugInfo();
-    console.log('[ai-generate-preset] Request received');
-
-    // Handle preflight requests
-    if (event.httpMethod === 'OPTIONS') {
-        return {
-            statusCode: 200,
-            headers,
-            body: '',
-        };
-    }
-
-    // Only allow POST
-    if (event.httpMethod !== 'POST') {
-        return {
-            statusCode: 405,
-            headers,
-            body: JSON.stringify({ error: 'Method Not Allowed' }),
-        };
-    }
-
-    // Origin allowlist check
-    if (!isOriginAllowed(originHeader)) {
-        console.warn('[ai-generate-preset] Blocked origin:', originHeader);
-        return {
-            statusCode: 403,
-            headers,
-            body: JSON.stringify({ error: 'Origin not allowed' }),
-        };
-    }
-
-    // Auth validation
-    const authHeader = event.headers.authorization || (event.headers.Authorization as string | undefined);
-    const authResult = await validateAuthToken(authHeader);
-
-    if (!authResult.ok) {
-        return {
-            statusCode: authResult.statusCode || 401,
-            headers,
-            body: JSON.stringify({ error: authResult.message || 'Unauthorized' }),
-        };
-    }
-
-    // Rate limiting - DISABLED FOR DEVELOPMENT
-    // const rateKey = `preset:${authResult.userId || 'anonymous'}`;
-    // const rateStatus = await checkRateLimit(rateKey);
-
-    // if (!rateStatus.allowed) {
-    //     return {
-    //         statusCode: 429,
-    //         headers,
-    //         body: JSON.stringify({
-    //             error: 'Rate limit exceeded',
-    //             message: 'Hai raggiunto il limite di generazione preset. Riprova tra un\'ora.',
-    //             retryAfter: rateStatus.retryAfter,
-    //         }),
-    //     };
-    // }
-
-    try {
-        // Parse request body
-        const body: RequestBody = JSON.parse(event.body || '{}');
-
-        console.log('[ai-generate-preset] Request body:', {
-            hasDescription: !!body.description,
-            descriptionLength: body.description?.length,
-            hasAnswers: !!body.answers,
-            answersCount: body.answers ? Object.keys(body.answers).length : 0,
-            suggestedTechCategory: body.suggestedTechCategory
-        });
-
-        // Validate required fields
-        if (!body.description || typeof body.description !== 'string') {
-            console.error('[ai-generate-preset] Invalid description:', typeof body.description);
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({
-                    error: 'Missing or invalid description field',
-                    message: 'Il campo "description" è obbligatorio.'
-                }),
-            };
-        }
-
-        if (!body.answers || typeof body.answers !== 'object') {
-            console.error('[ai-generate-preset] Invalid answers:', typeof body.answers);
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({
-                    error: 'Missing or invalid answers field',
-                    message: 'Il campo "answers" è obbligatorio e deve essere un oggetto.'
-                }),
-            };
-        }
-
-        // Sanitize description
-        const sanitizedDescription = sanitizePromptInput(body.description);
-
-        if (!sanitizedDescription || sanitizedDescription.length < 20) {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({
-                    error: 'Description too short',
-                    message: 'La descrizione deve contenere almeno 20 caratteri.',
-                }),
-            };
-        }
-
-        // Check environment configuration
-        if (!process.env.OPENAI_API_KEY) {
-            console.error('[ai-generate-preset] Missing OpenAI API key');
-            return {
-                statusCode: 503,
-                headers,
-                body: JSON.stringify({
-                    error: 'Service configuration error',
-                    message: 'Il servizio non è configurato correttamente. Contatta il supporto.',
-                }),
-            };
-        }
-
-        // Initialize OpenAI client
-        const openai = getOpenAIClient();
-
-        // Generate unique request ID
-        const requestId = randomUUID();
-
-        // Fetch activity catalog filtered by tech category (HYBRID APPROACH)
-        const techCategory = body.suggestedTechCategory || 'MULTI';
-        const catalogActivities = await fetchCatalogActivities(techCategory);
-        const catalogForPrompt = formatCatalogForPrompt(catalogActivities);
-
-        console.log('[ai-generate-preset] Calling OpenAI for preset generation...', {
-            requestId,
-            catalogSize: catalogActivities.length,
-            techCategory
-        });
-
-        const systemPrompt = `You are a Technical Estimator creating ACTIVITY PRESETS for estimating SOFTWARE REQUIREMENTS. Respond with JSON only.
+const SYSTEM_PROMPT = `You are a Technical Estimator creating ACTIVITY PRESETS for estimating SOFTWARE REQUIREMENTS. Respond with JSON only.
 
 **GOAL**:
 Generate a list of standard activities for implementing SINGLE REQUIREMENTS using the specified technology.
@@ -345,6 +177,83 @@ Focus on ATOMIC WORK UNITS, not project phases.
   }
 }`;
 
+/**
+ * Main handler using centralized middleware
+ */
+export const handler = createAIHandler<RequestBody>({
+    name: 'ai-generate-preset',
+    requireAuth: true,
+    requireOpenAI: true,
+
+    validateBody: (body) => {
+        if (!body.description || typeof body.description !== 'string') {
+            return 'Missing or invalid description field';
+        }
+        if (!body.answers || typeof body.answers !== 'object') {
+            return 'Missing or invalid answers field';
+        }
+        return null;
+    },
+
+    handler: async (body, ctx) => {
+        const sanitizedDescription = ctx.sanitize(body.description);
+
+        if (sanitizedDescription.length < 20) {
+            throw new Error('La descrizione deve contenere almeno 20 caratteri.');
+        }
+
+        // Initialize OpenAI client with complex preset (50s timeout)
+        const openai = getOpenAIClient('complex');
+        const requestId = randomUUID();
+        const techCategory = body.suggestedTechCategory || 'MULTI';
+
+        // Fetch activity catalog - use vector search for better relevance
+        let catalogActivities: CatalogActivity[] = [];
+        let searchMethod = 'category-filter';
+
+        if (isVectorSearchEnabled()) {
+            try {
+                console.log('[ai-generate-preset] Using vector search for catalog retrieval');
+                const techCategories = [techCategory, 'MULTI'];
+                const searchResult = await searchSimilarActivities(
+                    sanitizedDescription,
+                    techCategories,
+                    40, // Top-40 most similar for preset generation
+                    0.4
+                );
+
+                if (searchResult.results.length > 0) {
+                    catalogActivities = searchResult.results.map(r => ({
+                        code: r.code,
+                        name: r.name,
+                        description: r.description || '',
+                        base_hours: r.base_hours,
+                        tech_category: r.tech_category,
+                        group: r.group,
+                    }));
+                    searchMethod = searchResult.metrics.usedFallback ? 'vector-fallback' : 'vector';
+                    console.log(`[ai-generate-preset] Vector search returned ${catalogActivities.length} activities in ${searchResult.metrics.latencyMs}ms`);
+                }
+            } catch (err) {
+                console.warn('[ai-generate-preset] Vector search failed:', err);
+            }
+        }
+
+        // Fallback to standard category-based fetch
+        if (catalogActivities.length === 0) {
+            catalogActivities = await fetchCatalogActivities(techCategory);
+            searchMethod = 'category-filter';
+        }
+
+        const catalogForPrompt = formatCatalogForPrompt(catalogActivities);
+
+        console.log('[ai-generate-preset] Calling OpenAI for preset generation...', {
+            requestId,
+            catalogSize: catalogActivities.length,
+            techCategory,
+            searchMethod
+        });
+
         const userPrompt = `Context Description: ${sanitizedDescription}
 
 Questions & Answers: ${JSON.stringify(body.answers)}
@@ -359,13 +268,15 @@ Generate a preset with 8-15 activities. Prefer selecting from the catalog above 
         const response = await openai.chat.completions.create({
             model: 'gpt-4o',
             temperature: 0.2,
-            max_tokens: 2000, // Slightly increased to accommodate catalog + hybrid output
+            max_tokens: 2000,
             messages: [
-                { role: 'system', content: systemPrompt },
+                { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: userPrompt }
             ],
             response_format: { type: 'json_object' }
-        }); const generationTimeMs = Date.now() - startTime;
+        });
+
+        const generationTimeMs = Date.now() - startTime;
         const content = response.choices[0]?.message?.content;
 
         if (!content) {
@@ -398,15 +309,6 @@ Generate a preset with 8-15 activities. Prefer selecting from the catalog above 
                 warnings: validationResults.summary.warnings
             };
 
-            // Log warning if quality is low
-            if (validationResults.averageScore < 70) {
-                console.warn('[ai-generate-preset] Low genericity score:', {
-                    averageScore: validationResults.averageScore,
-                    failedCount: validationResults.summary.failed,
-                    requestId
-                });
-            }
-
             // Track hybrid activity breakdown
             const existingCount = result.preset.activities.filter((a: any) => a.existingCode).length;
             const newCount = result.preset.activities.filter((a: any) => a.isNew).length;
@@ -419,7 +321,7 @@ Generate a preset with 8-15 activities. Prefer selecting from the catalog above 
             });
         }
 
-        // Log metadata (no PII)
+        // Log metadata
         console.log('[ai-generate-preset] Generation complete:', {
             success: result.success,
             hasPreset: !!result.preset,
@@ -429,52 +331,14 @@ Generate a preset with 8-15 activities. Prefer selecting from the catalog above 
             requestId
         });
 
-        // Return response
         return {
-            statusCode: result.success ? 200 : 400,
-            headers,
-            body: JSON.stringify({
-                ...result,
-                metadata: {
-                    cached: false,
-                    attempts: 1,
-                    modelPasses: ['gpt-4o-mini'],
-                    generationTimeMs
-                }
-            }),
-        };
-
-    } catch (error) {
-        console.error('[ai-generate-preset] Unhandled error:', error);
-
-        // Handle different error types
-        let statusCode = 500;
-        let errorMessage = 'Si è verificato un errore durante la generazione del preset. Riprova.';
-
-        if (error && typeof error === 'object') {
-            // Timeout error
-            if (error.constructor?.name === 'APIConnectionTimeoutError' ||
-                (error as any).message?.includes('timed out')) {
-                statusCode = 504;
-                errorMessage = 'La richiesta ha impiegato troppo tempo. Riprova con una descrizione più breve o semplifica le risposte.';
-                console.error('[ai-generate-preset] Timeout error detected');
+            ...result,
+            metadata: {
+                cached: false,
+                attempts: 1,
+                modelPasses: ['gpt-4o'],
+                generationTimeMs
             }
-            // OpenAI API error with status
-            else if ('status' in error && typeof (error as any).status === 'number') {
-                statusCode = (error as any).status;
-            }
-        }
-
-        return {
-            statusCode: statusCode || 500, // Ensure we always have a valid statusCode
-            headers,
-            body: JSON.stringify({
-                error: statusCode === 504 ? 'Gateway Timeout' : 'Internal server error',
-                message: errorMessage,
-                details: process.env.NODE_ENV === 'development' && error instanceof Error
-                    ? error.message
-                    : undefined
-            }),
         };
     }
-};
+});

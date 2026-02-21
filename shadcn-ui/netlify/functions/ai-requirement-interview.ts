@@ -11,11 +11,8 @@
  * POST /.netlify/functions/ai-requirement-interview
  */
 
-import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
-import OpenAI from 'openai';
-import { sanitizePromptInput } from '../../src/types/ai-validation';
-import { validateAuthToken, logAuthDebugInfo } from './lib/auth/auth-validator';
-import { getCorsHeaders, isOriginAllowed } from './lib/security/cors';
+import { createAIHandler } from './lib/handler';
+import { getOpenAIClient } from './lib/ai/openai-client';
 
 interface ProjectContext {
     name: string;
@@ -220,23 +217,6 @@ function getTechSpecificPrompt(techCategory: string): string {
 }
 
 /**
- * Initialize OpenAI client
- */
-function getOpenAIClient(): OpenAI {
-    const apiKey = process.env.OPENAI_API_KEY;
-
-    if (!apiKey) {
-        throw new Error('OPENAI_API_KEY environment variable is not set');
-    }
-
-    return new OpenAI({
-        apiKey,
-        timeout: 55000, // 55 second timeout (Netlify has 60s limit)
-        maxRetries: 1,
-    });
-}
-
-/**
  * JSON Schema for structured output
  */
 const RESPONSE_SCHEMA = {
@@ -255,7 +235,6 @@ const RESPONSE_SCHEMA = {
                             id: { type: 'string' },
                             type: {
                                 type: 'string',
-                                // NO "text" - only structured question types allowed
                                 enum: ['single-choice', 'multiple-choice', 'range']
                             },
                             category: {
@@ -327,135 +306,34 @@ function getTechCategoryDescription(category: string): string {
     return descriptions[category] || category;
 }
 
-/**
- * Main handler
- */
-export const handler: Handler = async (
-    event: HandlerEvent,
-    context: HandlerContext
-) => {
-    const originHeader = event.headers.origin || event.headers.Origin;
-    const headers = getCorsHeaders(originHeader);
+export const handler = createAIHandler<RequestBody>({
+    name: 'ai-requirement-interview',
+    requireAuth: false, // Allow unauthenticated for Quick Estimate demo
+    requireOpenAI: true,
 
-    // Debug logging
-    logAuthDebugInfo();
-    console.log('[ai-requirement-interview] Request received');
-
-    // Handle preflight requests
-    if (event.httpMethod === 'OPTIONS') {
-        return {
-            statusCode: 200,
-            headers,
-            body: '',
-        };
-    }
-
-    // Only allow POST
-    if (event.httpMethod !== 'POST') {
-        return {
-            statusCode: 405,
-            headers,
-            body: JSON.stringify({ error: 'Method Not Allowed' }),
-        };
-    }
-
-    // Origin allowlist check
-    if (!isOriginAllowed(originHeader)) {
-        console.warn('[ai-requirement-interview] Blocked origin:', originHeader);
-        return {
-            statusCode: 403,
-            headers,
-            body: JSON.stringify({ error: 'Origin not allowed' }),
-        };
-    }
-
-    // Auth validation (allow unauthenticated for Quick Estimate demo)
-    const authHeader = event.headers.authorization || (event.headers.Authorization as string | undefined);
-    const authResult = await validateAuthToken(authHeader);
-
-    // For now, we allow unauthenticated requests for the Quick Estimate feature
-    // In production, you might want to add rate limiting for unauthenticated users
-    if (!authResult.ok && authHeader) {
-        // Only reject if a token was provided but is invalid
-        return {
-            statusCode: 401,
-            headers,
-            body: JSON.stringify({ error: authResult.message || 'Unauthorized' }),
-        };
-    }
-
-    try {
-        // Parse request body
-        const body: RequestBody = JSON.parse(event.body || '{}');
-
-        // Validate required fields
+    validateBody: (body) => {
         if (!body.description || typeof body.description !== 'string') {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Missing or invalid description field',
-                    message: 'Il campo "description" è obbligatorio.',
-                }),
-            };
+            return 'Missing or invalid description field';
         }
-
         if (!body.techCategory || typeof body.techCategory !== 'string') {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Missing or invalid techCategory field',
-                    message: 'Il campo "techCategory" è obbligatorio.',
-                }),
-            };
+            return 'Missing or invalid techCategory field';
         }
+        return null;
+    },
 
-        // Sanitize description
-        const sanitizedDescription = sanitizePromptInput(body.description);
+    handler: async (body, ctx) => {
+        const sanitizedDescription = ctx.sanitize(body.description);
 
-        if (!sanitizedDescription || sanitizedDescription.length < 15) {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Description too short',
-                    message: 'La descrizione deve contenere almeno 15 caratteri.',
-                }),
-            };
+        if (sanitizedDescription.length < 15) {
+            throw new Error('La descrizione deve contenere almeno 15 caratteri.');
         }
 
         if (sanitizedDescription.length > 2000) {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Description too long',
-                    message: 'La descrizione è troppo lunga (max 2000 caratteri).',
-                }),
-            };
+            throw new Error('La descrizione è troppo lunga (max 2000 caratteri).');
         }
 
-        // Check OpenAI configuration
-        if (!process.env.OPENAI_API_KEY) {
-            console.error('[ai-requirement-interview] OPENAI_API_KEY not configured');
-            return {
-                statusCode: 503,
-                headers,
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Service configuration error',
-                    message: 'Il servizio AI non è configurato. Contatta il supporto.',
-                }),
-            };
-        }
-
-        // Initialize OpenAI client
-        const openai = getOpenAIClient();
+        // Initialize OpenAI client with 'extended' preset (55s timeout)
+        const openai = getOpenAIClient('extended');
         const techCategoryDescription = getTechCategoryDescription(body.techCategory);
         const techSpecificPrompt = getTechSpecificPrompt(body.techCategory);
 
@@ -486,9 +364,6 @@ che non sono già chiari dalla descrizione del progetto.
             .replace(/{TECH_CATEGORY}/g, techCategoryDescription)
             .replace('{TECH_SPECIFIC_QUESTIONS}', techSpecificPrompt);
 
-        console.log('[ai-requirement-interview] Calling OpenAI API...');
-        const startTime = Date.now();
-
         // Build user prompt with optional project context
         const userPrompt = body.projectContext
             ? `${projectContextSection}
@@ -505,21 +380,18 @@ ${sanitizedDescription}
 
 Genera domande tecniche SPECIFICHE per ${techCategoryDescription} che chiariscono gli aspetti implementativi.`;
 
+        console.log('[ai-requirement-interview] Calling OpenAI API...');
+        const startTime = Date.now();
+
         // Call OpenAI with deterministic settings
         const response = await openai.chat.completions.create({
             model: 'gpt-4o',
-            temperature: 0, // Zero temperature for deterministic questions
-            seed: 42, // Fixed seed for reproducible results
+            temperature: 0,
+            seed: 42,
             max_tokens: 2000,
             messages: [
-                {
-                    role: 'system',
-                    content: systemPromptWithCategory
-                },
-                {
-                    role: 'user',
-                    content: userPrompt
-                }
+                { role: 'system', content: systemPromptWithCategory },
+                { role: 'user', content: userPrompt }
             ],
             response_format: RESPONSE_SCHEMA,
         });
@@ -547,53 +419,12 @@ Genera domande tecniche SPECIFICHE per ${techCategoryDescription} che chiariscon
             suggestedActivities: result.suggestedActivities?.length || 0,
         });
 
-        // Return successful response
         return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({
-                success: true,
-                questions: result.questions,
-                reasoning: result.reasoning,
-                estimatedComplexity: result.estimatedComplexity,
-                suggestedActivities: result.suggestedActivities || [],
-            }),
-        };
-
-    } catch (error) {
-        console.error('[ai-requirement-interview] Error:', error);
-
-        // Determine error type for appropriate response
-        const isOpenAIError = error && typeof error === 'object' && 'status' in error;
-        const isTimeoutError = error instanceof Error && error.message.includes('timeout');
-        const isParseError = error instanceof SyntaxError;
-
-        let statusCode = 500;
-        let message = 'Errore durante la generazione delle domande. Riprova.';
-
-        if (isTimeoutError) {
-            statusCode = 504;
-            message = 'Il servizio AI ha impiegato troppo tempo. Riprova con una descrizione più concisa.';
-        } else if (isOpenAIError) {
-            statusCode = (error as any).status || 502;
-            message = 'Errore del servizio AI. Riprova tra qualche secondo.';
-        } else if (isParseError) {
-            statusCode = 502;
-            message = 'Risposta AI non valida. Riprova.';
-        }
-
-        return {
-            statusCode,
-            headers,
-            body: JSON.stringify({
-                success: false,
-                error: error instanceof Error ? error.message : 'Unknown error',
-                message,
-                questions: [],
-                reasoning: '',
-                estimatedComplexity: 'MEDIUM',
-                suggestedActivities: [],
-            }),
+            success: true,
+            questions: result.questions,
+            reasoning: result.reasoning,
+            estimatedComplexity: result.estimatedComplexity,
+            suggestedActivities: result.suggestedActivities || [],
         };
     }
-};
+});

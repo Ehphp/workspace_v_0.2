@@ -30,6 +30,9 @@ AI functionality is distributed across multiple serverless functions:
 | `ai-bulk-estimate-with-answers.ts` | Batch activity selection | Bulk estimation |
 | `ai-generate-questions.ts` | Stage 1: preset wizard questions | Custom preset creation |
 | `ai-generate-preset.ts` | Stage 2: generate preset from answers | Custom preset creation |
+| `ai-generate-embeddings.ts` | Generate vector embeddings | Background/admin job (Phase 1) |
+| `ai-check-duplicates.ts` | Semantic activity deduplication | AI Technology Wizard (Phase 3) |
+| `ai-vector-health.ts` | Vector search health check | Monitoring (Phase 2-4) |
 
 ### Actions (ai-suggest.ts)
 
@@ -287,9 +290,9 @@ Questions have scope levels:
 | Answer scope | All answers apply to one requirement | Answers have explicit scope |
 | Use case | Detailed estimation | Rapid batch estimation |
 
-### Preset Wizard (Two-Stage)
+### Preset Wizard (Two-Stage) - Integrated in TechnologyDialog
 
-AI-assisted creation of custom technology presets.
+AI-assisted creation of custom technology presets, now integrated into the TechnologyDialog via AiAssistPanel.
 
 **Stage 1: Generate Questions**
 
@@ -459,7 +462,10 @@ For the same input, 9/10 calls should return the same activityCodes (90%+ consis
 |-----------|---------|
 | `src/components/estimation/interview/` | Single-requirement interview UI |
 | `src/components/requirements/BulkInterviewDialog.tsx` | Bulk interview dialog |
-| `src/components/configuration/presets/ai-wizard/` | Preset wizard UI |
+| `src/components/configuration/presets/TechnologyDialog.tsx` | Technology creation dialog with integrated AI |
+| `src/components/configuration/presets/AiAssistPanel.tsx` | AI assist panel for preset generation |
+
+> **Note**: The `ai-wizard/` folder is deprecated. AI preset generation is now integrated directly into `TechnologyDialog` via `AiAssistPanel`, providing a unified creation experience that supports both manual configuration and AI-assisted generation.
 
 ---
 
@@ -534,6 +540,113 @@ const result = finalizeEstimation(
 
 ---
 
+## Vector Search & RAG (Phase 2-4)
+
+As of migration `20260221_pgvector_embeddings.sql`, Syntero uses pgvector for semantic search.
+
+### Architecture
+
+```
+┌───────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│  User Input       │────▶│  Generate        │────▶│  Vector Search   │
+│  (requirement)    │     │  Embedding       │     │  (pgvector)      │
+└───────────────────┘     │  OpenAI ada-002  │     │  Top-K Similar   │
+                          └──────────────────┘     └────────┬─────────┘
+                                                           │
+                          ┌──────────────────┐             │
+                          │  Reduced Prompt  │◀────────────┘
+                          │  (~30 activities │
+                          │   vs ~100 full)  │
+                          └────────┬─────────┘
+                                   │
+                                   ▼
+                          ┌──────────────────┐
+                          │  OpenAI GPT-4o   │
+                          │  Activity Select │
+                          └──────────────────┘
+```
+
+### Feature Toggle
+
+| Variable | Effect |
+|----------|--------|
+| `USE_VECTOR_SEARCH=true` | Vector search active (default) |
+| `USE_VECTOR_SEARCH=false` | Falls back to category-based filtering |
+
+When disabled, the system operates exactly as before vector search was implemented.
+
+### Phase 2: Hybrid Search
+
+**All estimation endpoints now use vector search:**
+
+| Endpoint | Vector Limit | RAG | Fallback |
+|----------|--------------|-----|----------|
+| `ai-suggest` | Top-30 activities | ✅ | Category filter |
+| `ai-generate-preset` | Top-30 activities | ❌ | Category filter |
+| `ai-estimate-from-interview` | Top-20 activities | ✅ | Frontend-provided activities |
+| `ai-bulk-estimate-with-answers` | Top-25 activities | ❌ | Frontend-provided activities |
+
+> **Note**: Question generation endpoints (ai-requirement-interview, ai-generate-questions, ai-bulk-interview) do NOT use vector search, as they generate questions rather than retrieve activities.
+
+**Fallback behavior:**
+- If vector search returns 0 results → standard category filtering
+- If embedding generation fails → continues without RAG
+- If pgvector unavailable → graceful degradation to legacy flow
+
+### Phase 3: Semantic Deduplication
+
+When creating new custom activities:
+
+1. `ai-check-duplicates` endpoint called with activity name/description
+2. System searches for activities with >80% similarity
+3. If match found, user sees suggestion to reuse existing activity
+4. Prevents "catalog bloat" from near-duplicate activities
+
+### Phase 4: RAG Historical Learning
+
+For activity suggestions:
+
+1. System searches `requirements` table for similar past requirements
+2. Fetches their estimation data (activities, total_days, base_days)
+3. Includes top-3 historical examples in prompt as few-shot learning
+4. AI uses these examples to calibrate its suggestions
+
+**RAG prompt addition:**
+```
+--- HISTORICAL EXAMPLES (for reference, similar past requirements) ---
+
+Example 1 (78% similar):
+Title: User registration form
+Total Estimate: 5 days (base: 4 days)
+Activities selected:
+  - BE_DEV_AUTH: Authentication (24h)
+  - FE_DEV_FORM: Form development (16h)
+  ...
+
+--- END EXAMPLES ---
+```
+
+### Performance Impact
+
+| Metric | Legacy | With Vector Search |
+|--------|--------|-------------------|
+| Prompt size (activities) | ~14KB (99 activities) | ~2-3KB (30 activities) |
+| OpenAI latency | 12-15s | 5-8s expected |
+| Token cost | Higher | ~50% reduction |
+| Relevance | Category-based | Semantic similarity |
+
+### Monitoring
+
+Health check endpoint: `GET /.netlify/functions/ai-vector-health`
+
+Returns:
+- Embedding coverage percentage
+- pgvector extension status
+- Configuration warnings
+- Recommended actions
+
+---
+
 ## What AI Cannot Do
 
 1. **Invent activity codes**: Enum constraint restricts output to valid codes from catalog.
@@ -550,3 +663,5 @@ const result = finalizeEstimation(
 - Adding new AI actions
 - Modifying validation rules
 - Changing caching behavior
+- Updating vector search configuration
+- Adding RAG features

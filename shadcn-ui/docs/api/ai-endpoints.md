@@ -29,6 +29,93 @@ All endpoints enforce:
 
 ---
 
+## Handler Middleware Factory
+
+All AI endpoints use a centralized handler factory (`lib/handler/create-ai-handler.ts`) that provides standardized middleware:
+
+### Usage
+
+```typescript
+export const handler = createAIHandler<RequestBody>({
+    name: 'endpoint-name',
+    requireAuth: true,            // Require valid auth token (default: false)
+    rateLimit: true,              // Enable rate limiting (default: false)
+    requireOpenAI: true,          // Check API key configured (default: true)
+    
+    validateBody: (body) => {
+        // Return error message string or null if valid
+        if (!body.requiredField) return 'Missing required field';
+        return null;
+    },
+    
+    handler: async (body, ctx) => {
+        // Business logic
+        const sanitized = ctx.sanitize(body.input);
+        const openai = getOpenAIClient({ timeout: 30000 });
+        // ... AI call ...
+        return { success: true, data: result };
+    }
+});
+```
+
+### Handler Context
+
+The `ctx` object provides:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `userId` | `string \| undefined` | Authenticated user ID (if auth passed) |
+| `event` | `HandlerEvent` | Original Netlify event |
+| `netlifyContext` | `HandlerContext` | Netlify context |
+| `headers` | `Record<string, string>` | CORS headers for response |
+| `sanitize` | `(input: string) => string` | Input sanitization function |
+
+### Middleware Chain
+
+1. **OPTIONS preflight** — Returns 200 with CORS headers
+2. **POST validation** — Rejects non-POST requests
+3. **Origin allowlist** — Blocks unauthorized origins
+4. **Auth validation** — Validates JWT token (if `requireAuth: true`)
+5. **Rate limiting** — Throttles by user/IP (if `rateLimit: true`)
+6. **OpenAI check** — Verifies API key configured
+7. **Body parsing** — Parses JSON request body
+8. **Custom validation** — Runs `validateBody` function
+9. **Business logic** — Executes `handler` function
+10. **Error handling** — Catches and formats errors
+
+### Benefits
+
+- Eliminates ~50 lines of boilerplate per endpoint
+- Consistent error response format across all endpoints
+- Centralized logging with endpoint name prefix
+- Type-safe body validation
+- Automatic timeout error detection
+
+---
+
+## OpenAI Client Configuration
+
+The centralized OpenAI client (`lib/ai/openai-client.ts`) supports configurable timeouts:
+
+```typescript
+const openai = getOpenAIClient({
+    timeout: 55000,    // Timeout in ms (default: 55000)
+    maxRetries: 1,     // Retry count (default: 1)
+});
+```
+
+### Preset Configurations
+
+| Preset | Timeout | Retries | Use Case |
+|--------|---------|---------|----------|
+| `quick` | 20s | 1 | Simple prompts (generate-questions) |
+| `standard` | 30s | 1 | General AI calls (suggest) |
+| `bulk` | 28s | 0 | Batch operations (bulk-interview, bulk-estimate) |
+| `complex` | 50s | 1 | Complex generation (generate-preset) |
+| `extended` | 55s | 1 | Activity selection (estimate-from-interview) |
+
+---
+
 ## Endpoint Groups
 
 ### Interview Generation
@@ -503,5 +590,156 @@ Cache implementation: `lib/ai/ai-cache.ts`
 
 ---
 
-**Last Updated**: 2026-02-08  
+## Vector Search Endpoints (Phase 2-4)
+
+These endpoints support the pgvector-based semantic search infrastructure.
+
+---
+
+### `POST /.netlify/functions/ai-generate-embeddings`
+
+**Purpose**: Generate embeddings for activities and requirements catalog.
+
+**When Used**: Initial setup after pgvector migration, or periodically to embed new items.
+
+**Input** (Query Parameters):
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `type` | string | `activities` | `activities`, `requirements`, or `all` |
+| `force` | boolean | `false` | If `true`, regenerates all embeddings |
+
+**Output**:
+```typescript
+{
+  success: boolean;
+  results: Array<{
+    type: string;
+    processed: number;
+    updated: number;
+    skipped: number;
+    errors: string[];
+  }>;
+  summary: {
+    totalUpdated: number;
+    totalErrors: number;
+  };
+}
+```
+
+**Requirements**:
+- Auth token required
+- `OPENAI_API_KEY` environment variable
+- `SUPABASE_SERVICE_ROLE_KEY` for admin operations (optional, falls back to anon key)
+
+---
+
+### `POST /.netlify/functions/ai-check-duplicates`
+
+**Purpose**: Check for semantically similar existing activities when creating new ones.
+
+**When Used**: AI Technology Wizard - before saving a new custom activity.
+
+**Input**:
+```typescript
+{
+  name: string;          // Activity name
+  description?: string;  // Optional description
+}
+```
+
+**Output**:
+```typescript
+{
+  hasDuplicates: boolean;
+  duplicates: Array<{
+    code: string;
+    name: string;
+    description: string | null;
+    similarity: number;  // 0-1 score
+  }>;
+  suggestion?: string;   // User-facing recommendation message
+  vectorSearchEnabled: boolean;
+}
+```
+
+**Behavior**:
+- Returns `hasDuplicates: true` if similarity > 80% found
+- `suggestion` contains localized message for user
+- If `vectorSearchEnabled: false`, returns empty duplicates (feature disabled)
+
+---
+
+### `GET /.netlify/functions/ai-vector-health`
+
+**Purpose**: Health check for vector search infrastructure.
+
+**When Used**: Monitoring, debugging, admin dashboards.
+
+**Output**:
+```typescript
+{
+  vectorSearchEnabled: boolean;
+  envVariables: {
+    OPENAI_API_KEY: boolean;
+    SUPABASE_URL: boolean;
+    USE_VECTOR_SEARCH: string | undefined;
+  };
+  database: {
+    connected: boolean;
+    pgvectorExtension: boolean | null;
+  };
+  embeddings: {
+    activitiesTotal: number;
+    activitiesWithEmbedding: number;
+    activitiesCoverage: string;  // e.g., "85.5%"
+    requirementsTotal: number;
+    requirementsWithEmbedding: number;
+    requirementsCoverage: string;
+  } | null;
+  recommendations: string[];
+}
+```
+
+**No authentication required** — read-only status endpoint.
+
+---
+
+## Environment Variables
+
+### Vector Search Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `USE_VECTOR_SEARCH` | `true` | Feature toggle; set to `false` to disable |
+| `SUPABASE_SERVICE_ROLE_KEY` | - | Required for embedding generation (optional for search) |
+
+### Behavior When Disabled
+
+When `USE_VECTOR_SEARCH=false`:
+- `ai-suggest` falls back to category-based activity filtering
+- `ai-generate-preset` uses standard catalog fetch  
+- `ai-estimate-from-interview` uses frontend-provided activities (no semantic retrieval)
+- `ai-bulk-estimate-with-answers` uses frontend-provided activities (no semantic retrieval)
+- `ai-check-duplicates` returns `hasDuplicates: false`
+- RAG (historical learning) is skipped in all endpoints
+
+---
+
+## Endpoints Using Vector Search
+
+The following estimation endpoints automatically use vector search when enabled:
+
+| Endpoint | Vector Search | RAG | Fallback |
+|----------|---------------|-----|----------|
+| `ai-suggest` | ✅ Top-30 similar activities | ✅ Historical requirements | Category filter |
+| `ai-generate-preset` | ✅ Top-30 similar activities | ❌ | Category filter |
+| `ai-estimate-from-interview` | ✅ Top-20 similar activities | ✅ Historical requirements | Frontend-provided activities |
+| `ai-bulk-estimate-with-answers` | ✅ Top-25 similar activities | ❌ | Frontend-provided activities |
+
+**Question generation endpoints** (ai-requirement-interview, ai-generate-questions, ai-bulk-interview) do not use vector search as they don't involve activity retrieval.
+
+---
+
+**Last Updated**: 2026-02-21  
 **Derived from**: Existing Netlify Functions source code in `netlify/functions/`
+

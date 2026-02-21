@@ -10,11 +10,8 @@
  * POST /.netlify/functions/ai-bulk-interview
  */
 
-import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
-import OpenAI from 'openai';
-import { sanitizePromptInput } from '../../src/types/ai-validation';
-import { validateAuthToken } from './lib/auth/auth-validator';
-import { getCorsHeaders, isOriginAllowed } from './lib/security/cors';
+import { createAIHandler } from './lib/handler';
+import { getOpenAIClient } from './lib/ai/openai-client';
 import { createBulkInterviewPrompt, TECH_SPECIFIC_BULK_FOCUS } from './lib/ai/prompt-templates';
 
 interface RequirementInput {
@@ -44,21 +41,6 @@ function getSystemPrompt(techCategory: string): string {
 }
 
 /**
- * Initialize OpenAI client
- */
-function getOpenAIClient(): OpenAI {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-        throw new Error('OPENAI_API_KEY environment variable is not set');
-    }
-    return new OpenAI({
-        apiKey,
-        timeout: 28000, // 28s timeout - must finish before 30s lambda limit
-        maxRetries: 0, // No retries to avoid exceeding timeout
-    });
-}
-
-/**
  * Format requirements list for prompt - ULTRA COMPACT (just IDs and short titles)
  */
 function formatRequirementsForPrompt(requirements: RequirementInput[]): string {
@@ -67,102 +49,37 @@ function formatRequirementsForPrompt(requirements: RequirementInput[]): string {
     ).join('|');
 }
 
-/**
- * JSON schema for response - minimal
- */
-const OUTPUT_SCHEMA = `JSON:{"questions":[{"id":"q1","scope":"global|multi-requirement|specific","affectedRequirementIds":[],"type":"single-choice|multiple-choice|range","category":"INTEGRATION|DATA|SECURITY|TESTING|DEPLOYMENT","question":"...","options":[{"id":"o1","label":"..."}]}],"analysis":[{"reqCode":"REQ-001","complexity":"LOW|MEDIUM|HIGH"}]}`;
+export const handler = createAIHandler<RequestBody>({
+    name: 'ai-bulk-interview',
+    requireAuth: false, // Auth is optional but validated if present
+    requireOpenAI: true,
 
-/**
- * Main handler
- */
-export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
-    const origin = event.headers.origin || event.headers.Origin || '';
-    const corsHeaders = getCorsHeaders(origin);
-
-    // Handle preflight
-    if (event.httpMethod === 'OPTIONS') {
-        return { statusCode: 204, headers: corsHeaders, body: '' };
-    }
-
-    // Only POST allowed
-    if (event.httpMethod !== 'POST') {
-        return {
-            statusCode: 405,
-            headers: corsHeaders,
-            body: JSON.stringify({ error: 'Method not allowed' }),
-        };
-    }
-
-    // Check origin
-    if (!isOriginAllowed(origin)) {
-        console.warn('[ai-bulk-interview] Blocked request from origin:', origin);
-        return {
-            statusCode: 403,
-            headers: corsHeaders,
-            body: JSON.stringify({ error: 'Origin not allowed' }),
-        };
-    }
-
-    try {
-        // Parse request body
-        const body: RequestBody = JSON.parse(event.body || '{}');
-
-        // Validate requirements
+    validateBody: (body) => {
         if (!body.requirements || !Array.isArray(body.requirements) || body.requirements.length === 0) {
-            return {
-                statusCode: 400,
-                headers: corsHeaders,
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Almeno un requisito è obbligatorio.'
-                }),
-            };
+            return 'Almeno un requisito è obbligatorio.';
         }
-
         if (body.requirements.length > 50) {
-            return {
-                statusCode: 400,
-                headers: corsHeaders,
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Massimo 50 requisiti per sessione di interview.'
-                }),
-            };
+            return 'Massimo 50 requisiti per sessione di interview.';
         }
-
-        // Validate tech category
         if (!body.techCategory) {
-            return {
-                statusCode: 400,
-                headers: corsHeaders,
-                body: JSON.stringify({
-                    success: false,
-                    error: 'La categoria tecnologica è obbligatoria.'
-                }),
-            };
+            return 'La categoria tecnologica è obbligatoria.';
         }
+        return null;
+    },
 
-        // Validate auth (optional but recommended)
-        const authHeader = event.headers.authorization || event.headers.Authorization;
-        if (authHeader) {
-            const authResult = await validateAuthToken(authHeader);
-            if (!authResult.ok) {
-                console.log('[ai-bulk-interview] Auth validation:', authResult.message);
-            }
-        }
-
+    handler: async (body, ctx) => {
         console.log('[ai-bulk-interview] Processing request:', {
             requirementsCount: body.requirements.length,
             techCategory: body.techCategory,
             hasProjectContext: !!body.projectContext,
         });
 
-        const openai = getOpenAIClient();
+        // Initialize OpenAI client with 'bulk' preset (28s timeout)
+        const openai = getOpenAIClient('bulk');
         const startTime = Date.now();
 
         // Build system prompt using shared templates
         const systemPrompt = getSystemPrompt(body.techCategory);
-
         const requirementsText = formatRequirementsForPrompt(body.requirements);
         const userPrompt = `${body.requirements.length} req: ${requirementsText}`;
 
@@ -237,41 +154,10 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         });
 
         return {
-            statusCode: 200,
-            headers: corsHeaders,
-            body: JSON.stringify({
-                success: true,
-                questions,
-                requirementAnalysis,
-                summary,
-            }),
-        };
-
-    } catch (error) {
-        console.error('[ai-bulk-interview] Error:', error);
-
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        const isTimeout = errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT');
-
-        return {
-            statusCode: isTimeout ? 504 : 500,
-            headers: corsHeaders,
-            body: JSON.stringify({
-                success: false,
-                questions: [],
-                requirementAnalysis: [],
-                reasoning: '',
-                summary: {
-                    totalRequirements: 0,
-                    globalQuestions: 0,
-                    multiReqQuestions: 0,
-                    specificQuestions: 0,
-                    avgAmbiguityScore: 0,
-                },
-                error: isTimeout
-                    ? 'Timeout durante l\'analisi. Prova con meno requisiti.'
-                    : `Errore durante l'analisi: ${errorMessage}`,
-            }),
+            success: true,
+            questions,
+            requirementAnalysis,
+            summary,
         };
     }
-};
+});

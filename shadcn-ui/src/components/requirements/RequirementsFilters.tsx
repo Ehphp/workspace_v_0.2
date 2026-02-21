@@ -3,8 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Search, Upload, MoreVertical, Trash2, ArrowUpDown, X, Filter } from 'lucide-react';
+import { Search, Upload, MoreVertical, Trash2, ArrowUpDown, X, Filter, LayoutGrid, List } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+
+export type ViewMode = 'list' | 'dashboard';
 
 interface RequirementsFiltersProps {
     // Search
@@ -21,6 +24,10 @@ interface RequirementsFiltersProps {
     sortBy: string;
     onSortChange: (sort: string) => void;
 
+    // View Mode
+    viewMode: ViewMode;
+    onViewModeChange: (mode: ViewMode) => void;
+
     // Actions
     onImport: () => void;
     onClearAll: () => void;
@@ -36,6 +43,8 @@ export function RequirementsFilters({
     onStateChange,
     sortBy,
     onSortChange,
+    viewMode,
+    onViewModeChange,
     onImport,
     onClearAll,
     requirementsCount,
@@ -119,8 +128,31 @@ export function RequirementsFilters({
                         </div>
                     </div>
 
-                    {/* Right Side: Sort & Actions */}
+                    {/* Right Side: View Toggle, Sort & Actions */}
                     <div className="flex items-center gap-2 ml-auto">
+                        {/* View Toggle */}
+                        <ToggleGroup
+                            type="single"
+                            value={viewMode}
+                            onValueChange={(value) => value && onViewModeChange(value as ViewMode)}
+                            className="bg-slate-100/80 p-1 rounded-xl"
+                        >
+                            <ToggleGroupItem
+                                value="list"
+                                aria-label="Vista lista"
+                                className="h-8 w-8 p-0 data-[state=on]:bg-white data-[state=on]:shadow-sm rounded-lg transition-all"
+                            >
+                                <List className="h-4 w-4" />
+                            </ToggleGroupItem>
+                            <ToggleGroupItem
+                                value="dashboard"
+                                aria-label="Vista dashboard"
+                                className="h-8 w-8 p-0 data-[state=on]:bg-white data-[state=on]:shadow-sm rounded-lg transition-all"
+                            >
+                                <LayoutGrid className="h-4 w-4" />
+                            </ToggleGroupItem>
+                        </ToggleGroup>
+
                         <Separator orientation="vertical" className="h-6 hidden lg:block mx-2" />
 
                         {/* Sort */}

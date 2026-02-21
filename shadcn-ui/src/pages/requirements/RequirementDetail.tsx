@@ -150,13 +150,38 @@ export default function RequirementDetail() {
         setDriverValues(map);
     }, [requirementDriverValues, selectedDriverValues, setDriverValues]);
 
-    // Check for unsaved changes
+    // Check for unsaved changes by comparing current estimation with last saved
     const hasUnsavedChanges = useMemo(() => {
         if (!estimationResult) return false;
-        // Simple check: if we have a result but it's not in history (by exact match)
-        // For MVP, just checking if we have a result is enough to show "Save" button enabled
-        return true;
-    }, [estimationResult]);
+
+        // If no history, any result is unsaved
+        if (estimationHistory.length === 0) return true;
+
+        // Compare with the most recent saved estimation
+        const lastSaved = estimationHistory[0];
+
+        // Compare key values (with tolerance for floating point)
+        const totalDiff = Math.abs(estimationResult.totalDays - lastSaved.total_days);
+        const multiplierDiff = Math.abs(estimationResult.driverMultiplier - lastSaved.driver_multiplier);
+        const riskDiff = Math.abs(estimationResult.riskScore - lastSaved.risk_score);
+
+        // If any significant difference, mark as unsaved
+        if (totalDiff > 0.01 || multiplierDiff > 0.001 || riskDiff > 0) return true;
+
+        // Compare selected activities - check both count AND actual IDs
+        const savedActivityIds = (lastSaved.estimation_activities || []).map(a => a.activity_id);
+        if (selectedActivityIds.length !== savedActivityIds.length) return true;
+        const activityIdsMatch = selectedActivityIds.every(id => savedActivityIds.includes(id));
+        if (!activityIdsMatch) return true;
+
+        // Compare selected risks - check both count AND actual IDs
+        const savedRiskIds = (lastSaved.estimation_risks || []).map(r => r.risk_id);
+        if (selectedRiskIds.length !== savedRiskIds.length) return true;
+        const riskIdsMatch = selectedRiskIds.every(id => savedRiskIds.includes(id));
+        if (!riskIdsMatch) return true;
+
+        return false;
+    }, [estimationResult, estimationHistory, selectedActivityIds, selectedRiskIds]);
 
     // AI Suggestion Handler
     const handleAiSuggest = async () => {

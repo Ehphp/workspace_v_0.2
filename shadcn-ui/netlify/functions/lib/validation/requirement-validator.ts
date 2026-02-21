@@ -1,4 +1,4 @@
-import { sanitizePromptInput } from '../../../../src/types/ai-validation';
+import { sanitizePromptInput } from '../sanitize';
 
 export interface ValidationResult {
     isValid: boolean;

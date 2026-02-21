@@ -7,12 +7,14 @@
  * POST /.netlify/functions/ai-bulk-estimate-with-answers
  */
 
-import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
-import OpenAI from 'openai';
-import { sanitizePromptInput } from '../../src/types/ai-validation';
-import { validateAuthToken } from './lib/auth/auth-validator';
-import { getCorsHeaders, isOriginAllowed } from './lib/security/cors';
+import { createAIHandler } from './lib/handler';
+import { getOpenAIClient } from './lib/ai/openai-client';
 import { createBulkEstimatePrompt } from './lib/ai/prompt-templates';
+import { searchSimilarActivities, isVectorSearchEnabled } from './lib/ai/vector-search';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface RequirementInput {
     id: string;
@@ -46,27 +48,9 @@ interface RequestBody {
     activities: Activity[];
 }
 
-/**
- * Get system prompt for bulk estimation using shared templates
- */
-function getSystemPrompt(techCategory: string, requirementCount: number): string {
-    return createBulkEstimatePrompt(techCategory, requirementCount);
-}
-
-/**
- * Initialize OpenAI client
- */
-function getOpenAIClient(): OpenAI {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-        throw new Error('OPENAI_API_KEY environment variable is not set');
-    }
-    return new OpenAI({
-        apiKey,
-        timeout: 28000, // 28s - must finish before 30s lambda limit
-        maxRetries: 0,
-    });
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper Functions
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Format requirements for prompt - INDEX BASED (no UUIDs)
@@ -94,100 +78,85 @@ function formatActivitiesForPrompt(activities: Activity[]): string {
     return activities.slice(0, 20).map(a => `${a.code}:${a.base_hours}`).join(',');
 }
 
-/**
- * Main handler
- */
-export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
-    const origin = event.headers.origin || event.headers.Origin || '';
-    const corsHeaders = getCorsHeaders(origin);
+// ─────────────────────────────────────────────────────────────────────────────
+// Handler
+// ─────────────────────────────────────────────────────────────────────────────
 
-    // Handle preflight
-    if (event.httpMethod === 'OPTIONS') {
-        return { statusCode: 204, headers: corsHeaders, body: '' };
-    }
+export const handler = createAIHandler<RequestBody>({
+    name: 'ai-bulk-estimate-with-answers',
+    requireAuth: false, // Auth is optional, logged but not enforced
+    requireOpenAI: true,
 
-    // Only POST allowed
-    if (event.httpMethod !== 'POST') {
-        return {
-            statusCode: 405,
-            headers: corsHeaders,
-            body: JSON.stringify({ error: 'Method not allowed' }),
-        };
-    }
-
-    // Check origin
-    if (!isOriginAllowed(origin)) {
-        console.warn('[ai-bulk-estimate] Blocked request from origin:', origin);
-        return {
-            statusCode: 403,
-            headers: corsHeaders,
-            body: JSON.stringify({ error: 'Origin not allowed' }),
-        };
-    }
-
-    try {
-        // Parse request body
-        const body: RequestBody = JSON.parse(event.body || '{}');
-
-        // Validate requirements
+    validateBody: (body) => {
         if (!body.requirements || !Array.isArray(body.requirements) || body.requirements.length === 0) {
-            return {
-                statusCode: 400,
-                headers: corsHeaders,
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Almeno un requisito è obbligatorio.'
-                }),
-            };
+            return 'Almeno un requisito è obbligatorio.';
         }
-
-        // Validate answers
         if (!body.answers || Object.keys(body.answers).length === 0) {
-            return {
-                statusCode: 400,
-                headers: corsHeaders,
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Le risposte all\'intervista sono obbligatorie.'
-                }),
-            };
+            return 'Le risposte all\'intervista sono obbligatorie.';
         }
-
-        // Validate activities
         if (!body.activities || body.activities.length === 0) {
-            return {
-                statusCode: 400,
-                headers: corsHeaders,
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Il catalogo delle attività è obbligatorio.'
-                }),
-            };
+            return 'Il catalogo delle attività è obbligatorio.';
         }
+        return null;
+    },
 
-        // Validate auth
-        const authHeader = event.headers.authorization || event.headers.Authorization;
-        if (authHeader) {
-            const authResult = await validateAuthToken(authHeader);
-            if (!authResult.ok) {
-                console.log('[ai-bulk-estimate] Auth validation:', authResult.message);
+    handler: async (body, ctx) => {
+        // Get OpenAI client with bulk timeout (28s)
+        const openai = getOpenAIClient({ timeout: 28000, maxRetries: 0 });
+        // Use vector search for more relevant activities (Phase 2)
+        let activitiesToUse: Activity[] = body.activities;
+        let searchMethod = 'frontend-provided';
+
+        if (isVectorSearchEnabled() && body.techCategory) {
+            try {
+                console.log('[ai-bulk-estimate] Using vector search for activity retrieval');
+
+                // Combine all requirement descriptions for a comprehensive search
+                const combinedContext = body.requirements
+                    .map(r => `${r.title}: ${r.description || ''}`)
+                    .join('\n')
+                    .substring(0, 2000); // Limit combined context
+
+                const techCategories = [body.techCategory, 'MULTI'];
+                const searchResult = await searchSimilarActivities(
+                    combinedContext,
+                    techCategories,
+                    25, // Top-25 for bulk (limited for speed)
+                    0.4
+                );
+
+                if (searchResult.results.length > 0) {
+                    activitiesToUse = searchResult.results.map(r => ({
+                        code: r.code,
+                        name: r.name,
+                        description: r.description || '',
+                        base_hours: r.base_hours,
+                        group: r.group,
+                        tech_category: r.tech_category,
+                    }));
+                    searchMethod = searchResult.metrics.usedFallback ? 'vector-fallback' : 'vector';
+                    console.log(`[ai-bulk-estimate] Vector search returned ${activitiesToUse.length} activities in ${searchResult.metrics.latencyMs}ms`);
+                }
+            } catch (err) {
+                console.warn('[ai-bulk-estimate] Vector search failed, using provided activities:', err);
             }
         }
 
         console.log('[ai-bulk-estimate] Processing request:', {
             requirementsCount: body.requirements.length,
             answersCount: Object.keys(body.answers).length,
-            activitiesCount: body.activities.length,
+            activitiesCount: activitiesToUse.length,
             techCategory: body.techCategory,
+            searchMethod,
         });
 
         // Build system prompt using shared templates
-        const systemPrompt = getSystemPrompt(body.techCategory, body.requirements.length);
+        const systemPrompt = createBulkEstimatePrompt(body.techCategory, body.requirements.length);
 
         // Build user prompt - ULTRA COMPACT with count
         const requirementsText = formatRequirementsForPrompt(body.requirements);
         const answersText = formatAnswersForPrompt(body.answers);
-        const activitiesText = formatActivitiesForPrompt(body.activities);
+        const activitiesText = formatActivitiesForPrompt(activitiesToUse);
 
         const userPrompt = `${body.requirements.length} REQ(stima TUTTI 0-${body.requirements.length - 1}):\n${requirementsText}\nA:${answersText}\nC:${activitiesText}`;
 
@@ -196,14 +165,12 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
             user: userPrompt.length,
         });
 
-        // Call OpenAI - NO structured output for speed
-        const openai = getOpenAIClient();
-        const startTime = Date.now();
-
         // Calculate dynamic max_tokens based on requirements count
         // Each estimation needs ~60 tokens, plus overhead
         const maxTokens = Math.min(4000, 500 + body.requirements.length * 80);
 
+        // Call OpenAI - NO structured output for speed
+        const startTime = Date.now();
         const response = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             temperature: 0.1,
@@ -280,38 +247,10 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
             avgConfidence: result.summary.avgConfidenceScore,
         });
 
+        // Return data directly (createAIHandler wraps with statusCode/headers)
         return {
-            statusCode: 200,
-            headers: corsHeaders,
-            body: JSON.stringify({
-                success: true,
-                ...result,
-            }),
-        };
-
-    } catch (error) {
-        console.error('[ai-bulk-estimate] Error:', error);
-
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        const isTimeout = errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT');
-
-        return {
-            statusCode: isTimeout ? 504 : 500,
-            headers: corsHeaders,
-            body: JSON.stringify({
-                success: false,
-                estimations: [],
-                summary: {
-                    totalRequirements: 0,
-                    successfulEstimations: 0,
-                    failedEstimations: 0,
-                    totalBaseDays: 0,
-                    avgConfidenceScore: 0,
-                },
-                error: isTimeout
-                    ? 'Timeout durante la generazione delle stime. Prova con meno requisiti.'
-                    : `Errore durante la generazione: ${errorMessage}`,
-            }),
+            success: true,
+            ...result,
         };
     }
-};
+});

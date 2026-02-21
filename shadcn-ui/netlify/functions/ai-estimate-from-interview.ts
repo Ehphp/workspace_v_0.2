@@ -11,11 +11,14 @@
  * POST /.netlify/functions/ai-estimate-from-interview
  */
 
-import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
-import OpenAI from 'openai';
-import { sanitizePromptInput } from '../../src/types/ai-validation';
-import { validateAuthToken, logAuthDebugInfo } from './lib/auth/auth-validator';
-import { getCorsHeaders, isOriginAllowed } from './lib/security/cors';
+import { createAIHandler } from './lib/handler';
+import { getOpenAIClient } from './lib/ai/openai-client';
+import { searchSimilarActivities, isVectorSearchEnabled } from './lib/ai/vector-search';
+import { retrieveRAGContext, getRAGSystemPromptAddition } from './lib/ai/rag';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface InterviewAnswer {
     questionId: string;
@@ -41,9 +44,10 @@ interface RequestBody {
     activities: Activity[];
 }
 
-/**
- * System prompt for generating estimate from interview
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// System Prompt
+// ─────────────────────────────────────────────────────────────────────────────
+
 const SYSTEM_PROMPT = `Sei un Tech Lead esperto che deve selezionare le attività per implementare un requisito software.
 
 HAI A DISPOSIZIONE:
@@ -117,22 +121,9 @@ GENERATED TITLE:
 - Deve catturare l'essenza funzionale del requisito
 - Esempio: "Report utilizzo ESM per HR" o "Integrazione API candidature Talentum"`;
 
-/**
- * Initialize OpenAI client
- */
-function getOpenAIClient(): OpenAI {
-    const apiKey = process.env.OPENAI_API_KEY;
-
-    if (!apiKey) {
-        throw new Error('OPENAI_API_KEY environment variable is not set');
-    }
-
-    return new OpenAI({
-        apiKey,
-        timeout: 55000, // 55 second timeout (Netlify has 60s limit)
-        maxRetries: 1,
-    });
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper Functions
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Build JSON Schema for structured output with dynamic activity codes
@@ -224,131 +215,92 @@ function formatInterviewAnswers(answers: Record<string, InterviewAnswer>): strin
         .join('\n');
 }
 
-/**
- * Main handler
- */
-export const handler: Handler = async (
-    event: HandlerEvent,
-    context: HandlerContext
-) => {
-    const originHeader = event.headers.origin || event.headers.Origin;
-    const headers = getCorsHeaders(originHeader);
+// ─────────────────────────────────────────────────────────────────────────────
+// Handler
+// ─────────────────────────────────────────────────────────────────────────────
 
-    // Debug logging
-    logAuthDebugInfo();
-    console.log('[ai-estimate-from-interview] Request received');
+export const handler = createAIHandler<RequestBody>({
+    name: 'ai-estimate-from-interview',
+    requireAuth: false, // Allow unauthenticated for Quick Estimate demo
+    requireOpenAI: true,
 
-    // Handle preflight requests
-    if (event.httpMethod === 'OPTIONS') {
-        return {
-            statusCode: 200,
-            headers,
-            body: '',
-        };
-    }
-
-    // Only allow POST
-    if (event.httpMethod !== 'POST') {
-        return {
-            statusCode: 405,
-            headers,
-            body: JSON.stringify({ error: 'Method Not Allowed' }),
-        };
-    }
-
-    // Origin allowlist check
-    if (!isOriginAllowed(originHeader)) {
-        console.warn('[ai-estimate-from-interview] Blocked origin:', originHeader);
-        return {
-            statusCode: 403,
-            headers,
-            body: JSON.stringify({ error: 'Origin not allowed' }),
-        };
-    }
-
-    // Auth validation (allow unauthenticated for Quick Estimate demo)
-    const authHeader = event.headers.authorization || (event.headers.Authorization as string | undefined);
-    const authResult = await validateAuthToken(authHeader);
-
-    if (!authResult.ok && authHeader) {
-        return {
-            statusCode: 401,
-            headers,
-            body: JSON.stringify({ error: authResult.message || 'Unauthorized' }),
-        };
-    }
-
-    try {
-        // Parse request body
-        const body: RequestBody = JSON.parse(event.body || '{}');
-
-        // Validate required fields
+    validateBody: (body) => {
         if (!body.description || typeof body.description !== 'string') {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Missing description',
-                    message: 'La descrizione del requisito è obbligatoria.',
-                }),
-            };
+            return 'La descrizione del requisito è obbligatoria.';
         }
-
         if (!body.answers || typeof body.answers !== 'object') {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Missing answers',
-                    message: 'Le risposte all\'interview sono obbligatorie.',
-                }),
-            };
+            return 'Le risposte all\'interview sono obbligatorie.';
         }
-
         if (!body.activities || !Array.isArray(body.activities) || body.activities.length === 0) {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Missing activities catalog',
-                    message: 'Il catalogo delle attività è obbligatorio.',
-                }),
-            };
+            return 'Il catalogo delle attività è obbligatorio.';
         }
+        return null;
+    },
+
+    handler: async (body, ctx) => {
+        // Get OpenAI client with extended timeout (55s)
+        const openai = getOpenAIClient({ timeout: 55000, maxRetries: 1 });
 
         // Sanitize description
-        const sanitizedDescription = sanitizePromptInput(body.description);
+        const sanitizedDescription = ctx.sanitize(body.description);
 
-        // Check OpenAI configuration
-        if (!process.env.OPENAI_API_KEY) {
-            console.error('[ai-estimate-from-interview] OPENAI_API_KEY not configured');
-            return {
-                statusCode: 503,
-                headers,
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Service configuration error',
-                    message: 'Il servizio AI non è configurato. Contatta il supporto.',
-                }),
-            };
+        // Use vector search for more relevant activities (Phase 2)
+        let activitiesToUse: Activity[] = body.activities;
+        let searchMethod = 'frontend-provided';
+
+        if (isVectorSearchEnabled() && body.techCategory) {
+            try {
+                console.log('[ai-estimate-from-interview] Using vector search for activity retrieval');
+                const techCategories = [body.techCategory, 'MULTI'];
+                const searchResult = await searchSimilarActivities(
+                    sanitizedDescription,
+                    techCategories,
+                    35, // Top-35 most relevant activities
+                    0.45
+                );
+
+                if (searchResult.results.length > 0) {
+                    activitiesToUse = searchResult.results.map(r => ({
+                        code: r.code,
+                        name: r.name,
+                        description: r.description || '',
+                        base_hours: r.base_hours,
+                        group: r.group,
+                        tech_category: r.tech_category,
+                    }));
+                    searchMethod = searchResult.metrics.usedFallback ? 'vector-fallback' : 'vector';
+                    console.log(`[ai-estimate-from-interview] Vector search returned ${activitiesToUse.length} activities in ${searchResult.metrics.latencyMs}ms`);
+                }
+            } catch (err) {
+                console.warn('[ai-estimate-from-interview] Vector search failed, using provided activities:', err);
+            }
         }
 
-        // Initialize OpenAI client
-        const openai = getOpenAIClient();
+        // Retrieve RAG context (Phase 4: Historical Learning)
+        let ragContext = { hasExamples: false, promptFragment: '', searchLatencyMs: 0 } as any;
+        if (isVectorSearchEnabled()) {
+            try {
+                ragContext = await retrieveRAGContext(sanitizedDescription);
+                if (ragContext.hasExamples) {
+                    console.log(`[ai-estimate-from-interview] RAG: found ${ragContext.examples?.length || 0} historical examples`);
+                }
+            } catch (err) {
+                console.warn('[ai-estimate-from-interview] RAG retrieval failed:', err);
+            }
+        }
 
         // Format data for prompt
-        const activitiesCatalog = formatActivitiesCatalog(body.activities);
+        const activitiesCatalog = formatActivitiesCatalog(activitiesToUse);
         const interviewAnswers = formatInterviewAnswers(body.answers);
-        const validActivityCodes = body.activities.map(a => a.code);
+        const validActivityCodes = activitiesToUse.map(a => a.code);
 
         console.log('[ai-estimate-from-interview] Processing:', {
             descriptionLength: sanitizedDescription.length,
             answersCount: Object.keys(body.answers).length,
-            activitiesCount: body.activities.length,
+            activitiesCount: activitiesToUse.length,
             techCategory: body.techCategory,
+            searchMethod,
+            ragExamples: ragContext.examples?.length || 0,
             validCodes: validActivityCodes.slice(0, 5).join(', ') + (validActivityCodes.length > 5 ? '...' : ''),
         });
 
@@ -356,8 +308,8 @@ export const handler: Handler = async (
         // This is CRITICAL to prevent AI from inventing codes
         const responseSchema = buildResponseSchema(validActivityCodes);
 
-        // Build user prompt
-        const userPrompt = `REQUISITO:
+        // Build user prompt with optional RAG context
+        let userPrompt = `REQUISITO:
 ${sanitizedDescription}
 
 RISPOSTE INTERVIEW TECNICA:
@@ -371,6 +323,17 @@ IMPORTANTE: Puoi usare ESCLUSIVAMENTE i codici attività elencati sopra. Non inv
 Analizza le risposte e seleziona le attività necessarie per implementare questo requisito.
 Collega ogni attività alla risposta che l'ha motivata.`;
 
+        // Add RAG examples if available
+        if (ragContext.hasExamples && ragContext.promptFragment) {
+            userPrompt = userPrompt + '\n' + ragContext.promptFragment;
+        }
+
+        // Build system prompt with optional RAG enhancement
+        let systemPrompt = SYSTEM_PROMPT;
+        if (ragContext.hasExamples) {
+            systemPrompt = systemPrompt + '\n' + getRAGSystemPromptAddition();
+        }
+
         // Call OpenAI with dynamic schema containing enum constraint
         // Using temperature=0 and seed for deterministic responses
         const response = await openai.chat.completions.create({
@@ -381,7 +344,7 @@ Collega ogni attività alla risposta che l'ha motivata.`;
             messages: [
                 {
                     role: 'system',
-                    content: SYSTEM_PROMPT
+                    content: systemPrompt
                 },
                 {
                     role: 'user',
@@ -429,51 +392,16 @@ Collega ogni attività alla risposta che l'ha motivata.`;
             suggestedRisksCount: result.suggestedRisks?.length || 0,
         });
 
-        // Return successful response
+        // Return successful response (createAIHandler wraps with statusCode/headers)
         return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({
-                success: true,
-                generatedTitle: result.generatedTitle || '',
-                activities: validatedActivities,
-                totalBaseDays: Number(totalBaseDays.toFixed(2)),
-                reasoning: result.reasoning,
-                confidenceScore: Number(confidenceScore.toFixed(2)),
-                suggestedDrivers: result.suggestedDrivers || [],
-                suggestedRisks: result.suggestedRisks || [],
-            }),
-        };
-
-    } catch (error) {
-        console.error('[ai-estimate-from-interview] Error:', error);
-
-        const isTimeoutError = error instanceof Error && error.message.includes('timeout');
-        const isParseError = error instanceof SyntaxError;
-
-        let statusCode = 500;
-        let message = 'Errore durante la generazione della stima. Riprova.';
-
-        if (isTimeoutError) {
-            statusCode = 504;
-            message = 'Il servizio AI ha impiegato troppo tempo. Riprova.';
-        } else if (isParseError) {
-            statusCode = 502;
-            message = 'Risposta AI non valida. Riprova.';
-        }
-
-        return {
-            statusCode,
-            headers,
-            body: JSON.stringify({
-                success: false,
-                error: error instanceof Error ? error.message : 'Unknown error',
-                message,
-                activities: [],
-                totalBaseDays: 0,
-                reasoning: '',
-                confidenceScore: 0,
-            }),
+            success: true,
+            generatedTitle: result.generatedTitle || '',
+            activities: validatedActivities,
+            totalBaseDays: Number(totalBaseDays.toFixed(2)),
+            reasoning: result.reasoning,
+            confidenceScore: Number(confidenceScore.toFixed(2)),
+            suggestedDrivers: result.suggestedDrivers || [],
+            suggestedRisks: result.suggestedRisks || [],
         };
     }
-};
+});

@@ -80,15 +80,15 @@ export function EstimationTab({
                     name: activity?.name || 'Unknown',
                     group: activity?.group || 'DEV',
                     hours: activity?.base_hours || 0,
-                    isAiSuggested: false, // TODO: Track AI suggestions
+                    isAiSuggested: estimationState.aiSuggestedIds.includes(id),
                 };
             }),
-            drivers: Object.entries(estimationState.selectedDriverValues).map(([code, value]) => {
-                const driver = data.drivers.find(d => d.code === code);
+            drivers: Object.entries(estimationState.selectedDriverValues).map(([driverId, value]) => {
+                const driver = data.drivers.find(d => d.id === driverId);
                 const option = driver?.options.find(o => o.value === value);
                 return {
-                    code,
-                    name: driver?.name || code,
+                    code: driver?.code || driverId,
+                    name: driver?.name || driverId,
                     value,
                     label: option?.label || value,
                     multiplier: option?.multiplier || 1.0,
