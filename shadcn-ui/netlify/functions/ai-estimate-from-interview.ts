@@ -12,7 +12,8 @@
  */
 
 import { createAIHandler } from './lib/handler';
-import { getOpenAIClient } from './lib/ai/openai-client';
+import { getDefaultProvider } from './lib/ai/openai-client';
+import { getPrompt } from './lib/ai/prompt-registry';
 import { searchSimilarActivities, isVectorSearchEnabled } from './lib/ai/vector-search';
 import { retrieveRAGContext, getRAGSystemPromptAddition } from './lib/ai/rag';
 
@@ -233,7 +234,7 @@ function formatInterviewAnswers(answers: Record<string, InterviewAnswer>): strin
 export const handler = createAIHandler<RequestBody>({
     name: 'ai-estimate-from-interview',
     requireAuth: false, // Allow unauthenticated for Quick Estimate demo
-    requireOpenAI: true,
+    requireLLM: true,
 
     validateBody: (body) => {
         if (!body.description || typeof body.description !== 'string') {
@@ -249,8 +250,8 @@ export const handler = createAIHandler<RequestBody>({
     },
 
     handler: async (body, ctx) => {
-        // Get OpenAI client with extended timeout (55s)
-        const openai = getOpenAIClient({ timeout: 55000, maxRetries: 1 });
+        // Get LLM provider
+        const provider = getDefaultProvider();
 
         // Sanitize description
         const sanitizedDescription = ctx.sanitize(body.description);
@@ -351,39 +352,28 @@ Collega ogni attività alla risposta che l'ha motivata.`;
         }
 
         // Build system prompt with optional RAG enhancement
-        let systemPrompt = SYSTEM_PROMPT;
+        let systemPrompt = await getPrompt('estimate_from_interview') ?? SYSTEM_PROMPT;
         if (ragContext.hasExamples) {
             systemPrompt = systemPrompt + '\n' + getRAGSystemPromptAddition();
         }
 
         console.log(`[ai-estimate-from-interview] Using model: ${AI_MODEL}`);
 
-        // Call OpenAI with dynamic schema containing enum constraint
-        // GPT-5 only supports temperature=1 (default), seed still works for reproducibility
-        const response = await openai.chat.completions.create({
+        // Call LLM with dynamic schema containing enum constraint
+        const responseContent = await provider.generateContent({
             model: AI_MODEL,
-            seed: 42, // Fixed seed for reproducible results
-            max_completion_tokens: 2500, // GPT-5 uses max_completion_tokens instead of max_tokens
-            messages: [
-                {
-                    role: 'system',
-                    content: systemPrompt
-                },
-                {
-                    role: 'user',
-                    content: userPrompt
-                }
-            ],
-            response_format: responseSchema,
+            options: { timeout: 55000 },
+            systemPrompt: systemPrompt,
+            userPrompt: userPrompt,
+            responseFormat: responseSchema as any,
         });
 
         // Parse response
-        const content = response.choices[0]?.message?.content;
-        if (!content) {
-            throw new Error('Empty response from OpenAI');
+        if (!responseContent) {
+            throw new Error('Empty response from LLM');
         }
 
-        const result = JSON.parse(content);
+        const result = JSON.parse(responseContent);
 
         // Validate activities are from catalog
         const validatedActivities = result.activities.filter((a: any) =>

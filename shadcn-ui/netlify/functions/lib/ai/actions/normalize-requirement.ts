@@ -1,6 +1,7 @@
-import { getOpenAIClient } from '../openai-client';
+import { getDefaultProvider } from '../openai-client';
 import { getCachedResponse, setCachedResponse } from '../ai-cache';
 import { createNormalizationSchema, createNormalizationSystemPrompt } from '../prompt-builder';
+import { getPrompt } from '../prompt-registry';
 
 export interface NormalizeRequirementRequest {
     description: string;
@@ -39,28 +40,25 @@ export async function normalizeRequirement(
         }
     }
 
-    const systemPrompt = createNormalizationSystemPrompt();
+    const systemPrompt = await getPrompt('normalization') ?? createNormalizationSystemPrompt();
     const userPrompt = description.substring(0, 2000);
     const responseSchema = createNormalizationSchema();
 
-    const openai = getOpenAIClient();
-    const completion = await openai.chat.completions.create({
+    const provider = getDefaultProvider();
+    const responseContent = await provider.generateContent({
         model: 'gpt-4o-mini',
-        messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-        ],
-        response_format: responseSchema,
         temperature: 0.2, // Low temperature for consistency
-        max_tokens: 1000,
+        maxTokens: 1000,
+        responseFormat: responseSchema as any,
+        systemPrompt: systemPrompt,
+        userPrompt: userPrompt
     });
 
-    const parsedContent = completion.choices[0]?.message?.content;
-    if (!parsedContent) {
-        throw new Error('No response from OpenAI for normalization');
+    if (!responseContent) {
+        throw new Error('No response from LLM for normalization');
     }
 
-    const result = JSON.parse(parsedContent);
+    const result = JSON.parse(responseContent);
 
     // Cache the result (skip in test mode)
     if (!testMode) {

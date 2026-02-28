@@ -226,8 +226,8 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
                                                         onClick={onRequestConsultant}
                                                         disabled={isConsultantLoading}
                                                         className={`w-full h-9 text-xs ${consultantAnalysis
-                                                                ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                                                                : 'border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700'
+                                                            ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                                            : 'border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700'
                                                             } transition-colors`}
                                                     >
                                                         {isConsultantLoading ? (

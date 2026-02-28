@@ -5,13 +5,14 @@
  * using AI-generated custom activities (no catalog needed).
  */
 
-import OpenAI from 'openai';
+import { ILLMProvider } from '../openai-client';
 import {
     PRESET_GENERATION_SYSTEM_PROMPT,
     buildPresetGenerationPrompt,
     createPresetGenerationSchema
 } from '../prompts/preset-generation';
 import { sanitizePromptInput } from '../../../../../src/types/ai-validation';
+import { getPrompt } from '../prompt-registry';
 
 interface GeneratePresetInput {
     description: string;
@@ -130,7 +131,7 @@ function calculateMetadata(preset: any, generationTimeMs: number): any {
  */
 export async function generatePreset(
     input: GeneratePresetInput,
-    openaiClient: OpenAI
+    provider: ILLMProvider
 ): Promise<PresetGenerationResponse> {
     const startTime = Date.now();
 
@@ -155,31 +156,23 @@ export async function generatePreset(
         console.log('[generate-preset] Calling OpenAI for preset generation...');
         console.log('[generate-preset] Prompt length:', userPrompt.length);
 
-        // 3. Call OpenAI with structured output
-        const completion = await openaiClient.chat.completions.create({
+        const systemPrompt = await getPrompt('preset_generation') ?? PRESET_GENERATION_SYSTEM_PROMPT;
+
+        const responseContent = await provider.generateContent({
             model: 'gpt-4o-mini',
             temperature: 0.2, // Low temperature for consistency
-            max_tokens: 4000, // Allow for detailed response
-            response_format: { type: 'json_object' },
-            messages: [
-                {
-                    role: 'system',
-                    content: PRESET_GENERATION_SYSTEM_PROMPT
-                },
-                {
-                    role: 'user',
-                    content: userPrompt
-                }
-            ]
+            maxTokens: 4000,  // Allow for detailed response
+            responseFormat: { type: 'json_object' },
+            systemPrompt: systemPrompt,
+            userPrompt: userPrompt
         });
 
         const duration = Date.now() - startTime;
-        console.log(`[generate-preset] OpenAI call completed in ${duration}ms`);
+        console.log(`[generate-preset] LLM call completed in ${duration}ms`);
 
         // 4. Parse response
-        const responseContent = completion.choices[0]?.message?.content;
         if (!responseContent) {
-            throw new Error('Empty response from OpenAI');
+            throw new Error('Empty response from LLM');
         }
 
         const aiResponse: PresetGenerationResponse = JSON.parse(responseContent);

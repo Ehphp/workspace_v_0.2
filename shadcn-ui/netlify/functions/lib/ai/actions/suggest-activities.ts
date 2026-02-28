@@ -1,4 +1,4 @@
-import { getOpenAIClient } from '../openai-client';
+import { getDefaultProvider } from '../openai-client';
 import { getCachedResponse, setCachedResponse, getCacheKey } from '../ai-cache';
 import {
     createDescriptivePrompt,
@@ -179,33 +179,29 @@ export async function suggestActivities(request: SuggestActivitiesRequest): Prom
     console.log('Using structured outputs with', relevantActivities.length, 'valid activity codes in enum');
 
     // Call OpenAI API with structured outputs
-    const openai = getOpenAIClient();
+    const provider = getDefaultProvider();
     const temperature = testMode ? 0.7 : 0.0;
-    const response = await openai.chat.completions.create({
+    const responseContent = await provider.generateContent({
         model: 'gpt-4o-mini',
-        messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-        ],
-        response_format: responseSchema,
         temperature,
-        max_tokens: 500,
+        maxTokens: 500,
+        options: { timeout: 30000 },
+        responseFormat: responseSchema as any,
+        systemPrompt: systemPrompt,
+        userPrompt: userPrompt
     });
 
     console.log('Using temperature:', temperature, '(determinism level:', temperature === 0 ? 'maximum' : 'test mode', ')');
-    console.log('OpenAI response received');
+    console.log('LLM response received');
 
-    const message = response.choices[0]?.message;
-    const parsedContent = message?.content;
-
-    if (!parsedContent) {
-        throw new Error('No response from OpenAI');
+    if (!responseContent) {
+        throw new Error('No response from LLM');
     }
 
     // Parse structured output
     let suggestion: any;
     try {
-        suggestion = JSON.parse(parsedContent);
+        suggestion = JSON.parse(responseContent);
     } catch (parseError) {
         console.error('JSON parse error:', parseError);
         throw new Error('Invalid JSON response from AI');
@@ -222,9 +218,13 @@ export async function suggestActivities(request: SuggestActivitiesRequest): Prom
     );
 
     const finalSuggestion: AIActivitySuggestion = validatedSuggestion.isValidRequirement
-        ? validatedSuggestion
+        ? {
+            isValidRequirement: validatedSuggestion.isValidRequirement,
+            activityCodes: validatedSuggestion.activityCodes,
+            reasoning: validatedSuggestion.reasoning
+        }
         : {
-            ...validatedSuggestion,
+            isValidRequirement: validatedSuggestion.isValidRequirement,
             activityCodes: [],
             reasoning: validatedSuggestion.reasoning || 'Requirement description is invalid or too vague',
         };

@@ -12,7 +12,7 @@
  */
 
 import { createAIHandler } from './lib/handler';
-import { getOpenAIClient } from './lib/ai/openai-client';
+import { getDefaultProvider } from './lib/ai/openai-client';
 
 interface ProjectContext {
     name: string;
@@ -309,7 +309,7 @@ function getTechCategoryDescription(category: string): string {
 export const handler = createAIHandler<RequestBody>({
     name: 'ai-requirement-interview',
     requireAuth: false, // Allow unauthenticated for Quick Estimate demo
-    requireOpenAI: true,
+    requireLLM: true,
 
     validateBody: (body) => {
         if (!body.description || typeof body.description !== 'string') {
@@ -332,8 +332,8 @@ export const handler = createAIHandler<RequestBody>({
             throw new Error('La descrizione è troppo lunga (max 2000 caratteri).');
         }
 
-        // Initialize OpenAI client with 'extended' preset (55s timeout)
-        const openai = getOpenAIClient('extended');
+        // Initialize LLM provider with extended timeout
+        const provider = getDefaultProvider();
         const techCategoryDescription = getTechCategoryDescription(body.techCategory);
         const techSpecificPrompt = getTechSpecificPrompt(body.techCategory);
 
@@ -383,28 +383,24 @@ Genera domande tecniche SPECIFICHE per ${techCategoryDescription} che chiariscon
         console.log('[ai-requirement-interview] Calling OpenAI API...');
         const startTime = Date.now();
 
-        // Call OpenAI with deterministic settings
-        const response = await openai.chat.completions.create({
+        // Call LLM with deterministic settings
+        const responseContent = await provider.generateContent({
             model: 'gpt-4o',
             temperature: 0,
-            seed: 42,
-            max_tokens: 2000,
-            messages: [
-                { role: 'system', content: systemPromptWithCategory },
-                { role: 'user', content: userPrompt }
-            ],
-            response_format: RESPONSE_SCHEMA,
+            options: { timeout: 55000 },
+            systemPrompt: systemPromptWithCategory,
+            userPrompt: userPrompt,
+            responseFormat: RESPONSE_SCHEMA as any,
         });
 
-        console.log(`[ai-requirement-interview] OpenAI responded in ${Date.now() - startTime}ms`);
+        console.log(`[ai-requirement-interview] LLM responded in ${Date.now() - startTime}ms`);
 
         // Parse response
-        const content = response.choices[0]?.message?.content;
-        if (!content) {
-            throw new Error('Empty response from OpenAI');
+        if (!responseContent) {
+            throw new Error('Empty response from LLM');
         }
 
-        const result = JSON.parse(content);
+        const result = JSON.parse(responseContent);
 
         // Validate we got questions
         if (!result.questions || result.questions.length === 0) {

@@ -5,9 +5,10 @@
  * based on user's technology description.
  */
 
-import OpenAI from 'openai';
+import { ILLMProvider } from '../openai-client';
 import { QUESTION_GENERATION_SYSTEM_PROMPT, FALLBACK_QUESTIONS } from '../prompts/question-generation';
 import { sanitizePromptInput } from '../../../../../src/types/ai-validation';
+import { getPrompt } from '../prompt-registry';
 
 interface GenerateQuestionsInput {
     description: string;
@@ -139,7 +140,7 @@ function validateQuestions(questions: AiQuestion[]): { valid: boolean; error?: s
  */
 export async function generateQuestions(
     input: GenerateQuestionsInput,
-    openaiClient: OpenAI
+    provider: ILLMProvider
 ): Promise<QuestionGenerationResponse> {
     const startTime = Date.now();
 
@@ -163,30 +164,22 @@ export async function generateQuestions(
         // 3. Call OpenAI with JSON mode
         // Temperature 0.5 for balanced creativity (reduced from 0.7 for speed)
         // Reduced max_tokens to 1000 for faster response
-        const completion = await openaiClient.chat.completions.create({
+        const systemPrompt = await getPrompt('question_generation') ?? QUESTION_GENERATION_SYSTEM_PROMPT;
+
+        const responseContent = await provider.generateContent({
             model: 'gpt-4o-mini',
             temperature: 0.5,
-            max_tokens: 1000, // Reduced from 2000 for speed
-            response_format: { type: 'json_object' },
-            messages: [
-                {
-                    role: 'system',
-                    content: QUESTION_GENERATION_SYSTEM_PROMPT
-                },
-                {
-                    role: 'user',
-                    content: `Generate 3-4 interview questions for: ${sanitizedDescription}`
-                }
-            ]
+            maxTokens: 1000,
+            responseFormat: { type: 'json_object' },
+            systemPrompt: systemPrompt,
+            userPrompt: `Generate 3-4 interview questions for: ${sanitizedDescription}`
         });
 
         const duration = Date.now() - startTime;
         console.log(`[generate-questions] OpenAI call completed in ${duration}ms`);
 
-        // 4. Parse and validate response
-        const responseContent = completion.choices[0]?.message?.content;
         if (!responseContent) {
-            throw new Error('Empty response from OpenAI');
+            throw new Error('Empty response from LLM');
         }
 
         const aiResponse: QuestionGenerationResponse = JSON.parse(responseContent);

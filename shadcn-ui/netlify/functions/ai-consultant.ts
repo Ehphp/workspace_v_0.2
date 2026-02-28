@@ -37,7 +37,7 @@ interface RequestBody {
 export const handler = createAIHandler<RequestBody>({
     name: 'ai-consultant',
     requireAuth: true,
-    requireOpenAI: true,
+    requireLLM: true,
     rateLimit: true, // Enable rate limiting for this expensive endpoint
 
     validateBody: (body) => {

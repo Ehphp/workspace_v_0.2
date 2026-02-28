@@ -11,7 +11,7 @@
  */
 
 import { createAIHandler } from './lib/handler';
-import { getOpenAIClient } from './lib/ai/openai-client';
+import { getDefaultProvider } from './lib/ai/openai-client';
 import { createBulkInterviewPrompt, TECH_SPECIFIC_BULK_FOCUS } from './lib/ai/prompt-templates';
 
 interface RequirementInput {
@@ -52,7 +52,7 @@ function formatRequirementsForPrompt(requirements: RequirementInput[]): string {
 export const handler = createAIHandler<RequestBody>({
     name: 'ai-bulk-interview',
     requireAuth: false, // Auth is optional but validated if present
-    requireOpenAI: true,
+    requireLLM: true,
 
     validateBody: (body) => {
         if (!body.requirements || !Array.isArray(body.requirements) || body.requirements.length === 0) {
@@ -74,8 +74,8 @@ export const handler = createAIHandler<RequestBody>({
             hasProjectContext: !!body.projectContext,
         });
 
-        // Initialize OpenAI client with 'bulk' preset (28s timeout)
-        const openai = getOpenAIClient('bulk');
+        // Initialize LLM provider with 'bulk' preset
+        const provider = getDefaultProvider();
         const startTime = Date.now();
 
         // Build system prompt using shared templates
@@ -90,32 +90,27 @@ export const handler = createAIHandler<RequestBody>({
         });
 
         // Single fast API call
-        const response = await openai.chat.completions.create({
+        const responseContent = await provider.generateContent({
             model: 'gpt-4o-mini',
             temperature: 0.1,
-            max_tokens: 1800, // Just enough for 6-8 questions
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
-            ],
-            response_format: { type: 'json_object' },
+            maxTokens: 1800,
+            options: { timeout: 28000 },
+            responseFormat: { type: 'json_object' },
+            systemPrompt: systemPrompt,
+            userPrompt: userPrompt
         });
 
         const elapsed = Date.now() - startTime;
-        console.log('[ai-bulk-interview] OpenAI response:', {
+        console.log('[ai-bulk-interview] LLM response:', {
             elapsed: `${elapsed}ms`,
-            tokens: response.usage?.total_tokens,
-            promptTokens: response.usage?.prompt_tokens,
-            completionTokens: response.usage?.completion_tokens,
         });
 
         // Parse response
-        const content = response.choices[0]?.message?.content;
-        if (!content) {
-            throw new Error('Empty response from OpenAI');
+        if (!responseContent) {
+            throw new Error('Empty response from LLM');
         }
 
-        const result = JSON.parse(content);
+        const result = JSON.parse(responseContent);
 
         // Normalize questions
         const questions = (result.questions || []).map((q: any, i: number) => ({

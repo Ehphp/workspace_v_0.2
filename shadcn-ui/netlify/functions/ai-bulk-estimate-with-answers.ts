@@ -8,7 +8,7 @@
  */
 
 import { createAIHandler } from './lib/handler';
-import { getOpenAIClient } from './lib/ai/openai-client';
+import { getDefaultProvider } from './lib/ai/openai-client';
 import { createBulkEstimatePrompt } from './lib/ai/prompt-templates';
 import { searchSimilarActivities, isVectorSearchEnabled } from './lib/ai/vector-search';
 
@@ -85,7 +85,7 @@ function formatActivitiesForPrompt(activities: Activity[]): string {
 export const handler = createAIHandler<RequestBody>({
     name: 'ai-bulk-estimate-with-answers',
     requireAuth: false, // Auth is optional, logged but not enforced
-    requireOpenAI: true,
+    requireLLM: true,
 
     validateBody: (body) => {
         if (!body.requirements || !Array.isArray(body.requirements) || body.requirements.length === 0) {
@@ -101,8 +101,8 @@ export const handler = createAIHandler<RequestBody>({
     },
 
     handler: async (body, ctx) => {
-        // Get OpenAI client with bulk timeout (28s)
-        const openai = getOpenAIClient({ timeout: 28000, maxRetries: 0 });
+        // Get LLM provider
+        const provider = getDefaultProvider();
         // Use vector search for more relevant activities (Phase 2)
         let activitiesToUse: Activity[] = body.activities;
         let searchMethod = 'frontend-provided';
@@ -169,32 +169,29 @@ export const handler = createAIHandler<RequestBody>({
         // Each estimation needs ~60 tokens, plus overhead
         const maxTokens = Math.min(4000, 500 + body.requirements.length * 80);
 
-        // Call OpenAI - NO structured output for speed
+        // Call LLM - NO structured output for speed
         const startTime = Date.now();
-        const response = await openai.chat.completions.create({
+        const responseContent = await provider.generateContent({
             model: 'gpt-4o-mini',
             temperature: 0.1,
-            max_tokens: maxTokens,
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
-            ],
-            response_format: { type: 'json_object' },
+            maxTokens: maxTokens,
+            options: { timeout: 28000 },
+            responseFormat: { type: 'json_object' },
+            systemPrompt: systemPrompt,
+            userPrompt: userPrompt
         });
 
         const elapsed = Date.now() - startTime;
-        console.log('[ai-bulk-estimate] OpenAI response received:', {
-            elapsed: `${elapsed}ms`,
-            tokens: response.usage?.total_tokens,
+        console.log('[ai-bulk-estimate] LLM response received:', {
+            elapsed: `${elapsed}ms`
         });
 
         // Parse response
-        const content = response.choices[0]?.message?.content;
-        if (!content) {
-            throw new Error('Empty response from OpenAI');
+        if (!responseContent) {
+            throw new Error('Empty response from LLM');
         }
 
-        const result = JSON.parse(content);
+        const result = JSON.parse(responseContent);
 
         // Ensure estimations array exists and map indices back to UUIDs
         const rawEstimations = result.estimations || [];

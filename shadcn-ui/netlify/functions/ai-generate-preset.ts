@@ -12,7 +12,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 import { createAIHandler } from './lib/handler';
-import { getOpenAIClient } from './lib/ai/openai-client';
+import { getDefaultProvider } from './lib/ai/openai-client';
 import { searchSimilarActivities, isVectorSearchEnabled } from './lib/ai/vector-search';
 
 interface RequestBody {
@@ -183,7 +183,7 @@ Focus on ATOMIC WORK UNITS, not project phases.
 export const handler = createAIHandler<RequestBody>({
     name: 'ai-generate-preset',
     requireAuth: true,
-    requireOpenAI: true,
+    requireLLM: true,
 
     validateBody: (body) => {
         if (!body.description || typeof body.description !== 'string') {
@@ -202,8 +202,8 @@ export const handler = createAIHandler<RequestBody>({
             throw new Error('La descrizione deve contenere almeno 20 caratteri.');
         }
 
-        // Initialize OpenAI client with complex preset (50s timeout)
-        const openai = getOpenAIClient('complex');
+        // Get default LLM provider
+        const provider = getDefaultProvider();
         const requestId = randomUUID();
         const techCategory = body.suggestedTechCategory || 'MULTI';
 
@@ -265,25 +265,23 @@ Generate a preset with 8-15 activities. Prefer selecting from the catalog above 
 
         const startTime = Date.now();
 
-        const response = await openai.chat.completions.create({
+        const responseContent = await provider.generateContent({
             model: 'gpt-4o',
             temperature: 0.2,
-            max_tokens: 2000,
-            messages: [
-                { role: 'system', content: SYSTEM_PROMPT },
-                { role: 'user', content: userPrompt }
-            ],
-            response_format: { type: 'json_object' }
+            maxTokens: 2000,
+            options: { timeout: 50000 },
+            responseFormat: { type: 'json_object' },
+            systemPrompt: SYSTEM_PROMPT,
+            userPrompt: userPrompt
         });
 
         const generationTimeMs = Date.now() - startTime;
-        const content = response.choices[0]?.message?.content;
 
-        if (!content) {
-            throw new Error('No content in OpenAI response');
+        if (!responseContent) {
+            throw new Error('No content in LLM response');
         }
 
-        const result = JSON.parse(content);
+        const result = JSON.parse(responseContent);
 
         // Validate activity genericness (post-generation check)
         if (result.preset && result.preset.activities) {

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getOpenAIClient, OPENAI_PRESETS } from '../openai-client';
+import { getDefaultProvider, LLM_PRESETS } from '../openai-client';
 import { sanitizePromptInput } from '../../../../../src/types/ai-validation';
 
 /**
@@ -312,27 +312,26 @@ export async function analyzeEstimation(
     const userPrompt = buildUserPrompt(sanitizedRequest);
     const responseSchema = createConsultantSchema();
 
-    const openai = getOpenAIClient(OPENAI_PRESETS.complex);
+    const provider = getDefaultProvider();
+    const responseFormatItem = createConsultantSchema();
 
-    const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-        ],
-        response_format: responseSchema,
-        temperature: 0.0, // Maximum determinism
-        max_tokens: 4000,
-    });
-
-    console.log('[consultant-analysis] OpenAI response received');
-
-    const message = response.choices[0]?.message;
-    const parsedContent = message?.content;
-
-    if (!parsedContent) {
-        throw new Error('No response from OpenAI');
+    let parsedContent: string;
+    try {
+        parsedContent = await provider.generateContent({
+            model: 'gpt-4o',
+            systemPrompt: systemPrompt,
+            userPrompt: userPrompt,
+            temperature: 0.0,
+            maxTokens: 4000,
+            options: LLM_PRESETS.complex,
+            responseFormat: responseFormatItem as any
+        });
+    } catch (error) {
+        console.error('[consultant-analysis] Generation error:', error);
+        throw new Error('Failed to generate response from LLM');
     }
+
+    console.log('[consultant-analysis] AI response received');
 
     // Parse and validate response
     let rawResponse: unknown;

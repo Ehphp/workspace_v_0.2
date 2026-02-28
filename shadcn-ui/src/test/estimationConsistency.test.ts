@@ -19,9 +19,9 @@ describe('Estimation Engine - Consistency Tests', () => {
     describe('calculateBaseDays - Ripetibilità', () => {
         it('should return same result for same activities', () => {
             const activities: SelectedActivity[] = [
-                { code: 'DESIGN', baseDays: 2, isAiSuggested: false },
-                { code: 'DEV', baseDays: 5, isAiSuggested: true },
-                { code: 'TEST', baseDays: 3, isAiSuggested: false },
+                { code: 'DESIGN', baseHours: 16, isAiSuggested: false },
+                { code: 'DEV', baseHours: 40, isAiSuggested: true },
+                { code: 'TEST', baseHours: 24, isAiSuggested: false },
             ];
 
             const result1 = calculateBaseDays(activities);
@@ -46,8 +46,8 @@ describe('Estimation Engine - Consistency Tests', () => {
 
         it('should handle decimal values consistently', () => {
             const activities: SelectedActivity[] = [
-                { code: 'TASK1', baseDays: 1.5, isAiSuggested: false },
-                { code: 'TASK2', baseDays: 2.3, isAiSuggested: false },
+                { code: 'TASK1', baseHours: 12, isAiSuggested: false },
+                { code: 'TASK2', baseHours: 18.4, isAiSuggested: false },
             ];
 
             const result1 = calculateBaseDays(activities);
@@ -132,9 +132,9 @@ describe('Estimation Engine - Consistency Tests', () => {
         it('should return identical results for identical inputs (multiple runs)', () => {
             const input: EstimationInput = {
                 activities: [
-                    { code: 'ANALYSIS', baseDays: 3, isAiSuggested: false },
-                    { code: 'DEV', baseDays: 8, isAiSuggested: true },
-                    { code: 'TEST', baseDays: 4, isAiSuggested: false },
+                    { code: 'ANALYSIS', baseHours: 24, isAiSuggested: false },
+                    { code: 'DEV', baseHours: 64, isAiSuggested: true },
+                    { code: 'TEST', baseHours: 32, isAiSuggested: false },
                 ],
                 drivers: [
                     { code: 'COMPLEXITY', value: 'HIGH', multiplier: 1.2 },
@@ -174,7 +174,7 @@ describe('Estimation Engine - Consistency Tests', () => {
                 {
                     name: 'Simple project',
                     input: {
-                        activities: [{ code: 'DEV', baseDays: 5, isAiSuggested: false }],
+                        activities: [{ code: 'DEV', baseHours: 40, isAiSuggested: false }],
                         drivers: [{ code: 'COMPLEXITY', value: 'LOW', multiplier: 1.0 }],
                         risks: [{ code: 'R_LOW', weight: 5 }],
                     },
@@ -183,8 +183,8 @@ describe('Estimation Engine - Consistency Tests', () => {
                     name: 'Complex project',
                     input: {
                         activities: [
-                            { code: 'DESIGN', baseDays: 10, isAiSuggested: false },
-                            { code: 'DEV', baseDays: 20, isAiSuggested: true },
+                            { code: 'DESIGN', baseHours: 80, isAiSuggested: false },
+                            { code: 'DEV', baseHours: 160, isAiSuggested: true },
                         ],
                         drivers: [
                             { code: 'COMPLEXITY', value: 'HIGH', multiplier: 1.5 },
@@ -224,7 +224,7 @@ describe('Estimation Engine - Consistency Tests', () => {
 
             // Only activities, no drivers or risks
             const minimalInput: EstimationInput = {
-                activities: [{ code: 'TASK', baseDays: 10, isAiSuggested: false }],
+                activities: [{ code: 'TASK', baseHours: 80, isAiSuggested: false }],
                 drivers: [],
                 risks: [],
             };
@@ -274,8 +274,8 @@ describe('Estimation Engine - Consistency Tests', () => {
         it('should detect when different selections produce different results', () => {
             const baseRequirement: EstimationInput = {
                 activities: [
-                    { code: 'ANALYSIS', baseDays: 5, isAiSuggested: false },
-                    { code: 'DEV', baseDays: 10, isAiSuggested: false },
+                    { code: 'ANALYSIS', baseHours: 40, isAiSuggested: false },
+                    { code: 'DEV', baseHours: 80, isAiSuggested: false },
                 ],
                 drivers: [{ code: 'COMPLEXITY', value: 'MEDIUM', multiplier: 1.2 }],
                 risks: [{ code: 'R_MEDIUM', weight: 10 }],
@@ -288,7 +288,7 @@ describe('Estimation Engine - Consistency Tests', () => {
             const optimisticRequirement: EstimationInput = {
                 ...baseRequirement,
                 activities: [
-                    { code: 'ANALYSIS', baseDays: 5, isAiSuggested: false },
+                    { code: 'ANALYSIS', baseHours: 40, isAiSuggested: false },
                 ],
             };
             const result2 = calculateEstimation(optimisticRequirement);
@@ -314,7 +314,7 @@ describe('Estimation Engine - Consistency Tests', () => {
 
         it('should show variance range for same requirement with different scenarios', () => {
             const baseActivities = [
-                { code: 'DEV', baseDays: 10, isAiSuggested: false },
+                { code: 'DEV', baseHours: 80, isAiSuggested: false },
             ];
 
             // Best case

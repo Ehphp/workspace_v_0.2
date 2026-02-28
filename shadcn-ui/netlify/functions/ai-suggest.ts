@@ -47,7 +47,7 @@ interface RequestBody {
 export const handler = createAIHandler<RequestBody>({
     name: 'ai-suggest',
     requireAuth: true,
-    requireOpenAI: true,
+    requireLLM: true,
 
     validateBody: (body) => {
         if (!body.description) {

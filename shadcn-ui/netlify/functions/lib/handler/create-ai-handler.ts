@@ -8,7 +8,7 @@
  * - Origin allowlist
  * - Authentication (optional)
  * - Rate limiting (optional)
- * - OpenAI configuration check
+ * - LLM configuration check
  * - Request body parsing
  * - Standardized error responses
  * 
@@ -28,7 +28,7 @@ import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { validateAuthToken, logAuthDebugInfo } from '../auth/auth-validator';
 import { getCorsHeaders, isOriginAllowed } from '../security/cors';
 import { checkRateLimit } from '../security/rate-limiter';
-import { isOpenAIConfigured } from '../ai/openai-client';
+import { isLLMConfigured } from '../ai/openai-client';
 import { sanitizePromptInput } from '../sanitize';
 
 /**
@@ -69,8 +69,8 @@ export interface AIHandlerConfig<TBody = any, TResponse = any> {
     requireAuth?: boolean;
     /** Enable rate limiting (default: false, disabled in dev) */
     rateLimit?: boolean;
-    /** Check OpenAI API key is configured (default: true) */
-    requireOpenAI?: boolean;
+    /** Check LLM API key is configured (default: true) */
+    requireLLM?: boolean;
     /** Custom body validator (return error message or null if valid) */
     validateBody?: (body: TBody) => string | null;
     /** Business logic handler */
@@ -101,7 +101,7 @@ export function createAIHandler<TBody = any, TResponse = any>(
         name,
         requireAuth = false,
         rateLimit = false,
-        requireOpenAI = true,
+        requireLLM = true,
         validateBody,
         handler: businessLogic
     } = config;
@@ -171,13 +171,13 @@ export function createAIHandler<TBody = any, TResponse = any>(
             }
         }
 
-        // 6. Check OpenAI API key (if required)
-        if (requireOpenAI && !isOpenAIConfigured()) {
-            console.error(`[${name}] OPENAI_API_KEY not configured`);
+        // 6. Check LLM API key (if required)
+        if (requireLLM && !isLLMConfigured()) {
+            console.error(`[${name}] LLM API key not configured`);
             return {
                 statusCode: 500,
                 headers,
-                body: JSON.stringify(createErrorResponse('OPENAI_NOT_CONFIGURED', 'OpenAI API key not configured')),
+                body: JSON.stringify(createErrorResponse('LLM_NOT_CONFIGURED', 'LLM API key not configured')),
             };
         }
 

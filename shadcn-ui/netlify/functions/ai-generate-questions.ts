@@ -8,7 +8,7 @@
  */
 
 import { createAIHandler } from './lib/handler';
-import { getOpenAIClient } from './lib/ai/openai-client';
+import { getDefaultProvider } from './lib/ai/openai-client';
 import { generateQuestions } from './lib/ai/actions/generate-questions';
 
 interface RequestBody {
@@ -19,7 +19,7 @@ interface RequestBody {
 export const handler = createAIHandler<RequestBody>({
     name: 'ai-generate-questions',
     requireAuth: true,
-    requireOpenAI: true,
+    requireLLM: true,
 
     validateBody: (body) => {
         if (!body.description || typeof body.description !== 'string') {
@@ -39,8 +39,8 @@ export const handler = createAIHandler<RequestBody>({
             throw new Error('La descrizione è troppo lunga (max 1000 caratteri).');
         }
 
-        // Initialize OpenAI client with 'quick' preset (20s timeout)
-        const openai = getOpenAIClient('quick');
+        // Get default LLM Provider
+        const provider = getDefaultProvider();
 
         // Generate questions
         console.log('[ai-generate-questions] Calling generateQuestions...');
@@ -49,7 +49,7 @@ export const handler = createAIHandler<RequestBody>({
                 description: sanitizedDescription,
                 userId: ctx.userId || body.userId || 'anonymous'
             },
-            openai
+            provider
         );
 
         // Log metadata (no PII)
