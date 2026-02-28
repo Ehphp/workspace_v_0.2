@@ -1,4 +1,4 @@
-import type { Activity, Driver, Risk, TechnologyPreset } from '@/types/database';
+import type { Activity, Driver, Risk, Technology } from '@/types/database';
 import type { AIActivitySuggestion } from '@/types/estimation';
 import { sanitizePromptInput } from '@/types/ai-validation';
 import { supabase } from '@/lib/supabase';
@@ -6,7 +6,7 @@ import { buildFunctionUrl } from '@/lib/netlify';
 
 interface SuggestActivitiesInput {
   description: string;
-  preset: TechnologyPreset;
+  preset: Technology;
   activities: Activity[];
   drivers?: Driver[];
   risks?: Risk[];
@@ -80,11 +80,11 @@ export async function suggestActivities(
   } catch (error) {
     console.error('Error calling AI suggestion API:', error);
 
-    // Fallback to preset defaults
+    // Fallback: return empty (no template defaults available)
     return {
       isValidRequirement: false,
-      activityCodes: preset.default_activity_codes,
-      reasoning: 'Using preset defaults due to AI service error',
+      activityCodes: [],
+      reasoning: 'AI service error. Please try again.',
     };
   }
 }

@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchRequirementBundle } from '@/lib/api';
 import { toast } from 'sonner';
-import type { Requirement, TechnologyPreset, List, RequirementDriverValue, EstimationWithDetails } from '@/types/database';
+import type { Requirement, Technology, List, RequirementDriverValue, EstimationWithDetails } from '@/types/database';
 
 interface UseRequirementReturn {
     requirement: Requirement | null;
     list: List | null;
-    preset: TechnologyPreset | null;
+    preset: Technology | null;
     driverValues: RequirementDriverValue[];
     assignedEstimation: EstimationWithDetails | null;
     loading: boolean;

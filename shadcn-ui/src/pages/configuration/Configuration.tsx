@@ -166,7 +166,7 @@ export default function Configuration() {
                                 </Button>
                                 <Button
                                     className="bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm flex-1"
-                                    onClick={() => navigate('/configuration/presets')}
+                                    onClick={() => navigate('/configuration/technologies')}
                                 >
                                     Preset
                                     <ArrowRight className="w-4 h-4 ml-2" />

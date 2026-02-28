@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
-import type { TechnologyPreset, Activity, Driver, Risk } from '@/types/database';
+import type { Technology, Activity, Driver, Risk } from '@/types/database';
 import type { EstimationResult } from '@/types/estimation';
 import { calculateEstimation } from '@/lib/estimationEngine';
 
@@ -8,11 +8,15 @@ interface UseEstimationStateProps {
     activities: Activity[];
     drivers: Driver[];
     risks: Risk[];
-    presets: TechnologyPreset[];
+    technologies: Technology[];
+    /** @deprecated Use technologies */
+    presets?: Technology[];
 }
 
 export interface UseEstimationStateReturn {
     // Selections
+    selectedTechnologyId: string;
+    /** @deprecated Use selectedTechnologyId */
     selectedPresetId: string;
     selectedActivityIds: string[];
     aiSuggestedIds: string[];
@@ -20,19 +24,26 @@ export interface UseEstimationStateReturn {
     selectedRiskIds: string[];
 
     // Actions
+    setSelectedTechnologyId: (id: string) => void;
+    /** @deprecated Use setSelectedTechnologyId */
     setSelectedPresetId: (id: string) => void;
     toggleActivity: (id: string) => void;
-    setDriverValue: (driverId: string, value: string) => void; // Use ID instead of code
+    setDriverValue: (driverId: string, value: string) => void;
     setDriverValues: (values: Record<string, string>) => void;
     toggleRisk: (id: string) => void;
+    selectTechnology: (technologyId: string) => void;
+    /** @deprecated Use selectTechnology */
     applyPreset: (presetId: string) => void;
+    /** @deprecated No-op: templates removed */
     applyPresetDefaults: (presetId: string) => void;
     applyAiSuggestions: (activityIds: string[], driverValues?: Record<string, string>, riskIds?: string[]) => void;
     resetSelections: () => void;
 
     // Computed
     estimationResult: EstimationResult | null;
-    selectedPreset: TechnologyPreset | null;
+    selectedTechnology: Technology | null;
+    /** @deprecated Use selectedTechnology */
+    selectedPreset: Technology | null;
     hasSelections: boolean;
     isValid: boolean;
 }
@@ -45,39 +56,33 @@ export function useEstimationState({
     activities,
     drivers,
     risks,
+    technologies,
     presets,
 }: UseEstimationStateProps): UseEstimationStateReturn {
-    const [selectedPresetId, setSelectedPresetId] = useState<string>('');
+    const techs = technologies || presets || [];
+    const [selectedTechnologyId, setSelectedTechnologyId] = useState<string>('');
     const [selectedActivityIds, setSelectedActivityIds] = useState<string[]>([]);
     const [aiSuggestedIds, setAiSuggestedIds] = useState<string[]>([]);
     const [selectedDriverValues, setSelectedDriverValues] = useState<Record<string, string>>({});
     const [selectedRiskIds, setSelectedRiskIds] = useState<string[]>([]);
 
-    // Memoized selected preset
-    const selectedPreset = useMemo(() => {
-        return presets.find((p) => p.id === selectedPresetId) || null;
-    }, [presets, selectedPresetId]);
+    // Memoized selected technology
+    const selectedTechnology = useMemo(() => {
+        return techs.find((t) => t.id === selectedTechnologyId) || null;
+    }, [techs, selectedTechnologyId]);
 
-    // Helper: check if an activity is compatible with the selected preset
-    // Prefers preset's specific activities (default_activity_codes), falls back to tech_category
+    // Check if an activity is compatible with the selected technology (by tech_category)
     const isActivityAllowed = useCallback((activity: Activity | undefined) => {
         if (!activity) return false;
-        if (!selectedPreset) return true; // No preset selected yet -> allow all
-
-        // Use preset's specific activities if available
-        if (selectedPreset.default_activity_codes && selectedPreset.default_activity_codes.length > 0) {
-            return selectedPreset.default_activity_codes.includes(activity.code);
-        }
-
-        // Fallback to tech_category
-        return activity.tech_category === 'MULTI' || activity.tech_category === selectedPreset.tech_category;
-    }, [selectedPreset]);
+        if (!selectedTechnology) return true;
+        return activity.tech_category === selectedTechnology.tech_category || activity.tech_category === 'MULTI';
+    }, [selectedTechnology]);
 
     // Memoized toggle handlers
     const toggleActivity = useCallback((activityId: string) => {
         const activity = activities.find((a) => a.id === activityId);
         if (!isActivityAllowed(activity)) {
-            toast.error('Attivita non compatibile con la tecnologia selezionata.');
+            toast.error('Attività non compatibile con la tecnologia selezionata.');
             return;
         }
 
@@ -107,59 +112,15 @@ export function useEstimationState({
         );
     }, []);
 
-    // Apply preset (only changes the preset ID, no defaults)
-    const applyPreset = useCallback((presetId: string) => {
-        setSelectedPresetId(presetId);
+    // Select technology (just changes the ID)
+    const selectTechnology = useCallback((technologyId: string) => {
+        setSelectedTechnologyId(technologyId);
     }, []);
 
-    // Apply preset defaults (loads activities, drivers, and risks from preset template)
-    const applyPresetDefaults = useCallback((presetId: string) => {
-        const preset = presets.find((p) => p.id === presetId);
-
-        if (!preset) return;
-
-        // Convert driver values from code-based to ID-based
-        const driverValuesById: Record<string, string> = {};
-        if (preset.default_driver_values) {
-            Object.entries(preset.default_driver_values).forEach(([code, value]) => {
-                const driver = drivers.find(d => d.code === code);
-                if (driver) {
-                    driverValuesById[driver.id] = value;
-                }
-            });
-        }
-        setSelectedDriverValues(driverValuesById);
-
-        // Apply default activities
-        const defaultActivityIds = activities
-            .filter((a) => preset.default_activity_codes?.includes(a.code))
-            .map((a) => a.id);
-        setSelectedActivityIds(defaultActivityIds);
-
-        // Warn if some preset activities are missing or inactive
-        if (preset.default_activity_codes?.length) {
-            const missingCodes = preset.default_activity_codes.filter(
-                (code) => !activities.some((a) => a.code === code)
-            );
-            if (missingCodes.length > 0) {
-                toast.warning('Alcune attivita del preset non sono disponibili', {
-                    description: missingCodes.join(', '),
-                });
-            }
-            if (defaultActivityIds.length === 0) {
-                toast.error('Nessuna attivita del preset e disponibile per il calcolo.');
-            }
-        }
-
-        // Apply default risks
-        const defaultRiskIds = risks
-            .filter((r) => preset.default_risks?.includes(r.code))
-            .map((r) => r.id);
-        setSelectedRiskIds(defaultRiskIds);
-
-        // Clear AI suggestions when applying preset template
-        setAiSuggestedIds([]);
-    }, [activities, drivers, risks, presets]);
+    /** @deprecated No-op: preset templates removed. Use AI suggestions instead. */
+    const applyPresetDefaults = useCallback((_presetId: string) => {
+        console.warn('[useEstimationState] applyPresetDefaults is deprecated. Preset templates have been removed. Use AI suggestions instead.');
+    }, []);
 
     // Apply AI suggestions
     const applyAiSuggestions = useCallback((
@@ -167,18 +128,17 @@ export function useEstimationState({
         driverValues?: Record<string, string>, // Can be code-based or ID-based
         riskIds?: string[]
     ) => {
-        // Enforce compatibility with selected technology (MULTI allowed)
+        // Allow any activity within the same tech_category or MULTI
         const allowedActivityIds = activityIds.filter((id) => {
             const activity = activities.find((a) => a.id === id);
-            return isActivityAllowed(activity);
+            if (!activity) return false;
+            if (!selectedTechnology) return true;
+            return activity.tech_category === selectedTechnology.tech_category || activity.tech_category === 'MULTI';
         });
 
         const removed = activityIds.length - allowedActivityIds.length;
         if (removed > 0) {
-            toast.warning('Alcune attivita sono state rimosse perche non compatibili con la tecnologia selezionata.');
-        }
-        if (activityIds.length > 0 && allowedActivityIds.length === 0) {
-            toast.error('Nessuna delle attivita suggerite e compatibile con la tecnologia selezionata.');
+            console.warn(`[applyAiSuggestions] Removed ${removed} activities outside tech_category ${selectedTechnology?.tech_category}`);
         }
 
         setSelectedActivityIds(allowedActivityIds);
@@ -215,11 +175,11 @@ export function useEstimationState({
             // Reset risks if undefined
             setSelectedRiskIds([]);
         }
-    }, [activities, drivers, isActivityAllowed]);
+    }, [activities, drivers, selectedTechnology]);
 
     // Reset all selections
     const resetSelections = useCallback(() => {
-        setSelectedPresetId('');
+        setSelectedTechnologyId('');
         setSelectedActivityIds([]);
         setAiSuggestedIds([]);
         setSelectedDriverValues({});
@@ -228,8 +188,8 @@ export function useEstimationState({
 
     // Validation
     const isValid = useMemo(() => {
-        return selectedPresetId !== '' && selectedActivityIds.length > 0;
-    }, [selectedPresetId, selectedActivityIds.length]);
+        return selectedTechnologyId !== '' && selectedActivityIds.length > 0;
+    }, [selectedTechnologyId, selectedActivityIds.length]);
 
     const hasSelections = useMemo(() => {
         return selectedActivityIds.length > 0 ||
@@ -291,26 +251,30 @@ export function useEstimationState({
 
     return {
         // State
-        selectedPresetId,
+        selectedTechnologyId,
+        selectedPresetId: selectedTechnologyId, // backward compat
         selectedActivityIds,
         aiSuggestedIds,
         selectedDriverValues,
         selectedRiskIds,
 
         // Actions
-        setSelectedPresetId,
+        setSelectedTechnologyId,
+        setSelectedPresetId: setSelectedTechnologyId, // backward compat
         toggleActivity,
         setDriverValue,
         setDriverValues,
         toggleRisk,
-        applyPreset,
+        selectTechnology,
+        applyPreset: selectTechnology, // backward compat
         applyPresetDefaults,
         applyAiSuggestions,
         resetSelections,
 
         // Computed
         estimationResult,
-        selectedPreset,
+        selectedTechnology,
+        selectedPreset: selectedTechnology, // backward compat
         hasSelections,
         isValid,
     };

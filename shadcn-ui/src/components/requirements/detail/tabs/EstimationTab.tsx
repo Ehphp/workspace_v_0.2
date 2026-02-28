@@ -9,7 +9,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ExportDialog } from '@/components/export/ExportDialog';
-import type { Requirement, Activity, Driver, Risk, TechnologyPreset } from '@/types/database';
+import type { Requirement, Activity, Driver, Risk, Technology } from '@/types/database';
 import type { UseEstimationStateReturn } from '@/hooks/useEstimationState';
 import type { ExportableEstimation } from '@/types/export';
 
@@ -17,7 +17,7 @@ interface EstimationTabProps {
     requirement: Requirement;
     estimationState: UseEstimationStateReturn;
     data: {
-        presets: TechnologyPreset[];
+        presets: Technology[];
         activities: Activity[];
         drivers: Driver[];
         risks: Risk[];

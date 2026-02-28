@@ -28,14 +28,14 @@ Syntero uses PostgreSQL (via Supabase) with Row Level Security (RLS) for data is
          │
 ┌─────────────────────────────────────────────────────────────────────┐
 │                           requirements                               │
-│  (id, list_id, req_id, title, description, tech_preset_id, ...)     │
+│  (id, list_id, req_id, title, description, technology_id, ...)     │
 └─────────────────────────────────────────────────────────────────────┘
          ▲
          │ 1:N
          │
 ┌─────────────────────────────────────────────────────────────────────┐
 │                              lists                                   │
-│  (id, user_id, name, description, tech_preset_id, status, ...)      │
+│  (id, user_id, name, description, technology_id, status, ...)      │
 └─────────────────────────────────────────────────────────────────────┘
          │
          │ N:1
@@ -107,22 +107,22 @@ Binary risk flags with weights.
 | `description` | TEXT | Explanation |
 | `weight` | INTEGER | Contribution to risk score |
 
-### technology_presets
+### technologies
 
-Pre-configured technology stacks.
+Technology stacks. After simplification (migration `20260228`), template fields (`default_activity_codes`, `default_driver_values`, `default_risks`) have been removed. Activity suggestions are now fully AI-driven.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | UUID | Primary key |
 | `code` | VARCHAR(50) | Unique identifier |
-| `name` | VARCHAR(255) | Display name (e.g., "Java Backend") |
+| `name` | VARCHAR(255) | Display name (e.g., "Backend") |
 | `description` | TEXT | Stack description |
 | `tech_category` | VARCHAR(50) | Category for activity filtering |
-| `default_activity_codes` | JSONB | Array of activity codes |
-| `default_driver_values` | JSONB | `{DRIVER_CODE: "VALUE"}` |
-| `default_risks` | JSONB | Array of risk codes |
+| `color` | VARCHAR(50) | UI color |
+| `icon` | VARCHAR(50) | UI icon name |
+| `sort_order` | INTEGER | Display order |
 | `is_custom` | BOOLEAN | System vs. user-created |
-| `created_by` | UUID | User who created custom preset |
+| `created_by` | UUID | User who created custom technology |
 
 ---
 
@@ -139,7 +139,7 @@ Project containers owned by users.
 | `name` | VARCHAR(255) | Project name |
 | `description` | TEXT | Project description |
 | `owner` | VARCHAR(255) | Business owner label |
-| `tech_preset_id` | UUID | Default preset for requirements |
+| `technology_id` | UUID | Default technology for requirements |
 | `status` | VARCHAR(20) | `DRAFT`, `ACTIVE`, `ARCHIVED` |
 
 ### requirements
@@ -153,7 +153,7 @@ Individual requirements within a list.
 | `req_id` | VARCHAR(100) | Custom ID (e.g., `HR-API-001`) |
 | `title` | VARCHAR(500) | Requirement title |
 | `description` | TEXT | Full description |
-| `tech_preset_id` | UUID | Override preset (nullable) |
+| `technology_id` | UUID | Override technology (nullable) |
 | `priority` | VARCHAR(20) | `HIGH`, `MEDIUM`, `LOW` |
 | `state` | VARCHAR(20) | `PROPOSED`, `SELECTED`, `SCHEDULED`, `DONE` |
 | `business_owner` | VARCHAR(255) | Stakeholder |
@@ -194,6 +194,8 @@ Saved calculation snapshots.
 | `is_ai_suggested` | BOOLEAN | Was this suggested by AI? |
 | `notes` | TEXT | User notes |
 
+**Trigger**: `trg_enforce_estimation_activity_category` — fires BEFORE INSERT, calls `enforce_estimation_activity_category()`. Validates that the inserted activity's `tech_category` matches the technology assigned to the requirement (via `estimations → requirements → technologies`). Fixed in migration `20260228_fix_estimation_activity_trigger.sql` to use the renamed `technologies` table and `technology_id` column.
+
 ### estimation_drivers
 
 | Column | Type | Description |
@@ -209,25 +211,25 @@ Saved calculation snapshots.
 | `estimation_id` | UUID | FK to estimations |
 | `risk_id` | UUID | FK to risks |
 
-### technology_preset_activities
+### technology_activities
 
-Links activities to technology presets with optional per-technology overrides. 
+Links activities to technologies with optional per-technology overrides. 
 This allows customizing activity names, descriptions, and effort estimates for each technology 
 without modifying the base activity catalog.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | UUID | Primary key |
-| `tech_preset_id` | UUID | FK to technology_presets |
+| `technology_id` | UUID | FK to technologies |
 | `activity_id` | UUID | FK to activities |
-| `position` | INTEGER | Display order within preset |
-| `name_override` | VARCHAR(255) | Custom name for this preset (null = use base) |
+| `position` | INTEGER | Display order within technology |
+| `name_override` | VARCHAR(255) | Custom name for this technology (null = use base) |
 | `description_override` | TEXT | Custom description (null = use base) |
 | `base_hours_override` | DECIMAL(5,2) | Custom hours (null = use base) |
 
 **Override Behavior**:
 - When override columns are `NULL`, the base activity values are used.
-- When a preset is edited, overrides are saved to the pivot table, not the activity catalog.
+- When a technology is edited, overrides are saved to the pivot table, not the activity catalog.
 - This ensures activities can be customized independently per technology.
 
 **Migration**: [20260220_activity_overrides.sql](../supabase/migrations/20260220_activity_overrides.sql)
@@ -243,7 +245,7 @@ without modifying the base activity catalog.
 | `activities` | System + own custom | Own custom only | Own custom only | — |
 | `drivers` | Public | — | — | — |
 | `risks` | Public | — | — | — |
-| `technology_presets` | System + own custom | Own only | Own only | Own only |
+| `technologies` | System + own custom | Own only | Own only | Own only |
 | `lists` | Own only | Own only | Own only | Own only |
 | `requirements` | Via list ownership | Via list ownership | Via list ownership | Via list ownership |
 | `estimations` | Via requirement ownership | Via requirement ownership | — | — |
@@ -380,9 +382,10 @@ find_duplicate_activities(
 ## Maintenance Notes
 
 - **Schema changes**: Run migration SQL in Supabase SQL Editor.
-- **Seed data**: [supabase_seed.sql](../supabase_seed.sql) contains initial activities, drivers, risks, presets.
+- **Seed data**: [supabase_seed.sql](../supabase_seed.sql) contains initial activities, drivers, risks, technologies.
 - **History optimizations**: [estimation_history_optimizations.sql](../estimation_history_optimizations.sql) adds helper views.
 - **Vector embeddings**: Run `ai-generate-embeddings` endpoint after migration to populate embedding columns.
+- **Trigger fix (2026-02-28)**: `enforce_estimation_activity_category()` was updated to reference `technologies` (not the old `technology_presets`) and join through `requirements.technology_id`. Migration: `20260228_fix_estimation_activity_trigger.sql`.
 
 ---
 

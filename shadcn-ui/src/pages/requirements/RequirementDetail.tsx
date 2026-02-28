@@ -60,7 +60,7 @@ export default function RequirementDetail() {
         activities,
         drivers,
         risks,
-        presets,
+        technologies: presets,
     });
 
     const {
@@ -110,43 +110,27 @@ export default function RequirementDetail() {
     const [showQuickEstimateError, setShowQuickEstimateError] = useState(false);
     const [quickEstimateErrorData, setQuickEstimateErrorData] = useState<{ title: string; message: string; reasoning?: string } | null>(null);
 
-    const fallbackPresetId = requirement?.tech_preset_id || list?.tech_preset_id || '';
-    const activePresetId = selectedPresetId || fallbackPresetId;
-    const activePreset = useMemo(
-        () => presets.find((p) => p.id === activePresetId) || null,
-        [presets, activePresetId]
+    const fallbackTechnologyId = requirement?.technology_id || requirement?.tech_preset_id || list?.technology_id || list?.tech_preset_id || '';
+    const activeTechnologyId = selectedPresetId || fallbackTechnologyId;
+    const activeTechnology = useMemo(
+        () => presets.find((p) => p.id === activeTechnologyId) || null,
+        [presets, activeTechnologyId]
     );
 
-    const filterActivitiesForPreset = useCallback((presetToFilter: typeof activePreset) => {
-        if (!presetToFilter) return activities;
-
-        // Use preset's specific activities (from pivot table) if available
-        if (presetToFilter.default_activity_codes && presetToFilter.default_activity_codes.length > 0) {
-            return activities.filter(
-                (activity) => presetToFilter.default_activity_codes!.includes(activity.code)
-            );
-        }
-
-        // Fallback to tech_category if preset has no specific activities
+    // Filter activities by technology's tech_category (simple, no template restriction)
+    const filteredActivities = useMemo(() => {
+        if (!activeTechnology) return activities;
         return activities.filter(
-            (activity) =>
-                activity.tech_category === presetToFilter.tech_category ||
-                activity.tech_category === 'MULTI'
+            (a) => a.tech_category === activeTechnology.tech_category || a.tech_category === 'MULTI'
         );
-    }, [activities]);
-
-    const filteredActivities = useMemo(
-        () => filterActivitiesForPreset(activePreset),
-        [filterActivitiesForPreset, activePreset]
-    );
+    }, [activities, activeTechnology]);
 
     // Initialize preset when requirement loads (only sets preset ID, does NOT auto-select activities)
     // User can manually select activities or use AI suggestion / "Applica Template" button
     useEffect(() => {
-        if (!fallbackPresetId || selectedPresetId || presets.length === 0) return;
-
-        setSelectedPresetId(fallbackPresetId);
-    }, [fallbackPresetId, presets, selectedPresetId, setSelectedPresetId]);
+        if (!fallbackTechnologyId || selectedPresetId || presets.length === 0) return;
+        setSelectedPresetId(fallbackTechnologyId);
+    }, [fallbackTechnologyId, presets, selectedPresetId, setSelectedPresetId]);
 
     // Apply requirement-scoped driver defaults when available
     useEffect(() => {
@@ -195,17 +179,22 @@ export default function RequirementDetail() {
     // AI Suggestion Handler
     const handleAiSuggest = async () => {
         if (!requirement?.description) return;
-        if (!activePreset) {
+        if (!activeTechnology) {
             toast.error('Seleziona una tecnologia per richiedere suggerimenti AI');
             return;
         }
 
         setIsAiLoading(true);
         try {
+            // Send ALL activities of the tech_category
+            const techCategoryActivities = activities.filter(
+                (a) => a.tech_category === activeTechnology.tech_category || a.tech_category === 'MULTI'
+            );
+
             const suggestion = await suggestActivities({
                 description: requirement.description,
-                preset: activePreset,
-                activities: filteredActivities,
+                preset: activeTechnology,
+                activities: techCategoryActivities,
                 projectContext: list ? {
                     name: list.name,
                     description: list.description,
@@ -213,29 +202,29 @@ export default function RequirementDetail() {
                 } : undefined,
             });
 
-            if (!selectedPresetId && activePreset.id) {
-                setSelectedPresetId(activePreset.id);
+            if (!selectedPresetId && activeTechnology.id) {
+                setSelectedPresetId(activeTechnology.id);
             }
 
             if (suggestion.isValidRequirement) {
-                const suggestedActivityIds = (suggestion.activityCodes || [])
-                    .map((code) => filteredActivities.find((a) => a.code === code)?.id)
+                const suggestedCodes = suggestion.activityCodes || [];
+                const suggestedActivityIds = suggestedCodes
+                    .map((code) => activities.find((a) => a.code === code)?.id)
                     .filter((id): id is string => Boolean(id));
 
-                const fallbackActivityIds = (activePreset.default_activity_codes || [])
-                    .map((code) => filteredActivities.find((a) => a.code === code)?.id)
-                    .filter((id): id is string => Boolean(id));
+                if (suggestedCodes.length > 0 && suggestedActivityIds.length === 0) {
+                    console.warn('[AI Suggest] None of the AI-suggested codes matched any activity.',
+                        'Suggested:', suggestedCodes);
+                }
 
-                const activityIdsToApply = suggestedActivityIds.length > 0 ? suggestedActivityIds : fallbackActivityIds;
-
-                if (activityIdsToApply.length === 0) {
+                if (suggestedActivityIds.length === 0) {
                     toast.error('Nessuna attivita compatibile trovata per la tecnologia selezionata.');
                     return;
                 }
 
-                applyAiSuggestions(activityIdsToApply, undefined, undefined); // Drivers/Risks handled manually or by defaults
+                applyAiSuggestions(suggestedActivityIds, undefined, undefined);
                 toast.success('AI suggestions applied', {
-                    description: `Added ${activityIdsToApply.length} activities based on description.`
+                    description: `Added ${suggestedActivityIds.length} activities based on description.`
                 });
             } else {
                 toast.warning('AI Suggestion', {
@@ -252,7 +241,7 @@ export default function RequirementDetail() {
 
     // Senior Consultant Analysis Handler
     const handleRequestConsultant = async () => {
-        if (!requirement || !list || !activePreset) {
+        if (!requirement || !list || !activeTechnology) {
             toast.error('Dati mancanti per l\'analisi del consulente');
             return;
         }
@@ -302,8 +291,8 @@ export default function RequirementDetail() {
                     description: list.description || '',
                     owner: list.owner || undefined,
                 },
-                technologyName: activePreset.name,
-                technologyCategory: activePreset.tech_category,
+                technologyName: activeTechnology.name,
+                technologyCategory: activeTechnology.tech_category,
             }, token);
 
             setConsultantAnalysis(analysis);
@@ -329,7 +318,7 @@ export default function RequirementDetail() {
             // 1. Determine Preset (use selected or requirement's or list's default)
             let presetIdToUse = selectedPresetId;
             if (!presetIdToUse) {
-                presetIdToUse = requirement.tech_preset_id || list?.tech_preset_id || '';
+                presetIdToUse = requirement.technology_id || requirement.tech_preset_id || list?.technology_id || list?.tech_preset_id || '';
             }
 
             // If still no preset, try to find a "General" or "Multi" one, or just pick the first one
@@ -345,8 +334,11 @@ export default function RequirementDetail() {
             const selectedPreset = presets.find(p => p.id === presetIdToUse);
             if (!selectedPreset) throw new Error('Invalid technology selected.');
 
-            const activitiesForPreset = filterActivitiesForPreset(selectedPreset);
-            if (activitiesForPreset.length === 0) {
+            // Filter by tech_category (no template restriction)
+            const activitiesForTech = activities.filter(
+                (a) => a.tech_category === selectedPreset.tech_category || a.tech_category === 'MULTI'
+            );
+            if (activitiesForTech.length === 0) {
                 throw new Error('No activities available for the selected technology.');
             }
 
@@ -354,7 +346,7 @@ export default function RequirementDetail() {
             const suggestion = await suggestActivities({
                 description: requirement.description,
                 preset: selectedPreset,
-                activities: activitiesForPreset,
+                activities: activitiesForTech,
                 projectContext: list ? {
                     name: list.name,
                     description: list.description,
@@ -375,14 +367,10 @@ export default function RequirementDetail() {
             // 3. Apply selections
             setSelectedPresetId(presetIdToUse);
             const suggestedActivityIds = (suggestion.activityCodes || [])
-                .map((code) => activitiesForPreset.find((a) => a.code === code)?.id)
+                .map((code) => activities.find((a) => a.code === code)?.id)
                 .filter((id): id is string => Boolean(id));
 
-            const fallbackActivityIds = (selectedPreset.default_activity_codes || [])
-                .map((code) => activitiesForPreset.find((a) => a.code === code)?.id)
-                .filter((id): id is string => Boolean(id));
-
-            const activityIdsToApply = suggestedActivityIds.length > 0 ? suggestedActivityIds : fallbackActivityIds;
+            const activityIdsToApply = suggestedActivityIds;
 
             if (activityIdsToApply.length === 0) {
                 throw new Error('No compatible activities found for the selected technology.');

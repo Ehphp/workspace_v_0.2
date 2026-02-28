@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
-import { MOCK_ACTIVITIES, MOCK_TECHNOLOGY_PRESETS } from '@/lib/mockData';
-import type { Activity, TechnologyPreset } from '@/types/database';
+import { MOCK_ACTIVITIES, MOCK_TECHNOLOGIES } from '@/lib/mockData';
+import type { Activity, Technology } from '@/types/database';
 import type { WizardData } from '@/hooks/useWizardState';
 
 interface WizardStep3Props {
@@ -17,7 +17,7 @@ interface WizardStep3Props {
 export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props) {
   const { user } = useAuth();
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [preset, setPreset] = useState<TechnologyPreset | null>(null);
+  const [preset, setPreset] = useState<Technology | null>(null);
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiUsed, setAiUsed] = useState(false);
@@ -37,15 +37,15 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
   const loadData = async () => {
     try {
       const { data: presetData, error: presetError } = await supabase
-        .from('technology_presets')
+        .from('technologies')
         .select('*')
         .eq('id', data.techPresetId)
         .single();
 
-      let currentPreset: TechnologyPreset | null = null;
+      let currentPreset: Technology | null = null;
 
       if (presetError || !presetData) {
-        currentPreset = MOCK_TECHNOLOGY_PRESETS.find(p => p.id === data.techPresetId) || MOCK_TECHNOLOGY_PRESETS[0];
+        currentPreset = MOCK_TECHNOLOGIES.find(p => p.id === data.techPresetId) || MOCK_TECHNOLOGIES[0];
         setIsDemoMode(true);
       } else {
         currentPreset = presetData;
@@ -79,7 +79,7 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
         const { data: activitiesData, error: activitiesError } = await query;
 
         let resolvedActivities: Activity[];
-        let effectivePreset: TechnologyPreset | null = currentPreset;
+        let effectivePreset: Technology | null = currentPreset;
 
         if (activitiesError || !activitiesData || activitiesData.length === 0) {
           resolvedActivities = MOCK_ACTIVITIES.filter(
@@ -90,36 +90,13 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
           resolvedActivities = activitiesData;
         }
 
-        if (!activitiesError && activitiesData && activitiesData.length > 0 && effectivePreset) {
-          const { data: pivotData, error: pivotError } = await supabase
-            .from('technology_preset_activities')
-            .select('activity_id, position')
-            .eq('tech_preset_id', effectivePreset.id);
-
-          if (!pivotError && pivotData && pivotData.length > 0) {
-            const activityById = new Map(resolvedActivities.map((a) => [a.id, a]));
-            const codes = pivotData
-              .sort((a, b) => {
-                const pa = (a.position ?? Number.MAX_SAFE_INTEGER);
-                const pb = (b.position ?? Number.MAX_SAFE_INTEGER);
-                return pa - pb;
-              })
-              .map((row) => activityById.get(row.activity_id)?.code)
-              .filter((code): code is string => Boolean(code));
-
-            if (codes.length > 0) {
-              effectivePreset = { ...effectivePreset, default_activity_codes: codes };
-              // Filter activities to only those in the preset
-              resolvedActivities = resolvedActivities.filter(a => codes.includes(a.code));
-            }
-          }
-        }
-
+        // No longer filter activities by pivot table — show all tech_category activities
+        // The AI will suggest the relevant ones
         setPreset(effectivePreset);
         setActivities(resolvedActivities);
       }
     } catch (error) {
-      const currentPreset = MOCK_TECHNOLOGY_PRESETS.find(p => p.id === data.techPresetId) || MOCK_TECHNOLOGY_PRESETS[0];
+      const currentPreset = MOCK_TECHNOLOGIES.find(p => p.id === data.techPresetId) || MOCK_TECHNOLOGIES[0];
       setPreset(currentPreset);
       const mockActivities = MOCK_ACTIVITIES.filter(
         a => a.tech_category === currentPreset.tech_category || a.tech_category === 'MULTI'
@@ -161,14 +138,9 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
       const suggestedCodes = suggestion.activityCodes;
 
       if (!suggestedCodes || suggestedCodes.length === 0) {
-        console.warn('AI returned no activities, using preset defaults');
-        onUpdate({
-          selectedActivityCodes: preset.default_activity_codes,
-          aiSuggestedActivityCodes: preset.default_activity_codes,
-          activitySuggestionResult: suggestion,
-        });
+        console.warn('AI returned no activities');
         setAiUsed(true);
-        setAiStatus('success');
+        setAiStatus('error');
         setAiLoading(false);
         return;
       }

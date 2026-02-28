@@ -28,9 +28,12 @@ interface RequestBody {
         name: string;
         description: string;
         tech_category: string;
-        default_activity_codes: string[];
-        default_driver_values: Record<string, string>;
-        default_risks: string[];
+        /** @deprecated Not used — AI decides freely */
+        default_activity_codes?: string[];
+        /** @deprecated Removed */
+        default_driver_values?: Record<string, string>;
+        /** @deprecated Removed */
+        default_risks?: string[];
     };
     activities?: Array<{
         code: string;

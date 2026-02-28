@@ -1,130 +1,53 @@
 // Mock data for demo mode when Supabase is not configured
-import type { Activity, Driver, Risk, TechnologyPreset } from '@/types/database';
+import type { Activity, Driver, Risk, Technology } from '@/types/database';
 
-export const MOCK_TECHNOLOGY_PRESETS: TechnologyPreset[] = [
+export const MOCK_TECHNOLOGIES: Technology[] = [
   {
     id: 'mock-preset-1',
-    code: 'TECH_PP_BASIC',
-    name: 'Power Platform – Basic',
-    description: 'Preset generico per requisiti Power Platform standard.',
+    code: 'TECH_POWER_PLATFORM',
+    name: 'Power Platform',
+    description: 'Technology for Power Platform requirements.',
     tech_category: 'POWER_PLATFORM',
-    default_driver_values: {
-      COMPLEXITY: 'MEDIUM',
-      ENVIRONMENTS: 'TWO',
-      REUSE: 'MEDIUM',
-      STAKEHOLDERS: 'TWO_THREE',
-      REGULATION: 'MEDIUM',
-    },
-    default_risks: ['R_INTEG_EXT'],
-    default_activity_codes: [
-      'PP_ANL_ALIGN',
-      'PP_DV_FIELD',
-      'PP_DV_FORM',
-      'PP_FLOW_SIMPLE',
-      'PP_E2E_TEST',
-      'PP_DEPLOY',
-    ],
+    color: '#742774',
+    icon: 'zap',
+    sort_order: 1,
+    is_custom: false,
     created_at: new Date().toISOString(),
   },
   {
     id: 'mock-preset-2',
-    code: 'TECH_PP_HR',
-    name: 'Power Platform – HR module',
-    description: 'Preset per requisiti in ambito HR su Power Platform (candidature, notifiche, workflow).',
-    tech_category: 'POWER_PLATFORM',
-    default_driver_values: {
-      COMPLEXITY: 'MEDIUM',
-      ENVIRONMENTS: 'THREE_PLUS',
-      REUSE: 'HIGH',
-      STAKEHOLDERS: 'TWO_THREE',
-      REGULATION: 'HEAVY',
-    },
-    default_risks: ['R_AUDIT', 'R_INTEG_EXT'],
-    default_activity_codes: [
-      'PP_ANL_ALIGN',
-      'PP_DV_FIELD',
-      'PP_DV_FORM',
-      'PP_FLOW_COMPLEX',
-      'PP_BUSINESS_RULE',
-      'PP_E2E_TEST',
-      'PP_UAT_RUN',
-      'PP_DEPLOY',
-    ],
+    code: 'TECH_BACKEND',
+    name: 'Backend',
+    description: 'Technology for REST API backend implementation.',
+    tech_category: 'BACKEND',
+    color: '#2563eb',
+    icon: 'server',
+    sort_order: 2,
+    is_custom: false,
     created_at: new Date().toISOString(),
   },
   {
     id: 'mock-preset-3',
-    code: 'TECH_BACKEND_API',
-    name: 'Backend – REST API',
-    description: 'Preset per implementazione o estensione di API REST backend.',
-    tech_category: 'BACKEND',
-    default_driver_values: {
-      COMPLEXITY: 'MEDIUM',
-      ENVIRONMENTS: 'TWO',
-      REUSE: 'MEDIUM',
-      STAKEHOLDERS: 'TWO_THREE',
-      REGULATION: 'MEDIUM',
-    },
-    default_risks: ['R_INTEG_EXT', 'R_SECURITY'],
-    default_activity_codes: [
-      'BE_ANL_ALIGN',
-      'BE_API_SIMPLE',
-      'BE_DB_MIGRATION',
-      'BE_UNIT_TEST',
-      'BE_INT_TEST',
-      'BE_LOGGING',
-      'BE_DEPLOY',
-    ],
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'mock-preset-4',
-    code: 'TECH_FRONTEND_REACT',
+    code: 'TECH_FRONTEND',
     name: 'Frontend – React SPA',
-    description: 'Preset per sviluppo di schermate o componenti in una Single Page Application React.',
+    description: 'Technology for React Single Page Application development.',
     tech_category: 'FRONTEND',
-    default_driver_values: {
-      COMPLEXITY: 'MEDIUM',
-      ENVIRONMENTS: 'ONE',
-      REUSE: 'HIGH',
-      STAKEHOLDERS: 'TWO_THREE',
-      REGULATION: 'NONE',
-    },
-    default_risks: ['R_SCOPE_CHANGE'],
-    default_activity_codes: [
-      'FE_ANL_UX',
-      'FE_UI_COMPONENT',
-      'FE_FORM',
-      'FE_API_INTEGRATION',
-      'FE_UNIT_TEST',
-      'FE_E2E_TEST',
-      'FE_DEPLOY',
-    ],
+    color: '#0ea5e9',
+    icon: 'layout',
+    sort_order: 3,
+    is_custom: false,
     created_at: new Date().toISOString(),
   },
   {
     id: 'mock-preset-usu-1',
-    code: 'TECH_USU_STANDARD',
+    code: 'TECH_USU',
     name: 'USU – Standard',
-    description: 'Preset standard per progetti USU Service Management.',
+    description: 'Technology for USU Service Management projects.',
     tech_category: 'USU',
-    default_driver_values: {
-      COMPLEXITY: 'MEDIUM',
-      ENVIRONMENTS: 'TWO',
-      REUSE: 'MEDIUM',
-      STAKEHOLDERS: 'TWO_THREE',
-      REGULATION: 'MEDIUM',
-    },
-    default_risks: ['R_INTEG_EXT', 'R_DEPENDENCIES'],
-    default_activity_codes: [
-      'USU_ACTION_PLUGIN',
-      'USU_DYN_FORM',
-      'USU_JOB_SCHED',
-      'USU_API_INT',
-      'USU_WORKFLOW',
-      'USU_LIST_VIEW',
-      'USU_DOCS',
-    ],
+    color: '#16a34a',
+    icon: 'cog',
+    sort_order: 4,
+    is_custom: false,
     created_at: new Date().toISOString(),
   },
 ];
@@ -733,12 +656,12 @@ export const MOCK_RISKS: Risk[] = [
 ];
 
 // Smart mock AI suggestions based on keywords in description
-export function getMockAISuggestions(description: string, preset: TechnologyPreset): string[] {
+export function getMockAISuggestions(description: string, preset: Technology): string[] {
   const descLower = description.toLowerCase();
   const techCategory = preset.tech_category;
 
-  // Start with preset defaults - create a mutable copy
-  const suggestions = [...preset.default_activity_codes];
+  // Start with empty suggestions (no more template defaults)
+  const suggestions: string[] = [];
 
   // Add intelligent suggestions based on keywords
   if (techCategory === 'POWER_PLATFORM') {

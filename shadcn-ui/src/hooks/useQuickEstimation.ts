@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { MOCK_TECHNOLOGY_PRESETS, MOCK_ACTIVITIES, MOCK_DRIVERS, MOCK_RISKS } from '@/lib/mockData';
+import { MOCK_TECHNOLOGIES, MOCK_ACTIVITIES, MOCK_DRIVERS, MOCK_RISKS } from '@/lib/mockData';
 import { quickFinalizeEstimation } from '@/lib/estimation-utils';
 import { suggestActivities } from '@/lib/openai';
-import type { TechnologyPreset, Activity, Driver, Risk } from '@/types/database';
+import type { Technology, Activity, Driver, Risk } from '@/types/database';
 import type { EstimationResult } from '@/types/estimation';
 import type { FinalizedEstimation } from '@/lib/estimation-utils';
 
@@ -16,26 +16,26 @@ export function useQuickEstimation() {
     const [selectedActivities, setSelectedActivities] = useState<Array<{ code: string; name: string; baseHours: number }>>([]);
     const [aiReasoning, setAiReasoning] = useState<string>('');
 
-    const [presets, setPresets] = useState<TechnologyPreset[]>([]);
+    const [presets, setPresets] = useState<Technology[]>([]);
     const [presetActivities, setPresetActivities] = useState<Record<string, { activity_id: string; position: number | null }[]>>({});
 
     const loadPresets = async () => {
         setLoading(true);
         try {
-            type PivotRow = { tech_preset_id: string; activity_id: string; position: number | null };
+            type PivotRow = { technology_id: string; activity_id: string; position: number | null };
 
             const [{ data: presetsData, error: presetsError }, { data: pivotData, error: pivotError }] = await Promise.all([
                 supabase
-                    .from('technology_presets')
+                    .from('technologies')
                     .select('*')
                     .order('name'),
                 supabase
-                    .from('technology_preset_activities')
-                    .select('tech_preset_id, activity_id, position'),
+                    .from('technology_activities')
+                    .select('technology_id, activity_id, position'),
             ]);
 
             if (presetsError || !presetsData || presetsData.length === 0) {
-                setPresets(MOCK_TECHNOLOGY_PRESETS);
+                setPresets(MOCK_TECHNOLOGIES);
                 setIsDemoMode(true);
             } else {
                 setPresets(presetsData);
@@ -44,8 +44,8 @@ export function useQuickEstimation() {
                     const grouped: Record<string, { activity_id: string; position: number | null }[]> = {};
                     (pivotData as PivotRow[]).forEach((row) => {
                         const position = row.position ?? null;
-                        if (!grouped[row.tech_preset_id]) grouped[row.tech_preset_id] = [];
-                        grouped[row.tech_preset_id].push({
+                        if (!grouped[row.technology_id]) grouped[row.technology_id] = [];
+                        grouped[row.technology_id].push({
                             activity_id: row.activity_id,
                             position,
                         });
@@ -54,7 +54,7 @@ export function useQuickEstimation() {
                 }
             }
         } catch (error) {
-            setPresets(MOCK_TECHNOLOGY_PRESETS);
+            setPresets(MOCK_TECHNOLOGIES);
             setIsDemoMode(true);
         }
         setLoading(false);
@@ -97,25 +97,20 @@ export function useQuickEstimation() {
                 allRisks = risksResult.data;
             }
 
-            // Filter activities: prefer preset's specific activities, fallback to tech_category
-            const allowedActivities = (() => {
-                if (selectedPreset.default_activity_codes && selectedPreset.default_activity_codes.length > 0) {
-                    return allActivities.filter((a) => selectedPreset.default_activity_codes!.includes(a.code));
-                }
-                return allActivities.filter(
-                    (a) => a.tech_category === selectedPreset.tech_category || a.tech_category === 'MULTI'
-                );
-            })();
+            // Filter activities by tech_category (no template restriction)
+            const allowedActivities = allActivities.filter(
+                (a) => a.tech_category === selectedPreset.tech_category || a.tech_category === 'MULTI'
+            );
 
             if (allowedActivities.length === 0) {
-                setError('No activities available for the selected technology preset. Please choose another preset.');
+                setError('No activities available for the selected technology. Please choose another one.');
                 return false;
             }
 
             const activityById = new Map(allowedActivities.map((a) => [a.id, a]));
             const defaultCodesFromPivot = (() => {
                 const rows = presetActivities[selectedPreset.id] || [];
-                if (rows.length === 0) return selectedPreset.default_activity_codes || [];
+                if (rows.length === 0) return [];
                 return rows
                     .sort((a, b) => {
                         const pa = a.position ?? Number.MAX_SAFE_INTEGER;
@@ -148,7 +143,7 @@ export function useQuickEstimation() {
                     allowedActivities.some((a) => a.code === code)
                 );
                 if (chosenCodes.length === 0) {
-                    reasoning = 'Suggested activities are not compatible with the selected technology. Falling back to preset defaults.';
+                    reasoning = 'Suggested activities are not compatible with the selected technology. Using pivot defaults.';
                 }
             }
 
@@ -157,7 +152,7 @@ export function useQuickEstimation() {
                 if (chosenCodes.length === 0) {
                     setError(
                         aiSuggestion.reasoning ||
-                        'No compatible activities found for this preset. Please provide more details or choose another preset.'
+                        'No compatible activities found. Please provide more details or choose another technology.'
                     );
                     return false;
                 }

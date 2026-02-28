@@ -103,7 +103,7 @@ export default function Dashboard() {
       // Limit to most recent 500 for chart aggregation as a reasonable sample
       const { data: requirements } = await supabase
         .from('requirements')
-        .select('state, tech_preset_id')
+        .select('state, technology_id')
         .in('list_id', listIds)
         .order('updated_at', { ascending: false })
         .limit(500);
@@ -111,9 +111,9 @@ export default function Dashboard() {
       const statusCounts: Record<string, number> = {};
       const techCounts: Record<string, number> = {};
 
-      // Fetch presets to map IDs to names (this is cached/small table)
+      // Fetch technologies to map IDs to names (this is cached/small table)
       const { data: presets } = await supabase
-        .from('technology_presets')
+        .from('technologies')
         .select('id, name');
 
       const presetMap = new Map(presets?.map(p => [p.id, p.name]) || []);
@@ -123,8 +123,8 @@ export default function Dashboard() {
         statusCounts[r.state] = (statusCounts[r.state] || 0) + 1;
 
         // Tech counts
-        if (r.tech_preset_id) {
-          const techName = presetMap.get(r.tech_preset_id) || 'Unknown';
+        if (r.technology_id) {
+          const techName = presetMap.get(r.technology_id) || 'Unknown';
           techCounts[techName] = (techCounts[techName] || 0) + 1;
         }
       });

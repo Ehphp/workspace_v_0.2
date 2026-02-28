@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import type { List, TechnologyPreset } from '@/types/database';
+import type { List, Technology } from '@/types/database';
 
 interface EditListDialogProps {
     open: boolean;
@@ -30,14 +30,14 @@ export function EditListDialog({ open, onOpenChange, list, onSuccess }: EditList
     const [techPresetId, setTechPresetId] = useState<string>('__NONE__');
     const [status, setStatus] = useState<'DRAFT' | 'ACTIVE' | 'ARCHIVED'>('DRAFT');
     const [loading, setLoading] = useState(false);
-    const [presets, setPresets] = useState<TechnologyPreset[]>([]);
+    const [presets, setPresets] = useState<Technology[]>([]);
 
     useEffect(() => {
         if (open && list) {
             setName(list.name);
             setDescription(list.description || '');
             setOwner(list.owner || '');
-            setTechPresetId(list.tech_preset_id || '__NONE__');
+            setTechPresetId(list.technology_id || list.tech_preset_id || '__NONE__');
             setStatus(list.status);
             loadPresets();
         }
@@ -45,7 +45,7 @@ export function EditListDialog({ open, onOpenChange, list, onSuccess }: EditList
 
     const loadPresets = async () => {
         const { data, error } = await supabase
-            .from('technology_presets')
+            .from('technologies')
             .select('*')
             .order('name');
 
@@ -68,7 +68,7 @@ export function EditListDialog({ open, onOpenChange, list, onSuccess }: EditList
                 name,
                 description,
                 owner,
-                tech_preset_id: techPresetId === '__NONE__' ? null : techPresetId,
+                technology_id: techPresetId === '__NONE__' ? null : techPresetId,
                 status,
                 updated_at: new Date().toISOString(),
             })

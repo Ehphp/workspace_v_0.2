@@ -14,6 +14,7 @@ import { randomUUID } from 'crypto';
 import { createAIHandler } from './lib/handler';
 import { getDefaultProvider } from './lib/ai/openai-client';
 import { searchSimilarActivities, isVectorSearchEnabled } from './lib/ai/vector-search';
+import { createJob, updateJob } from './lib/ai/job-manager';
 
 interface RequestBody {
     description: string;
@@ -202,59 +203,65 @@ export const handler = createAIHandler<RequestBody>({
             throw new Error('La descrizione deve contenere almeno 20 caratteri.');
         }
 
-        // Get default LLM provider
-        const provider = getDefaultProvider();
-        const requestId = randomUUID();
-        const techCategory = body.suggestedTechCategory || 'MULTI';
+        const jobId = randomUUID();
+        await createJob(jobId);
 
-        // Fetch activity catalog - use vector search for better relevance
-        let catalogActivities: CatalogActivity[] = [];
-        let searchMethod = 'category-filter';
-
-        if (isVectorSearchEnabled()) {
+        // Run heavy task asynchronously
+        (async () => {
             try {
-                console.log('[ai-generate-preset] Using vector search for catalog retrieval');
-                const techCategories = [techCategory, 'MULTI'];
-                const searchResult = await searchSimilarActivities(
-                    sanitizedDescription,
-                    techCategories,
-                    40, // Top-40 most similar for preset generation
-                    0.4
-                );
+                // Get default LLM provider
+                const provider = getDefaultProvider();
+                const requestId = randomUUID();
+                const techCategory = body.suggestedTechCategory || 'MULTI';
 
-                if (searchResult.results.length > 0) {
-                    catalogActivities = searchResult.results.map(r => ({
-                        code: r.code,
-                        name: r.name,
-                        description: r.description || '',
-                        base_hours: r.base_hours,
-                        tech_category: r.tech_category,
-                        group: r.group,
-                    }));
-                    searchMethod = searchResult.metrics.usedFallback ? 'vector-fallback' : 'vector';
-                    console.log(`[ai-generate-preset] Vector search returned ${catalogActivities.length} activities in ${searchResult.metrics.latencyMs}ms`);
+                // Fetch activity catalog - use vector search for better relevance
+                let catalogActivities: CatalogActivity[] = [];
+                let searchMethod = 'category-filter';
+
+                if (isVectorSearchEnabled()) {
+                    try {
+                        console.log('[ai-generate-preset] Using vector search for catalog retrieval');
+                        const techCategories = [techCategory, 'MULTI'];
+                        const searchResult = await searchSimilarActivities(
+                            sanitizedDescription,
+                            techCategories,
+                            40, // Top-40 most similar for preset generation
+                            0.4
+                        );
+
+                        if (searchResult.results.length > 0) {
+                            catalogActivities = searchResult.results.map(r => ({
+                                code: r.code,
+                                name: r.name,
+                                description: r.description || '',
+                                base_hours: r.base_hours,
+                                tech_category: r.tech_category,
+                                group: r.group,
+                            }));
+                            searchMethod = searchResult.metrics.usedFallback ? 'vector-fallback' : 'vector';
+                            console.log(`[ai-generate-preset] Vector search returned ${catalogActivities.length} activities in ${searchResult.metrics.latencyMs}ms`);
+                        }
+                    } catch (err) {
+                        console.warn('[ai-generate-preset] Vector search failed:', err);
+                    }
                 }
-            } catch (err) {
-                console.warn('[ai-generate-preset] Vector search failed:', err);
-            }
-        }
 
-        // Fallback to standard category-based fetch
-        if (catalogActivities.length === 0) {
-            catalogActivities = await fetchCatalogActivities(techCategory);
-            searchMethod = 'category-filter';
-        }
+                // Fallback to standard category-based fetch
+                if (catalogActivities.length === 0) {
+                    catalogActivities = await fetchCatalogActivities(techCategory);
+                    searchMethod = 'category-filter';
+                }
 
-        const catalogForPrompt = formatCatalogForPrompt(catalogActivities);
+                const catalogForPrompt = formatCatalogForPrompt(catalogActivities);
 
-        console.log('[ai-generate-preset] Calling OpenAI for preset generation...', {
-            requestId,
-            catalogSize: catalogActivities.length,
-            techCategory,
-            searchMethod
-        });
+                console.log('[ai-generate-preset] Calling OpenAI for preset generation...', {
+                    requestId,
+                    catalogSize: catalogActivities.length,
+                    techCategory,
+                    searchMethod
+                });
 
-        const userPrompt = `Context Description: ${sanitizedDescription}
+                const userPrompt = `Context Description: ${sanitizedDescription}
 
 Questions & Answers: ${JSON.stringify(body.answers)}
 Suggested Category: ${techCategory}
@@ -263,80 +270,93 @@ ${catalogForPrompt}
 
 Generate a preset with 8-15 activities. Prefer selecting from the catalog above when appropriate. Return JSON only.`;
 
-        const startTime = Date.now();
+                const startTime = Date.now();
 
-        const responseContent = await provider.generateContent({
-            model: 'gpt-4o',
-            temperature: 0.2,
-            maxTokens: 2000,
-            options: { timeout: 50000 },
-            responseFormat: { type: 'json_object' },
-            systemPrompt: SYSTEM_PROMPT,
-            userPrompt: userPrompt
-        });
+                const responseContent = await provider.generateContent({
+                    model: 'gpt-4o',
+                    temperature: 0.2,
+                    maxTokens: 2000,
+                    options: { timeout: 50000 },
+                    responseFormat: { type: 'json_object' },
+                    systemPrompt: SYSTEM_PROMPT,
+                    userPrompt: userPrompt
+                });
 
-        const generationTimeMs = Date.now() - startTime;
+                const generationTimeMs = Date.now() - startTime;
 
-        if (!responseContent) {
-            throw new Error('No content in LLM response');
-        }
+                if (!responseContent) {
+                    throw new Error('No content in LLM response');
+                }
 
-        const result = JSON.parse(responseContent);
+                const result = JSON.parse(responseContent);
 
-        // Validate activity genericness (post-generation check)
-        if (result.preset && result.preset.activities) {
-            const { validateActivities, logValidationResults } = await import('./lib/validation/activity-genericness-validator');
+                // Validate activity genericness (post-generation check)
+                if (result.preset && result.preset.activities) {
+                    const { validateActivities, logValidationResults } = await import('./lib/validation/activity-genericness-validator');
 
-            const validationResults = validateActivities(
-                result.preset.activities.map((a: any) => ({
-                    title: a.title || '',
-                    description: a.description || ''
-                }))
-            );
+                    const validationResults = validateActivities(
+                        result.preset.activities.map((a: any) => ({
+                            title: a.title || '',
+                            description: a.description || ''
+                        }))
+                    );
 
-            logValidationResults(validationResults, {
-                requestId,
-                techCategory: body.suggestedTechCategory
-            });
+                    logValidationResults(validationResults, {
+                        requestId,
+                        techCategory: body.suggestedTechCategory
+                    });
 
-            // Add validation metadata to response
-            result.preset.validationScore = validationResults.averageScore;
-            result.preset.genericityCheck = {
-                passed: validationResults.summary.passed,
-                failed: validationResults.summary.failed,
-                warnings: validationResults.summary.warnings
-            };
+                    // Add validation metadata to response
+                    result.preset.validationScore = validationResults.averageScore;
+                    result.preset.genericityCheck = {
+                        passed: validationResults.summary.passed,
+                        failed: validationResults.summary.failed,
+                        warnings: validationResults.summary.warnings
+                    };
 
-            // Track hybrid activity breakdown
-            const existingCount = result.preset.activities.filter((a: any) => a.existingCode).length;
-            const newCount = result.preset.activities.filter((a: any) => a.isNew).length;
-            console.log('[ai-generate-preset] Hybrid activity breakdown:', {
-                total: result.preset.activities.length,
-                fromCatalog: existingCount,
-                newlyCreated: newCount,
-                catalogPercentage: ((existingCount / result.preset.activities.length) * 100).toFixed(0) + '%',
-                requestId
-            });
-        }
+                    // Track hybrid activity breakdown
+                    const existingCount = result.preset.activities.filter((a: any) => a.existingCode).length;
+                    const newCount = result.preset.activities.filter((a: any) => a.isNew).length;
+                    console.log('[ai-generate-preset] Hybrid activity breakdown:', {
+                        total: result.preset.activities.length,
+                        fromCatalog: existingCount,
+                        newlyCreated: newCount,
+                        catalogPercentage: ((existingCount / result.preset.activities.length) * 100).toFixed(0) + '%',
+                        requestId
+                    });
+                }
 
-        // Log metadata
-        console.log('[ai-generate-preset] Generation complete:', {
-            success: result.success,
-            hasPreset: !!result.preset,
-            activities: result.preset?.activities.length,
-            validationScore: result.preset?.validationScore?.toFixed(1),
-            generationTimeMs,
-            requestId
-        });
+                // Log metadata
+                console.log('[ai-generate-preset] Generation complete:', {
+                    success: result.success,
+                    hasPreset: !!result.preset,
+                    activities: result.preset?.activities.length,
+                    validationScore: result.preset?.validationScore?.toFixed(1),
+                    generationTimeMs,
+                    requestId
+                });
 
-        return {
-            ...result,
-            metadata: {
-                cached: false,
-                attempts: 1,
-                modelPasses: ['gpt-4o'],
-                generationTimeMs
+                const finalResult = {
+                    ...result,
+                    metadata: {
+                        cached: false,
+                        attempts: 1,
+                        modelPasses: ['gpt-4o'],
+                        generationTimeMs
+                    }
+                };
+
+                await updateJob(jobId, 'COMPLETED', finalResult);
+            } catch (err) {
+                console.error('[ai-generate-preset] Background job failed:', err);
+                await updateJob(jobId, 'FAILED', undefined, err instanceof Error ? err.message : String(err));
             }
+        })();
+
+        // Return immediately to prevent timeout
+        return {
+            jobId,
+            status: 'PENDING'
         };
     }
 });

@@ -254,15 +254,69 @@ export async function generateBulkEstimatesFromInterview(
             };
         }
 
-        const data = await response.json();
+        const initialData = await response.json();
+
+        // Handle async job polling
+        if (initialData.jobId && initialData.status === 'PENDING') {
+            const jobId = initialData.jobId;
+            let attempts = 0;
+            const maxAttempts = 60; // 120 seconds max timeout
+
+            while (attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                attempts++;
+
+                const pollResponse = await fetch(buildFunctionUrl(`ai-job-status?id=${jobId}`), {
+                    headers: authHeader,
+                });
+
+                if (!pollResponse.ok) continue;
+
+                const pollData = await pollResponse.json();
+
+                if (pollData.status === 'COMPLETED') {
+                    console.log('[bulk-interview-api] Estimates generated (async):', {
+                        successful: pollData.result.summary?.successfulEstimations || 0,
+                        failed: pollData.result.summary?.failedEstimations || 0,
+                        totalDays: pollData.result.summary?.totalBaseDays || 0,
+                    });
+                    return pollData.result as BulkEstimateFromInterviewResponse;
+                } else if (pollData.status === 'FAILED') {
+                    return {
+                        success: false,
+                        estimations: [],
+                        summary: {
+                            totalRequirements: sanitizedRequirements.length,
+                            successfulEstimations: 0,
+                            failedEstimations: sanitizedRequirements.length,
+                            totalBaseDays: 0,
+                            avgConfidenceScore: 0,
+                        },
+                        error: pollData.error || 'Generazione fallita.',
+                    };
+                }
+            }
+            return {
+                success: false,
+                estimations: [],
+                summary: {
+                    totalRequirements: sanitizedRequirements.length,
+                    successfulEstimations: 0,
+                    failedEstimations: sanitizedRequirements.length,
+                    totalBaseDays: 0,
+                    avgConfidenceScore: 0,
+                },
+                error: 'Timeout durante la generazione asincrona. Riprova.',
+            };
+        }
 
         console.log('[bulk-interview-api] Estimates generated:', {
-            successful: data.summary?.successfulEstimations || 0,
-            failed: data.summary?.failedEstimations || 0,
-            totalDays: data.summary?.totalBaseDays || 0,
+            successful: initialData.summary?.successfulEstimations || 0,
+            failed: initialData.summary?.failedEstimations || 0,
+            totalDays: initialData.summary?.totalBaseDays || 0,
         });
 
-        return data as BulkEstimateFromInterviewResponse;
+        return initialData as BulkEstimateFromInterviewResponse;
 
     } catch (error) {
         console.error('[bulk-interview-api] Network error:', error);

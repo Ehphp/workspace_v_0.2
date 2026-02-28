@@ -210,8 +210,8 @@ The system provides three distinct entry points for creating estimations, each u
 | Entry Point | "Stima Tutti" button | "Nuovo Requisito" button | Estimation tab |
 | AI Endpoint | `ai-suggest` | Interview + `ai-suggest` | `ai-suggest` (optional) |
 | Activities | AI-suggested | AI-suggested + manual | Manual + AI optional |
-| Drivers | Preset defaults | User-selected via wizard | User-selected |
-| Risks | Preset defaults | User-selected via wizard | User-selected |
+| Drivers | Neutral defaults | User-selected via wizard | User-selected |
+| Risks | None (no template) | User-selected via wizard | User-selected |
 | `scenario_name` | `"AI Bulk Estimate"` | `"Wizard"` | `"Manual Edit"` |
 | User Interaction | Zero (automatic) | 5-step wizard | Full manual control |
 
@@ -221,11 +221,11 @@ The system provides three distinct entry points for creating estimations, each u
 
 Fast batch processing for multiple requirements:
 
-1. Pre-loads all catalogs (activities, drivers, risks, presets) once
+1. Pre-loads all catalogs (activities, drivers, risks, technologies) once
 2. For each requirement in parallel (max 3):
    - Calls `ai-suggest` to get activity recommendations
-   - Falls back to preset default activities if AI returns none
-   - Applies preset `default_driver_values` and `default_risks`
+   - Falls back to empty activity list if AI returns none
+   - Uses neutral driver defaults (no template overrides)
    - Calculates estimation with full formula
    - Saves automatically
 
@@ -236,7 +236,7 @@ Fast batch processing for multiple requirements:
 Guided creation with AI interview:
 
 1. **Step 1**: Enter requirement description
-2. **Step 2**: Select technology preset
+2. **Step 2**: Select technology
 3. **Step 3**: AI interview (contextual questions)
 4. **Step 4**: Review/adjust drivers and risks
 5. **Step 5**: Review estimation and save

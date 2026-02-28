@@ -16,9 +16,12 @@ export interface Preset {
     name: string;
     description: string;
     tech_category: string;
-    default_activity_codes: string[];
-    default_driver_values: Record<string, string>;
-    default_risks: string[];
+    /** @deprecated No longer used — AI decides freely */
+    default_activity_codes?: string[];
+    /** @deprecated Removed */
+    default_driver_values?: Record<string, string>;
+    /** @deprecated Removed */
+    default_risks?: string[];
 }
 
 export interface ProjectContext {
@@ -85,6 +88,10 @@ export async function suggestActivities(request: SuggestActivitiesRequest): Prom
 
             if (searchResult.results.length > 0) {
                 // Map search results to Activity format
+                // NOTE: Do NOT intersect with preset-allowed activities here.
+                // Vector search may correctly suggest activities outside the preset
+                // (e.g. PP_FLOW_SIMPLE when preset only has PP_FLOW_COMPLEX).
+                // The frontend handles mapping against all tech_category activities.
                 relevantActivities = searchResult.results.map(r => ({
                     code: r.code,
                     name: r.name,
@@ -100,17 +107,12 @@ export async function suggestActivities(request: SuggestActivitiesRequest): Prom
         }
     }
 
-    // Fallback: use provided activities filtered by preset's specific activities or tech category
+    // Fallback: use provided activities filtered by tech_category
     if (relevantActivities.length === 0) {
-        if (preset.default_activity_codes && preset.default_activity_codes.length > 0) {
-            relevantActivities = activities.filter((a) => preset.default_activity_codes!.includes(a.code));
-            console.log('[suggest-activities] Using preset default_activity_codes filter, activities:', relevantActivities.length);
-        } else {
-            relevantActivities = activities.filter(
-                (a) => a.tech_category === preset.tech_category || a.tech_category === 'MULTI'
-            );
-            console.log('[suggest-activities] Using fallback category filter, activities:', relevantActivities.length);
-        }
+        relevantActivities = activities.filter(
+            (a) => a.tech_category === preset.tech_category || a.tech_category === 'MULTI'
+        );
+        console.log('[suggest-activities] Using tech_category filter, activities:', relevantActivities.length);
     }
 
     console.log('Filtered activities:', relevantActivities?.length);

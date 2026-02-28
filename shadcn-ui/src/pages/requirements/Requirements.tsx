@@ -136,14 +136,15 @@ export default function Requirements() {
     const [listTechCategory, setListTechCategory] = useState<string>('MULTI');
     const [viewMode, setViewMode] = useState<ViewMode>('list');
 
-    // Fetch tech_category from preset when list changes
+    // Fetch tech_category from technology when list changes
     useEffect(() => {
         async function fetchTechCategory() {
-            if (list?.tech_preset_id) {
+            const techId = list?.technology_id || list?.tech_preset_id;
+            if (techId) {
                 const { data: preset } = await supabase
-                    .from('technology_presets')
+                    .from('technologies')
                     .select('tech_category')
-                    .eq('id', list.tech_preset_id)
+                    .eq('id', techId)
                     .single();
                 if (preset?.tech_category) {
                     setListTechCategory(preset.tech_category);
@@ -153,7 +154,7 @@ export default function Requirements() {
             }
         }
         fetchTechCategory();
-    }, [list?.tech_preset_id]);
+    }, [list?.technology_id, list?.tech_preset_id]);
 
     const handleImportRequirements = async (parsedRequirements: any[]) => {
         if (!user || !listId) return;
@@ -607,7 +608,7 @@ export default function Requirements() {
                         onOpenChange={setShowBulkEstimate}
                         listId={listId}
                         requirements={filteredRequirements}
-                        listTechPresetId={list?.tech_preset_id}
+                        listTechPresetId={list?.technology_id || list?.tech_preset_id}
                         onSuccess={loadData}
                     />
                     <BulkInterviewDialog
@@ -615,7 +616,7 @@ export default function Requirements() {
                         onOpenChange={setShowBulkInterview}
                         listId={listId}
                         requirements={filteredRequirements}
-                        listTechPresetId={list?.tech_preset_id}
+                        listTechPresetId={list?.technology_id || list?.tech_preset_id}
                         techCategory={listTechCategory}
                         onSuccess={loadData}
                     />

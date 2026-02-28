@@ -3,14 +3,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Calculator, FileText, User, Tag, Zap, Settings, ChevronDown, ChevronUp, Sparkles, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { Requirement, TechnologyPreset, EstimationWithDetails, Activity } from '@/types/database';
+import type { Requirement, Technology, EstimationWithDetails, Activity } from '@/types/database';
 import type { SeniorConsultantAnalysis } from '@/types/estimation';
 import { RequirementProgress } from '../RequirementProgress';
 import { ConsultantAnalysisCard } from '@/components/estimation/ConsultantAnalysisCard';
 
 interface OverviewTabProps {
     requirement: Requirement;
-    presets: TechnologyPreset[];
+    presets: Technology[];
     refetchRequirement: () => Promise<void>;
     latestEstimation?: EstimationWithDetails | null;
     activities?: Activity[];
@@ -32,7 +32,7 @@ const stateColors = {
 };
 
 export function OverviewTab({ requirement, presets, refetchRequirement, latestEstimation, activities = [], onRequestConsultant, isConsultantLoading, consultantAnalysis }: OverviewTabProps) {
-    const preset = presets.find(p => p.id === requirement.tech_preset_id);
+    const preset = presets.find(p => p.id === requirement.technology_id);
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
     const [isAiAnalysisExpanded, setIsAiAnalysisExpanded] = useState(true);
     const [isConsultantExpanded, setIsConsultantExpanded] = useState(true);

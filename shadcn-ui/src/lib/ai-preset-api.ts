@@ -59,7 +59,54 @@ export async function generateTechnologyPreset(
 
         clearTimeout(timeoutId);
 
-        return await handleResponse(response);
+        if (!response.ok) {
+            return await handleResponse(response); // Will throw appropriate errors
+        }
+
+        const initialData = await response.json();
+
+        // Handle async job polling
+        if (initialData.jobId && initialData.status === 'PENDING') {
+            const jobId = initialData.jobId;
+            let attempts = 0;
+            const maxAttempts = 60; // 120 seconds max
+
+            while (attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                attempts++;
+
+                const pollResponse = await fetch(`/.netlify/functions/ai-job-status?id=${jobId}`, {
+                    headers: supabaseToken ? { Authorization: `Bearer ${supabaseToken}` } : {},
+                });
+
+                if (!pollResponse.ok) continue;
+
+                const pollData = await pollResponse.json();
+
+                if (pollData.status === 'COMPLETED') {
+                    try {
+                        const validated = PresetGenerationResponseSchema.parse(pollData.result);
+                        return validated as unknown as PresetGenerationResponse;
+                    } catch (validationError) {
+                        console.error('[ai-preset-api] Validation failed on polled result:', validationError);
+                        throw new Error('Risposta del server non valida. Riprova.');
+                    }
+                } else if (pollData.status === 'FAILED') {
+                    throw new Error(pollData.error || 'Generazione fallita durante il processing.');
+                }
+            }
+            throw new Error('La generazione ha impiegato troppo tempo.');
+        }
+
+        // Fallback for synchronous response
+        try {
+            const validated = PresetGenerationResponseSchema.parse(initialData);
+            return validated as unknown as PresetGenerationResponse;
+        } catch (validationError) {
+            console.error('[ai-preset-api] Validation failed:', validationError);
+            throw new Error('Risposta del server non valida. Riprova.');
+        }
+
     } catch (error) {
         clearTimeout(timeoutId);
 
@@ -112,7 +159,7 @@ async function handleResponse(response: Response): Promise<PresetGenerationRespo
     try {
         const validated = PresetGenerationResponseSchema.parse(data);
         // Type assertion is safe here because Zod validates the structure
-        return validated as PresetGenerationResponse;
+        return validated as unknown as PresetGenerationResponse;
     } catch (validationError) {
         console.error('[ai-preset-api] Validation failed:', validationError);
         throw new Error('Risposta del server non valida. Riprova.');

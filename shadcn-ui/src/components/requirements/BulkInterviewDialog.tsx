@@ -56,7 +56,9 @@ interface Requirement {
     req_id: string;
     title: string;
     description: string;
-    tech_preset_id: string | null;
+    technology_id: string | null;
+    /** @deprecated Use technology_id */
+    tech_preset_id?: string | null;
 }
 
 interface BulkInterviewDialogProps {
@@ -96,7 +98,7 @@ export function BulkInterviewDialog({
                 reqId: req.req_id,
                 title: req.title,
                 description: req.description,
-                techPresetId: req.tech_preset_id || listTechPresetId,
+                techPresetId: req.technology_id || req.tech_preset_id || listTechPresetId,
             })),
         [requirements, listTechPresetId]
     );
@@ -560,8 +562,8 @@ export function BulkInterviewDialog({
                                         <div
                                             key={estimation.requirementId}
                                             className={`p-3 border rounded-lg ${estimation.success
-                                                    ? 'hover:bg-muted/50 cursor-pointer'
-                                                    : 'bg-red-50 border-red-200'
+                                                ? 'hover:bg-muted/50 cursor-pointer'
+                                                : 'bg-red-50 border-red-200'
                                                 }`}
                                             onClick={() => estimation.success && toggleEstimationSelection(estimation.requirementId)}
                                         >

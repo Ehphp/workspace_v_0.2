@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { calculateEstimation } from '@/lib/estimationEngine';
-import type { Activity, Driver, Risk, TechnologyPreset } from '@/types/database';
+import type { Activity, Driver, Risk, Technology } from '@/types/database';
 import { sanitizePromptInput } from '@/types/ai-validation';
 import {
     Dialog,
@@ -22,7 +22,9 @@ interface Requirement {
     req_id: string;
     title: string;
     description: string;
-    tech_preset_id: string | null;
+    technology_id: string | null;
+    /** @deprecated Use technology_id */
+    tech_preset_id?: string | null;
 }
 
 interface BulkEstimateDialogProps {
@@ -30,7 +32,7 @@ interface BulkEstimateDialogProps {
     onOpenChange: (open: boolean) => void;
     requirements: Requirement[];
     listId: string;
-    listTechPresetId: string | null; // Default tech preset from list
+    listTechPresetId: string | null; // Default technology from list
     onSuccess: () => void;
 }
 
@@ -58,10 +60,10 @@ export function BulkEstimateDialog({
     const [cancelled, setCancelled] = useState(false);
 
     // Filter requirements that can be estimated
-    // Use requirement's tech_preset_id if set, otherwise fallback to list's tech_preset_id
+    // Use requirement's technology_id if set, otherwise fallback to list's technology
     const estimableRequirements = requirements.filter((req) => {
-        const techPresetId = req.tech_preset_id || listTechPresetId;
-        return techPresetId && req.description && req.description.trim() !== '';
+        const techId = req.technology_id || req.tech_preset_id || listTechPresetId;
+        return techId && req.description && req.description.trim() !== '';
     });
 
     const skippedCount = requirements.length - estimableRequirements.length;
@@ -113,27 +115,27 @@ export function BulkEstimateDialog({
         const sharedDrivers = driversRes.data || [];
         const sharedRisks = risksRes.data || [];
 
-        // Pre-load all unique presets
-        const uniquePresetIds = [...new Set(estimableRequirements.map(r => r.tech_preset_id || listTechPresetId).filter(Boolean))];
-        type PivotRow = { tech_preset_id: string; activity_id: string; position: number | null };
+        // Pre-load all unique technologies
+        const uniquePresetIds = [...new Set(estimableRequirements.map(r => r.technology_id || r.tech_preset_id || listTechPresetId).filter(Boolean))];
+        type PivotRow = { technology_id: string; activity_id: string; position: number | null };
         const [presetsRes, pivotRes] = await Promise.all([
             supabase
-                .from('technology_presets')
+                .from('technologies')
                 .select('*')
                 .in('id', uniquePresetIds as string[]),
             supabase
-                .from('technology_preset_activities')
-                .select('tech_preset_id, activity_id, position')
-                .in('tech_preset_id', uniquePresetIds as string[]),
+                .from('technology_activities')
+                .select('technology_id, activity_id, position')
+                .in('technology_id', uniquePresetIds as string[]),
         ]);
 
         const activityById = new Map(sharedActivities.map((a: Activity) => [a.id, a]));
         const pivotByPreset = new Map<string, { activity_id: string; position: number | null }[]>();
         (pivotRes.data as PivotRow[] | null || []).forEach((row) => {
-            if (!pivotByPreset.has(row.tech_preset_id)) {
-                pivotByPreset.set(row.tech_preset_id, []);
+            if (!pivotByPreset.has(row.technology_id)) {
+                pivotByPreset.set(row.technology_id, []);
             }
-            pivotByPreset.get(row.tech_preset_id)!.push({
+            pivotByPreset.get(row.technology_id)!.push({
                 activity_id: row.activity_id,
                 position: row.position ?? null,
             });
@@ -153,7 +155,7 @@ export function BulkEstimateDialog({
                 .filter((code): code is string => Boolean(code));
 
             if (codes.length === 0) return p;
-            return { ...p, default_activity_codes: codes };
+            return { ...p };
         });
 
         const presetsMap = new Map(normalizedPresets.map(p => [p.id, p]));
@@ -177,32 +179,25 @@ export function BulkEstimateDialog({
             // Process batch in parallel
             const promises = batch.map(async (req) => {
                 try {
-                    // Use requirement's tech_preset_id if set, otherwise use list's default
-                    const techPresetId = req.tech_preset_id || listTechPresetId;
+                    // Use requirement's technology_id if set, otherwise use list's default
+                    const techPresetId = req.technology_id || req.tech_preset_id || listTechPresetId;
 
                     if (!techPresetId) {
-                        throw new Error('No technology preset available');
+                        throw new Error('No technology available');
                     }
 
-                    // Use pre-loaded preset (no DB call!)
+                    // Use pre-loaded technology (no DB call!)
                     const preset = presetsMap.get(techPresetId);
                     if (!preset) {
-                        throw new Error('Technology preset not found');
+                        throw new Error('Technology not found');
                     }
 
-                    // Filter activities: prefer preset's specific activities, fallback to tech_category
-                    const activities = (() => {
-                        if (preset.default_activity_codes && preset.default_activity_codes.length > 0) {
-                            return sharedActivities.filter((a: Activity) =>
-                                preset.default_activity_codes!.includes(a.code)
-                            );
-                        }
-                        return sharedActivities.filter(
-                            (a: Activity) =>
-                                a.tech_category === preset.tech_category ||
-                                a.tech_category === 'MULTI'
-                        );
-                    })();
+                    // Filter activities by tech_category (no template restriction)
+                    const activities = sharedActivities.filter(
+                        (a: Activity) =>
+                            a.tech_category === preset.tech_category ||
+                            a.tech_category === 'MULTI'
+                    );
                     if (activities.length === 0) {
                         return {
                             requirementId: req.id,
@@ -254,7 +249,7 @@ export function BulkEstimateDialog({
                         };
                     }
 
-                    // Pick AI suggestions when valid; fallback to preset defaults filtered by allowed activities
+                    // Pick AI suggestions filtered by allowed activities
                     const aiActivityCodes =
                         (aiSuggestion.activityCodes || []).filter((code: string) =>
                             activities.some((a: Activity) => a.code === code)
@@ -263,17 +258,10 @@ export function BulkEstimateDialog({
                     let chosenCodes: string[] = aiActivityCodes;
 
                     if (chosenCodes.length === 0) {
-                        // Fallback to preset defaults (already normalized via pivot)
-                        chosenCodes = (preset.default_activity_codes || []).filter((code: string) =>
-                            activities.some((a: Activity) => a.code === code)
-                        );
-                    }
-
-                    if (chosenCodes.length === 0) {
                         return {
                             requirementId: req.id,
                             success: false,
-                            error: aiSuggestion.reasoning || 'No compatible activities found for this preset',
+                            error: aiSuggestion.reasoning || 'No compatible activities found for this technology',
                         };
                     }
 
@@ -284,25 +272,9 @@ export function BulkEstimateDialog({
 
                     const aiCodesSet = new Set(aiActivityCodes);
 
-                    // Apply preset default drivers (map codes to multipliers)
-                    const presetDriverValues = (preset as TechnologyPreset).default_driver_values || {};
-                    const driversForCalc = Object.entries(presetDriverValues)
-                        .map(([driverCode, selectedValue]) => {
-                            const driver = sharedDrivers.find((d: Driver) => d.code === driverCode);
-                            if (!driver) return null;
-                            const option = driver.options.find(opt => opt.value === selectedValue);
-                            return option ? { multiplier: option.multiplier } : null;
-                        })
-                        .filter((d): d is { multiplier: number } => d !== null);
-
-                    // Apply preset default risks
-                    const presetRiskCodes = (preset as TechnologyPreset).default_risks || [];
-                    const risksForCalc = presetRiskCodes
-                        .map(code => {
-                            const risk = sharedRisks.find((r: Risk) => r.code === code);
-                            return risk ? { weight: risk.weight } : null;
-                        })
-                        .filter((r): r is { weight: number } => r !== null);
+                    // No preset template defaults for drivers/risks — use empty
+                    const driversForCalc: { multiplier: number }[] = [];
+                    const risksForCalc: { weight: number }[] = [];
 
                     const estimation = calculateEstimation({
                         activities: selectedActivities.map((a: Activity) => ({
@@ -320,25 +292,11 @@ export function BulkEstimateDialog({
                         notes: '',
                     }));
 
-                    // Prepare drivers payload from preset defaults
-                    const driversPayload = Object.entries(presetDriverValues)
-                        .map(([driverCode, selectedValue]) => {
-                            const driver = sharedDrivers.find((d: Driver) => d.code === driverCode);
-                            if (!driver) return null;
-                            return {
-                                driver_id: driver.id,
-                                selected_value: selectedValue,
-                            };
-                        })
-                        .filter((d): d is { driver_id: string; selected_value: string } => d !== null);
+                    // Prepare drivers payload (empty — no template defaults)
+                    const driversPayload: { driver_id: string; selected_value: string }[] = [];
 
-                    // Prepare risks payload from preset defaults
-                    const risksPayload = presetRiskCodes
-                        .map(code => {
-                            const risk = sharedRisks.find((r: Risk) => r.code === code);
-                            return risk ? { risk_id: risk.id } : null;
-                        })
-                        .filter((r): r is { risk_id: string } => r !== null);
+                    // Prepare risks payload (empty — no template defaults)
+                    const risksPayload: { risk_id: string }[] = [];
 
                     const { error: saveError } = await supabase.rpc('save_estimation_atomic', {
                         p_requirement_id: req.id,

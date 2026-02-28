@@ -1,13 +1,14 @@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import type { TechnologyPreset } from '@/types/database';
+import type { Technology } from '@/types/database';
 
 interface TechnologySectionProps {
-    presets: TechnologyPreset[];
+    presets: Technology[];
     selectedPresetId: string;
     onPresetChange: (presetId: string) => void;
-    onApplyTemplate: () => void;
+    /** @deprecated Template application removed — AI decides activities */
+    onApplyTemplate?: () => void;
     isExpanded?: boolean;
     onToggle?: () => void;
 }
@@ -16,7 +17,6 @@ export function TechnologySection({
     presets,
     selectedPresetId,
     onPresetChange,
-    onApplyTemplate,
 }: TechnologySectionProps) {
     const selectedPreset = presets.find((p) => p.id === selectedPresetId);
 
@@ -54,16 +54,6 @@ export function TechnologySection({
             {selectedPreset && selectedPreset.description && (
                 <p className="text-[10px] text-slate-500 leading-tight line-clamp-2">{selectedPreset.description}</p>
             )}
-
-            <Button
-                onClick={onApplyTemplate}
-                disabled={!selectedPresetId}
-                variant="outline"
-                size="sm"
-                className="w-full h-7 text-[10px] border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-            >
-                Applica Template
-            </Button>
         </div>
     );
 }

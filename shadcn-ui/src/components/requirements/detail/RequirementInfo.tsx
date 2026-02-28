@@ -6,12 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRequirementActions, type EditedData } from '@/hooks/useRequirementActions';
-import type { Requirement, TechnologyPreset } from '@/types/database';
+import type { Requirement, Technology } from '@/types/database';
 import { useAuth } from '@/hooks/useAuth';
 
 interface RequirementInfoProps {
     requirement: Requirement;
-    presets: TechnologyPreset[];
+    presets: Technology[];
     refetchRequirement: () => Promise<void>;
 }
 
@@ -19,10 +19,10 @@ export function RequirementInfo({ requirement, presets, refetchRequirement }: Re
     const { user } = useAuth();
     const { saveDetails, isSavingSection } = useRequirementActions({ requirement, user, refetchRequirement });
     const [isEditing, setIsEditing] = useState(false);
-    const [editedData, setEditedData] = useState<Pick<EditedData, 'business_owner' | 'labels' | 'tech_preset_id'>>({
+    const [editedData, setEditedData] = useState<Pick<EditedData, 'business_owner' | 'labels' | 'technology_id'>>({
         business_owner: requirement.business_owner || '',
         labels: requirement.labels || [],
-        tech_preset_id: requirement.tech_preset_id,
+        technology_id: requirement.technology_id,
     });
 
     const handleSave = async () => {
@@ -33,12 +33,12 @@ export function RequirementInfo({ requirement, presets, refetchRequirement }: Re
         setEditedData({
             business_owner: requirement.business_owner || '',
             labels: requirement.labels || [],
-            tech_preset_id: requirement.tech_preset_id,
+            technology_id: requirement.technology_id,
         });
         setIsEditing(false);
     };
 
-    const selectedPresetName = presets.find(p => p.id === requirement.tech_preset_id)?.name || 'None';
+    const selectedPresetName = presets.find(p => p.id === requirement.technology_id)?.name || 'None';
 
     return (
         <Card className="shadow-sm border-slate-200 h-fit">
@@ -71,10 +71,10 @@ export function RequirementInfo({ requirement, presets, refetchRequirement }: Re
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Technology Preset</Label>
+                            <Label>Technology</Label>
                             <Select
-                                value={editedData.tech_preset_id || 'none'}
-                                onValueChange={(value) => setEditedData({ ...editedData, tech_preset_id: value === 'none' ? null : value })}
+                                value={editedData.technology_id || 'none'}
+                                onValueChange={(value) => setEditedData({ ...editedData, technology_id: value === 'none' ? null : value })}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select technology" />

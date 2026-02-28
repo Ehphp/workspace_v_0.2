@@ -110,6 +110,7 @@ export function RequirementWizard({ listId, projectContext, onSuccess, onCancel,
                 state: data.state,
                 business_owner: data.business_owner,
                 tech_preset_id: data.techPresetId || null,
+                technology_id: data.techPresetId || null,
             });
 
             // 2. Save Estimation

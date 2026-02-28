@@ -18,7 +18,9 @@ export interface EditedData {
     state: string;
     business_owner: string;
     labels: string[];
-    tech_preset_id: string | null;
+    technology_id: string | null;
+    /** @deprecated Use technology_id */
+    tech_preset_id?: string | null;
 }
 
 export function useRequirementActions({ requirement, user, refetchRequirement }: UseRequirementActionsProps) {
@@ -26,7 +28,7 @@ export function useRequirementActions({ requirement, user, refetchRequirement }:
 
     const isSavingSection = useCallback((section: EditSection) => savingSections.has(section), [savingSections]);
 
-    const saveHeader = useCallback(async (data: Pick<EditedData, 'title' | 'priority' | 'state' | 'business_owner' | 'tech_preset_id'>, stopEditing: () => void) => {
+    const saveHeader = useCallback(async (data: Pick<EditedData, 'title' | 'priority' | 'state' | 'business_owner' | 'technology_id'>, stopEditing: () => void) => {
         if (!requirement || !user || isSavingSection('header')) return;
 
         // Validation
@@ -59,7 +61,7 @@ export function useRequirementActions({ requirement, user, refetchRequirement }:
                     priority: data.priority,
                     state: data.state,
                     business_owner: data.business_owner?.trim() || null,
-                    tech_preset_id: data.tech_preset_id,
+                    technology_id: data.technology_id,
                     updated_at: new Date().toISOString(),
                 })
                 .eq('id', requirement.id)
@@ -123,7 +125,7 @@ export function useRequirementActions({ requirement, user, refetchRequirement }:
         }
     }, [requirement, user, isSavingSection, refetchRequirement]);
 
-    const saveDetails = useCallback(async (data: Pick<EditedData, 'business_owner' | 'labels' | 'tech_preset_id'>, stopEditing: () => void) => {
+    const saveDetails = useCallback(async (data: Pick<EditedData, 'business_owner' | 'labels' | 'technology_id'>, stopEditing: () => void) => {
         if (!requirement || !user || isSavingSection('details')) return;
 
         setSavingSections(prev => new Set(prev).add('details'));
@@ -134,7 +136,7 @@ export function useRequirementActions({ requirement, user, refetchRequirement }:
                 .update({
                     business_owner: data.business_owner?.trim() || null,
                     labels: data.labels,
-                    tech_preset_id: data.tech_preset_id,
+                    technology_id: data.technology_id,
                     updated_at: new Date().toISOString(),
                 })
                 .eq('id', requirement.id)

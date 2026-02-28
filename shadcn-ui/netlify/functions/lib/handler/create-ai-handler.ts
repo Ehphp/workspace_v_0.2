@@ -71,6 +71,8 @@ export interface AIHandlerConfig<TBody = any, TResponse = any> {
     rateLimit?: boolean;
     /** Check LLM API key is configured (default: true) */
     requireLLM?: boolean;
+    /** Allowed HTTP method (default: 'POST') */
+    allowMethod?: 'GET' | 'POST' | 'ALL';
     /** Custom body validator (return error message or null if valid) */
     validateBody?: (body: TBody) => string | null;
     /** Business logic handler */
@@ -102,6 +104,7 @@ export function createAIHandler<TBody = any, TResponse = any>(
         requireAuth = false,
         rateLimit = false,
         requireLLM = true,
+        allowMethod = 'POST',
         validateBody,
         handler: businessLogic
     } = config;
@@ -119,8 +122,9 @@ export function createAIHandler<TBody = any, TResponse = any>(
             return { statusCode: 200, headers, body: '' };
         }
 
-        // 2. Only allow POST
-        if (event.httpMethod !== 'POST') {
+        // 2. HTTP method check
+        const allowedMethods = allowMethod === 'ALL' ? ['GET', 'POST'] : [allowMethod];
+        if (!allowedMethods.includes(event.httpMethod)) {
             return {
                 statusCode: 405,
                 headers,
@@ -182,16 +186,20 @@ export function createAIHandler<TBody = any, TResponse = any>(
         }
 
         try {
-            // 7. Parse request body
-            let body: TBody;
-            try {
-                body = JSON.parse(event.body || '{}');
-            } catch (parseError) {
-                return {
-                    statusCode: 400,
-                    headers,
-                    body: JSON.stringify(createErrorResponse('INVALID_JSON', 'Invalid JSON in request body')),
-                };
+            // 7. Parse request body (or query params for GET)
+            let body: TBody = {} as TBody;
+            if (event.httpMethod === 'GET') {
+                body = (event.queryStringParameters || {}) as unknown as TBody;
+            } else if (event.body) {
+                try {
+                    body = JSON.parse(event.body);
+                } catch (parseError) {
+                    return {
+                        statusCode: 400,
+                        headers,
+                        body: JSON.stringify(createErrorResponse('INVALID_JSON', 'Invalid JSON in request body')),
+                    };
+                }
             }
 
             // 8. Custom body validation

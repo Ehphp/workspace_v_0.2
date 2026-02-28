@@ -5,6 +5,7 @@ import type {
   List,
   Requirement,
   RequirementDriverValue,
+  Technology,
   TechnologyPreset,
   Risk,
   Organization,
@@ -53,88 +54,68 @@ export async function fetchRequirement(listId: string, reqId: string): Promise<R
   );
 }
 
-export async function fetchTechnologyPreset(presetId: string): Promise<TechnologyPreset | null> {
+export async function fetchTechnology(technologyId: string): Promise<Technology | null> {
   const { data, error } = await supabase
-    .from('technology_presets')
+    .from('technologies')
     .select('*')
-    .eq('id', presetId)
+    .eq('id', technologyId)
     .single();
 
   if (error) {
-    console.warn('Failed to fetch technology preset', error);
+    console.warn('Failed to fetch technology', error);
     return null;
   }
   return data;
 }
 
+/** @deprecated Use fetchTechnology */
+export const fetchTechnologyPreset = fetchTechnology;
+
 export interface EstimationMasterData {
-  presets: TechnologyPreset[];
+  technologies: Technology[];
+  /** @deprecated Use technologies */
+  presets: Technology[];
   activities: Activity[];
   drivers: Driver[];
   risks: Risk[];
 }
 
 export async function fetchEstimationMasterData(): Promise<EstimationMasterData> {
-  const [presetsRes, activitiesRes, driversRes, risksRes, tpaRes] = await Promise.all([
-    supabase.from('technology_presets').select('*').order('name'),
+  const [techRes, activitiesRes, driversRes, risksRes, tpaRes] = await Promise.all([
+    supabase.from('technologies').select('*').order('name'),
     supabase.from('activities').select('*').eq('active', true).order('group, name'),
     supabase.from('drivers').select('*').order('code'),
     supabase.from('risks').select('*').order('weight'),
-    supabase.from('technology_preset_activities').select('tech_preset_id, activity_id, position'),
+    supabase.from('technology_activities').select('technology_id, activity_id, position'),
   ]);
 
-  if (presetsRes.error) throw presetsRes.error;
+  if (techRes.error) throw techRes.error;
   if (activitiesRes.error) throw activitiesRes.error;
   if (driversRes.error) throw driversRes.error;
   if (risksRes.error) throw risksRes.error;
   if (tpaRes.error) throw tpaRes.error;
 
-  const activityById = new Map<string, Activity>();
-  (activitiesRes.data || []).forEach((a) => activityById.set(a.id, a));
-
-  const pivotByPreset = new Map<string, { activity_id: string; position: number | null }[]>();
-  (tpaRes.data as { tech_preset_id: string; activity_id: string; position: number | null }[] | null || []).forEach((row) => {
-    if (!pivotByPreset.has(row.tech_preset_id)) {
-      pivotByPreset.set(row.tech_preset_id, []);
-    }
-    pivotByPreset.get(row.tech_preset_id)!.push({
-      activity_id: row.activity_id,
-      position: row.position ?? null,
-    });
-  });
-
-  const normalizedPresets: TechnologyPreset[] = (presetsRes.data || []).map((p) => {
-    const rows = pivotByPreset.get(p.id) || [];
-    if (rows.length === 0) return p;
-
-    const codes = rows
-      .sort((a, b) => {
-        const pa = a.position ?? Number.MAX_SAFE_INTEGER;
-        const pb = b.position ?? Number.MAX_SAFE_INTEGER;
-        return pa - pb;
-      })
-      .map((r) => activityById.get(r.activity_id)?.code)
-      .filter((code): code is string => Boolean(code));
-
-    if (codes.length === 0) return p;
-    return { ...p, default_activity_codes: codes };
-  });
+  const technologies: Technology[] = techRes.data || [];
 
   return {
-    presets: normalizedPresets,
+    technologies,
+    presets: technologies, // backward compat
     activities: activitiesRes.data || [],
     drivers: driversRes.data || [],
     risks: risksRes.data || [],
   };
 }
 
-export async function fetchPresets(): Promise<TechnologyPreset[]> {
-  const { data, error, status } = await supabase.from('technology_presets').select('*').order('name');
+export async function fetchTechnologies(): Promise<Technology[]> {
+  const { data, error, status } = await supabase.from('technologies').select('*').order('name');
   if (error) {
-    throw new ApiError(error.message || 'Unable to load technology presets', status, error);
+    throw new ApiError(error.message || 'Unable to load technologies', status, error);
   }
   return data || [];
 }
+
+/** @deprecated Use fetchTechnologies */
+export const fetchPresets = fetchTechnologies;
 
 export interface CreateListInput {
   userId: string;
@@ -142,7 +123,8 @@ export interface CreateListInput {
   name: string;
   description?: string;
   owner?: string;
-  techPresetId?: string | null;
+  techPresetId?: string | null; // legacy alias
+  technologyId?: string | null;
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
 }
 
@@ -153,7 +135,7 @@ export async function createList(input: CreateListInput): Promise<List> {
     name: input.name,
     description: input.description || '',
     owner: input.owner || '',
-    tech_preset_id: input.techPresetId ?? null,
+    technology_id: input.technologyId ?? input.techPresetId ?? null,
     status: input.status,
   };
 
@@ -197,7 +179,8 @@ export interface CreateRequirementInput {
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
   state: 'PROPOSED' | 'SELECTED' | 'SCHEDULED' | 'DONE';
   business_owner?: string;
-  tech_preset_id?: string | null;
+  tech_preset_id?: string | null; // legacy alias
+  technology_id?: string | null;
   req_id?: string;
 }
 
@@ -211,7 +194,7 @@ export async function createRequirement(input: CreateRequirementInput): Promise<
     priority: input.priority,
     state: input.state,
     business_owner: input.business_owner || '',
-    tech_preset_id: input.tech_preset_id ?? null,
+    technology_id: input.technology_id ?? input.tech_preset_id ?? null,
     labels: [],
   };
 
@@ -244,8 +227,8 @@ export async function fetchRequirementBundle(listId: string, reqId: string, _use
   const list = await fetchList(listId);
   const requirement = await fetchRequirement(listId, reqId);
 
-  const techPresetId = requirement.tech_preset_id || list.tech_preset_id;
-  const preset = techPresetId ? await fetchTechnologyPreset(techPresetId) : null;
+  const technologyId = requirement.technology_id || list.technology_id;
+  const preset = technologyId ? await fetchTechnology(technologyId) : null;
 
   const { data: driverValues, error: driverErr } = await supabase
     .from('requirement_driver_values')

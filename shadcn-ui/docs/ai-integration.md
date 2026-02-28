@@ -39,7 +39,7 @@ AI functionality is distributed across multiple serverless functions:
 
 | Action | Purpose | Input | Output |
 |--------|---------|-------|--------|
-| `suggest-activities` | Propose relevant activities | description, preset, activities | activityCodes[], reasoning |
+| `suggest-activities` | Propose relevant activities | description, technology, activities | activityCodes[], reasoning |
 | `generate-title` | Create concise title | description | title |
 | `normalize-requirement` | Standardize description | description | normalizedDescription, validationIssues |
 
@@ -115,11 +115,11 @@ OpenAI's structured outputs feature guarantees the response matches a JSON schem
       │
       ▼
 6. Filter activities by tech_category
-   └─► Only activities matching preset.tech_category or 'MULTI'
+   └─► Only activities matching technology.tech_category or 'MULTI'
       │
       ▼
 7. Check cache (24h TTL)
-   └─► Cache key = hash(description + presetId + activityCodes)
+   └─► Cache key = hash(description + technologyId + activityCodes)
       │
       ├─► [HIT] Return cached response
       │
@@ -189,7 +189,7 @@ import { suggestActivities } from '@/lib/openai';
 
 const result = await suggestActivities({
   description: "Add login with email and password",
-  preset: currentPreset,
+  preset: currentTechnology,
   activities: availableActivities,
 });
 
@@ -207,8 +207,8 @@ If AI fails (network error, timeout, invalid response):
 ```typescript
 return {
   isValidRequirement: false,
-  activityCodes: preset.default_activity_codes,
-  reasoning: 'Using preset defaults due to AI service error',
+  activityCodes: [],
+  reasoning: 'AI service error – no activities suggested',
 };
 ```
 
@@ -227,7 +227,7 @@ A two-step flow for estimating individual requirements with higher precision.
 | Property | Value |
 |----------|-------|
 | Endpoint | `POST /.netlify/functions/ai-requirement-interview` |
-| Input | `description`, `techPresetId`, `techCategory`, `projectContext?` |
+| Input | `description`, `technologyId`, `techCategory`, `projectContext?` |
 | Output | `questions[]`, `reasoning`, `estimatedComplexity` |
 
 Questions are technology-specific (e.g., Dataverse entities, Power Automate flows) and use structured response types:
@@ -291,9 +291,9 @@ Questions have scope levels:
 | Answer scope | All answers apply to one requirement | Answers have explicit scope |
 | Use case | Detailed estimation | Rapid batch estimation |
 
-### Preset Wizard (Two-Stage) - Integrated in TechnologyDialog
+### Technology Wizard (Two-Stage) - Integrated in TechnologyDialog
 
-AI-assisted creation of custom technology presets, now integrated into the TechnologyDialog via AiAssistPanel.
+AI-assisted creation of custom technologies, integrated into the TechnologyDialog via AiAssistPanel.
 
 **Stage 1: Generate Questions**
 
@@ -309,20 +309,20 @@ Questions gather context about:
 - Integration patterns
 - Testing requirements
 
-**Stage 2: Generate Preset**
+**Stage 2: Generate Technology**
 
 | Property | Value |
 |----------|-------|
 | Endpoint | `POST /.netlify/functions/ai-generate-preset` |
 | Input | `description`, `answers`, `suggestedTechCategory?` |
-| Output | `preset` object with `name`, `description`, `tech_category`, `default_activity_codes[]` |
+| Output | `technology` object with `name`, `description`, `tech_category`, `activities[]` |
 
 **Difference from requirement interview:**
 
-| Aspect | Requirement Interview | Preset Wizard |
-|--------|----------------------|---------------|
-| Purpose | Estimate a specific requirement | Create reusable preset template |
-| Output | Activity selection + estimation | Preset configuration |
+| Aspect | Requirement Interview | Technology Wizard |
+|--------|----------------------|-------------------|
+| Purpose | Estimate a specific requirement | Create reusable technology config |
+| Output | Activity selection + estimation | Technology configuration |
 | Scope | Per-requirement | Per-technology-stack |
 
 ---
@@ -660,6 +660,12 @@ When disabled, the system operates exactly as before vector search was implement
 - If vector search returns 0 results → standard category filtering
 - If embedding generation fails → continues without RAG
 - If pgvector unavailable → graceful degradation to legacy flow
+
+**Activity scope — vector search vs presets:**
+
+Vector search retrieves activities broadly across the entire `tech_category` (+ MULTI). It is intentionally **not** restricted to the preset's `default_activity_codes`. This allows the AI to suggest the most appropriate activity for the requirement — e.g. suggesting `PP_FLOW_SIMPLE` even when the user selected the "Complex (HR)" preset, because the requirement only needs a simple flow.
+
+The frontend maps AI-suggested codes against **all activities of the tech_category** (not just the preset-filtered list). The `applyAiSuggestions` hook also validates by tech_category rather than preset codes. This ensures AI freedom while still scoping suggestions to the correct technology.
 
 ### Phase 3: Semantic Deduplication
 

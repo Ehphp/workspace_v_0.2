@@ -30,15 +30,18 @@ export interface Activity {
   created_at: string;
 }
 
-// Pivot table linking activities to technology presets with optional overrides
-export interface TechnologyPresetActivity {
-  tech_preset_id: string;
+// Pivot table linking activities to technologies with optional overrides
+export interface TechnologyActivity {
+  technology_id: string;
   activity_id: string;
   position: number | null;
   name_override: string | null;
   description_override: string | null;
   base_hours_override: number | null;
 }
+
+/** @deprecated Use TechnologyActivity instead */
+export type TechnologyPresetActivity = TechnologyActivity;
 
 // Activity with resolved values (base + override applied)
 export interface ActivityWithOverride extends Activity {
@@ -78,15 +81,12 @@ export interface Risk {
   created_at: string;
 }
 
-export interface TechnologyPreset {
+export interface Technology {
   id: string;
   code: string;
   name: string;
   description: string;
-  tech_category: string;
-  default_driver_values: Record<string, string>;
-  default_risks: string[];
-  default_activity_codes: string[];
+  tech_category: string; // matches code for system technologies
   color: string | null;
   icon: string | null;
   sort_order: number;
@@ -95,6 +95,13 @@ export interface TechnologyPreset {
   created_by?: string | null;
 }
 
+/** @deprecated Use Technology instead */
+export type TechnologyPreset = Technology & {
+  default_driver_values: Record<string, string>;
+  default_risks: string[];
+  default_activity_codes: string[];
+};
+
 export interface List {
   id: string;
   user_id: string; // Now acts as "created_by"
@@ -102,7 +109,9 @@ export interface List {
   name: string;
   description: string;
   owner: string;
-  tech_preset_id: string | null; // Default technology for requirements in this list
+  technology_id: string | null; // Default technology for requirements in this list
+  /** @deprecated Use technology_id */
+  tech_preset_id?: string | null;
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
   created_at: string;
   updated_at: string;
@@ -114,7 +123,9 @@ export interface Requirement {
   req_id: string;
   title: string;
   description: string;
-  tech_preset_id: string;
+  technology_id: string;
+  /** @deprecated Use technology_id */
+  tech_preset_id?: string;
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
   state: 'PROPOSED' | 'SELECTED' | 'SCHEDULED' | 'DONE';
   business_owner: string;

@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import type { TechnologyPreset } from '@/types/database';
+import type { Technology } from '@/types/database';
 import { createList, fetchPresets } from '@/lib/api';
 import { listSchema } from '@/lib/validation';
 import { Layers, Sparkles, User, FileText, Cpu, Activity } from 'lucide-react';
@@ -33,7 +33,7 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
   const [techPresetId, setTechPresetId] = useState<string>('__NONE__');
   const [status, setStatus] = useState<'DRAFT' | 'ACTIVE'>('DRAFT');
   const [loading, setLoading] = useState(false);
-  const [presets, setPresets] = useState<TechnologyPreset[]>([]);
+  const [presets, setPresets] = useState<Technology[]>([]);
 
   useEffect(() => {
     if (open) {

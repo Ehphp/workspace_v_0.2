@@ -6,14 +6,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle2, Sparkles, Wand2 } from 'lucide-react';
 import { useRequirementNormalization } from '@/hooks/useRequirementNormalization';
-import type { TechnologyPreset } from '@/types/database';
+import type { Technology } from '@/types/database';
 
 interface QuickEstimateInputProps {
     description: string;
     onDescriptionChange: (value: string) => void;
     techPresetId: string;
     onPresetChange: (value: string) => void;
-    presets: TechnologyPreset[];
+    presets: Technology[];
     calculating: boolean;
     isDemoMode: boolean;
     error: string | null;

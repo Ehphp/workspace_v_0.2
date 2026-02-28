@@ -13,7 +13,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { suggestActivities } from '@/lib/openai';
-import type { Activity, Driver, Risk, TechnologyPreset } from '@/types/database';
+import type { Activity, Driver, Risk, Technology } from '@/types/database';
 
 // Mock data - Power Platform activities
 const mockActivities: Activity[] = [
@@ -111,15 +111,12 @@ const mockRisks: Risk[] = [
     },
 ];
 
-const mockTech: TechnologyPreset = {
+const mockTech: Technology = {
     id: '1',
     code: 'PP_BASIC',
     name: 'Power Platform Basic',
     description: 'Standard Power Platform configuration',
     tech_category: 'POWER_PLATFORM',
-    default_activity_codes: ['PP_ANL_ALIGN', 'PP_DV_FIELD', 'PP_DV_FORM'],
-    default_driver_values: { COMPLEXITY: 'MEDIUM' },
-    default_risks: ['INTEGRATION'],
     color: 'green',
     icon: 'database',
     sort_order: 1,

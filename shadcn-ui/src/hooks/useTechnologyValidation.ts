@@ -24,7 +24,7 @@ export function useTechnologyValidation(
         try {
             // Check if name exists in database
             let query = supabase
-                .from('technology_presets')
+                .from('technologies')
                 .select('id')
                 .ilike('name', name)
                 .limit(1);

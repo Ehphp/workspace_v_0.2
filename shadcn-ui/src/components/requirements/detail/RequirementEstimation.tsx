@@ -4,13 +4,13 @@ import { DriversSection } from '@/components/estimation/DriversSection';
 import { RisksSection } from '@/components/estimation/RisksSection';
 import { CalculationSummary } from '@/components/estimation/CalculationSummary';
 import type { UseEstimationStateReturn } from '@/hooks/useEstimationState';
-import type { TechnologyPreset, Activity, Driver, Risk } from '@/types/database';
+import type { Technology, Activity, Driver, Risk } from '@/types/database';
 import { FileText } from 'lucide-react';
 
 interface RequirementEstimationProps {
     estimationState: UseEstimationStateReturn;
     data: {
-        presets: TechnologyPreset[];
+        presets: Technology[];
         activities: Activity[];
         drivers: Driver[];
         risks: Risk[];

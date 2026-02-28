@@ -4,8 +4,8 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
-import { MOCK_TECHNOLOGY_PRESETS } from '@/lib/mockData';
-import type { TechnologyPreset } from '@/types/database';
+import { MOCK_TECHNOLOGIES } from '@/lib/mockData';
+import type { Technology } from '@/types/database';
 import type { WizardData } from '@/hooks/useWizardState';
 
 interface WizardStep2Props {
@@ -16,7 +16,7 @@ interface WizardStep2Props {
 }
 
 export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props) {
-  const [presets, setPresets] = useState<TechnologyPreset[]>([]);
+  const [presets, setPresets] = useState<Technology[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(false);
 
@@ -29,32 +29,32 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
     try {
       const [{ data: presetsData, error: presetsError }, { data: pivotData, error: pivotError }] = await Promise.all([
         supabase
-          .from('technology_presets')
+          .from('technologies')
           .select('*')
           .order('name'),
         supabase
-          .from('technology_preset_activities')
-          .select('tech_preset_id, position, activities(code)'),
+          .from('technology_activities')
+          .select('technology_id, position, activities(code)'),
       ]);
 
       if (presetsError || !presetsData || presetsData.length === 0) {
-        setPresets(MOCK_TECHNOLOGY_PRESETS);
+        setPresets(MOCK_TECHNOLOGIES);
         setIsDemoMode(true);
       } else {
-        type PivotRow = { tech_preset_id: string; position: number | null; activities?: { code: string | null } };
+        type PivotRow = { technology_id: string; position: number | null; activities?: { code: string | null } };
         const grouped: Record<string, { code: string | null; position: number | null }[]> = {};
         (pivotData as PivotRow[] | null || []).forEach((row) => {
           const position = row.position ?? null;
-          grouped[row.tech_preset_id] = grouped[row.tech_preset_id] || [];
-          grouped[row.tech_preset_id].push({
+          grouped[row.technology_id] = grouped[row.technology_id] || [];
+          grouped[row.technology_id].push({
             code: row.activities?.code ?? null,
             position,
           });
         });
 
+        // Store activity count per technology (for display only)
         const normalizedPresets = presetsData.map((p) => {
           const rows = grouped[p.id] || [];
-          if (rows.length === 0) return p;
           const codes = rows
             .sort((a, b) => {
               const pa = a.position ?? Number.MAX_SAFE_INTEGER;
@@ -63,18 +63,17 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
             })
             .map((r) => r.code)
             .filter((code): code is string => Boolean(code));
-          if (codes.length === 0) return p;
-          return { ...p, default_activity_codes: codes };
+          return { ...p, _activityCount: codes.length };
         });
 
         setPresets(normalizedPresets);
         setIsDemoMode(false);
         if (pivotError) {
-          console.warn('Pivot load warning (fallback to presets defaults):', pivotError);
+          console.warn('Pivot load warning:', pivotError);
         }
       }
     } catch (error) {
-      setPresets(MOCK_TECHNOLOGY_PRESETS);
+      setPresets(MOCK_TECHNOLOGIES);
       setIsDemoMode(true);
     }
     setLoading(false);
@@ -133,7 +132,7 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
             <div className="grid gap-3 md:grid-cols-2">
               {presets.map((preset) => {
                 const isSelected = data.techPresetId === preset.id;
-                const defaultCount = preset.default_activity_codes?.length || 0;
+                const defaultCount = (preset as any)._activityCount || 0;
                 return (
                   <div
                     key={preset.id}

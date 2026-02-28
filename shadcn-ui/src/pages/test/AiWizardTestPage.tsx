@@ -23,7 +23,7 @@ export default function AiWizardTestPage() {
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => navigate('/configuration/presets')}
+                        onClick={() => navigate('/configuration/technologies')}
                         className="mb-4"
                     >
                         <ArrowLeft className="w-4 h-4 mr-2" />

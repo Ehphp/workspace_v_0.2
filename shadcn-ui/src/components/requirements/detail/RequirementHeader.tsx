@@ -3,7 +3,7 @@ import { ArrowLeft, User, Settings, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { useRequirementActions } from '@/hooks/useRequirementActions';
-import type { Requirement, TechnologyPreset } from '@/types/database';
+import type { Requirement, Technology } from '@/types/database';
 import { useAuth } from '@/hooks/useAuth';
 import { PriorityBadge, StateBadge } from '@/components/shared/RequirementBadges';
 import { useWorkflow } from '@/hooks/workflow/useWorkflow';
@@ -15,7 +15,7 @@ interface RequirementHeaderProps {
     requirement: Requirement;
     onBack: () => void;
     refetchRequirement: () => Promise<void>;
-    presets?: TechnologyPreset[];
+    presets?: Technology[];
 }
 
 export function RequirementHeader({ requirement, onBack, refetchRequirement, presets = [] }: RequirementHeaderProps) {
@@ -36,7 +36,7 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
     // Optimistic State
     const [currentPriority, setCurrentPriority] = useState(requirement.priority);
     const [currentState, setCurrentState] = useState(requirement.state);
-    const [currentTechId, setCurrentTechId] = useState(requirement.tech_preset_id);
+    const [currentTechId, setCurrentTechId] = useState(requirement.technology_id);
 
     useEffect(() => {
         setTempTitle(requirement.title);
@@ -55,8 +55,8 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
     }, [requirement.state]);
 
     useEffect(() => {
-        setCurrentTechId(requirement.tech_preset_id);
-    }, [requirement.tech_preset_id]);
+        setCurrentTechId(requirement.technology_id);
+    }, [requirement.technology_id]);
 
     useEffect(() => {
         if (isEditingTitle && titleInputRef.current) {
@@ -86,7 +86,7 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
             priority: currentPriority,
             state: currentState,
             business_owner: tempOwner,
-            tech_preset_id: currentTechId
+            technology_id: currentTechId
         }, () => setIsEditingTitle(false));
     };
 
@@ -110,7 +110,7 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
             priority: currentPriority,
             state: currentState,
             business_owner: newOwner,
-            tech_preset_id: currentTechId
+            technology_id: currentTechId
         }, () => setIsEditingOwner(false));
     };
 
@@ -131,7 +131,7 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
             priority: value,
             state: currentState,
             business_owner: tempOwner,
-            tech_preset_id: currentTechId
+            technology_id: currentTechId
         }, () => { });
     };
 
@@ -152,7 +152,7 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
             priority: currentPriority,
             state: value,
             business_owner: tempOwner,
-            tech_preset_id: currentTechId
+            technology_id: currentTechId
         }, () => { });
     };
 
@@ -167,7 +167,7 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
             priority: currentPriority,
             state: currentState,
             business_owner: tempOwner,
-            tech_preset_id: newValue
+            technology_id: newValue
         }, () => { });
     };
 

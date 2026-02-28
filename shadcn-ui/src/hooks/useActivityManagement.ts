@@ -32,7 +32,7 @@ export function useActivityManagement(userId: string | undefined) {
 
     const loadTechnologies = async () => {
         const { data } = await supabase
-            .from('technology_presets')
+            .from('technologies')
             .select('tech_category, name')
             .order('sort_order');
 

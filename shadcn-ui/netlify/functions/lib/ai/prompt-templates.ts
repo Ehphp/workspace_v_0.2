@@ -43,10 +43,12 @@ STEP 1: Valida la descrizione del requisito.
 
 STEP 2: Quando valido, suggerisci SOLO i codici attività necessari per implementarlo.
 
-VINCOLI IMPORTANTI:
+VINCOLI IMPORTANTI (RAG STRETTO):
+- Stai ricevendo una short-list filtrata semanticamente tramite Retrieval-Augmented Generation (RAG).
+- Devi ATTENERTI STRETTAMENTE alla lista di attività fornite qui sotto.
+- NON INVENTARE e NON AGGIUNGERE codici attività che non sono esplicitamente elencati nel catalogo filtrato qui sotto.
 - Suggerisci SOLO codici attività (MAI driver o rischi)
 - Driver e rischi saranno selezionati manualmente dall'utente
-- I codici attività DEVONO essere dalla lista disponibile sotto
 
 REGOLE DI VALIDAZIONE:
 

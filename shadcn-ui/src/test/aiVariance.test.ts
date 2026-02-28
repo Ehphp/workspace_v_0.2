@@ -10,7 +10,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { suggestActivities } from '@/lib/openai';
-import type { Activity, Driver, Risk, TechnologyPreset } from '@/types/database';
+import type { Activity, Driver, Risk, Technology } from '@/types/database';
 
 // Mock data realistici
 const mockActivities: Activity[] = [
@@ -54,15 +54,12 @@ const mockRisks: Risk[] = [
     { id: '3', code: 'R_PERF', name: 'Performance Risk', description: 'Performance concerns', weight: 6, created_at: '2024-01-01' },
 ];
 
-const mockTech: TechnologyPreset = {
+const mockTech: Technology = {
     id: '1',
     code: 'FULLSTACK_WEB',
     name: 'Full Stack Web',
     description: 'Full stack web application',
     tech_category: 'FULLSTACK',
-    default_activity_codes: ['REQ_ANALYSIS', 'DEV_BACKEND', 'DEV_FRONTEND', 'TEST_UNIT'],
-    default_driver_values: { COMPLEXITY: 'MEDIUM', INTEGRATION: 'FEW' },
-    default_risks: ['R_TECH'],
     color: 'blue',
     icon: 'code',
     sort_order: 1,

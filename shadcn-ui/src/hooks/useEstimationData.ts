@@ -2,10 +2,10 @@ import { useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { fetchEstimationMasterData } from '@/lib/api';
-import type { TechnologyPreset, Activity, Driver, Risk } from '@/types/database';
+import type { Technology, Activity, Driver, Risk } from '@/types/database';
 
 interface EstimationData {
-    presets: TechnologyPreset[];
+    presets: Technology[];
     activities: Activity[];
     drivers: Driver[];
     risks: Risk[];

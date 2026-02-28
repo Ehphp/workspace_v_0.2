@@ -14,7 +14,7 @@ import type {
     SelectedDriver,
     SelectedRisk
 } from '@/types/estimation';
-import type { Activity, Driver, Risk, TechnologyPreset } from '@/types/database';
+import type { Activity, Driver, Risk, Technology } from '@/types/database';
 
 /**
  * Input for finalizing an estimation with preset defaults
@@ -30,8 +30,8 @@ export interface FinalizeEstimationInput {
     driverValues?: Record<string, string>;
     /** Risk codes to apply. Falls back to preset defaults if not provided */
     riskCodes?: string[];
-    /** Technology preset for defaults */
-    preset?: TechnologyPreset;
+    /** Technology for context (template defaults no longer used) */
+    preset?: Technology;
     /** Full driver catalog to look up multipliers */
     drivers: Driver[];
     /** Full risk catalog to look up weights */
@@ -69,14 +69,12 @@ export interface FinalizedEstimation extends EstimationResult {
  * Priority for drivers:
  * 1. Explicit driverValues parameter
  * 2. AI suggestedDrivers (from interview)
- * 3. preset.default_driver_values
- * 4. First option of each driver (neutral)
+ * 3. First option of each driver (neutral)
  * 
  * Priority for risks:
  * 1. Explicit riskCodes parameter
  * 2. AI suggestedRisks (from interview)
- * 3. preset.default_risks
- * 4. Empty (no risks)
+ * 3. Empty (no risks)
  * 
  * @param input - Finalization parameters
  * @returns Complete estimation result with metadata
@@ -137,9 +135,9 @@ export function finalizeEstimation(input: FinalizeEstimationInput): FinalizedEst
             return acc;
         }, {} as Record<string, string>);
         driverSource = 'suggested';
-    } else if (preset?.default_driver_values) {
-        // Preset defaults
-        appliedDriverValues = preset.default_driver_values;
+    } else if ((preset as any)?.default_driver_values) {
+        // Legacy: preset defaults (deprecated, will be removed)
+        appliedDriverValues = (preset as any).default_driver_values;
         driverSource = 'preset';
     }
 
@@ -177,8 +175,9 @@ export function finalizeEstimation(input: FinalizeEstimationInput): FinalizedEst
     } else if (suggestedRisks && suggestedRisks.length > 0) {
         appliedRiskCodes = suggestedRisks;
         riskSource = 'suggested';
-    } else if (preset?.default_risks) {
-        appliedRiskCodes = preset.default_risks;
+    } else if ((preset as any)?.default_risks) {
+        // Legacy: preset defaults (deprecated, will be removed)
+        appliedRiskCodes = (preset as any).default_risks;
         riskSource = 'preset';
     }
 
@@ -221,7 +220,7 @@ export function finalizeEstimation(input: FinalizeEstimationInput): FinalizedEst
 export function quickFinalizeEstimation(
     activityCodes: string[],
     activities: Activity[],
-    preset: TechnologyPreset,
+    preset: Technology,
     drivers: Driver[],
     risks: Risk[]
 ): FinalizedEstimation {
@@ -246,7 +245,7 @@ export function interviewFinalizeEstimation(
     risks: Risk[],
     suggestedDrivers?: Array<{ code: string; suggestedValue: string }>,
     suggestedRisks?: string[],
-    preset?: TechnologyPreset
+    preset?: Technology
 ): FinalizedEstimation {
     return finalizeEstimation({
         activityCodes,

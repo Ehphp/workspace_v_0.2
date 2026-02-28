@@ -37,7 +37,7 @@ export function CreateRequirementDialog({
                             name: list.name,
                             description: list.description,
                             owner: list.owner,
-                            defaultTechPresetId: list.tech_preset_id || undefined,
+                            defaultTechPresetId: list.technology_id || undefined,
                         } : undefined}
                         onSuccess={() => {
                             onSuccess();

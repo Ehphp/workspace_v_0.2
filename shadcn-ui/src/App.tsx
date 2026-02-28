@@ -72,7 +72,7 @@ const App = () => (
           />
 
           <Route
-            path="/configuration/presets"
+            path="/configuration/technologies"
             element={
               <AuthGuard>
                 <ConfigurationPresets />
@@ -110,7 +110,8 @@ const App = () => (
           <Route path="/lists/:listId/requirements/:reqId" element={<Navigate to="/dashboard/:listId/requirements/:reqId" replace />} />
           <Route path="/admin" element={<Navigate to="/configuration" replace />} />
           <Route path="/admin/activities" element={<Navigate to="/configuration/activities" replace />} />
-          <Route path="/presets" element={<Navigate to="/configuration/presets" replace />} />
+          <Route path="/presets" element={<Navigate to="/configuration/technologies" replace />} />
+          <Route path="/configuration/presets" element={<Navigate to="/configuration/technologies" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

@@ -86,8 +86,8 @@ async function fetchEstimationHistory(
         const { data: requirement } = await supabase
             .from('requirements')
             .select(`
-                tech_preset_id,
-                technology_presets (name)
+                technology_id,
+                technologies (name)
             `)
             .eq('id', requirementId)
             .single();
@@ -102,14 +102,14 @@ async function fetchEstimationHistory(
                 baseHours: a.base_hours,
             }));
 
-        // Handle technology_presets - Supabase returns differently based on relationship
+        // Handle technologies - Supabase returns differently based on relationship
         let techPresetName: string | undefined;
-        const presets: any = requirement?.technology_presets;
-        if (presets) {
-            if (Array.isArray(presets) && presets.length > 0) {
-                techPresetName = presets[0]?.name;
-            } else if (typeof presets === 'object' && presets.name) {
-                techPresetName = presets.name;
+        const techs: any = requirement?.technologies;
+        if (techs) {
+            if (Array.isArray(techs) && techs.length > 0) {
+                techPresetName = techs[0]?.name;
+            } else if (typeof techs === 'object' && techs.name) {
+                techPresetName = techs.name;
             }
         }
 

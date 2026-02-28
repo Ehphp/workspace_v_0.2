@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { TechnologyPreset, Activity, Driver, Risk, ActivityWithOverride } from '@/types/database';
+import type { TechnologyPreset, Technology, Activity, Driver, Risk, ActivityWithOverride } from '@/types/database';
 import { toast } from 'sonner';
 
 export interface PresetView extends TechnologyPreset {
@@ -70,12 +70,12 @@ export function usePresetManagement(userId: string | undefined) {
         setError(null);
         try {
             const [presetsRes, activitiesRes, driversRes, risksRes, pivotRes] = await Promise.all([
-                supabase.from('technology_presets').select('*').order('name'),
+                supabase.from('technologies').select('*').order('name'),
                 supabase.from('activities').select('*').eq('active', true).order('name'),
                 supabase.from('drivers').select('*'),
                 supabase.from('risks').select('*'),
                 // Fetch pivot table with override columns
-                supabase.from('technology_preset_activities').select('tech_preset_id, activity_id, position, name_override, description_override, base_hours_override'),
+                supabase.from('technology_activities').select('technology_id, activity_id, position, name_override, description_override, base_hours_override'),
             ]);
 
             if (presetsRes.error) throw presetsRes.error;
@@ -97,7 +97,7 @@ export function usePresetManagement(userId: string | undefined) {
 
             // Pivot rows now include override columns
             interface PivotRow {
-                tech_preset_id: string;
+                technology_id: string;
                 activity_id: string;
                 position: number | null;
                 name_override: string | null;
@@ -107,10 +107,10 @@ export function usePresetManagement(userId: string | undefined) {
 
             const pivotByPreset = new Map<string, PivotRow[]>();
             ((pivotRes.data as PivotRow[] | null) || []).forEach((row) => {
-                if (!pivotByPreset.has(row.tech_preset_id)) {
-                    pivotByPreset.set(row.tech_preset_id, []);
+                if (!pivotByPreset.has(row.technology_id)) {
+                    pivotByPreset.set(row.technology_id, []);
                 }
-                pivotByPreset.get(row.tech_preset_id)!.push(row);
+                pivotByPreset.get(row.technology_id)!.push(row);
             });
 
             const presetViews: PresetView[] = (presetsRes.data || []).map((p) => {
@@ -188,7 +188,7 @@ export function usePresetManagement(userId: string | undefined) {
 
         // Check if code already exists
         const { data: existing } = await supabase
-            .from('technology_presets')
+            .from('technologies')
             .select('code')
             .eq('code', baseCode)
             .single();
@@ -236,7 +236,7 @@ export function usePresetManagement(userId: string | undefined) {
 
             if (editingId) {
                 const { error } = await supabase
-                    .from('technology_presets')
+                    .from('technologies')
                     .update(presetData)
                     .eq('id', editingId);
                 if (error) throw error;
@@ -244,7 +244,7 @@ export function usePresetManagement(userId: string | undefined) {
                 const code = await generateUniqueCode(form.name);
                 console.log(`[savePreset] Using code: ${code}`);
                 const { data, error } = await supabase
-                    .from('technology_presets')
+                    .from('technologies')
                     .insert({ ...presetData, code })
                     .select('id')
                     .single();
@@ -255,9 +255,9 @@ export function usePresetManagement(userId: string | undefined) {
             if (presetId) {
                 if (editingId) {
                     await supabase
-                        .from('technology_preset_activities')
+                        .from('technology_activities')
                         .delete()
-                        .eq('tech_preset_id', presetId);
+                        .eq('technology_id', presetId);
                 }
 
                 if (form.activities.length > 0) {
@@ -267,7 +267,7 @@ export function usePresetManagement(userId: string | undefined) {
 
                     // Process activities: create new ones if they don't exist, then link them with overrides
                     interface PivotRowToInsert {
-                        tech_preset_id: string;
+                        technology_id: string;
                         activity_id: string;
                         position: number;
                         name_override: string | null;
@@ -328,7 +328,7 @@ export function usePresetManagement(userId: string | undefined) {
                         // Add to rows for linking - include override columns
                         if (activityId) {
                             rows.push({
-                                tech_preset_id: presetId,
+                                technology_id: presetId,
                                 activity_id: activityId,
                                 position: idx + 1,
                                 // Save override values (null means use base activity values)
@@ -343,7 +343,7 @@ export function usePresetManagement(userId: string | undefined) {
 
                     if (rows.length > 0) {
                         const { error } = await supabase
-                            .from('technology_preset_activities')
+                            .from('technology_activities')
                             .insert(rows);
                         if (error) throw error;
                     }
@@ -367,7 +367,7 @@ export function usePresetManagement(userId: string | undefined) {
 
         try {
             const { error } = await supabase
-                .from('technology_presets')
+                .from('technologies')
                 .delete()
                 .eq('id', preset.id)
                 .eq('created_by', userId || '');

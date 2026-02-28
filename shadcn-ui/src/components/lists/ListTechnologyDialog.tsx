@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import type { List, TechnologyPreset } from '@/types/database';
+import type { List, Technology } from '@/types/database';
 
 interface ListTechnologyDialogProps {
     open: boolean;
@@ -23,20 +23,20 @@ interface ListTechnologyDialogProps {
 }
 
 export function ListTechnologyDialog({ open, onOpenChange, list, onSaved }: ListTechnologyDialogProps) {
-    const [presets, setPresets] = useState<TechnologyPreset[]>([]);
+    const [presets, setPresets] = useState<Technology[]>([]);
     const [selectedPresetId, setSelectedPresetId] = useState<string>('');
     const [applyToRequirements, setApplyToRequirements] = useState(true);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (!open) return;
-        setSelectedPresetId(list?.tech_preset_id || '');
+        setSelectedPresetId(list?.technology_id || list?.tech_preset_id || '');
         loadPresets();
     }, [open, list]);
 
     const loadPresets = async () => {
         const { data, error } = await supabase
-            .from('technology_presets')
+            .from('technologies')
             .select('*')
             .order('name');
 
@@ -59,7 +59,7 @@ export function ListTechnologyDialog({ open, onOpenChange, list, onSaved }: List
             const { error: updateListError } = await supabase
                 .from('lists')
                 .update({
-                    tech_preset_id: selectedPresetId,
+                    technology_id: selectedPresetId,
                     updated_at: new Date().toISOString(),
                 })
                 .eq('id', list.id);
@@ -74,11 +74,11 @@ export function ListTechnologyDialog({ open, onOpenChange, list, onSaved }: List
                 const { data, error: updateReqError } = await supabase
                     .from('requirements')
                     .update({
-                        tech_preset_id: selectedPresetId,
+                        technology_id: selectedPresetId,
                         updated_at: new Date().toISOString(),
                     })
                     .eq('list_id', list.id)
-                    .is('tech_preset_id', null)
+                    .is('technology_id', null)
                     .select('id');
 
                 if (updateReqError) {
