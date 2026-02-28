@@ -11,6 +11,11 @@ import { validateRequirementDescription } from '../../validation/requirement-val
 import { searchSimilarActivities, isVectorSearchEnabled } from '../vector-search';
 import { retrieveRAGContext, getRAGSystemPromptAddition } from '../rag';
 
+// Model configuration - use env variable AI_ESTIMATION_MODEL or default to gpt-4o
+// NOTE: gpt-5 has limitations (no custom temperature, no json_schema response_format)
+// Use gpt-4o as default for reliable structured output
+const AI_MODEL = process.env.AI_ESTIMATION_MODEL || 'gpt-5';
+
 export interface Preset {
     id: string;
     name: string;
@@ -173,7 +178,7 @@ export async function suggestActivities(request: SuggestActivitiesRequest): Prom
     }
 
     console.log('Calling OpenAI API with structured outputs...');
-    console.log('Model: gpt-4o-mini');
+    console.log(`[suggest-activities] Using model: ${AI_MODEL}`);
     console.log('Test mode:', testMode ? 'enabled (temp=0.7, no cache)' : 'disabled (temp=0.0, cached)');
 
     // Generate strict JSON schema with enum of valid activity codes
@@ -183,11 +188,13 @@ export async function suggestActivities(request: SuggestActivitiesRequest): Prom
     // Call OpenAI API with structured outputs
     const provider = getDefaultProvider();
     const temperature = testMode ? 0.7 : 0.0;
+    // gpt-5 uses internal reasoning tokens that count against max_output_tokens,
+    // so we need a generous budget (16k) even though the JSON output is ~300 tokens.
     const responseContent = await provider.generateContent({
-        model: 'gpt-4o-mini',
+        model: AI_MODEL,
         temperature,
-        maxTokens: 500,
-        options: { timeout: 30000 },
+        maxTokens: 16384,
+        options: { timeout: 55000 },
         responseFormat: responseSchema as any,
         systemPrompt: systemPrompt,
         userPrompt: userPrompt
@@ -209,9 +216,10 @@ export async function suggestActivities(request: SuggestActivitiesRequest): Prom
         throw new Error('Invalid JSON response from AI');
     }
 
-    console.log('Structured output received and validated by OpenAI');
+    console.log('Structured output received and parsed');
 
-    // Keep basic Zod validation for extra safety
+    // Zod validation + activity code filtering (essential when json_schema
+    // is downgraded to json_object for gpt-5 — AI may return invalid codes)
     const validatedSuggestion = validateAISuggestion(
         suggestion,
         relevantActivityCodes,

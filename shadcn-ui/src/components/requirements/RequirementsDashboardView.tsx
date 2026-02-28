@@ -1,10 +1,10 @@
 import type React from 'react';
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Sector } from 'recharts';
 import {
     Clock,
     Target,
@@ -30,6 +30,42 @@ const STATUS_COLORS: Record<string, string> = {
     DONE: '#10b981',
 };
 
+const STATUS_LABELS: Record<string, string> = {
+    PROPOSED: 'Proposti',
+    SELECTED: 'Selezionati',
+    SCHEDULED: 'Pianificati',
+    DONE: 'Completati',
+};
+
+// Custom active shape for donut chart – highlighted sector with no black border
+const renderActiveShape = (props: any) => {
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value, percent } = props;
+    return (
+        <g>
+            {/* Center label */}
+            <text x={cx} y={cy - 10} textAnchor="middle" fill="#334155" fontSize={13} fontWeight={700}>
+                {STATUS_LABELS[payload.name] || payload.name}
+            </text>
+            <text x={cx} y={cy + 8} textAnchor="middle" fill={fill} fontSize={18} fontWeight={800}>
+                {value}
+            </text>
+            <text x={cx} y={cy + 22} textAnchor="middle" fill="#94a3b8" fontSize={10}>
+                {`${(percent * 100).toFixed(0)}% del totale`}
+            </text>
+            {/* Highlighted sector */}
+            <Sector
+                cx={cx} cy={cy}
+                innerRadius={innerRadius - 2}
+                outerRadius={outerRadius + 4}
+                startAngle={startAngle}
+                endAngle={endAngle}
+                fill={fill}
+                stroke="none"
+            />
+        </g>
+    );
+};
+
 const PRIORITY_COLORS: Record<string, string> = {
     HIGH: '#ef4444',
     MEDIUM: '#f59e0b',
@@ -44,6 +80,11 @@ export function RequirementsDashboardView({
     notEstimatedCount
 }: RequirementsDashboardViewProps) {
     const navigate = useNavigate();
+    const [activeStatusIndex, setActiveStatusIndex] = useState<number | undefined>(undefined);
+
+    const onPieClick = useCallback((_: any, index: number) => {
+        setActiveStatusIndex(prev => prev === index ? undefined : index);
+    }, []);
 
     // Calculate stats
     const stats = useMemo(() => {
@@ -113,24 +154,24 @@ export function RequirementsDashboardView({
         : '0';
 
     return (
-        <div className="grid grid-cols-12 gap-4 h-full">
+        <div className="grid grid-cols-12 gap-2 h-full overflow-hidden">
             {/* Column 1: KPI Summary (3 cols) */}
-            <div className="col-span-3 flex flex-col gap-3">
+            <div className="col-span-3 flex flex-col gap-2 overflow-y-auto min-h-0">
                 {/* KPI Card */}
-                <div className="rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-3 space-y-3">
+                <div className="rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-2.5 space-y-2">
                     <h3 className="font-semibold text-slate-800 flex items-center gap-2 text-xs">
                         <span className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">1</span>
                         Riepilogo Stime
                     </h3>
 
                     {/* Main KPI */}
-                    <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-3 text-center">
-                        <p className="text-3xl font-bold text-blue-600">{totalEstimation.toFixed(1)}</p>
+                    <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-2 text-center">
+                        <p className="text-2xl font-bold text-blue-600">{totalEstimation.toFixed(1)}</p>
                         <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide">Giorni Totali</p>
                     </div>
 
                     {/* Progress */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                         <div className="flex items-center justify-between text-[10px]">
                             <span className="text-slate-500 font-medium">Completamento</span>
                             <span className="font-semibold text-slate-700">{progressPercent}%</span>
@@ -143,88 +184,103 @@ export function RequirementsDashboardView({
                     </div>
 
                     {/* Mini Stats */}
-                    <div className="grid grid-cols-2 gap-2">
-                        <div className="bg-white/80 border border-slate-200 rounded-lg p-2 text-center">
-                            <p className="text-lg font-bold text-slate-800">{avgEstimation}</p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                        <div className="bg-white/80 border border-slate-200 rounded-lg p-1.5 text-center">
+                            <p className="text-base font-bold text-slate-800">{avgEstimation}</p>
                             <p className="text-[9px] text-slate-500">gg/req</p>
                         </div>
-                        <div className="bg-white/80 border border-slate-200 rounded-lg p-2 text-center">
-                            <p className="text-lg font-bold text-red-500">{stats.totalHigh}</p>
+                        <div className="bg-white/80 border border-slate-200 rounded-lg p-1.5 text-center">
+                            <p className="text-base font-bold text-red-500">{stats.totalHigh}</p>
                             <p className="text-[9px] text-slate-500">Alta Priorità</p>
                         </div>
-                    </div>
-                </div>
-
-                {/* Status Overview */}
-                <div className="rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-3 space-y-2">
-                    <h3 className="font-semibold text-slate-800 flex items-center gap-2 text-xs">
-                        <span className="w-4 h-4 rounded-full bg-gradient-to-br from-purple-500 to-violet-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">2</span>
-                        Stati
-                    </h3>
-                    <div className="space-y-1">
-                        {[
-                            { state: 'PROPOSED', label: 'Proposti', colorClass: 'bg-blue-500' },
-                            { state: 'SELECTED', label: 'Selezionati', colorClass: 'bg-amber-500' },
-                            { state: 'SCHEDULED', label: 'Pianificati', colorClass: 'bg-purple-500' },
-                            { state: 'DONE', label: 'Completati', colorClass: 'bg-emerald-500' },
-                        ].map(({ state, label, colorClass }) => {
-                            const count = stats.byStatus[state] || 0;
-                            const percent = requirements.length > 0 ? Math.round((count / requirements.length) * 100) : 0;
-                            return (
-                                <div key={state} className="flex items-center justify-between bg-white/80 border border-slate-200 rounded-lg p-2 hover:border-slate-300 transition-all">
-                                    <div className="flex items-center gap-2">
-                                        <div className={`w-2 h-2 rounded-full ${colorClass}`} />
-                                        <span className="text-[10px] font-medium text-slate-600">{label}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[11px] font-bold text-slate-800">{count}</span>
-                                        <span className="text-[9px] text-slate-400">({percent}%)</span>
-                                    </div>
-                                </div>
-                            );
-                        })}
                     </div>
                 </div>
             </div>
 
             {/* Column 2: Charts (5 cols) */}
-            <div className="col-span-5 flex flex-col gap-3 border-l border-r border-slate-100 px-4">
+            <div className="col-span-5 flex flex-col gap-2 border-l border-r border-slate-100 px-3 min-h-0">
                 {/* Status Distribution Chart */}
                 <div className="flex-1 min-h-0 flex flex-col">
-                    <div className="flex items-center justify-between shrink-0 mb-2">
+                    <div className="flex items-center justify-between shrink-0 mb-1">
                         <h3 className="font-semibold text-slate-800 flex items-center gap-1.5 text-xs">
-                            <span className="w-4 h-4 rounded-full bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">3</span>
+                            <span className="w-4 h-4 rounded-full bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">2</span>
                             Distribuzione Stato
                         </h3>
                     </div>
-                    <div className="flex-1 rounded-lg border-2 border-dashed border-orange-200 bg-orange-50/30 p-2 min-h-[180px]">
+                    <div className="flex-1 rounded-lg border-2 border-dashed border-orange-200 bg-orange-50/30 p-2 min-h-0 flex flex-col">
                         {statusChartData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={statusChartData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius="50%"
-                                        outerRadius="75%"
-                                        paddingAngle={3}
-                                        dataKey="value"
-                                    >
-                                        {statusChartData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip
-                                        contentStyle={{
-                                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                                            border: '1px solid #e2e8f0',
-                                            borderRadius: '8px',
-                                            fontSize: '11px',
-                                        }}
-                                        formatter={(value: number) => [`${value}`, 'Requisiti']}
-                                    />
-                                </PieChart>
-                            </ResponsiveContainer>
+                            <>
+                                <div className="flex-1 min-h-0 [&_svg]:outline-none [&_svg]:border-none [&_svg:focus]:outline-none">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={statusChartData}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius="45%"
+                                                outerRadius="70%"
+                                                paddingAngle={3}
+                                                dataKey="value"
+                                                stroke="none"
+                                                activeIndex={activeStatusIndex}
+                                                activeShape={renderActiveShape}
+                                                onClick={onPieClick}
+                                                cursor="pointer"
+                                            >
+                                                {statusChartData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                                                ))}
+                                            </Pie>
+                                            {activeStatusIndex === undefined && (
+                                                <text
+                                                    x="50%"
+                                                    y="47%"
+                                                    textAnchor="middle"
+                                                    dominantBaseline="middle"
+                                                    fill="#334155"
+                                                    fontSize={18}
+                                                    fontWeight={800}
+                                                >
+                                                    {requirements.length}
+                                                </text>
+                                            )}
+                                            {activeStatusIndex === undefined && (
+                                                <text
+                                                    x="50%"
+                                                    y="55%"
+                                                    textAnchor="middle"
+                                                    dominantBaseline="middle"
+                                                    fill="#94a3b8"
+                                                    fontSize={9}
+                                                >
+                                                    requisiti
+                                                </text>
+                                            )}
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                {/* Compact legend */}
+                                <div className="shrink-0 flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5 pt-1">
+                                    {statusChartData.map((entry, index) => {
+                                        const isActive = activeStatusIndex === index;
+                                        return (
+                                            <button
+                                                key={entry.name}
+                                                type="button"
+                                                onClick={() => setActiveStatusIndex(prev => prev === index ? undefined : index)}
+                                                className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-all text-[10px] ${isActive
+                                                        ? 'bg-slate-100 font-bold text-slate-800'
+                                                        : 'text-slate-500 hover:text-slate-700'
+                                                    }`}
+                                            >
+                                                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+                                                <span>{STATUS_LABELS[entry.name] || entry.name}</span>
+                                                <span className="font-semibold">{entry.value}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </>
                         ) : (
                             <div className="h-full flex flex-col items-center justify-center text-slate-400">
                                 <Layers className="w-6 h-6 opacity-20 mb-1" />
@@ -238,11 +294,11 @@ export function RequirementsDashboardView({
                 <div className="flex-1 min-h-0 flex flex-col">
                     <div className="flex items-center justify-between shrink-0 mb-2">
                         <h3 className="font-semibold text-slate-800 flex items-center gap-1.5 text-xs">
-                            <span className="w-4 h-4 rounded-full bg-gradient-to-br from-red-500 to-rose-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">4</span>
+                            <span className="w-4 h-4 rounded-full bg-gradient-to-br from-red-500 to-rose-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">3</span>
                             Distribuzione Priorità
                         </h3>
                     </div>
-                    <div className="flex-1 rounded-lg border-2 border-dashed border-red-200 bg-red-50/30 p-2 min-h-[150px]">
+                    <div className="flex-1 rounded-lg border-2 border-dashed border-red-200 bg-red-50/30 p-2 min-h-0 [&_svg]:outline-none [&_svg]:border-none [&_svg:focus]:outline-none">
                         {priorityChartData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={priorityChartData} layout="vertical">
@@ -271,12 +327,12 @@ export function RequirementsDashboardView({
             </div>
 
             {/* Column 3: Lists (4 cols) */}
-            <div className="col-span-4 flex flex-col gap-3 h-full min-h-0">
+            <div className="col-span-4 flex flex-col gap-2 h-full min-h-0">
                 {/* Top by Effort */}
                 <div className="flex-1 min-h-0 flex flex-col">
                     <div className="flex items-center justify-between shrink-0 mb-2">
                         <h3 className="font-semibold text-slate-800 flex items-center gap-1.5 text-xs">
-                            <span className="w-4 h-4 rounded-full bg-gradient-to-br from-emerald-500 to-green-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">5</span>
+                            <span className="w-4 h-4 rounded-full bg-gradient-to-br from-emerald-500 to-green-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">4</span>
                             Top per Effort
                         </h3>
                         <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[10px] font-medium px-1.5 py-0">
@@ -327,7 +383,7 @@ export function RequirementsDashboardView({
                 <div className="flex-1 min-h-0 flex flex-col">
                     <div className="flex items-center justify-between shrink-0 mb-2">
                         <h3 className="font-semibold text-slate-800 flex items-center gap-1.5 text-xs">
-                            <span className="w-4 h-4 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">6</span>
+                            <span className="w-4 h-4 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">5</span>
                             Aggiornamenti Recenti
                         </h3>
                         <Badge className="bg-cyan-100 text-cyan-700 border-0 text-[10px] font-medium px-1.5 py-0">
@@ -371,7 +427,7 @@ export function RequirementsDashboardView({
                     <div className="shrink-0">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="font-semibold text-slate-800 flex items-center gap-1.5 text-xs">
-                                <span className="w-4 h-4 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">7</span>
+                                <span className="w-4 h-4 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">6</span>
                                 Business Owners
                             </h3>
                         </div>

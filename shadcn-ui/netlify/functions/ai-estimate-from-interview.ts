@@ -17,8 +17,10 @@ import { getPrompt } from './lib/ai/prompt-registry';
 import { searchSimilarActivities, isVectorSearchEnabled } from './lib/ai/vector-search';
 import { retrieveRAGContext, getRAGSystemPromptAddition } from './lib/ai/rag';
 
-// Model configuration - use env variable AI_ESTIMATION_MODEL or default to gpt-5
-const AI_MODEL = process.env.AI_ESTIMATION_MODEL || 'gpt-5';
+// Model configuration - use env variable AI_ESTIMATION_MODEL or default to gpt-4o
+// NOTE: gpt-5 has limitations (no custom temperature, no json_schema response_format)
+// Use gpt-4o as default for reliable structured output
+const AI_MODEL = process.env.AI_ESTIMATION_MODEL || 'gpt-4o';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -204,7 +206,7 @@ function buildResponseSchema(validActivityCodes: string[]) {
  */
 function formatActivitiesCatalog(activities: Activity[]): string {
     return activities
-        .map(a => `- ${a.code}: ${a.name} (${a.base_hours}h) - ${a.description}`)
+        .map(a => `- ${a.code}: ${a.name} (${a.base_hours}h) [${a.group} | ${a.tech_category}] - ${a.description}`)
         .join('\n');
 }
 
@@ -360,9 +362,12 @@ Collega ogni attività alla risposta che l'ha motivata.`;
         console.log(`[ai-estimate-from-interview] Using model: ${AI_MODEL}`);
 
         // Call LLM with dynamic schema containing enum constraint
+        // gpt-5 uses internal reasoning tokens within max_output_tokens budget,
+        // so we need 16k even though the JSON output is ~2k tokens.
         const responseContent = await provider.generateContent({
             model: AI_MODEL,
             options: { timeout: 55000 },
+            maxTokens: 16384,
             systemPrompt: systemPrompt,
             userPrompt: userPrompt,
             responseFormat: responseSchema as any,

@@ -218,6 +218,7 @@ export function WizardStepInterview({
                 answers={interview.answers}
                 reasoning={interview.reasoning || data.interviewReasoning}
                 estimatedComplexity={interview.estimatedComplexity || data.estimatedComplexity}
+                requirementDescription={data.description}
                 onAnswer={handleAnswerQuestion}
                 onNext={interview.nextQuestion}
                 onPrevious={interview.previousQuestion}

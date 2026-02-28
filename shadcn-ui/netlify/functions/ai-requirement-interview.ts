@@ -387,6 +387,7 @@ Genera domande tecniche SPECIFICHE per ${techCategoryDescription} che chiariscon
         const responseContent = await provider.generateContent({
             model: 'gpt-4o',
             temperature: 0,
+            maxTokens: 3000, // 4-6 structured questions with options need ~2000-2500 tokens
             options: { timeout: 55000 },
             systemPrompt: systemPromptWithCategory,
             userPrompt: userPrompt,

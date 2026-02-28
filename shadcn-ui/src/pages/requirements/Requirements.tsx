@@ -376,8 +376,8 @@ export default function Requirements() {
             )}
 
             {/* Main Content */}
-            <div className="flex-1 overflow-y-auto relative z-0">
-                <div className="container mx-auto px-6 py-6">
+            <div className={`flex-1 relative z-0 ${viewMode === 'dashboard' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+                <div className={`container mx-auto px-6 ${viewMode === 'dashboard' ? 'py-2 h-full' : 'py-6'}`}>
                     {/* Dashboard View */}
                     {viewMode === 'dashboard' && requirements.length > 0 ? (
                         <RequirementsDashboardView

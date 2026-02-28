@@ -86,15 +86,119 @@ export class OpenAIProvider implements ILLMProvider {
 
     async generateContent(params: GenerateContentParams): Promise<string> {
         const client = this.getClient(params.options);
+        const model = params.model;
+        const isNewModel = model.startsWith('gpt-5') || model.startsWith('o1') || model.startsWith('o3') || model.startsWith('o4');
+
+        if (isNewModel) {
+            return this.generateContentResponsesAPI(client, params);
+        }
+        return this.generateContentChatCompletions(client, params);
+    }
+
+    // ── Responses API (gpt-5, o-series) ────────────────────────────────────
+    private async generateContentResponsesAPI(
+        client: OpenAI,
+        params: GenerateContentParams,
+    ): Promise<string> {
+        const model = params.model;
+        const tokenLimit = params.maxTokens ?? 1000;
+
+        // Build text.format for Responses API
+        let textFormat: Record<string, any> = { type: 'text' };
+        if (params.responseFormat?.type === 'json_schema' && params.responseFormat.json_schema) {
+            textFormat = {
+                type: 'json_schema',
+                ...params.responseFormat.json_schema,   // name, strict, schema
+            };
+        } else if (params.responseFormat?.type === 'json_object') {
+            textFormat = { type: 'json_object' };
+        }
+
+        const instructions = params.systemPrompt;
+        const input = params.userPrompt;
+
+        console.log(`[openai-client] Responses API call — model=${model}, max_output_tokens=${tokenLimit}, format=${textFormat.type}`);
+
+        let response: any;
+        let lastError: any;
+        const maxAttempts = 2;       // 1 retry on empty output
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                response = await (client as any).responses.create({
+                    model,
+                    instructions,
+                    input,
+                    max_output_tokens: tokenLimit,
+                    text: { format: textFormat },
+                });
+            } catch (apiError: any) {
+                console.error(`[openai-client] Responses API error (attempt ${attempt}):`, apiError?.message || apiError);
+                lastError = apiError;
+                if (attempt < maxAttempts) continue;
+                throw apiError;
+            }
+
+            // Log request id and status for debugging
+            const requestId = response?.id || response?.request_id || 'unknown';
+            const status = response?.status || 'unknown';
+            console.log(`[openai-client] Responses API request_id=${requestId}, status=${status}`);
+
+            // Detect incomplete response (max_output_tokens exhausted by reasoning)
+            if (response?.status === 'incomplete' && response?.incomplete_details?.reason) {
+                console.warn(`[openai-client] Response incomplete: ${response.incomplete_details.reason}`);
+            }
+
+            // Extract text — Responses API returns output_text (string)
+            let text: string | undefined | null = response?.output_text;
+
+            // Fallback: iterate output items
+            if (!text && Array.isArray(response?.output)) {
+                for (const item of response.output) {
+                    if (item?.type === 'message' && Array.isArray(item.content)) {
+                        for (const part of item.content) {
+                            if (part?.type === 'output_text' && part.text) {
+                                text = part.text;
+                                break;
+                            }
+                        }
+                    }
+                    if (text) break;
+                }
+            }
+
+            if (text && text.trim()) {
+                return text;
+            }
+
+            console.warn(`[openai-client] Empty output on attempt ${attempt}/${maxAttempts}. Raw response keys:`, Object.keys(response || {}));
+            if (attempt < maxAttempts) {
+                console.log('[openai-client] Retrying...');
+            }
+            lastError = new Error('Empty model output');
+        }
+
+        // All attempts exhausted
+        console.error('[openai-client] Raw OpenAI response:', JSON.stringify(response, null, 2).substring(0, 2000));
+        throw lastError || new Error('Empty model output after retries');
+    }
+
+    // ── Chat Completions API (gpt-4o-mini, gpt-4o legacy) ─────────────────
+    private async generateContentChatCompletions(
+        client: OpenAI,
+        params: GenerateContentParams,
+    ): Promise<string> {
+        const model = params.model;
+        const tokenLimit = params.maxTokens ?? 1000;
 
         const response = await client.chat.completions.create({
-            model: params.model,
+            model,
             messages: [
                 { role: 'system', content: params.systemPrompt },
                 { role: 'user', content: params.userPrompt },
             ],
             temperature: params.temperature ?? 0.7,
-            max_tokens: params.maxTokens ?? 1000,
+            max_tokens: tokenLimit,
             ...(params.responseFormat ? { response_format: params.responseFormat as any } : {}),
         });
 

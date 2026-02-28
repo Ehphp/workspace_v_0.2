@@ -339,7 +339,9 @@ The Senior Consultant feature acts as an AI-powered architectural reviewer that 
 
 ### Trigger
 
-User clicks **"Senior Consultant"** button (with ShieldCheck icon) in the EstimationTab after estimation is complete.
+User clicks **"Senior Consultant"** button (with ShieldCheck icon) in the **Overview tab**, next to the latest estimation summary.
+
+The handler reads activities and drivers from the **saved (assigned) estimation** in the database — it does **not** depend on the Estimation tab's in-memory selection state. If no saved estimation exists, the user sees an error prompting them to save one first.
 
 ### Data Flow
 
@@ -349,6 +351,8 @@ User clicks **"Senior Consultant"** button (with ShieldCheck icon) in the Estima
 │ (page component)   │
 └────────┬───────────┘
          │ handleRequestConsultant()
+         │ reads assignedEstimation.estimation_activities
+         │       assignedEstimation.estimation_drivers
          ▼
 ┌────────────────────┐
 │ getConsultantAnalysis()│

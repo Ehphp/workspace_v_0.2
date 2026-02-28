@@ -240,14 +240,20 @@ export default function RequirementDetail() {
     };
 
     // Senior Consultant Analysis Handler
+    // Reads activities & drivers from the saved (assigned) estimation, NOT from the Estimation tab state
     const handleRequestConsultant = async () => {
         if (!requirement || !list || !activeTechnology) {
             toast.error('Dati mancanti per l\'analisi del consulente');
             return;
         }
 
-        if (selectedActivityIds.length === 0) {
-            toast.error('Seleziona almeno una attività prima di richiedere l\'analisi');
+        // Use the assigned estimation stored in DB (shown in the Overview tab)
+        const currentEstimation = assignedEstimation || (estimationHistory[0] as unknown as EstimationWithDetails) || null;
+
+        if (!currentEstimation || !currentEstimation.estimation_activities || currentEstimation.estimation_activities.length === 0) {
+            toast.error('Nessuna stima salvata disponibile', {
+                description: 'Salva prima una stima dal tab Stima per richiedere l\'analisi del consulente.'
+            });
             return;
         }
 
@@ -257,9 +263,9 @@ export default function RequirementDetail() {
             const { data: { session } } = await supabase.auth.getSession();
             const token = session?.access_token;
 
-            // Build activities data
-            const selectedActivitiesData = selectedActivityIds.map(id => {
-                const activity = activities.find(a => a.id === id);
+            // Build activities data from saved estimation
+            const savedActivitiesData = currentEstimation.estimation_activities.map(ea => {
+                const activity = activities.find(a => a.id === ea.activity_id);
                 return {
                     code: activity?.code || '',
                     name: activity?.name || '',
@@ -269,14 +275,14 @@ export default function RequirementDetail() {
                 };
             }).filter(a => a.code);
 
-            // Build drivers data
-            const driversData = Object.entries(selectedDriverValues).map(([driverId, value]) => {
-                const driver = drivers.find(d => d.id === driverId);
-                const option = driver?.options.find((o: { value: string; multiplier: number }) => o.value === value);
+            // Build drivers data from saved estimation
+            const savedDriversData = (currentEstimation.estimation_drivers || []).map(ed => {
+                const driver = drivers.find(d => d.id === ed.driver_id);
+                const option = driver?.options.find((o: { value: string; multiplier: number }) => o.value === ed.selected_value);
                 return {
                     code: driver?.code || '',
                     name: driver?.name || '',
-                    selectedValue: value,
+                    selectedValue: ed.selected_value,
                     multiplier: option?.multiplier || 1.0,
                 };
             }).filter(d => d.code);
@@ -284,8 +290,8 @@ export default function RequirementDetail() {
             const analysis = await getConsultantAnalysis({
                 requirementTitle: requirement.title,
                 requirementDescription: requirement.description || '',
-                activities: selectedActivitiesData,
-                drivers: driversData,
+                activities: savedActivitiesData,
+                drivers: savedDriversData,
                 projectContext: {
                     name: list.name,
                     description: list.description || '',

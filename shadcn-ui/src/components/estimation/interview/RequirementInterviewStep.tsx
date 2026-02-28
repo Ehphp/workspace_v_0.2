@@ -32,6 +32,8 @@ interface RequirementInterviewStepProps {
     answers: Map<string, InterviewAnswer>;
     reasoning?: string;
     estimatedComplexity?: 'LOW' | 'MEDIUM' | 'HIGH';
+    /** Requirement description to display as context */
+    requirementDescription?: string;
     onAnswer: (questionId: string, value: string | string[] | number) => void;
     onNext: () => void;
     onPrevious: () => void;
@@ -67,6 +69,7 @@ export function RequirementInterviewStep({
     answers,
     reasoning,
     estimatedComplexity,
+    requirementDescription,
     onAnswer,
     onNext,
     onPrevious,
@@ -150,6 +153,14 @@ export function RequirementInterviewStep({
                         >
                             {COMPLEXITY_CONFIG[estimatedComplexity].label}
                         </Badge>
+                    </div>
+                )}
+
+                {/* Requirement Description */}
+                {requirementDescription && (
+                    <div className="mt-3 bg-slate-50 border border-slate-200 rounded-lg p-3 text-left max-w-xl mx-auto">
+                        <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1">Requisito</p>
+                        <p className="text-sm text-slate-700 leading-relaxed line-clamp-4">{requirementDescription}</p>
                     </div>
                 )}
             </div>

@@ -412,6 +412,15 @@ Endpoints that select activities based on gathered information.
 | `generate-title` | `{ action: "generate-title", description }` | `{ title: string }` |
 | `normalize-requirement` | `{ action: "normalize-requirement", description }` | `{ normalizedDescription, validationIssues }` |
 
+**Model Configuration**:
+- Model: configurable via `AI_ESTIMATION_MODEL` env variable, defaults to `gpt-4o`
+- Same env variable shared with `ai-estimate-from-interview` for consistency
+- gpt-5/o-series models use the **Responses API** (`client.responses.create`) with native `json_schema` strict mode
+- gpt-4o/gpt-4o-mini models use the legacy **Chat Completions API** (`chat.completions.create`)
+- Temperature: `0.0` (deterministic) or `0.7` in test mode (ignored for gpt-5/o-series)
+- Automatic 1-retry on empty model output for gpt-5/o-series
+- `max_output_tokens` set to 1000 (Responses API)
+
 **Validation/Fallback**:
 - Filters activities by `tech_category` matching preset
 - Activity codes constrained to provided enum
@@ -826,6 +835,6 @@ The following estimation endpoints automatically use vector search when enabled:
 
 ---
 
-**Last Updated**: 2026-02-21  
+**Last Updated**: 2026-02-28  
 **Derived from**: Existing Netlify Functions source code in `netlify/functions/`
 
