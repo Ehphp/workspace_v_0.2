@@ -178,6 +178,8 @@ Saved calculation snapshots.
 | `risk_score` | INTEGER | Sum of risk weights |
 | `contingency_percent` | DECIMAL(5,2) | Applied contingency |
 | `scenario_name` | VARCHAR(255) | User-defined label (e.g., "Optimistic") |
+| `senior_consultant_analysis` | JSONB | AI consultant analysis (tips, discrepancies, risks) |
+| `ai_reasoning` | TEXT | AI explanation for estimation decisions |
 
 ---
 
@@ -272,7 +274,9 @@ CREATE OR REPLACE FUNCTION save_estimation_atomic(
   p_scenario_name VARCHAR,
   p_activities JSONB,
   p_drivers JSONB,
-  p_risks JSONB
+  p_risks JSONB,
+  p_ai_reasoning TEXT DEFAULT NULL,
+  p_senior_consultant_analysis JSONB DEFAULT NULL
 ) RETURNS UUID AS $$
 DECLARE
   v_estimation_id UUID;

@@ -750,6 +750,82 @@ The following estimation endpoints automatically use vector search when enabled:
 
 ---
 
+## Analysis Endpoints
+
+### POST `/.netlify/functions/ai-consultant`
+
+**Purpose**: Senior Consultant analysis that reviews requirement estimation and provides architectural advice, detects discrepancies, and performs risk analysis.
+
+**When Used**: User clicks "Senior Consultant" button in EstimationTab after estimation is complete.
+
+**Input**:
+```typescript
+{
+  requirement: {
+    title: string;
+    description: string;
+  };
+  projectContext: {
+    listName: string;
+    listDescription: string;
+  };
+  estimation: {
+    activities: Array<{
+      code: string;
+      title: string;
+      description?: string;
+      baseHours: number;
+      totalHours: number;
+      driver: string | null;
+      driverValue: string | null;
+    }>;
+    totalHours: number;
+    drivers: Record<string, string>;  // driverCode -> selected value
+  };
+}
+```
+
+**Output**:
+```typescript
+{
+  success: boolean;
+  analysis: {
+    implementation_tips: string;        // Markdown-formatted architectural advice
+    discrepancies: Array<{
+      activity_code: string;            // Activity with issue
+      issue: string;                    // Description of the problem
+      suggestion: string;               // Recommended fix
+      severity: "low" | "medium" | "high";
+    }>;
+    risk_analysis: Array<{
+      risk: string;                     // Risk description
+      impact: string;                   // Potential impact
+      mitigation: string;               // Mitigation strategy
+    }>;
+    overall_assessment: "good" | "needs_attention" | "critical";
+    confidence: number;                 // 0.0 - 1.0
+    ai_reasoning: string;               // Explanation of analysis approach
+  };
+  metadata: {
+    cached: boolean;
+    generationTimeMs: number;
+  };
+}
+```
+
+**Model Configuration**:
+- Model: `gpt-4o`
+- Temperature: `0.0` (maximum determinism for consistency)
+- Structured output via Zod schema validation
+
+**Validation/Fallback**:
+- Requires valid requirement title and description (sanitized)
+- Activities array must not be empty
+- Input sanitized via `sanitizePromptInput()` to prevent injection
+- On AI failure, returns standard error response with actionable message
+
+---
+
 **Last Updated**: 2026-02-21  
 **Derived from**: Existing Netlify Functions source code in `netlify/functions/`
 

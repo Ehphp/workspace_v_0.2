@@ -66,9 +66,9 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
     if (estimationActivities.length === 0) return null;
 
     return (
-        <div className="space-y-6 h-full flex flex-col">
+        <div className="space-y-6">
             {/* Progress Bar */}
-            <div className="space-y-2 shrink-0">
+            <div className="space-y-2">
                 <div className="flex justify-between items-end">
                     <h3 className="text-sm font-medium text-slate-700">Implementation Progress</h3>
                     <span className="text-2xl font-bold text-blue-600">{progress}%</span>
@@ -77,11 +77,11 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
             </div>
 
             {/* Activity Checklist */}
-            <div className="space-y-3 flex-1 min-h-0 flex flex-col">
-                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider shrink-0">
+            <div className="space-y-3">
+                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Activities ({estimationActivities.length})
                 </h4>
-                <div className="grid gap-2 overflow-y-auto pr-2">
+                <div className="grid gap-2">
                     {estimationActivities.map((estAct) => {
                         const activity = activities.find(a => a.id === estAct.activity_id);
                         if (!activity) return null;

@@ -92,47 +92,50 @@ export function CalculationSummary({
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                        const text = [
-                            `Riepilogo Stima`,
-                            `------------------`,
-                            `Giorni Base: ${result.baseDays.toFixed(1)}g`,
-                            `Moltiplicatore Driver: ${result.driverMultiplier.toFixed(2)}x`,
-                            `Subtotale: ${result.subtotal.toFixed(1)}g`,
-                            `Punteggio Rischio: ${result.riskScore}`,
-                            `Contingenza: ${(result.contingencyPercent * 100).toFixed(0)}% (+${result.contingencyDays.toFixed(1)}g)`,
-                            `------------------`,
-                            `TOTALE: ${result.totalDays.toFixed(1)} giorni`
-                        ].join('\n');
+            <div className="space-y-2">
+                {/* Primary Actions Row */}
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            const text = [
+                                `Riepilogo Stima`,
+                                `------------------`,
+                                `Giorni Base: ${result.baseDays.toFixed(1)}g`,
+                                `Moltiplicatore Driver: ${result.driverMultiplier.toFixed(2)}x`,
+                                `Subtotale: ${result.subtotal.toFixed(1)}g`,
+                                `Punteggio Rischio: ${result.riskScore}`,
+                                `Contingenza: ${(result.contingencyPercent * 100).toFixed(0)}% (+${result.contingencyDays.toFixed(1)}g)`,
+                                `------------------`,
+                                `TOTALE: ${result.totalDays.toFixed(1)} giorni`
+                            ].join('\n');
 
-                        navigator.clipboard.writeText(text);
-                        toast.success('Riepilogo copiato negli appunti');
-                    }}
-                    className="flex-1 h-7 text-[10px] border-slate-200"
-                >
-                    <Copy className="h-3 w-3 mr-1" />
-                    Copia
-                </Button>
+                            navigator.clipboard.writeText(text);
+                            toast.success('Riepilogo copiato negli appunti');
+                        }}
+                        className="flex-1 h-7 text-[10px] border-slate-200"
+                    >
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copia
+                    </Button>
 
-                <Button
-                    onClick={onSave}
-                    disabled={isSaving || !hasUnsavedChanges}
-                    size="sm"
-                    className="flex-[2] h-7 text-[10px] bg-green-600 hover:bg-green-700"
-                >
-                    {isSaving ? (
-                        'Salvataggio...'
-                    ) : (
-                        <>
-                            <Save className="h-3 w-3 mr-1" />
-                            Salva Stima
-                        </>
-                    )}
-                </Button>
+                    <Button
+                        onClick={onSave}
+                        disabled={isSaving || !hasUnsavedChanges}
+                        size="sm"
+                        className="flex-[2] h-7 text-[10px] bg-green-600 hover:bg-green-700"
+                    >
+                        {isSaving ? (
+                            'Salvataggio...'
+                        ) : (
+                            <>
+                                <Save className="h-3 w-3 mr-1" />
+                                Salva Stima
+                            </>
+                        )}
+                    </Button>
+                </div>
             </div>
         </div>
     );

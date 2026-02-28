@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Calculator, FileText, User, Tag, Zap, Settings, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
+import { Calculator, FileText, User, Tag, Zap, Settings, ChevronDown, ChevronUp, Sparkles, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import type { Requirement, TechnologyPreset, EstimationWithDetails, Activity } from '@/types/database';
+import type { SeniorConsultantAnalysis } from '@/types/estimation';
 import { RequirementProgress } from '../RequirementProgress';
+import { ConsultantAnalysisCard } from '@/components/estimation/ConsultantAnalysisCard';
 
 interface OverviewTabProps {
     requirement: Requirement;
@@ -11,6 +14,9 @@ interface OverviewTabProps {
     refetchRequirement: () => Promise<void>;
     latestEstimation?: EstimationWithDetails | null;
     activities?: Activity[];
+    onRequestConsultant?: () => void;
+    isConsultantLoading?: boolean;
+    consultantAnalysis?: SeniorConsultantAnalysis | null;
 }
 
 const priorityColors = {
@@ -25,21 +31,22 @@ const stateColors = {
     DONE: 'bg-emerald-100 text-emerald-700 border-emerald-200',
 };
 
-export function OverviewTab({ requirement, presets, refetchRequirement, latestEstimation, activities = [] }: OverviewTabProps) {
+export function OverviewTab({ requirement, presets, refetchRequirement, latestEstimation, activities = [], onRequestConsultant, isConsultantLoading, consultantAnalysis }: OverviewTabProps) {
     const preset = presets.find(p => p.id === requirement.tech_preset_id);
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
     const [isAiAnalysisExpanded, setIsAiAnalysisExpanded] = useState(true);
+    const [isConsultantExpanded, setIsConsultantExpanded] = useState(true);
 
     // Check if estimation has AI analysis
     const hasAiAnalysis = latestEstimation?.ai_reasoning && latestEstimation.ai_reasoning.trim().length > 0;
 
     return (
         <div className="h-full flex flex-col overflow-hidden">
-            <div className="flex-1 min-h-0 lg:overflow-hidden overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-hidden">
                 <div className="container mx-auto px-6 py-4 h-full">
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 lg:h-full">
                         {/* Left: Compact Info Grid (3/5) */}
-                        <div className="lg:col-span-3 space-y-4 lg:overflow-hidden lg:pr-2 lg:h-full flex flex-col">
+                        <div className="lg:col-span-3 space-y-4 overflow-y-auto lg:pr-2 lg:h-full flex flex-col [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200/50 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-300">
                             {/* Description Card */}
                             <Card className={`rounded-2xl shadow-lg border-slate-200/50 bg-white/80 backdrop-blur-xl ${latestEstimation ? 'shrink-0' : 'flex-1 min-h-0 flex flex-col'}`}>
                                 <CardContent className={`p-5 ${latestEstimation ? '' : 'flex-1 flex flex-col min-h-0'}`}>
@@ -113,10 +120,46 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
                                 </Card>
                             )}
 
+                            {/* Consultant Analysis Card */}
+                            {consultantAnalysis && (
+                                <Card className="rounded-2xl shadow-lg border-emerald-200/50 bg-gradient-to-br from-emerald-50/80 to-teal-50/80 backdrop-blur-xl shrink-0">
+                                    <CardContent className="p-5">
+                                        {/* Consultant Header */}
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-md">
+                                                    <ShieldCheck className="w-4 h-4 text-white" />
+                                                </div>
+                                                <span className="text-sm font-bold text-slate-800 uppercase tracking-wide">Senior Consultant</span>
+                                                <Badge variant="outline" className="text-[10px] border-emerald-300 text-emerald-700 bg-emerald-100/50">
+                                                    Analisi
+                                                </Badge>
+                                            </div>
+                                            <button
+                                                onClick={() => setIsConsultantExpanded(!isConsultantExpanded)}
+                                                className="p-2 hover:bg-emerald-100 rounded-xl transition-all duration-200"
+                                                title={isConsultantExpanded ? "Comprimi" : "Espandi"}
+                                            >
+                                                {isConsultantExpanded ? (
+                                                    <ChevronUp className="w-4 h-4 text-emerald-600" />
+                                                ) : (
+                                                    <ChevronDown className="w-4 h-4 text-emerald-600" />
+                                                )}
+                                            </button>
+                                        </div>
+
+                                        {/* Consultant Content */}
+                                        <div className={`${isConsultantExpanded ? '' : 'max-h-0 overflow-hidden'} transition-all duration-300`}>
+                                            <ConsultantAnalysisCard analysis={consultantAnalysis} />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+
                             {/* Progress Section */}
                             {latestEstimation && (
-                                <Card className={`rounded-2xl shadow-lg border-slate-200/50 bg-white/80 backdrop-blur-xl flex-1 min-h-0 flex flex-col transition-all duration-300`}>
-                                    <CardContent className="p-5 flex-1 min-h-0 flex flex-col">
+                                <Card className="rounded-2xl shadow-lg border-slate-200/50 bg-white/80 backdrop-blur-xl shrink-0 transition-all duration-300">
+                                    <CardContent className="p-5">
                                         <RequirementProgress
                                             estimation={latestEstimation}
                                             activities={activities}
@@ -173,6 +216,39 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
                                                     <span className="font-bold text-orange-700">{latestEstimation.contingency_percent}%</span>
                                                 </div>
                                             </div>
+
+                                            {/* Senior Consultant Button */}
+                                            {onRequestConsultant && (
+                                                <div className="mt-4 pt-4 border-t border-slate-200">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={onRequestConsultant}
+                                                        disabled={isConsultantLoading}
+                                                        className={`w-full h-9 text-xs ${consultantAnalysis
+                                                                ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                                                : 'border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700'
+                                                            } transition-colors`}
+                                                    >
+                                                        {isConsultantLoading ? (
+                                                            <>
+                                                                <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+                                                                Analisi in corso...
+                                                            </>
+                                                        ) : consultantAnalysis ? (
+                                                            <>
+                                                                <ShieldCheck className="h-4 w-4 mr-2" />
+                                                                Aggiorna Analisi Consultant
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <ShieldCheck className="h-4 w-4 mr-2" />
+                                                                Richiedi Senior Consultant
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="text-center py-8">

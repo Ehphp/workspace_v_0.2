@@ -1,11 +1,12 @@
 -- ============================================
--- ATOMIC ESTIMATION SAVE RPC FUNCTION
+-- UPDATE save_estimation_atomic FOR SENIOR CONSULTANT ANALYSIS
 -- ============================================
--- This function provides transactional safety for saving estimations
--- All inserts are performed atomically - either all succeed or all fail
--- 
--- Updated 2026-02-21: Added senior_consultant_analysis JSONB parameter
+-- This migration updates the RPC function to accept senior_consultant_analysis JSONB
 
+-- 1. Drop the old function first (to avoid signature conflict)
+DROP FUNCTION IF EXISTS save_estimation_atomic(UUID, UUID, DECIMAL, DECIMAL, DECIMAL, INTEGER, DECIMAL, VARCHAR, JSONB, JSONB, JSONB, TEXT);
+
+-- 2. Create the updated function with senior_consultant_analysis parameter
 CREATE OR REPLACE FUNCTION save_estimation_atomic(
     p_requirement_id UUID,
     p_user_id UUID,
@@ -117,25 +118,13 @@ BEGIN
         v_risks_count := 0;
     END IF;
 
-    -- Step 5: Return summary
-    RETURN QUERY SELECT 
-        v_estimation_id,
-        v_activities_count,
-        v_drivers_count,
-        v_risks_count;
-        
-EXCEPTION
-    WHEN OTHERS THEN
-        -- Automatic rollback on any error
-        RAISE EXCEPTION 'Failed to save estimation: %', SQLERRM;
+    -- Return results
+    RETURN QUERY SELECT v_estimation_id, v_activities_count, v_drivers_count, v_risks_count;
 END;
 $$;
 
--- Grant execute permission to authenticated users
-GRANT EXECUTE ON FUNCTION save_estimation_atomic TO authenticated;
+-- Grant execute permission
+GRANT EXECUTE ON FUNCTION save_estimation_atomic(UUID, UUID, DECIMAL, DECIMAL, DECIMAL, INTEGER, DECIMAL, VARCHAR, JSONB, JSONB, JSONB, TEXT, JSONB) TO authenticated;
 
--- Add comment for documentation
-COMMENT ON FUNCTION save_estimation_atomic IS 
-'Atomically saves an estimation with all related activities, drivers, and risks. 
-All operations are transactional - either all succeed or all fail with automatic rollback.
-Returns the estimation ID and counts of inserted records.';
+COMMENT ON FUNCTION save_estimation_atomic(UUID, UUID, DECIMAL, DECIMAL, DECIMAL, INTEGER, DECIMAL, VARCHAR, JSONB, JSONB, JSONB, TEXT, JSONB) IS 
+'Atomically saves an estimation with all related data (activities, drivers, risks, AI reasoning, and optional senior consultant analysis). All operations are performed in a single transaction.';

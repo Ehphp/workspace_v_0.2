@@ -1,9 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { HistorySection } from '../HistorySection';
 import { MetricComparison } from '@/components/estimation/MetricComparison';
-import { History, Calculator } from 'lucide-react';
+import { ConsultantAnalysisCard } from '@/components/estimation/ConsultantAnalysisCard';
+import { History, Calculator, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Activity, Driver, Risk } from '@/types/database';
+import type { SeniorConsultantAnalysis } from '@/types/estimation';
 
 interface HistoryTabProps {
     history: any[];
@@ -36,6 +39,7 @@ export function HistoryTab({
 }: HistoryTabProps) {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [hasInitialized, setHasInitialized] = useState(false);
+    const [showConsultantAnalysis, setShowConsultantAnalysis] = useState(false);
 
     // Default selection logic: Active > Most Recent
     useEffect(() => {
@@ -182,6 +186,34 @@ export function HistoryTab({
                                                         Scenario: <span className="font-bold text-slate-700">{selectedEstimations.single.scenario_name}</span>
                                                     </div>
                                                 </div>
+
+                                                {/* Consultant Analysis Section */}
+                                                {selectedEstimations.single.senior_consultant_analysis && (
+                                                    <div className="mt-3 pt-3 border-t border-slate-200">
+                                                        <button
+                                                            onClick={() => setShowConsultantAnalysis(!showConsultantAnalysis)}
+                                                            className="w-full flex items-center justify-between text-xs text-emerald-700 hover:text-emerald-800"
+                                                        >
+                                                            <span className="flex items-center gap-1.5 font-semibold">
+                                                                <ShieldCheck className="w-3.5 h-3.5" />
+                                                                Analisi Senior Consultant
+                                                            </span>
+                                                            {showConsultantAnalysis ? (
+                                                                <ChevronUp className="w-3.5 h-3.5" />
+                                                            ) : (
+                                                                <ChevronDown className="w-3.5 h-3.5" />
+                                                            )}
+                                                        </button>
+                                                        {showConsultantAnalysis && (
+                                                            <div className="mt-3">
+                                                                <ConsultantAnalysisCard
+                                                                    analysis={selectedEstimations.single.senior_consultant_analysis as SeniorConsultantAnalysis}
+                                                                    isCompact={true}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         </CardContent>
                                     </Card>

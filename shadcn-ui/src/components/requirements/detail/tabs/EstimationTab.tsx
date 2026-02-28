@@ -145,7 +145,7 @@ export function EstimationTab({
             {/* Main Workspace - Full height */}
             <div className="flex-1 min-h-0">
                 <div className="container mx-auto px-6 py-4 h-full">
-                    <div className="h-full overflow-y-auto">
+                    <div className="h-full overflow-y-auto space-y-4">
                         <RequirementEstimation
                             estimationState={estimationState}
                             data={data}

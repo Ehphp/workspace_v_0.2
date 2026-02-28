@@ -16,6 +16,9 @@ import { getOpenAIClient } from './lib/ai/openai-client';
 import { searchSimilarActivities, isVectorSearchEnabled } from './lib/ai/vector-search';
 import { retrieveRAGContext, getRAGSystemPromptAddition } from './lib/ai/rag';
 
+// Model configuration - use env variable AI_ESTIMATION_MODEL or default to gpt-5
+const AI_MODEL = process.env.AI_ESTIMATION_MODEL || 'gpt-5';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -353,13 +356,14 @@ Collega ogni attività alla risposta che l'ha motivata.`;
             systemPrompt = systemPrompt + '\n' + getRAGSystemPromptAddition();
         }
 
+        console.log(`[ai-estimate-from-interview] Using model: ${AI_MODEL}`);
+
         // Call OpenAI with dynamic schema containing enum constraint
-        // Using temperature=0 and seed for deterministic responses
+        // GPT-5 only supports temperature=1 (default), seed still works for reproducibility
         const response = await openai.chat.completions.create({
-            model: 'gpt-4o',
-            temperature: 0, // Zero temperature for maximum determinism
+            model: AI_MODEL,
             seed: 42, // Fixed seed for reproducible results
-            max_tokens: 2500,
+            max_completion_tokens: 2500, // GPT-5 uses max_completion_tokens instead of max_tokens
             messages: [
                 {
                     role: 'system',

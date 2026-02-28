@@ -16,8 +16,10 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { FileText, Calculator, History, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { suggestActivities } from '@/lib/openai';
+import { getConsultantAnalysis } from '@/lib/consultant-api';
 import { Header } from '@/components/layout/Header';
 import type { EstimationWithDetails } from '@/types/database';
+import type { SeniorConsultantAnalysis } from '@/types/estimation';
 
 // New Components
 import { RequirementHeader } from '@/components/requirements/detail/RequirementHeader';
@@ -98,6 +100,10 @@ export default function RequirementDetail() {
     // Scenario naming handled automatically (no dialog)
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [selectedEstimationId, setSelectedEstimationId] = useState<string | null>(null);
+
+    // Senior Consultant State
+    const [isConsultantLoading, setIsConsultantLoading] = useState(false);
+    const [consultantAnalysis, setConsultantAnalysis] = useState<SeniorConsultantAnalysis | null>(null);
 
     // Quick Estimate State
     const [isQuickEstimating, setIsQuickEstimating] = useState(false);
@@ -244,6 +250,76 @@ export default function RequirementDetail() {
         }
     };
 
+    // Senior Consultant Analysis Handler
+    const handleRequestConsultant = async () => {
+        if (!requirement || !list || !activePreset) {
+            toast.error('Dati mancanti per l\'analisi del consulente');
+            return;
+        }
+
+        if (selectedActivityIds.length === 0) {
+            toast.error('Seleziona almeno una attività prima di richiedere l\'analisi');
+            return;
+        }
+
+        setIsConsultantLoading(true);
+        try {
+            // Get auth token
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token;
+
+            // Build activities data
+            const selectedActivitiesData = selectedActivityIds.map(id => {
+                const activity = activities.find(a => a.id === id);
+                return {
+                    code: activity?.code || '',
+                    name: activity?.name || '',
+                    description: activity?.description || '',
+                    base_hours: activity?.base_hours || 0,
+                    group: activity?.group || '',
+                };
+            }).filter(a => a.code);
+
+            // Build drivers data
+            const driversData = Object.entries(selectedDriverValues).map(([driverId, value]) => {
+                const driver = drivers.find(d => d.id === driverId);
+                const option = driver?.options.find((o: { value: string; multiplier: number }) => o.value === value);
+                return {
+                    code: driver?.code || '',
+                    name: driver?.name || '',
+                    selectedValue: value,
+                    multiplier: option?.multiplier || 1.0,
+                };
+            }).filter(d => d.code);
+
+            const analysis = await getConsultantAnalysis({
+                requirementTitle: requirement.title,
+                requirementDescription: requirement.description || '',
+                activities: selectedActivitiesData,
+                drivers: driversData,
+                projectContext: {
+                    name: list.name,
+                    description: list.description || '',
+                    owner: list.owner || undefined,
+                },
+                technologyName: activePreset.name,
+                technologyCategory: activePreset.tech_category,
+            }, token);
+
+            setConsultantAnalysis(analysis);
+            toast.success('Analisi completata', {
+                description: `Valutazione: ${analysis.overallAssessment === 'approved' ? 'Approvato' : analysis.overallAssessment === 'needs_review' ? 'Da rivedere' : 'Criticità'}`
+            });
+        } catch (error) {
+            console.error('Consultant analysis error:', error);
+            toast.error('Errore nell\'analisi', {
+                description: error instanceof Error ? error.message : 'Impossibile completare l\'analisi'
+            });
+        } finally {
+            setIsConsultantLoading(false);
+        }
+    };
+
     // Quick Estimate Handler
     const handleQuickEstimate = async () => {
         if (!requirement?.description) return;
@@ -368,7 +444,8 @@ export default function RequirementDetail() {
                 p_risks: selectedRiskIds.map(id => ({
                     risk_id: id
                 })),
-                p_ai_reasoning: null // Not from AI interview flow
+                p_ai_reasoning: null, // Not from AI interview flow
+                p_senior_consultant_analysis: consultantAnalysis || null // Include consultant analysis if available
             };
 
             const { error } = await supabase.rpc('save_estimation_atomic', estimationData);
@@ -501,7 +578,10 @@ export default function RequirementDetail() {
                             presets={presets}
                             refetchRequirement={refetchAll}
                             latestEstimation={assignedEstimation || (estimationHistory[0] as unknown as EstimationWithDetails) || null}
-                            activities={filteredActivities}
+                            activities={activities}
+                            onRequestConsultant={handleRequestConsultant}
+                            isConsultantLoading={isConsultantLoading}
+                            consultantAnalysis={consultantAnalysis}
                         />
                     </TabsContent>
 

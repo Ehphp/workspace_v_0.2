@@ -30,6 +30,7 @@ AI functionality is distributed across multiple serverless functions:
 | `ai-bulk-estimate-with-answers.ts` | Batch activity selection | Bulk estimation |
 | `ai-generate-questions.ts` | Stage 1: preset wizard questions | Custom preset creation |
 | `ai-generate-preset.ts` | Stage 2: generate preset from answers | Custom preset creation |
+| `ai-consultant.ts` | Senior consultant analysis | Post-estimation review |
 | `ai-generate-embeddings.ts` | Generate vector embeddings | Background/admin job (Phase 1) |
 | `ai-check-duplicates.ts` | Semantic activity deduplication | AI Technology Wizard (Phase 3) |
 | `ai-vector-health.ts` | Vector search health check | Monitoring (Phase 2-4) |
@@ -323,6 +324,73 @@ Questions gather context about:
 | Purpose | Estimate a specific requirement | Create reusable preset template |
 | Output | Activity selection + estimation | Preset configuration |
 | Scope | Per-requirement | Per-technology-stack |
+
+---
+
+## Senior Consultant Analysis
+
+The Senior Consultant feature acts as an AI-powered architectural reviewer that analyzes completed estimations.
+
+### Purpose
+
+- Provide architectural advice and implementation tips
+- Detect discrepancies between activities, drivers, and requirement context
+- Perform risk analysis with mitigation strategies
+
+### Trigger
+
+User clicks **"Senior Consultant"** button (with ShieldCheck icon) in the EstimationTab after estimation is complete.
+
+### Data Flow
+
+```
+┌────────────────────┐
+│ RequirementDetail  │
+│ (page component)   │
+└────────┬───────────┘
+         │ handleRequestConsultant()
+         ▼
+┌────────────────────┐
+│ getConsultantAnalysis()│
+│ (consultant-api.ts)│
+└────────┬───────────┘
+         │ POST /ai-consultant
+         ▼
+┌────────────────────┐
+│ ai-consultant.ts   │
+│ (Netlify Function) │
+└────────┬───────────┘
+         │
+         ▼
+┌────────────────────┐
+│ analyzeEstimation()│
+│ (consultant-analysis.ts)│
+└────────┬───────────┘
+         │ GPT-4o (temp=0.0)
+         ▼
+┌────────────────────┐
+│ SeniorConsultantAnalysis│
+│ (structured output)│
+└────────────────────┘
+```
+
+### Output Structure
+
+- **implementation_tips**: Markdown-formatted architectural advice
+- **discrepancies[]**: Issues with activity_code, issue, suggestion, severity
+- **risk_analysis[]**: Risks with impact and mitigation strategies
+- **overall_assessment**: "good" | "needs_attention" | "critical"
+- **confidence**: 0.0 - 1.0
+
+### Model Configuration
+
+- **Model**: `gpt-4o`
+- **Temperature**: `0.0` (maximum determinism)
+- **Validation**: Zod schema for structured output
+
+### Persistence
+
+Analysis is saved to `estimations.senior_consultant_analysis` (JSONB) when the estimation is saved, and displayed in HistoryTab for historical estimations.
 
 ---
 
