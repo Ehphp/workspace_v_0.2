@@ -7,6 +7,7 @@ import { useEstimationData } from '@/hooks/useEstimationData';
 import { useEstimationState } from '@/hooks/useEstimationState';
 import { useRequirement } from '@/hooks/useRequirement';
 import { useEstimationHistory } from '@/hooks/useEstimationHistory';
+import { useConsultantHistory } from '@/hooks/useConsultantHistory';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -104,6 +105,20 @@ export default function RequirementDetail() {
     // Senior Consultant State
     const [isConsultantLoading, setIsConsultantLoading] = useState(false);
     const [consultantAnalysis, setConsultantAnalysis] = useState<SeniorConsultantAnalysis | null>(null);
+
+    // Consultant Analysis History
+    const {
+        history: consultantHistory,
+        loading: consultantHistoryLoading,
+        saveAnalysis: saveConsultantAnalysis,
+    } = useConsultantHistory(requirement?.id);
+
+    // Initialize consultantAnalysis from latest history record if available
+    useEffect(() => {
+        if (!consultantAnalysis && consultantHistory.length > 0) {
+            setConsultantAnalysis(consultantHistory[0].analysis);
+        }
+    }, [consultantHistory, consultantAnalysis]);
 
     // Quick Estimate State
     const [isQuickEstimating, setIsQuickEstimating] = useState(false);
@@ -302,6 +317,49 @@ export default function RequirementDetail() {
             }, token);
 
             setConsultantAnalysis(analysis);
+
+            // Save analysis to history with requirement/estimation snapshots
+            try {
+                await saveConsultantAnalysis({
+                    requirementId: requirement.id,
+                    estimationId: currentEstimation.id || null,
+                    userId: user!.id,
+                    analysis,
+                    requirementSnapshot: {
+                        title: requirement.title,
+                        description: requirement.description || '',
+                        priority: requirement.priority,
+                        state: requirement.state,
+                        technology_id: activeTechnology.id,
+                        technology_name: activeTechnology.name,
+                    },
+                    estimationSnapshot: {
+                        estimation_id: currentEstimation.id || null,
+                        total_days: currentEstimation.total_days,
+                        base_hours: currentEstimation.base_hours,
+                        driver_multiplier: currentEstimation.driver_multiplier,
+                        risk_score: currentEstimation.risk_score,
+                        contingency_percent: currentEstimation.contingency_percent,
+                        scenario_name: currentEstimation.scenario_name,
+                        activities: savedActivitiesData.map(a => ({
+                            code: a.code,
+                            name: a.name,
+                            base_hours: a.base_hours,
+                            group: a.group,
+                        })),
+                        drivers: savedDriversData.map(d => ({
+                            code: d.code,
+                            name: d.name,
+                            selected_value: d.selectedValue,
+                            multiplier: d.multiplier,
+                        })),
+                    },
+                });
+            } catch (saveErr) {
+                // Non-blocking: analysis was still generated, just couldn't save history
+                console.warn('Failed to save consultant analysis to history:', saveErr);
+            }
+
             toast.success('Analisi completata', {
                 description: `Valutazione: ${analysis.overallAssessment === 'approved' ? 'Approvato' : analysis.overallAssessment === 'needs_review' ? 'Da rivedere' : 'Criticità'}`
             });
@@ -576,6 +634,8 @@ export default function RequirementDetail() {
                             onRequestConsultant={handleRequestConsultant}
                             isConsultantLoading={isConsultantLoading}
                             consultantAnalysis={consultantAnalysis}
+                            consultantHistory={consultantHistory}
+                            consultantHistoryLoading={consultantHistoryLoading}
                         />
                     </TabsContent>
 

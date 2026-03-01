@@ -7,6 +7,8 @@ import type { Requirement, Technology, EstimationWithDetails, Activity } from '@
 import type { SeniorConsultantAnalysis } from '@/types/estimation';
 import { RequirementProgress } from '../RequirementProgress';
 import { ConsultantAnalysisCard } from '@/components/estimation/ConsultantAnalysisCard';
+import { ConsultantHistoryPanel } from '@/components/estimation/ConsultantHistoryPanel';
+import type { ConsultantAnalysisRecord } from '@/hooks/useConsultantHistory';
 
 interface OverviewTabProps {
     requirement: Requirement;
@@ -17,6 +19,8 @@ interface OverviewTabProps {
     onRequestConsultant?: () => void;
     isConsultantLoading?: boolean;
     consultantAnalysis?: SeniorConsultantAnalysis | null;
+    consultantHistory?: ConsultantAnalysisRecord[];
+    consultantHistoryLoading?: boolean;
 }
 
 const priorityColors = {
@@ -31,7 +35,7 @@ const stateColors = {
     DONE: 'bg-emerald-100 text-emerald-700 border-emerald-200',
 };
 
-export function OverviewTab({ requirement, presets, refetchRequirement, latestEstimation, activities = [], onRequestConsultant, isConsultantLoading, consultantAnalysis }: OverviewTabProps) {
+export function OverviewTab({ requirement, presets, refetchRequirement, latestEstimation, activities = [], onRequestConsultant, isConsultantLoading, consultantAnalysis, consultantHistory = [], consultantHistoryLoading = false }: OverviewTabProps) {
     const preset = presets.find(p => p.id === requirement.technology_id);
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
     const [isAiAnalysisExpanded, setIsAiAnalysisExpanded] = useState(true);
@@ -152,6 +156,19 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
                                         <div className={`${isConsultantExpanded ? '' : 'max-h-0 overflow-hidden'} transition-all duration-300`}>
                                             <ConsultantAnalysisCard analysis={consultantAnalysis} />
                                         </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {/* Consultant Analysis History */}
+                            {(consultantHistory.length > 0 || consultantHistoryLoading) && (
+                                <Card className="rounded-2xl shadow-lg border-slate-200/50 bg-white/80 backdrop-blur-xl shrink-0">
+                                    <CardContent className="p-5">
+                                        <ConsultantHistoryPanel
+                                            history={consultantHistory}
+                                            loading={consultantHistoryLoading}
+                                            currentAnalysis={consultantAnalysis}
+                                        />
                                     </CardContent>
                                 </Card>
                             )}

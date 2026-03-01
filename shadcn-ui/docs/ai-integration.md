@@ -392,9 +392,26 @@ The handler reads activities and drivers from the **saved (assigned) estimation*
 - **Temperature**: `0.0` (maximum determinism)
 - **Validation**: Zod schema for structured output
 
-### Persistence
+### Persistence & History
 
-Analysis is saved to `estimations.senior_consultant_analysis` (JSONB) when the estimation is saved, and displayed in HistoryTab for historical estimations.
+Each consultant analysis run is now saved to the **`consultant_analyses`** table with full context snapshots:
+
+- **`analysis`**: The full `SeniorConsultantAnalysis` result (tips, discrepancies, risks, assessment, confidence)
+- **`requirement_snapshot`**: The requirement's state at analysis time (title, description, priority, state, technology)
+- **`estimation_snapshot`**: The estimation's state (total_days, base_hours, activities chosen, drivers selected, risk score, contingency)
+
+This enables:
+1. **Full traceability**: See exactly what the requirement/estimation looked like when each analysis was performed
+2. **History comparison**: Track how the consultant's assessment evolved as the estimation was refined
+3. **Audit trail**: Know who requested each analysis and when
+
+The history is displayed in the **Overview tab** as a timeline with collapsible entries. Each entry shows the assessment badge, estimation metrics at analysis time, and can be expanded to reveal the full analysis and the exact context snapshot.
+
+**Hook**: `useConsultantHistory(requirementId)` — loads history and provides `saveAnalysis()` mutation.
+**Component**: `ConsultantHistoryPanel` — renders the timeline UI with snapshot viewer.
+**Migration**: [20260301_consultant_analysis_history.sql](../supabase/migrations/20260301_consultant_analysis_history.sql)
+
+Legacy: Analysis is also still saved to `estimations.senior_consultant_analysis` (JSONB) when the estimation is saved, and displayed in HistoryTab for individual historical estimations.
 
 ---
 

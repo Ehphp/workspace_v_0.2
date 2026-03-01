@@ -211,6 +211,33 @@ Saved calculation snapshots.
 | `estimation_id` | UUID | FK to estimations |
 | `risk_id` | UUID | FK to risks |
 
+### consultant_analyses
+
+Stores each Senior Consultant AI analysis run with full context snapshots.
+Each row captures the analysis result plus the exact state of the requirement
+and estimation at the time, enabling full traceability and history.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `requirement_id` | UUID | FK to requirements |
+| `estimation_id` | UUID | FK to estimations (nullable, SET NULL on delete) |
+| `user_id` | UUID | FK to auth.users |
+| `analysis` | JSONB | Full `SeniorConsultantAnalysis` result |
+| `requirement_snapshot` | JSONB | Requirement state at analysis time (title, description, priority, state, technology) |
+| `estimation_snapshot` | JSONB | Estimation state at analysis time (total_days, base_hours, activities, drivers, etc.) |
+| `created_at` | TIMESTAMP | When the analysis was generated |
+
+**Snapshot Contents**:
+- `requirement_snapshot`: `{title, description, priority, state, technology_id, technology_name}`
+- `estimation_snapshot`: `{estimation_id, total_days, base_hours, driver_multiplier, risk_score, contingency_percent, scenario_name, activities: [{code, name, base_hours, group}], drivers: [{code, name, selected_value, multiplier}]}`
+
+**RLS**: Users can read/insert analyses for requirements they own (via list ownership).
+
+**Migration**: [20260301_consultant_analysis_history.sql](../supabase/migrations/20260301_consultant_analysis_history.sql)
+
+---
+
 ### technology_activities
 
 Links activities to technologies with optional per-technology overrides. 
