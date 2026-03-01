@@ -26,6 +26,8 @@ export interface Preset {
     name: string;
     description: string;
     tech_category: string;
+    /** Canonical FK to technologies.id */
+    technology_id?: string;
     /** @deprecated No longer used — AI decides freely */
     default_activity_codes?: string[];
     /** @deprecated Removed */
@@ -128,12 +130,18 @@ export async function suggestActivities(request: SuggestActivitiesRequest): Prom
         }
     }
 
-    // Fallback: use provided activities filtered by tech_category
+    // Fallback: use provided activities filtered by technology
+    // Uses technology_id FK when available, falls back to tech_category string
     if (relevantActivities.length === 0) {
         relevantActivities = activities.filter(
-            (a) => a.tech_category === preset.tech_category || a.tech_category === 'MULTI'
+            (a: any) => {
+                if (a.technology_id) {
+                    return a.technology_id === preset.id || a.tech_category === 'MULTI';
+                }
+                return a.tech_category === preset.tech_category || a.tech_category === 'MULTI';
+            }
         );
-        console.log('[suggest-activities] Using tech_category filter, activities:', relevantActivities.length);
+        console.log('[suggest-activities] Using technology filter, activities:', relevantActivities.length);
     }
 
     console.log('Filtered activities:', relevantActivities?.length);

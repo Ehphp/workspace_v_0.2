@@ -46,6 +46,8 @@ interface Activity {
     base_hours: number;
     group: string;
     tech_category: string;
+    /** Canonical FK to technologies.id */
+    technology_id?: string | null;
 }
 
 interface ProjectContext {
@@ -267,10 +269,16 @@ export const handler = createAIHandler<RequestBody>({
         if (AI_AGENTIC) {
             console.log('[ai-estimate-from-interview] Using AGENTIC pipeline (Phase 3)');
 
-            // Filter activities by tech_category BEFORE building agent input
-            // This reduces token count by ~40% by sending only relevant activities
+            // Filter activities by technology BEFORE building agent input
+            // Uses technology_id FK when available, falls back to tech_category string
+            const techCat = body.techCategory || 'MULTI';
             const filteredForAgent = body.activities.filter(
-                a => a.tech_category === (body.techCategory || 'MULTI') || a.tech_category === 'MULTI'
+                a => {
+                    if (a.technology_id) {
+                        return a.technology_id === body.techPresetId || a.tech_category === 'MULTI';
+                    }
+                    return a.tech_category === techCat || a.tech_category === 'MULTI';
+                }
             );
             console.log(`[agentic] Filtered activities: ${filteredForAgent.length}/${body.activities.length}`);
 
@@ -413,13 +421,18 @@ export const handler = createAIHandler<RequestBody>({
             }
         }
 
-        // Filter by tech_category when vector search was not used (fallback path)
-        // This mirrors the logic in suggest-activities.ts to avoid sending the full catalog
+        // Filter by technology when vector search was not used (fallback path)
+        // Uses technology_id FK when available, falls back to tech_category string
         if (searchMethod === 'frontend-provided' && body.techCategory) {
             activitiesToUse = activitiesToUse.filter(
-                a => a.tech_category === body.techCategory || a.tech_category === 'MULTI'
+                a => {
+                    if (a.technology_id) {
+                        return a.technology_id === body.techPresetId || a.tech_category === 'MULTI';
+                    }
+                    return a.tech_category === body.techCategory || a.tech_category === 'MULTI';
+                }
             );
-            console.log(`[legacy] tech_category fallback filter: ${activitiesToUse.length} activities`);
+            console.log(`[legacy] technology fallback filter: ${activitiesToUse.length} activities`);
         }
 
         // Format data for prompt

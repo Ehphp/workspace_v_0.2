@@ -27,6 +27,10 @@ export interface HistoricalExample {
         baseHours: number;
     }>;
     techPresetName?: string;
+    // ── S4-1: RAG Feedback Loop ─────────────────────────
+    actualHours?: number;          // real hours from estimation.actual_hours
+    deviationPercent?: number;     // % deviation calculated inline
+    hasActuals: boolean;           // flag for conditional template rendering
 }
 
 export interface RAGContext {
@@ -61,14 +65,19 @@ async function fetchEstimationHistory(
     baseDays: number;
     activities: Array<{ code: string; name: string; baseHours: number }>;
     techPresetName?: string;
+    actualHours?: number;
+    deviationPercent?: number;
+    hasActuals: boolean;
 } | null> {
     try {
         // Fetch the most recent estimation for this requirement
+        // S4-1: include actual_hours for RAG feedback loop
         const { data: estimation, error: estimationError } = await supabase
             .from('estimations')
             .select(`
                 total_days,
                 base_days,
+                actual_hours,
                 estimation_activities (
                     activity_id,
                     activities (code, name, base_hours)
@@ -114,11 +123,20 @@ async function fetchEstimationHistory(
             }
         }
 
+        // S4-1: compute deviation when actuals are available
+        const actualHours = estimation.actual_hours ?? undefined;
+        const deviationPercent = (actualHours != null && estimation.total_days > 0)
+            ? Math.round(((actualHours / 8 - estimation.total_days) / estimation.total_days) * 1000) / 10
+            : undefined;
+
         return {
             totalDays: estimation.total_days,
             baseDays: estimation.base_days,
             activities,
             techPresetName,
+            actualHours,
+            deviationPercent,
+            hasActuals: actualHours != null,
         };
     } catch (err) {
         console.error('[rag] Failed to fetch estimation history:', err);
@@ -188,14 +206,19 @@ export async function retrieveRAGContext(
                 baseDays: history.baseDays,
                 activities: history.activities,
                 techPresetName: history.techPresetName,
+                actualHours: history.actualHours,
+                deviationPercent: history.deviationPercent,
+                hasActuals: history.hasActuals,
             });
-
-            if (examples.length >= MAX_HISTORICAL_EXAMPLES) {
-                break;
-            }
         }
 
-        context.examples = examples;
+        // S4-1: prioritize examples with actual data, then by similarity
+        examples.sort((a, b) => {
+            if (a.hasActuals && !b.hasActuals) return -1;
+            if (!a.hasActuals && b.hasActuals) return 1;
+            return b.similarity - a.similarity;
+        });
+        context.examples = examples.slice(0, MAX_HISTORICAL_EXAMPLES);
         context.hasExamples = examples.length > 0;
         context.searchLatencyMs = Date.now() - startTime;
 
@@ -208,9 +231,11 @@ export async function retrieveRAGContext(
             ? context.examples.reduce((s, e) => s + e.similarity, 0) / context.examples.length
             : 0;
 
+        // S4-1: track examples with actuals for observability
         recordRAGCall({
             hasExamples: context.hasExamples,
             exampleCount: context.examples.length,
+            examplesWithActuals: context.examples.filter(e => e.hasActuals).length,
             avgSimilarity: avgSim,
             latencyMs: context.searchLatencyMs,
         });
@@ -257,6 +282,18 @@ function buildRAGPromptFragment(examples: HistoricalExample[]): string {
             `Description: ${ex.requirementDescription.substring(0, 200)}${ex.requirementDescription.length > 200 ? '...' : ''}`,
             `Tech Stack: ${ex.techPresetName || 'Unknown'}`,
             `Total Estimate: ${ex.totalDays} days (base: ${ex.baseDays} days)`,
+        );
+
+        // S4-1: Accuracy feedback when actuals are available
+        if (ex.hasActuals && ex.actualHours != null) {
+            const actualDays = (ex.actualHours / 8).toFixed(1);
+            const emoji = (ex.deviationPercent ?? 0) > 20 ? '⚠️' : '✅';
+            lines.push(
+                `${emoji} ACTUAL: ${actualDays} days (${ex.actualHours}h) — deviation: ${ex.deviationPercent}%`,
+            );
+        }
+
+        lines.push(
             `Activities selected:`,
             activitiesList,
             ''
@@ -280,7 +317,9 @@ export function getRAGSystemPromptAddition(): string {
 When provided with HISTORICAL EXAMPLES of similar past requirements:
 1. Use them as reference for activity selection patterns
 2. Consider their hour estimates as calibration data
-3. Adapt based on specific differences in the current requirement
-4. Focus on activities that consistently appear in similar requirements
+3. **When ACTUAL data is provided**, compare estimated vs actual days. If estimates were too high/low, adjust your prediction accordingly
+4. Weight examples with actual data more heavily — they represent ground truth
+5. Adapt based on specific differences in the current requirement
+6. Focus on activities that consistently appear in similar requirements
 `;
 }

@@ -125,7 +125,7 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
               const selectedPreset = presets.find(p => p.id === value);
               onUpdate({
                 techPresetId: value,
-                techCategory: selectedPreset?.tech_category || '',
+                techCategory: selectedPreset?.code || '',
               });
             }}
           >
@@ -143,7 +143,7 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
                     onClick={() => {
                       onUpdate({
                         techPresetId: preset.id,
-                        techCategory: preset.tech_category || '',
+                        techCategory: preset.code || '',
                       });
                     }}
                   >

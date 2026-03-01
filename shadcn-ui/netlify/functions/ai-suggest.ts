@@ -28,6 +28,8 @@ interface RequestBody {
         name: string;
         description: string;
         tech_category: string;
+        /** Canonical FK to technologies.id */
+        technology_id?: string;
         /** @deprecated Not used — AI decides freely */
         default_activity_codes?: string[];
         /** @deprecated Removed */
@@ -42,6 +44,8 @@ interface RequestBody {
         base_hours: number;
         group: string;
         tech_category: string;
+        /** Canonical FK to technologies.id */
+        technology_id?: string | null;
     }>;
     projectContext?: ProjectContext;
     testMode?: boolean;

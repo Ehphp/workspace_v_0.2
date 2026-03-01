@@ -21,6 +21,9 @@ export interface Activity {
   name: string;
   description: string;
   base_hours: number;
+  /** Canonical FK to technologies.id — preferred over tech_category */
+  technology_id: string | null;
+  /** @deprecated Use technology_id FK instead. Kept for backward compatibility. */
   tech_category: string;
   group: 'ANALYSIS' | 'DEV' | 'TEST' | 'OPS' | 'GOVERNANCE';
   active: boolean;

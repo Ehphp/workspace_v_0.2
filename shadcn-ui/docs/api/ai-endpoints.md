@@ -257,6 +257,7 @@ Endpoints that select activities based on gathered information.
     base_hours: number;
     group: string;
     tech_category: string;
+    technology_id?: string;     // Canonical FK (preferred over tech_category)
   }>;
   projectContext?: {            // Optional project metadata for better context
     name: string;
@@ -363,6 +364,7 @@ The agentic pipeline adds:
     base_hours: number;
     group: string;
     tech_category: string;
+    technology_id?: string;     // Canonical FK (preferred over tech_category)
   }>;
 }
 ```
@@ -409,6 +411,7 @@ The agentic pipeline adds:
     name: string;
     description: string;
     tech_category: string;
+    technology_id?: string;      // Canonical FK (preferred)
     default_activity_codes: string[];
     default_driver_values: Record<string, string>;
     default_risks: string[];
@@ -420,6 +423,7 @@ The agentic pipeline adds:
     base_hours: number;
     group: string;
     tech_category: string;
+    technology_id?: string;     // Canonical FK (preferred over tech_category)
   }>;
   projectContext?: {            // Optional project metadata for better context
     name: string;
@@ -456,7 +460,7 @@ The agentic pipeline adds:
 - `max_output_tokens` set to 1000 (Responses API)
 
 **Validation/Fallback**:
-- Filters activities by `tech_category` matching preset
+- Filters activities by `technology_id` FK (canonical), with `tech_category` string fallback
 - Activity codes constrained to provided enum
 - 24h response cache (keyed by description + presetId + activity codes)
 - Pre-validation rejects test inputs ("test", "qwerty"), gibberish, too-short descriptions

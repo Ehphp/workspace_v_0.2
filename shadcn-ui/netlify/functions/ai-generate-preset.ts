@@ -29,6 +29,8 @@ interface CatalogActivity {
     base_hours: number;
     tech_category: string;
     group: string;
+    /** Canonical FK to technologies.id */
+    technology_id?: string | null;
 }
 
 /**
@@ -62,7 +64,7 @@ async function fetchCatalogActivities(
         const categories = [techCategory, 'MULTI'];
         const { data, error } = await supabase
             .from('activities')
-            .select('code, name, description, base_hours, tech_category, group')
+            .select('code, name, description, base_hours, tech_category, group, technology_id')
             .in('tech_category', categories)
             .eq('active', true)
             .order('group')

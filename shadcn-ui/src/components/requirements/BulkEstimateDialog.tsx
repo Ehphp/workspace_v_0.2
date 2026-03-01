@@ -192,11 +192,15 @@ export function BulkEstimateDialog({
                         throw new Error('Technology not found');
                     }
 
-                    // Filter activities by tech_category (no template restriction)
+                    // Filter activities by technology (canonical FK, fallback to tech_category)
                     const activities = sharedActivities.filter(
-                        (a: Activity) =>
-                            a.tech_category === preset.tech_category ||
-                            a.tech_category === 'MULTI'
+                        (a: Activity) => {
+                            if (a.technology_id) {
+                                return a.technology_id === preset.id || a.tech_category === 'MULTI';
+                            }
+                            return a.tech_category === preset.tech_category ||
+                                a.tech_category === 'MULTI';
+                        }
                     );
                     if (activities.length === 0) {
                         return {

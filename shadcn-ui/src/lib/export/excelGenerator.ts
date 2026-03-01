@@ -169,6 +169,31 @@ function addSingleEstimationSheets(
 
         XLSX.utils.book_append_sheet(workbook, risksSheet, 'Rischi');
     }
+
+    // Sheet 5: Consuntivo (S4-2 — only if actuals present)
+    if (estimation.actuals) {
+        const a = estimation.actuals;
+        const badge = a.deviationPercent > 10 ? 'OVER' : a.deviationPercent < -10 ? 'UNDER' : 'ON TARGET';
+        const actualsData: any[][] = [
+            ['CONSUNTIVO'],
+            [''],
+            ['Stato', badge],
+            ['Ore Reali', a.actualHours],
+            ['Giorni Reali', a.actualDays],
+            ['Scostamento %', a.deviationPercent],
+            ['Data Inizio Reale', a.startDate || '-'],
+            ['Data Fine Reale', a.endDate || '-'],
+            ['Note', a.notes || '-'],
+        ];
+
+        const actualsSheet = XLSX.utils.aoa_to_sheet(actualsData);
+        actualsSheet['!cols'] = [
+            { wch: 20 },
+            { wch: 40 },
+        ];
+
+        XLSX.utils.book_append_sheet(workbook, actualsSheet, 'Consuntivo');
+    }
 }
 
 function addSummarySheet(

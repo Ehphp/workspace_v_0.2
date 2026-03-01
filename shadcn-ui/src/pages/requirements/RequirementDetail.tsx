@@ -18,6 +18,7 @@ import { FileText, Calculator, History, AlertTriangle, ClipboardCheck } from 'lu
 import { toast } from 'sonner';
 import { suggestActivities } from '@/lib/openai';
 import { getConsultantAnalysis } from '@/lib/consultant-api';
+import { filterActivitiesByTechnology } from '@/lib/technology-helpers';
 import { Header } from '@/components/layout/Header';
 import type { EstimationWithDetails } from '@/types/database';
 import type { SeniorConsultantAnalysis } from '@/types/estimation';
@@ -133,13 +134,10 @@ export default function RequirementDetail() {
         [presets, activeTechnologyId]
     );
 
-    // Filter activities by technology's tech_category (simple, no template restriction)
+    // Filter activities by technology (canonical FK, fallback to tech_category)
     const filteredActivities = useMemo(() => {
-        if (!activeTechnology) return activities;
-        return activities.filter(
-            (a) => a.tech_category === activeTechnology.tech_category || a.tech_category === 'MULTI'
-        );
-    }, [activities, activeTechnology]);
+        return filterActivitiesByTechnology(activities, activeTechnology, presets);
+    }, [activities, activeTechnology, presets]);
 
     // Initialize preset when requirement loads (only sets preset ID, does NOT auto-select activities)
     // User can manually select activities or use AI suggestion / "Applica Template" button
@@ -202,10 +200,8 @@ export default function RequirementDetail() {
 
         setIsAiLoading(true);
         try {
-            // Send ALL activities of the tech_category
-            const techCategoryActivities = activities.filter(
-                (a) => a.tech_category === activeTechnology.tech_category || a.tech_category === 'MULTI'
-            );
+            // Send ALL compatible activities for the technology
+            const techCategoryActivities = filterActivitiesByTechnology(activities, activeTechnology, presets);
 
             const suggestion = await suggestActivities({
                 description: requirement.description,
@@ -314,7 +310,7 @@ export default function RequirementDetail() {
                     owner: list.owner || undefined,
                 },
                 technologyName: activeTechnology.name,
-                technologyCategory: activeTechnology.tech_category,
+                technologyCategory: activeTechnology.code,
             }, token);
 
             setConsultantAnalysis(analysis);
@@ -399,10 +395,8 @@ export default function RequirementDetail() {
             const selectedPreset = presets.find(p => p.id === presetIdToUse);
             if (!selectedPreset) throw new Error('Invalid technology selected.');
 
-            // Filter by tech_category (no template restriction)
-            const activitiesForTech = activities.filter(
-                (a) => a.tech_category === selectedPreset.tech_category || a.tech_category === 'MULTI'
-            );
+            // Filter by technology (canonical FK)
+            const activitiesForTech = filterActivitiesByTechnology(activities, selectedPreset, presets);
             if (activitiesForTech.length === 0) {
                 throw new Error('No activities available for the selected technology.');
             }

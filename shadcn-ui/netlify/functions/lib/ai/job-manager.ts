@@ -36,6 +36,14 @@ export interface JobRecord {
     error?: string;
     createdAt: string;
     updatedAt: string;
+    // ── S4-4: Granular progress tracking ────────────────
+    progress?: {
+        total: number;          // total requirements
+        completed: number;      // requirements completed
+        failed: number;         // requirements failed
+        currentItem?: string;   // title or ID of current requirement
+        partialResults?: any[]; // partial results already available
+    };
 }
 
 export async function createJob(jobId: string): Promise<void> {
@@ -77,4 +85,25 @@ export async function getJob(jobId: string): Promise<JobRecord | null> {
     const redis = await getRedisClient();
     const str = await redis.get(`job:${jobId}`);
     return str ? JSON.parse(str) : null;
+}
+
+/**
+ * S4-4: Update job progress without overwriting the full job result.
+ * Called from bulk estimate loop to report per-requirement progress.
+ */
+export async function updateJobProgress(
+    jobId: string,
+    progress: JobRecord['progress']
+): Promise<void> {
+    const redis = await getRedisClient();
+    const raw = await redis.get(`job:${jobId}`);
+    if (!raw) return;
+
+    const job: JobRecord = JSON.parse(raw);
+    job.progress = progress;
+    job.status = 'PROCESSING';
+    job.updatedAt = new Date().toISOString();
+
+    // Extended TTL for long bulk operations (2 hours)
+    await redis.setEx(`job:${jobId}`, 7200, JSON.stringify(job));
 }

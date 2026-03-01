@@ -14,6 +14,7 @@ import {
     generateBulkEstimatesFromInterview,
     bulkAnswersMapToRecord,
 } from '@/lib/bulk-interview-api';
+import type { BulkProgress } from '@/components/bulk/BulkProgressTracker';
 import type {
     BulkInterviewPhase,
     BulkInterviewQuestion,
@@ -79,6 +80,8 @@ export function useBulkInterview(): UseBulkInterviewReturn {
     const [reasoning, setReasoning] = useState<string | undefined>();
     const [estimations, setEstimations] = useState<BulkRequirementEstimation[]>([]);
     const [error, setError] = useState<string | null>(null);
+    // S4-4: Bulk progress tracking
+    const [bulkProgress, setBulkProgress] = useState<BulkProgress | null>(null);
 
     // Computed values
     const progress = useMemo(() => {
@@ -240,7 +243,7 @@ export function useBulkInterview(): UseBulkInterviewReturn {
                 techCategory,
                 answers: answersRecord,
                 activities: formattedActivities,
-            });
+            }, (progress) => setBulkProgress(progress));  // S4-4: progress callback
 
             if (response.success) {
                 setEstimations(response.estimations);
@@ -269,6 +272,7 @@ export function useBulkInterview(): UseBulkInterviewReturn {
         setReasoning(undefined);
         setEstimations([]);
         setError(null);
+        setBulkProgress(null);  // S4-4
     }, []);
 
     return {
@@ -282,6 +286,7 @@ export function useBulkInterview(): UseBulkInterviewReturn {
         reasoning,
         estimations,
         error,
+        bulkProgress,   // S4-4: { total, completed, failed, currentItem, partialResults }
 
         // Computed
         progress,

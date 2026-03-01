@@ -132,6 +132,8 @@ export interface AgentActivity {
     base_hours: number;
     group: string;
     tech_category: string;
+    /** Canonical FK to technologies.id */
+    technology_id?: string | null;
 }
 
 export interface AgentOutput {

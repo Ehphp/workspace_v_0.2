@@ -4,7 +4,7 @@
   "packageManager": "pnpm@8.10.0",
   "scripts": {
     "dev": "vite",
-    "dev:netlify": "node -e \"const fs=require('fs');fs.mkdirSync('.netlify',{recursive:true});fs.writeFileSync('.netlify/package.json','{\\\"type\\\":\\\"commonjs\\\"}')\" && set NODE_OPTIONS=--no-deprecation && set NETLIFY_FUNCTIONS_TIMEOUT=120 && netlify dev",
+    "dev:netlify": "node scripts/patch-netlify-timeout.cjs && node -e \"const fs=require('fs');fs.mkdirSync('.netlify',{recursive:true});fs.writeFileSync('.netlify/package.json','{\\\"type\\\":\\\"commonjs\\\"}')\" && set NODE_OPTIONS=--no-deprecation && netlify dev",
     "build": "vite build",
     "lint": "eslint --quiet ./src",
     "preview": "vite preview",

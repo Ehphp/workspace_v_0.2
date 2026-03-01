@@ -163,7 +163,7 @@ async function fallbackActivitySearch(
 
     const { data, error } = await supabase
         .from('activities')
-        .select('id, code, name, description, base_hours, tech_category, group')
+        .select('id, code, name, description, base_hours, tech_category, group, technology_id')
         .in('tech_category', techCategories)
         .eq('active', true)
         .order('group')

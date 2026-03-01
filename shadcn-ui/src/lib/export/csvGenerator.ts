@@ -134,6 +134,22 @@ function generateSingleEstimationCSV(
         });
     }
 
+    // Consuntivo section (S4-2)
+    if (estimation.actuals) {
+        const a = estimation.actuals;
+        const badge = a.deviationPercent > 10 ? 'OVER' : a.deviationPercent < -10 ? 'UNDER' : 'ON TARGET';
+        lines.push('');
+        lines.push('CONSUNTIVO');
+        lines.push('');
+        lines.push(`Stato;${badge}`);
+        lines.push(`Ore Reali;${a.actualHours}`);
+        lines.push(`Giorni Reali;${a.actualDays.toFixed(2)}`);
+        lines.push(`Scostamento %;${a.deviationPercent.toFixed(1)}`);
+        lines.push(`Data Inizio Reale;${a.startDate || '-'}`);
+        lines.push(`Data Fine Reale;${a.endDate || '-'}`);
+        lines.push(`Note;${escapeCSV(a.notes || '-')}`);
+    }
+
     return lines.join('\n');
 }
 
@@ -150,8 +166,8 @@ function generateMultipleEstimationsCSV(
     lines.push(`Giorni Totali;${estimations.reduce((sum, e) => sum + e.estimation.totalDays, 0).toFixed(2)}`);
     lines.push('');
 
-    // Requirements table
-    lines.push('ID;Titolo;Priorità;Stato;Giorni Base;Moltiplicatore;Giorni Totali');
+    // Requirements table (S4-2: added actuals columns)
+    lines.push('ID;Titolo;Priorit\u00e0;Stato;Giorni Base;Moltiplicatore;Giorni Totali;Ore Reali;Scostamento %');
 
     estimations.forEach(e => {
         lines.push([
@@ -162,6 +178,8 @@ function generateMultipleEstimationsCSV(
             e.estimation.baseDays.toFixed(2),
             e.estimation.driverMultiplier.toFixed(2),
             e.estimation.totalDays.toFixed(2),
+            e.actuals?.actualHours?.toString() ?? '-',
+            e.actuals?.deviationPercent != null ? e.actuals.deviationPercent.toFixed(1) : '-',
         ].join(';'));
     });
 

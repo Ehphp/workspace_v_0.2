@@ -17,6 +17,7 @@ import HowItWorks from './pages/HowItWorks';
 import Profile from './pages/configuration/Profile';
 import { OrganizationSettings } from './pages/configuration/OrganizationSettings';
 import EstimationAccuracy from './pages/analytics/EstimationAccuracy';
+import PromptManagement from './pages/admin/PromptManagement';
 
 const queryClient = new QueryClient();
 
@@ -100,6 +101,14 @@ const App = () => (
             element={
               <AuthGuard>
                 <EstimationAccuracy />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/admin/prompts"
+            element={
+              <AuthGuard>
+                <PromptManagement />
               </AuthGuard>
             }
           />

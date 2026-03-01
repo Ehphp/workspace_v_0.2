@@ -115,8 +115,9 @@ OpenAI's structured outputs feature guarantees the response matches a JSON schem
        - Rejects gibberish
       │
       ▼
-6. Filter activities by tech_category
-   └─► Only activities matching technology.tech_category or 'MULTI'
+6. Filter activities by technology
+   └─► Uses `technology_id` FK (canonical) with `tech_category` string fallback
+   └─► `filterActivitiesByTechnology()` helper in `src/lib/technology-helpers.ts`
       │
       ▼
 7. Check cache (24h TTL)
@@ -316,7 +317,7 @@ Questions gather context about:
 |----------|-------|
 | Endpoint | `POST /.netlify/functions/ai-generate-preset` |
 | Input | `description`, `answers`, `suggestedTechCategory?` |
-| Output | `technology` object with `name`, `description`, `tech_category`, `activities[]` |
+| Output | `technology` object with `name`, `description`, `code`, `activities[]` |
 
 **Difference from requirement interview:**
 
@@ -718,9 +719,9 @@ When disabled, the system operates exactly as before vector search was implement
 
 **Activity scope — vector search vs presets:**
 
-Vector search retrieves activities broadly across the entire `tech_category` (+ MULTI). It is intentionally **not** restricted to the preset's `default_activity_codes`. This allows the AI to suggest the most appropriate activity for the requirement — e.g. suggesting `PP_FLOW_SIMPLE` even when the user selected the "Complex (HR)" preset, because the requirement only needs a simple flow.
+Vector search retrieves activities broadly across the entire technology scope (+ MULTI). It is intentionally **not** restricted to the preset's defaults. This allows the AI to suggest the most appropriate activity for the requirement — e.g. suggesting `PP_FLOW_SIMPLE` even when the user selected the "Complex (HR)" preset, because the requirement only needs a simple flow.
 
-The frontend maps AI-suggested codes against **all activities of the tech_category** (not just the preset-filtered list). The `applyAiSuggestions` hook also validates by tech_category rather than preset codes. This ensures AI freedom while still scoping suggestions to the correct technology.
+The frontend maps AI-suggested codes against **all activities compatible with the technology** using the canonical `technology_id` FK (with `tech_category` string fallback). The `applyAiSuggestions` hook validates via `isActivityCompatible()` from `src/lib/technology-helpers.ts`. This ensures AI freedom while still scoping suggestions to the correct technology.
 
 ### Phase 3: Semantic Deduplication
 
@@ -736,9 +737,10 @@ When creating new custom activities:
 For activity suggestions:
 
 1. System searches `requirements` table for similar past requirements
-2. Fetches their estimation data (activities, total_days, base_days)
+2. Fetches their estimation data (activities, total_days, base_days, **actual_hours**)
 3. Includes top-3 historical examples in prompt as few-shot learning
 4. AI uses these examples to calibrate its suggestions
+5. **Sprint 4 (S4-1)**: Examples with actuals are prioritized and include deviation data
 
 **RAG prompt addition:**
 ```
@@ -747,6 +749,7 @@ For activity suggestions:
 Example 1 (78% similar):
 Title: User registration form
 Total Estimate: 5 days (base: 4 days)
+✅ ACTUAL: 5.5 days (44h) — deviation: 10.0%
 Activities selected:
   - BE_DEV_AUTH: Authentication (24h)
   - FE_DEV_FORM: Form development (16h)
@@ -754,6 +757,9 @@ Activities selected:
 
 --- END EXAMPLES ---
 ```
+
+**RAG system prompt** now includes:
+> When ACTUAL data is provided, compare estimated vs actual days. Weight examples with actual data more heavily — they represent ground truth.
 
 ### Performance Impact
 
@@ -794,6 +800,72 @@ The health endpoint now includes a `rag` field with in-memory metrics collected 
 **Note**: Metrics are in-memory and reset on each Netlify Functions cold start. The `rag` field is `null` if no RAG calls have been made since the last cold start.
 
 **Files**: `netlify/functions/lib/ai/rag-metrics.ts` (store + helpers), integrated in `rag.ts` via `recordRAGCall()`.
+
+---
+
+## Prompt Versioning & A/B Testing (Sprint 4 — S4-3)
+
+The prompt registry (`prompt-registry.ts`) supports **multiple variants per prompt key** for A/B testing.
+
+### Schema Changes
+
+**Migration**: `supabase/migrations/20260310_prompt_versioning.sql`
+
+- Dropped `UNIQUE(prompt_key)` constraint
+- Added columns: `variant`, `traffic_pct`, `usage_count`, `avg_confidence`, `promoted_at`
+- New unique index: `(prompt_key, variant) WHERE is_active = TRUE`
+- RPCs: `record_prompt_confidence()`, `increment_prompt_usage()`
+- View: `prompt_ab_comparison`
+
+### API
+
+**`getPromptWithMeta(key)`** — returns `{ promptId, systemPrompt, variant, version }`
+- Fetches ALL active variants for a key
+- Selects variant via weighted random based on `traffic_pct`
+- Result includes `promptId` for feedback tracking
+
+**`getPrompt(key)`** — backward-compatible wrapper (⚠️ deprecated)
+
+**`recordPromptFeedback(promptId, confidence)`** — updates rolling `avg_confidence`
+
+### Admin Endpoint
+
+`GET/POST/PATCH /.netlify/functions/manage-prompts` — protected by admin/owner role
+- `GET`: list all prompts with stats
+- `POST`: create new variant
+- `PATCH`: update content, traffic_pct, toggle active
+- `POST /promote`: promote variant to default
+
+### Admin UI
+
+Route: `/admin/prompts` → `PromptManagement.tsx`
+- Variant cards with confidence/usage stats
+- A/B comparison bar chart
+- Recommendation engine (promotes best performer)
+- Edit/toggle/promote actions
+
+---
+
+## Bulk Progress Tracking (Sprint 4 — S4-4)
+
+Bulk estimation now reports **per-requirement progress** during execution.
+
+### Backend
+
+`JobRecord.progress` — new field:
+```typescript
+{ total, completed, failed, currentItem?, partialResults? }
+```
+
+`updateJobProgress()` in `job-manager.ts` updates progress without overwriting the job result.
+
+`ai-job-status.ts` now returns `progress` in its response.
+
+### Frontend
+
+- `BulkProgressTracker` component: progress bar, current item, partial results list
+- `generateBulkEstimatesFromInterview()` accepts optional `onProgress` callback
+- `useBulkInterview` hook exposes `bulkProgress` state
 
 Structured logs are also emitted as JSON on each call:
 ```json
@@ -866,6 +938,7 @@ The AI model can actively request tools during estimation:
 2. Issues are classified: `missing_activity`, `unnecessary_activity`, `wrong_hours`, `missing_coverage`, `over_engineering`
 3. If high-severity or 2+ medium issues → auto-refinement with correction prompt
 4. Capped at `AI_MAX_REFLECTIONS` iterations (default: 2)
+5. **Time-budget guard**: before starting a REFINE pass the orchestrator checks remaining time. If fewer than 18 s remain in the 55 s budget (`REFINE_TIME_BUDGET_MS`), refinement is skipped and the draft proceeds directly to VALIDATE. This prevents lambda-local / Netlify timeouts.
 
 ### Configuration
 
@@ -876,6 +949,15 @@ The AI model can actively request tools during estimation:
 | `AI_TOOL_USE` | `true` | Enable function calling |
 | `AI_MAX_REFLECTIONS` | `2` | Max reflection iterations |
 | `AI_REFLECTION_THRESHOLD` | `75` | Confidence threshold to skip reflection |
+
+### Timeout Budget
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `ORCHESTRATION_TIMEOUT_MS` | 55 000 ms | Hard ceiling for the entire agent pipeline |
+| `REFINE_TIME_BUDGET_MS` | 18 000 ms | Minimum remaining time required before starting REFINE |
+
+Local dev uses `netlify dev --timeout 120` (set in `package.json` → `dev:netlify` script) so lambda-local does not kill the function before the orchestrator timeout fires.
 
 ### Deterministic Core Invariant
 

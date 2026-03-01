@@ -344,6 +344,35 @@ The `validate_estimation` tool also exposes the engine formula to the AI model d
 
 ---
 
+## RAG Feedback Loop (Sprint 4 — S4-1)
+
+When historical estimations include **actual hours** (from the S2 consuntivo fields), the RAG module feeds this data back into the AI prompt. This creates a learning loop:
+
+1. `fetchEstimationHistory()` now includes `actual_hours` in its query
+2. `deviationPercent` is calculated inline: `(actualHours/8 - totalDays) / totalDays * 100`
+3. Historical examples with actuals are **prioritized** in the sort (before similarity ranking)
+4. `buildRAGPromptFragment()` appends an `ACTUAL:` line when consuntivo is available
+5. `getRAGSystemPromptAddition()` now instructs the AI to weight examples with actuals more heavily
+
+**Impact on accuracy**: The AI sees both the original estimate and the real outcome, allowing it to calibrate future predictions based on historical over/under-estimation patterns.
+
+**Files**: `netlify/functions/lib/ai/rag.ts` (interface + fetch + sort + prompt), `rag-metrics.ts` (`examplesWithActuals` counter).
+
+---
+
+## Export with Actuals (Sprint 4 — S4-2)
+
+The export system (PDF/Excel/CSV) now includes a **Consuntivo** section when `actuals` data is available on an `ExportableEstimation`:
+
+- **PDF**: Green or red box with actual days, deviation %, dates, and a status badge (UNDER / ON TARGET / OVER)
+- **Excel (single)**: New sheet "Consuntivo" with actual hours, deviation, dates, notes
+- **Excel (bulk)**: Summary table includes "Ore Reali" and "Scostamento %" columns
+- **CSV**: Consuntivo section for single exports; actuals columns in bulk table
+
+**Type**: `ExportableEstimation.actuals?: { actualHours, actualDays, deviationPercent, startDate?, endDate?, notes? }`
+
+---
+
 **Update this document when**:
 - Contingency thresholds change
 - New calculation steps are added

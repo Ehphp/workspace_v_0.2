@@ -92,6 +92,16 @@ export async function generatePDF(options: PDFGeneratorOptions): Promise<ExportR
             yPosition = drawAiReasoningSection(doc, estimation, pageWidth, margin, yPosition);
         }
 
+        // === CONSUNTIVO (S4-2: if actuals available) ===
+        if (estimation.actuals) {
+            // Check if we need a new page
+            if (yPosition > pageHeight - 60) {
+                doc.addPage();
+                yPosition = margin;
+            }
+            yPosition = drawActualsSection(doc, estimation, pageWidth, margin, yPosition);
+        }
+
         // === FOOTER ===
         drawFooter(doc, pageWidth, pageHeight, margin);
 
@@ -526,6 +536,94 @@ function drawFooter(
     const timestamp = format(new Date(), "d MMM yyyy 'alle' HH:mm", { locale: it });
     doc.text(`Generato da Syntero | ${timestamp}`, margin, footerY);
     doc.text('www.syntero.io', pageWidth - margin, footerY, { align: 'right' });
+}
+
+/**
+ * S4-2: Draw actuals/consuntivo section
+ */
+function drawActualsSection(
+    doc: jsPDF,
+    estimation: ExportableEstimation,
+    pageWidth: number,
+    margin: number,
+    yPosition: number
+): number {
+    if (!estimation.actuals) return yPosition;
+
+    const boxWidth = pageWidth - (margin * 2);
+    const actuals = estimation.actuals;
+    const deviation = actuals.deviationPercent;
+
+    // Determine badge color based on deviation
+    const isOver = deviation > 10;
+    const isUnder = deviation < -10;
+    const bgColor: [number, number, number] = isOver
+        ? [254, 242, 242]    // red-50
+        : isUnder
+            ? [240, 253, 244]  // green-50
+            : [240, 253, 244]; // green-50 (on target)
+    const borderColor: [number, number, number] = isOver
+        ? [252, 165, 165]    // red-300
+        : [134, 239, 172];   // green-300
+    const textColor: [number, number, number] = isOver
+        ? [185, 28, 28]      // red-700
+        : [21, 128, 61];     // green-700
+    const badge = isOver ? 'OVER' : isUnder ? 'UNDER' : 'ON TARGET';
+
+    // Section title
+    yPosition += 5;
+    doc.setFont(FONTS.bold, 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...COLORS.text);
+    doc.text('\u2705 CONSUNTIVO', margin, yPosition);
+    yPosition += 5;
+
+    // Box
+    const boxHeight = 40 + (actuals.notes ? 10 : 0);
+    doc.setFillColor(...bgColor);
+    doc.setDrawColor(...borderColor);
+    doc.roundedRect(margin, yPosition, boxWidth, boxHeight, 2, 2, 'FD');
+
+    // Badge
+    drawBadge(doc, badge, margin + 5, yPosition + 5, isOver ? [239, 68, 68] : COLORS.success);
+
+    // Actual hours big number
+    doc.setFont(FONTS.bold, 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(...textColor);
+    doc.text(`${actuals.actualDays.toFixed(1)}`, margin + 10, yPosition + 22);
+    doc.setFontSize(10);
+    doc.text('giorni reali', margin + 35, yPosition + 22);
+
+    // Deviation
+    doc.setFontSize(9);
+    doc.setTextColor(...COLORS.textMuted);
+    doc.text(`(${actuals.actualHours}h) \u2014 Scostamento: ${deviation > 0 ? '+' : ''}${deviation.toFixed(1)}%`, margin + 10, yPosition + 30);
+
+    // Dates on right side
+    let rightY = yPosition + 12;
+    const rightX = margin + boxWidth - 60;
+    doc.setFont(FONTS.normal, 'normal');
+    doc.setFontSize(7);
+    if (actuals.startDate) {
+        doc.text(`Inizio: ${actuals.startDate}`, rightX, rightY);
+        rightY += 5;
+    }
+    if (actuals.endDate) {
+        doc.text(`Fine: ${actuals.endDate}`, rightX, rightY);
+        rightY += 5;
+    }
+
+    // Notes
+    if (actuals.notes) {
+        doc.setFont(FONTS.normal, 'italic');
+        doc.setFontSize(7);
+        doc.setTextColor(...COLORS.textMuted);
+        const noteLines = doc.splitTextToSize(`Note: ${actuals.notes}`, boxWidth - 10);
+        doc.text(noteLines.slice(0, 1), margin + 5, yPosition + boxHeight - 4);
+    }
+
+    return yPosition + boxHeight + 3;
 }
 
 // Helper functions

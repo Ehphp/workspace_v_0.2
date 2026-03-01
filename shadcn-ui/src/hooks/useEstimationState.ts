@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import type { Technology, Activity, Driver, Risk } from '@/types/database';
 import type { EstimationResult } from '@/types/estimation';
 import { calculateEstimation } from '@/lib/estimationEngine';
+import { isActivityCompatible } from '@/lib/technology-helpers';
 
 interface UseEstimationStateProps {
     activities: Activity[];
@@ -71,12 +72,11 @@ export function useEstimationState({
         return techs.find((t) => t.id === selectedTechnologyId) || null;
     }, [techs, selectedTechnologyId]);
 
-    // Check if an activity is compatible with the selected technology (by tech_category)
+    // Check if an activity is compatible with the selected technology (canonical FK check)
     const isActivityAllowed = useCallback((activity: Activity | undefined) => {
         if (!activity) return false;
-        if (!selectedTechnology) return true;
-        return activity.tech_category === selectedTechnology.tech_category || activity.tech_category === 'MULTI';
-    }, [selectedTechnology]);
+        return isActivityCompatible(activity, selectedTechnology, techs);
+    }, [selectedTechnology, techs]);
 
     // Memoized toggle handlers
     const toggleActivity = useCallback((activityId: string) => {
@@ -128,17 +128,16 @@ export function useEstimationState({
         driverValues?: Record<string, string>, // Can be code-based or ID-based
         riskIds?: string[]
     ) => {
-        // Allow any activity within the same tech_category or MULTI
+        // Allow any activity compatible with the selected technology (canonical FK check)
         const allowedActivityIds = activityIds.filter((id) => {
             const activity = activities.find((a) => a.id === id);
             if (!activity) return false;
-            if (!selectedTechnology) return true;
-            return activity.tech_category === selectedTechnology.tech_category || activity.tech_category === 'MULTI';
+            return isActivityCompatible(activity, selectedTechnology, techs);
         });
 
         const removed = activityIds.length - allowedActivityIds.length;
         if (removed > 0) {
-            console.warn(`[applyAiSuggestions] Removed ${removed} activities outside tech_category ${selectedTechnology?.tech_category}`);
+            console.warn(`[applyAiSuggestions] Removed ${removed} activities outside technology ${selectedTechnology?.code}`);
         }
 
         setSelectedActivityIds(allowedActivityIds);

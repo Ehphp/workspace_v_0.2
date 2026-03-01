@@ -68,6 +68,15 @@ export interface ExportableEstimation {
   drivers: ExportableDriver[];
   risks: ExportableRisk[];
   aiReasoning?: string;
+  // ── S4-2: Actual/Consuntivo data ────────────────────
+  actuals?: {
+    actualHours: number;
+    actualDays: number;         // actualHours / 8
+    deviationPercent: number;
+    startDate?: string;
+    endDate?: string;
+    notes?: string;
+  };
 }
 
 export interface ExportResult {

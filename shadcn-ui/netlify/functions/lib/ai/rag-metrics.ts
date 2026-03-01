@@ -25,6 +25,7 @@ export interface RAGMetrics {
 export interface RAGCallContext {
     hasExamples: boolean;
     exampleCount: number;
+    examplesWithActuals?: number;  // S4-1: count of examples with actual_hours
     avgSimilarity: number;
     latencyMs: number;
 }

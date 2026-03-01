@@ -97,9 +97,14 @@ export function useQuickEstimation() {
                 allRisks = risksResult.data;
             }
 
-            // Filter activities by tech_category (no template restriction)
+            // Filter activities by technology (canonical FK, fallback to tech_category)
             const allowedActivities = allActivities.filter(
-                (a) => a.tech_category === selectedPreset.tech_category || a.tech_category === 'MULTI'
+                (a) => {
+                    if (a.technology_id) {
+                        return a.technology_id === selectedPreset.id || a.tech_category === 'MULTI';
+                    }
+                    return a.tech_category === selectedPreset.tech_category || a.tech_category === 'MULTI';
+                }
             );
 
             if (allowedActivities.length === 0) {

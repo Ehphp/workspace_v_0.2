@@ -56,8 +56,9 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
 
       if (currentPreset) {
         // Build query to include:
-        // 1. Standard activities matching tech_category or MULTI
-        // 2. Custom activities created by the current user (any tech_category)
+        // 1. Activities matching technology_id FK or MULTI
+        // 2. Legacy: activities matching tech_category string
+        // 3. Custom activities created by the current user
         let query = supabase
           .from('activities')
           .select('*')
@@ -67,13 +68,14 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
         if (user?.id) {
           // Include standard activities for tech OR custom activities by user
           query = query.or(
-            `and(tech_category.eq.${currentPreset.tech_category},is_custom.is.null),` +
+            `and(technology_id.eq.${currentPreset.id},is_custom.is.null),` +
+            `and(tech_category.eq.${currentPreset.code},is_custom.is.null),` +
             `and(tech_category.eq.MULTI,is_custom.is.null),` +
             `and(is_custom.eq.true,created_by.eq.${user.id})`
           );
         } else {
           // No user logged in, only show standard activities
-          query = query.or(`tech_category.eq.${currentPreset.tech_category},tech_category.eq.MULTI`);
+          query = query.or(`technology_id.eq.${currentPreset.id},tech_category.eq.${currentPreset.code},tech_category.eq.MULTI`);
         }
 
         const { data: activitiesData, error: activitiesError } = await query;
@@ -83,7 +85,7 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
 
         if (activitiesError || !activitiesData || activitiesData.length === 0) {
           resolvedActivities = MOCK_ACTIVITIES.filter(
-            a => a.tech_category === currentPreset!.tech_category || a.tech_category === 'MULTI'
+            a => a.tech_category === currentPreset!.code || a.tech_category === 'MULTI'
           );
           setIsDemoMode(true);
         } else {
@@ -99,7 +101,7 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
       const currentPreset = MOCK_TECHNOLOGIES.find(p => p.id === data.techPresetId) || MOCK_TECHNOLOGIES[0];
       setPreset(currentPreset);
       const mockActivities = MOCK_ACTIVITIES.filter(
-        a => a.tech_category === currentPreset.tech_category || a.tech_category === 'MULTI'
+        a => a.tech_category === currentPreset.code || a.tech_category === 'MULTI'
       );
       setActivities(mockActivities);
       setIsDemoMode(true);

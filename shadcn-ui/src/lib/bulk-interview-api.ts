@@ -140,10 +140,22 @@ export async function generateBulkInterviewQuestions(
 }
 
 /**
+ * S4-4: Callback type for progress updates during bulk estimation
+ */
+export type BulkProgressCallback = (progress: {
+    total: number;
+    completed: number;
+    failed: number;
+    currentItem?: string;
+    partialResults?: any[];
+}) => void;
+
+/**
  * Generate estimates for multiple requirements based on interview answers
  */
 export async function generateBulkEstimatesFromInterview(
-    request: BulkEstimateFromInterviewRequest
+    request: BulkEstimateFromInterviewRequest,
+    onProgress?: BulkProgressCallback
 ): Promise<BulkEstimateFromInterviewResponse> {
     // 1. Validate
     if (!request.requirements || request.requirements.length === 0) {
@@ -273,6 +285,11 @@ export async function generateBulkEstimatesFromInterview(
                 if (!pollResponse.ok) continue;
 
                 const pollData = await pollResponse.json();
+
+                // S4-4: Report progress to UI
+                if (pollData.progress && onProgress) {
+                    onProgress(pollData.progress);
+                }
 
                 if (pollData.status === 'COMPLETED') {
                     console.log('[bulk-interview-api] Estimates generated (async):', {

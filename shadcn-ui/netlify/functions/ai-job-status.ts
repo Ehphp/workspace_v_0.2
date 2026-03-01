@@ -25,7 +25,8 @@ export const handler = createAIHandler<{ id?: string }>({
             jobId: job.id,
             status: job.status,
             result: job.result,
-            error: job.error
+            error: job.error,
+            progress: job.progress,   // S4-4: granular progress
         };
     }
 });

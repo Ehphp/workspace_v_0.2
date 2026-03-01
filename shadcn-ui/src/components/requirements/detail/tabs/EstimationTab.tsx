@@ -71,7 +71,7 @@ export function EstimationTab({
             },
             technology: selectedPreset ? {
                 name: selectedPreset.name,
-                category: selectedPreset.tech_category,
+                category: selectedPreset.code,
             } : undefined,
             activities: estimationState.selectedActivityIds.map(id => {
                 const activity = data.activities.find(a => a.id === id);

@@ -136,18 +136,18 @@ export default function Requirements() {
     const [listTechCategory, setListTechCategory] = useState<string>('MULTI');
     const [viewMode, setViewMode] = useState<ViewMode>('list');
 
-    // Fetch tech_category from technology when list changes
+    // Fetch technology code from technology when list changes
     useEffect(() => {
         async function fetchTechCategory() {
             const techId = list?.technology_id || list?.tech_preset_id;
             if (techId) {
                 const { data: preset } = await supabase
                     .from('technologies')
-                    .select('tech_category')
+                    .select('code')
                     .eq('id', techId)
                     .single();
-                if (preset?.tech_category) {
-                    setListTechCategory(preset.tech_category);
+                if (preset?.code) {
+                    setListTechCategory(preset.code);
                 }
             } else {
                 setListTechCategory('MULTI');

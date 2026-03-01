@@ -58,8 +58,17 @@ const MAX_TOOL_ITERATIONS = 5;
 /** Model for estimation generation (supports function calling) */
 const ESTIMATION_MODEL = process.env.AI_ESTIMATION_MODEL || 'gpt-4o';
 
-/** Timeout for the entire orchestration (Netlify limit ~26s) */
+/** Timeout for the entire orchestration.
+ *  Local dev uses --timeout 120 (lambda-local); production Netlify
+ *  Background Functions allow up to 15 min, standard up to 26s.
+ *  We budget 55s for the full pipeline, and reserve a safety margin
+ *  before each heavy LLM step so we can return a partial result. */
 const ORCHESTRATION_TIMEOUT_MS = 55000;
+
+/** Minimum remaining ms before starting a REFINE pass.
+ *  If less time remains, skip refinement and go straight to VALIDATE
+ *  with the current draft to avoid a timeout. */
+const REFINE_TIME_BUDGET_MS = 18000;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // State Machine Helpers
@@ -761,7 +770,12 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
             ctx.iteration++;
 
             // ── REFINE (if needed) ───────────────────────────────────────
-            if (reflectionResult.refinementTriggered && ctx.iteration < ctx.maxIterations && !isTimedOut(ctx)) {
+            const remainingMs = ORCHESTRATION_TIMEOUT_MS - (Date.now() - ctx.startedAt);
+            const hasBudgetForRefine = remainingMs >= REFINE_TIME_BUDGET_MS;
+            if (!hasBudgetForRefine && reflectionResult.refinementTriggered) {
+                console.warn(`[agent] Refinement richiesto ma tempo insufficiente (${remainingMs}ms < ${REFINE_TIME_BUDGET_MS}ms budget). Skip REFINE → VALIDATE per evitare timeout.`);
+            }
+            if (reflectionResult.refinementTriggered && ctx.iteration < ctx.maxIterations && !isTimedOut(ctx) && hasBudgetForRefine) {
                 console.log('─'.repeat(62));
                 console.log(`[agent] REFINEMENT NECESSARIO — Il Senior Consultant ha trovato problemi`);
                 console.log(`  Assessment: ${reflectionResult.assessment}`);

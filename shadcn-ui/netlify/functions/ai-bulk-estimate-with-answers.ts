@@ -11,7 +11,7 @@ import { createAIHandler } from './lib/handler';
 import { getDefaultProvider } from './lib/ai/openai-client';
 import { createBulkEstimatePrompt } from './lib/ai/prompt-templates';
 import { searchSimilarActivities, isVectorSearchEnabled } from './lib/ai/vector-search';
-import { createJob, updateJob } from './lib/ai/job-manager';
+import { createJob, updateJob, updateJobProgress } from './lib/ai/job-manager';
 import { randomUUID } from 'crypto';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -41,6 +41,8 @@ interface Activity {
     base_hours: number;
     group: string;
     tech_category: string;
+    /** Canonical FK to technologies.id */
+    technology_id?: string | null;
 }
 
 interface RequestBody {
@@ -157,6 +159,14 @@ export const handler = createAIHandler<RequestBody>({
                     searchMethod,
                 });
 
+                // S4-4: emit initial progress
+                await updateJobProgress(jobId, {
+                    total: body.requirements.length,
+                    completed: 0,
+                    failed: 0,
+                    currentItem: 'Preparazione prompt...',
+                });
+
                 // Build system prompt using shared templates
                 const systemPrompt = createBulkEstimatePrompt(body.techCategory, body.requirements.length);
 
@@ -193,6 +203,14 @@ export const handler = createAIHandler<RequestBody>({
                     elapsed: `${elapsed}ms`
                 });
 
+                // S4-4: emit LLM completed progress
+                await updateJobProgress(jobId, {
+                    total: body.requirements.length,
+                    completed: 0,
+                    failed: 0,
+                    currentItem: 'Elaborazione risultati AI...',
+                });
+
                 // Parse response
                 if (!responseContent) {
                     throw new Error('Empty response from LLM');
@@ -202,10 +220,14 @@ export const handler = createAIHandler<RequestBody>({
 
                 // Ensure estimations array exists and map indices back to UUIDs
                 const rawEstimations = result.estimations || [];
-                result.estimations = rawEstimations.map((e: any) => {
+                const partialResults: any[] = [];
+                result.estimations = [];
+
+                for (let i = 0; i < rawEstimations.length; i++) {
+                    const e = rawEstimations[i];
                     const idx = e.idx ?? e.index ?? 0;
                     const req = body.requirements[idx];
-                    return {
+                    const mapped = {
                         requirementId: req?.id || '',
                         reqCode: req?.reqId || `REQ-${idx}`,
                         activities: e.activities || [],
@@ -213,7 +235,23 @@ export const handler = createAIHandler<RequestBody>({
                         confidenceScore: e.confidenceScore || 0.8,
                         success: true,
                     };
-                });
+                    result.estimations.push(mapped);
+                    partialResults.push({
+                        success: true,
+                        reqId: req?.id,
+                        title: req?.title || `Req ${idx}`,
+                        estimation: { totalDays: mapped.totalBaseDays },
+                    });
+
+                    // S4-4: update progress per-requirement
+                    await updateJobProgress(jobId, {
+                        total: body.requirements.length,
+                        completed: i + 1,
+                        failed: 0,
+                        currentItem: req?.title || `Requisito ${idx + 1}`,
+                        partialResults,
+                    });
+                }
 
                 // Fill in missing requirements with empty estimations
                 const estimatedIds = new Set(result.estimations.map((e: any) => e.requirementId));

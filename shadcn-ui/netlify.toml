@@ -7,11 +7,13 @@
   NODE_VERSION = "20"
 
 [dev]
+  # Pin the local proxy port so the frontend buildFunctionUrl()
+  # always resolves to http://localhost:8888 for direct-Vite fallback.
+  port = 8888
   # Timeout for local development functions (in seconds)
-  # Try multiple keys for compatibility
-  functionsTimeout = 120
+  # patch-netlify-timeout.cjs is the primary mechanism;
+  # this value is a fallback for CLI versions that read [dev].timeout
   timeout = 120
-  timeoutSeconds = 120
 
 [functions]
   # Configuration for all functions (including AI generation)

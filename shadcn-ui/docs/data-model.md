@@ -61,7 +61,8 @@ Atomic work units with fixed effort.
 | `name` | VARCHAR(255) | Human-readable name |
 | `description` | TEXT | Detailed description for AI context |
 | `base_hours` | DECIMAL(5,2) | Default effort in hours |
-| `tech_category` | VARCHAR(50) | `POWER_PLATFORM`, `BACKEND`, `FRONTEND`, `MULTI` |
+| `technology_id` | UUID | **Canonical FK** to `technologies.id` (preferred) |
+| `tech_category` | VARCHAR(50) | **@deprecated** — kept in sync by `trg_sync_activity_tech_category`. Use `technology_id` instead. |
 | `group` | VARCHAR(50) | `ANALYSIS`, `DEV`, `TEST`, `OPS`, `GOVERNANCE` |
 | `active` | BOOLEAN | Visibility flag |
 | `is_custom` | BOOLEAN | `false` = system, `true` = user-created |
@@ -117,7 +118,7 @@ Technology stacks. After simplification (migration `20260228`), template fields 
 | `code` | VARCHAR(50) | Unique identifier |
 | `name` | VARCHAR(255) | Display name (e.g., "Backend") |
 | `description` | TEXT | Stack description |
-| `tech_category` | VARCHAR(50) | Category for activity filtering |
+| `tech_category` | VARCHAR(50) | **@deprecated** Legacy alias — matches `code` for system technologies. Use `technologies.id` as the canonical reference. |
 | `color` | VARCHAR(50) | UI color |
 | `icon` | VARCHAR(50) | UI icon name |
 | `sort_order` | INTEGER | Display order |
@@ -236,7 +237,9 @@ Security: `SECURITY DEFINER`, checks org membership (`admin`/`editor`/`owner`).
 | `is_ai_suggested` | BOOLEAN | Was this suggested by AI? |
 | `notes` | TEXT | User notes |
 
-**Trigger**: `trg_enforce_estimation_activity_category` — fires BEFORE INSERT, calls `enforce_estimation_activity_category()`. Validates that the inserted activity's `tech_category` matches the technology assigned to the requirement (via `estimations → requirements → technologies`). Fixed in migration `20260228_fix_estimation_activity_trigger.sql` to use the renamed `technologies` table and `technology_id` column.
+**Trigger**: `trg_enforce_estimation_activity_category` — fires BEFORE INSERT, calls `enforce_estimation_activity_category()`. Validates that the inserted activity’s `technology_id` FK matches the requirement’s `technology_id` (via `estimations → requirements`). MULTI activities are always allowed. Updated in migration `20260301_canonical_technology_model.sql` to use FK-based comparison instead of `tech_category` strings.
+
+**Trigger**: `trg_sync_activity_tech_category` — fires BEFORE INSERT/UPDATE OF `technology_id` on `activities`. Keeps the legacy `tech_category` column in sync with the technology’s `code`. Added in migration `20260301_canonical_technology_model.sql`.
 
 ### estimation_drivers
 
@@ -513,6 +516,8 @@ Full execution trace of each agentic estimation pipeline run.
 - **Vector embeddings**: Run `ai-generate-embeddings` endpoint after migration to populate embedding columns.
 - **Trigger fix (2026-02-28)**: `enforce_estimation_activity_category()` was updated to reference `technologies` (not the old `technology_presets`) and join through `requirements.technology_id`. Migration: `20260228_fix_estimation_activity_trigger.sql`.
 - **Agentic tables (2026-03-01)**: `consultant_analyses` and `agent_execution_log` added for Phase 3 agentic pipeline. Migration: `20260301_consultant_analysis_history.sql`.
+- **Actual fields (2026-03-02)**: `estimations` table extended with `actual_hours`, `actual_start_date`, `actual_end_date`, `actual_notes`, `actual_recorded_at`, `actual_recorded_by`. View `estimation_accuracy` and RPC `update_estimation_actuals()`. Migration: `20260302_add_actual_fields.sql`.
+- **Prompt versioning (2026-03-10)**: `ai_prompts` table extended with `variant`, `traffic_pct`, `usage_count`, `avg_confidence`, `promoted_at`. Dropped `UNIQUE(prompt_key)`, added `UNIQUE(prompt_key, variant) WHERE is_active`. RPCs: `record_prompt_confidence()`, `increment_prompt_usage()`. View: `prompt_ab_comparison`. Supports A/B testing. Migration: `20260310_prompt_versioning.sql`.
 
 ---
 

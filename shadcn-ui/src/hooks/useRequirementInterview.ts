@@ -209,7 +209,7 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
         setError(null);
 
         try {
-            // Fetch activities from database filtered by tech category
+            // Fetch activities from database filtered by technology
             console.log('[useRequirementInterview] Fetching activities for tech_category:', techCategory);
 
             const { data: activitiesData, error: activitiesError } = await supabase
