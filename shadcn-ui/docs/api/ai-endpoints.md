@@ -23,8 +23,9 @@ All endpoints enforce:
 |----------------|----------------|
 | **CORS Origin Allowlist** | `lib/security/cors.ts` — Only allowed origins can call endpoints |
 | **Auth Token Validation** | `lib/auth/auth-validator.ts` — Validates Supabase JWT tokens |
-| **Rate Limiting** | `lib/security/rate-limiter.ts` — Redis-backed throttling (disabled in dev) |
-| **AI Response Cache** | `lib/ai/ai-cache.ts` — Redis-backed cache for deterministic AI actions |
+| **Rate Limiting** | `lib/security/rate-limiter.ts` — Redis-backed throttling (in-memory fallback when Redis unavailable) |
+| **AI Response Cache** | `lib/ai/ai-cache.ts` — Redis-backed cache for deterministic AI actions (graceful degradation) |
+| **Async Job Store** | `lib/ai/job-manager.ts` — Redis-backed job queue with automatic in-memory fallback for local dev |
 | **Server-Side API Key** | `OPENAI_API_KEY` environment variable, never exposed to client |
 | **Input Sanitization** | `sanitizePromptInput()` applied at both client and server |
 
@@ -510,9 +511,28 @@ Endpoints for AI-assisted custom preset creation (two-stage flow).
 
 #### `POST /.netlify/functions/ai-generate-preset`
 
-**Purpose**: Stage 2 — Generate a complete preset from description and interview answers using **HYBRID activity selection**.
+**Purpose**: Stage 2 — Generate a complete preset from description and interview answers using **HYBRID activity selection** with **multi-pass quality pipeline**.
 
 **When Used**: After user completes preset wizard questions.
+
+**Pipeline (Phase 2.5)**:
+
+The endpoint runs a multi-pass pipeline (up to 3 LLM calls, with time budgets):
+
+| Step | Type | Description | Budget |
+|------|------|-------------|--------|
+| 1. Context Gather | Parallel DB | Fetch activity catalog (vector/category) **+** existing technologies (RAG history lookup) | Parallel |
+| 2. Generate | LLM (gpt-4o) | First-pass preset generation with **technically detailed** activity descriptions | 50s |
+| 3. Genericness Check | Deterministic | `activity-genericness-validator` scores each activity | <1ms |
+| 4. Validation Pass | LLM (gpt-4o) | Lightweight review: invalid groups, duplicates, vague descriptions, invented codes | 15s |
+| 5. Retry w/ Feedback | LLM (gpt-4o) | Corrective re-generation if quality below threshold (≥3 issues OR avg score <70 OR >30% failed) | 25s |
+| 6. Finalize | Code | Pick best result, attach metadata | <1ms |
+
+**Technical Depth**: The system prompt mandates implementation-level detail — every activity must name specific frameworks, tools, design patterns, or artifacts. Vague titles like "Backend development" are explicitly rejected.
+
+**History Lookup (RAG)**: Before generation, the endpoint fetches up to 5 similar existing technologies from Supabase (same category first, then MULTI) with their linked activity names, providing reference context for consistent style.
+
+**Retry logic**: Only fires if there is time budget remaining (<40s elapsed). The retry result is adopted **only if** its genericness score exceeds the original; otherwise the original is kept.
 
 **Hybrid Approach**: The AI receives a filtered activity catalog and can:
 1. **Select existing activities** from the catalog (by code)
@@ -530,9 +550,14 @@ This maximizes reuse of validated activities while allowing AI to fill gaps.
 ```
 
 **Internal Flow**:
-1. Fetch activities from DB filtered by `suggestedTechCategory` + `MULTI`
-2. Format catalog in compact notation for prompt (saves tokens)
-3. AI returns mixed activities: some with `existingCode`, some with `isNew: true`
+1. Create async job via `job-manager` (Redis or in-memory fallback)
+2. Return `{ jobId, status: 'PENDING' }` immediately
+3. Background: Fetch activities from DB filtered by `suggestedTechCategory` + `MULTI`
+4. Format catalog in compact notation for prompt (saves tokens)
+5. AI returns mixed activities: some with `existingCode`, some with `isNew: true`
+6. Update job to `COMPLETED` with result (poll via `ai-job-status`)
+
+> **Note**: The job store uses Redis when available; in local development without Redis it falls back to an in-memory Map automatically (no configuration needed).
 
 **Output**:
 ```typescript
@@ -548,8 +573,8 @@ This maximizes reuse of validated activities while allowing AI to fill gaps.
       existingCode?: string;           // e.g., "PP_DV_FORM_SM"
       // For new activities
       isNew?: boolean;                 // true if AI-generated
-      title: string;
-      description: string;
+      title: string;                   // 5-12 words, technically precise
+      description: string;             // 20-60 words, must name frameworks/tools/patterns
       group: "ANALYSIS" | "DEV" | "TEST" | "OPS" | "GOVERNANCE";
       estimatedHours: number;
       priority: "core" | "recommended" | "optional";
@@ -560,10 +585,22 @@ This maximizes reuse of validated activities while allowing AI to fill gaps.
     riskCodes: string[];
     reasoning: string;
     confidence: number;
+    validationScore: number;           // 0-100in genericness score
+    genericityCheck: {
+      passed: number;
+      failed: number;
+      warnings: number;
+    };
   };
   metadata: {
     cached: boolean;
-    generationTimeMs: number;
+    attempts: number;                  // 1-3 (generate + validate + retry)
+    modelPasses: string[];             // e.g. ["gpt-4o:generate", "gpt-4o:validate", "gpt-4o:retry"]
+    generationTimeMs: number;          // Total pipeline time
+    firstPassMs: number;               // Time for initial generation
+    historyTechnologies: number;       // How many existing techs matched for RAG
+    validationIssues: number;          // Issues found by validation pass
+    retried: boolean;                  // Whether a corrective retry was executed
   };
 }
 ```
@@ -571,7 +608,8 @@ This maximizes reuse of validated activities while allowing AI to fill gaps.
 **Token Optimization**:
 - Catalog filtered by tech category (reduces ~75% of activities)
 - Compact notation: `CODE|hours|name: description_truncated`
-- Estimated additional cost: ~$0.004/request
+- History lookup capped at 5 technologies, 10 activity names each
+- Estimated additional cost: ~$0.008-0.015/request (1 pass) to ~$0.025/request (3 passes with retry)
 
 **Validation/Fallback**:
 - Requires description and answers object
@@ -846,7 +884,7 @@ These endpoints support the pgvector-based semantic search infrastructure.
 
 When `USE_VECTOR_SEARCH=false`:
 - `ai-suggest` falls back to category-based activity filtering
-- `ai-generate-preset` uses standard catalog fetch  
+- `ai-generate-preset` uses standard catalog fetch (history lookup + validation pass skipped)
 - `ai-estimate-from-interview` uses frontend-provided activities (no semantic retrieval)
 - `ai-bulk-estimate-with-answers` uses frontend-provided activities (no semantic retrieval)
 - `ai-check-duplicates` returns `hasDuplicates: false`
@@ -861,7 +899,7 @@ The following estimation endpoints automatically use vector search when enabled:
 | Endpoint | Vector Search | RAG | Fallback |
 |----------|---------------|-----|----------|
 | `ai-suggest` | ✅ Top-30 similar activities | ✅ Historical requirements | Category filter |
-| `ai-generate-preset` | ✅ Top-30 similar activities | ❌ | Category filter |
+| `ai-generate-preset` | ✅ Top-40 similar activities | ✅ Existing technologies (history lookup) | Category filter |
 | `ai-estimate-from-interview` | ✅ Top-20 similar activities | ✅ Historical requirements | Frontend-provided activities |
 | `ai-bulk-estimate-with-answers` | ✅ Top-25 similar activities | ❌ | Frontend-provided activities |
 

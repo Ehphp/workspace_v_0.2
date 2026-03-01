@@ -397,7 +397,8 @@ CREATE INDEX idx_requirements_embedding ON requirements USING ivfflat (embedding
 
 ## Vector Search Functions (pgvector)
 
-Added in migration `20260221_pgvector_embeddings.sql`.
+Added in migration `20260221_pgvector_embeddings.sql`.  
+Updated in `20260301_fix_vector_search_rpc.sql` (added `technology_id`, changed `base_hours` to `numeric`).
 
 ### search_similar_activities
 
@@ -411,8 +412,8 @@ search_similar_activities(
     tech_categories text[] DEFAULT ARRAY['MULTI']
 ) RETURNS TABLE (
     id uuid, code varchar, name varchar, description text,
-    base_hours decimal, tech_category varchar, "group" varchar,
-    similarity float
+    base_hours numeric, tech_category varchar, technology_id uuid,
+    "group" varchar, similarity float
 )
 ```
 
@@ -517,6 +518,7 @@ Full execution trace of each agentic estimation pipeline run.
 - **Trigger fix (2026-02-28)**: `enforce_estimation_activity_category()` was updated to reference `technologies` (not the old `technology_presets`) and join through `requirements.technology_id`. Migration: `20260228_fix_estimation_activity_trigger.sql`.
 - **Agentic tables (2026-03-01)**: `consultant_analyses` and `agent_execution_log` added for Phase 3 agentic pipeline. Migration: `20260301_consultant_analysis_history.sql`.
 - **Actual fields (2026-03-02)**: `estimations` table extended with `actual_hours`, `actual_start_date`, `actual_end_date`, `actual_notes`, `actual_recorded_at`, `actual_recorded_by`. View `estimation_accuracy` and RPC `update_estimation_actuals()`. Migration: `20260302_add_actual_fields.sql`.
+- **Vector search RPC fix (2026-03-01)**: `search_similar_activities` re-created with `technology_id uuid` in result set and `base_hours` widened to `numeric`. Fixes plan-cache invalidation after `activities.technology_id` column was added. Migration: `20260301_fix_vector_search_rpc.sql`.
 - **Prompt versioning (2026-03-10)**: `ai_prompts` table extended with `variant`, `traffic_pct`, `usage_count`, `avg_confidence`, `promoted_at`. Dropped `UNIQUE(prompt_key)`, added `UNIQUE(prompt_key, variant) WHERE is_active`. RPCs: `record_prompt_confidence()`, `increment_prompt_usage()`. View: `prompt_ab_comparison`. Supports A/B testing. Migration: `20260310_prompt_versioning.sql`.
 
 ---

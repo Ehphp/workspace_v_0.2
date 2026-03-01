@@ -1,31 +1,4 @@
-import { createClient, RedisClientType } from 'redis';
-
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-let redisClient: RedisClientType | null = null;
-
-export async function getRedisClient(): Promise<RedisClientType> {
-    if (redisClient && redisClient.isOpen) {
-        return redisClient;
-    }
-
-    redisClient = createClient({
-        url: REDIS_URL,
-        socket: {
-            connectTimeout: 5000,
-            reconnectStrategy: (retries) => {
-                if (retries > 3) return new Error('Redis connection failed');
-                return Math.min(retries * 100, 3000);
-            }
-        }
-    });
-
-    redisClient.on('error', (err) => {
-        console.error('[job-manager] Redis error:', err);
-    });
-
-    await redisClient.connect();
-    return redisClient;
-}
+import { tryGetRedisClient } from '../security/redis-client';
 
 export type JobStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
@@ -46,45 +19,106 @@ export interface JobRecord {
     };
 }
 
+// ── In-memory fallback when Redis is unavailable ────────────────
+const memoryStore = new Map<string, { data: string; expiresAt: number }>();
+const JOB_TTL_MS = 3600 * 1000;          // 1 hour
+const BULK_JOB_TTL_MS = 7200 * 1000;     // 2 hours
+
+function memSet(key: string, value: string, ttlMs: number): void {
+    memoryStore.set(key, { data: value, expiresAt: Date.now() + ttlMs });
+}
+
+function memGet(key: string): string | null {
+    const entry = memoryStore.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiresAt) {
+        memoryStore.delete(key);
+        return null;
+    }
+    return entry.data;
+}
+
+let redisAvailable: boolean | null = null; // null = not tested yet
+
+/**
+ * Try Redis first; on failure fall back to in-memory for the rest
+ * of this process lifetime.
+ */
+async function withStore<T>(ops: {
+    redis: (client: Awaited<ReturnType<typeof tryGetRedisClient>> & {}) => Promise<T>;
+    memory: () => T;
+}): Promise<T> {
+    if (redisAvailable !== false) {
+        try {
+            const client = await tryGetRedisClient();
+            if (client) {
+                const result = await ops.redis(client);
+                redisAvailable = true;
+                return result;
+            }
+        } catch (err) {
+            if (redisAvailable === null) {
+                console.warn('[job-manager] Redis unavailable – using in-memory store', (err as Error).message);
+            }
+            redisAvailable = false;
+        }
+    }
+    return ops.memory();
+}
+
 export async function createJob(jobId: string): Promise<void> {
-    const redis = await getRedisClient();
     const record: JobRecord = {
         id: jobId,
         status: 'PENDING',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
     };
-    await redis.setEx(`job:${jobId}`, 3600, JSON.stringify(record));
+    const json = JSON.stringify(record);
+
+    await withStore({
+        redis: async (r) => { await r.setEx(`job:${jobId}`, 3600, json); },
+        memory: () => { memSet(`job:${jobId}`, json, JOB_TTL_MS); }
+    });
 }
 
 export async function updateJob(jobId: string, status: JobStatus, result?: any, error?: string): Promise<void> {
-    const redis = await getRedisClient();
-    const currentStr = await redis.get(`job:${jobId}`);
-    let record: JobRecord;
-
-    if (currentStr) {
-        record = JSON.parse(currentStr);
-    } else {
-        record = {
-            id: jobId,
-            status: 'PENDING',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-    }
-
-    record.status = status;
-    if (result !== undefined) record.result = result;
-    if (error !== undefined) record.error = error;
-    record.updatedAt = new Date().toISOString();
-
-    await redis.setEx(`job:${jobId}`, 3600, JSON.stringify(record));
+    await withStore({
+        redis: async (r) => {
+            const currentStr = await r.get(`job:${jobId}`);
+            let record: JobRecord = currentStr
+                ? JSON.parse(currentStr)
+                : { id: jobId, status: 'PENDING', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+            record.status = status;
+            if (result !== undefined) record.result = result;
+            if (error !== undefined) record.error = error;
+            record.updatedAt = new Date().toISOString();
+            await r.setEx(`job:${jobId}`, 3600, JSON.stringify(record));
+        },
+        memory: () => {
+            const currentStr = memGet(`job:${jobId}`);
+            let record: JobRecord = currentStr
+                ? JSON.parse(currentStr)
+                : { id: jobId, status: 'PENDING', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+            record.status = status;
+            if (result !== undefined) record.result = result;
+            if (error !== undefined) record.error = error;
+            record.updatedAt = new Date().toISOString();
+            memSet(`job:${jobId}`, JSON.stringify(record), JOB_TTL_MS);
+        }
+    });
 }
 
 export async function getJob(jobId: string): Promise<JobRecord | null> {
-    const redis = await getRedisClient();
-    const str = await redis.get(`job:${jobId}`);
-    return str ? JSON.parse(str) : null;
+    return withStore({
+        redis: async (r) => {
+            const str = await r.get(`job:${jobId}`);
+            return str ? JSON.parse(str) : null;
+        },
+        memory: () => {
+            const str = memGet(`job:${jobId}`);
+            return str ? JSON.parse(str) : null;
+        }
+    });
 }
 
 /**
@@ -95,15 +129,24 @@ export async function updateJobProgress(
     jobId: string,
     progress: JobRecord['progress']
 ): Promise<void> {
-    const redis = await getRedisClient();
-    const raw = await redis.get(`job:${jobId}`);
-    if (!raw) return;
-
-    const job: JobRecord = JSON.parse(raw);
-    job.progress = progress;
-    job.status = 'PROCESSING';
-    job.updatedAt = new Date().toISOString();
-
-    // Extended TTL for long bulk operations (2 hours)
-    await redis.setEx(`job:${jobId}`, 7200, JSON.stringify(job));
+    await withStore({
+        redis: async (r) => {
+            const raw = await r.get(`job:${jobId}`);
+            if (!raw) return;
+            const job: JobRecord = JSON.parse(raw);
+            job.progress = progress;
+            job.status = 'PROCESSING';
+            job.updatedAt = new Date().toISOString();
+            await r.setEx(`job:${jobId}`, 7200, JSON.stringify(job));
+        },
+        memory: () => {
+            const raw = memGet(`job:${jobId}`);
+            if (!raw) return;
+            const job: JobRecord = JSON.parse(raw);
+            job.progress = progress;
+            job.status = 'PROCESSING';
+            job.updatedAt = new Date().toISOString();
+            memSet(`job:${jobId}`, JSON.stringify(job), BULK_JOB_TTL_MS);
+        }
+    });
 }

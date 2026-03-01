@@ -26,13 +26,20 @@ export function getAllowedOrigin(originHeader: string | undefined): string {
 }
 
 /**
- * Check if origin is in allowlist
+ * Check if origin is in allowlist.
+ * 
+ * Requests with no Origin header are allowed — browsers only send the
+ * Origin header for cross-origin requests, so a missing header means
+ * the request is same-origin, from a non-browser client (curl, Postman),
+ * or from the Netlify dev proxy itself.
+ *
  * @param originHeader - Origin header from request
  * @returns true if origin is allowed
  */
 export function isOriginAllowed(originHeader: string | undefined): boolean {
     if (ALLOWED_ORIGINS.length === 0) return true;
-    if (!originHeader) return false;
+    // No Origin header → same-origin or non-browser request → allow
+    if (!originHeader) return true;
     if (ALLOWED_ORIGINS.includes(originHeader)) return true;
     // Allow any localhost port in development
     if (isLocalhostOrigin(originHeader)) return true;
@@ -49,7 +56,7 @@ export function getCorsHeaders(originHeader: string | undefined): Record<string,
     return {
         'Access-Control-Allow-Origin': allowOrigin,
         'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Content-Type': 'application/json',
     };
 }

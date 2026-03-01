@@ -227,9 +227,6 @@ export function usePresetManagement(userId: string | undefined) {
                 name: form.name,
                 description: form.description,
                 tech_category: form.techCategory,
-                default_driver_values: form.driverValues,
-                default_risks: form.riskCodes,
-                default_activity_codes: form.activities.map(a => a.code),
                 is_custom: true,
                 created_by: userId
             };

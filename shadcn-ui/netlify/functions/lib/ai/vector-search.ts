@@ -23,6 +23,7 @@ export interface ActivitySearchResult {
     description: string | null;
     base_hours: number;
     tech_category: string;
+    technology_id: string | null;
     group: string;
     similarity?: number;
 }
@@ -163,7 +164,7 @@ async function fallbackActivitySearch(
 
     const { data, error } = await supabase
         .from('activities')
-        .select('id, code, name, description, base_hours, tech_category, group, technology_id')
+        .select('id, code, name, description, base_hours, tech_category, technology_id, group')
         .in('tech_category', techCategories)
         .eq('active', true)
         .order('group')

@@ -3,6 +3,10 @@
  * 
  * Extracted from rate-limiter.ts to be reused across rate limiting,
  * AI caching, and other Redis-backed features.
+ * 
+ * Provides two access patterns:
+ *   - getRedisClient()     — throws if Redis is down (legacy)
+ *   - tryGetRedisClient()  — returns null if Redis is down (preferred)
  */
 
 import { createClient, RedisClientType } from 'redis';
@@ -11,36 +15,62 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
 // Redis client singleton
 let redisClient: RedisClientType | null = null;
+let connectionFailed = false;
 
 /**
- * Get or create Redis client singleton.
- * 
- * Reuses existing connection if open; otherwise creates a new one.
- * Consumers should handle errors gracefully — Redis being down
- * should never break the main application flow.
+ * Internal: create + connect a Redis client.
+ * Throws on failure.
  */
-export async function getRedisClient(): Promise<RedisClientType> {
-    if (redisClient && redisClient.isOpen) {
-        return redisClient;
-    }
-
-    redisClient = createClient({
+async function connectRedis(): Promise<RedisClientType> {
+    const client = createClient({
         url: REDIS_URL,
         socket: {
             connectTimeout: 5000,
             reconnectStrategy: (retries) => {
-                if (retries > 3) return new Error('Redis connection failed');
+                if (retries > 3) {
+                    connectionFailed = true;
+                    return new Error('Redis connection failed');
+                }
                 return Math.min(retries * 100, 3000);
             }
         }
     });
 
-    redisClient.on('error', (err) => {
+    client.on('error', (err) => {
         console.error('[redis-client] Redis error:', err);
     });
 
-    await redisClient.connect();
+    await client.connect();
+    return client;
+}
+
+/**
+ * Get or create Redis client singleton.
+ * **Throws** if Redis is unavailable.
+ */
+export async function getRedisClient(): Promise<RedisClientType> {
+    if (redisClient && redisClient.isOpen) {
+        return redisClient;
+    }
+    redisClient = await connectRedis();
+    connectionFailed = false;
     return redisClient;
+}
+
+/**
+ * Try to get the Redis client singleton.
+ * Returns **null** (instead of throwing) when Redis is unavailable.
+ * After a connection failure the function short-circuits for the
+ * rest of the process lifetime to avoid repeated 5 s waits.
+ */
+export async function tryGetRedisClient(): Promise<RedisClientType | null> {
+    if (connectionFailed) return null;
+    try {
+        return await getRedisClient();
+    } catch {
+        connectionFailed = true;
+        return null;
+    }
 }
 
 /**
