@@ -72,10 +72,19 @@ Syntero is a requirements estimation system with three distinct layers:
 | `lib/ai/actions/generate-title.ts` | Title generation logic |
 | `lib/ai/actions/generate-questions.ts` | Question generation for preset wizard |
 | `lib/ai/prompt-builder.ts` | Constructs GPT prompts |
-| `lib/ai/ai-cache.ts` | 24h response cache |
+| `lib/ai/ai-cache.ts` | Redis-backed AI response cache (24h/12h TTL) |
+| `lib/security/redis-client.ts` | Shared Redis client singleton |
 | `lib/security/cors.ts` | Origin validation |
 | `lib/security/rate-limiter.ts` | Redis-backed request throttling |
 | `lib/auth/auth-validator.ts` | Auth token validation |
+
+**Shared Validation (`src/shared/validation/`):**
+
+| File | Responsibility |
+|------|----------------|
+| `pipeline-activity.schema.ts` | Canonical `PipelineActivity` Zod schema — single source of truth |
+| `preset-output.schema.ts` | Canonical `PresetOutput` Zod schema — auto-converted to JSON Schema for AJV |
+| `index.ts` | Barrel export |
 
 ### Database (`supabase_*.sql`)
 
@@ -193,5 +202,6 @@ Syntero is a requirements estimation system with three distinct layers:
 - Adding new serverless functions
 - Changing the database schema
 - Modifying the security model
-< ! - -   t e s t   u p d a t e   - - >  
+< ! - -   t e s t   u p d a t e   - - > 
+ 
  

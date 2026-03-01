@@ -474,6 +474,30 @@ const allowedOrigins = [
 
 *Note: Rate limiting is disabled in development.*
 
+### AI Response Caching
+
+Deterministic AI actions (`suggest-activities`, `generate-title`, `normalize-requirement`) cache their responses in Redis to reduce API costs for repeated identical inputs.
+
+| Action | Cache Prefix | TTL | Skip When |
+|--------|-------------|-----|----------|
+| `normalize-requirement` | `ai:norm` | 24h | `testMode=true` |
+| `generate-title` | `ai:title` | 24h | *(never)* |
+| `suggest-activities` | `ai:suggest` | 12h | `testMode=true` |
+| `ai-consultant` | — | No cache | Session-specific |
+| `ai-estimate-from-interview` | — | No cache | Unique per interview |
+
+**Cache key**: `{prefix}:{SHA-256(input parts)}` — e.g. for suggestions, the key hashes `description + preset.id + sorted activity codes`.
+
+**Graceful degradation**: If Redis is unavailable, cache calls return `null` silently and the AI call proceeds normally.
+
+**Environment Variables**:
+
+| Variable | Purpose | Default |
+|----------|---------|---------||
+| `AI_CACHE_ENABLED` | Enable/disable the cache | `true` |
+
+**File**: [netlify/functions/lib/ai/ai-cache.ts](../netlify/functions/lib/ai/ai-cache.ts)
+
 ---
 
 ## Testing AI
@@ -514,10 +538,12 @@ For the same input, 9/10 calls should return the same activityCodes (90%+ consis
 | `netlify/functions/lib/ai/actions/suggest-activities.ts` | Activity suggestion logic |
 | `netlify/functions/lib/ai/actions/generate-title.ts` | Title generation logic |
 | `netlify/functions/lib/ai/actions/generate-questions.ts` | Question generation logic |
+| `netlify/functions/lib/ai/ai-cache.ts` | **Redis-backed AI response cache** |
 | `netlify/functions/lib/ai/prompt-builder.ts` | Prompt construction |
 | `netlify/functions/lib/ai/prompt-templates.ts` | **Unified Italian prompt templates** |
 | `netlify/functions/lib/ai/deterministic-rules.ts` | **Shared deterministic rules for activity selection** |
 | `netlify/functions/lib/security/cors.ts` | Origin validation |
+| `netlify/functions/lib/security/redis-client.ts` | **Shared Redis client singleton** |
 | `netlify/functions/lib/security/rate-limiter.ts` | Redis-backed rate limiting |
 | `netlify/functions/lib/auth/auth-validator.ts` | Auth token validation |
 
@@ -537,7 +563,15 @@ For the same input, 9/10 calls should return the same activityCodes (90%+ consis
 | `src/types/ai-validation.ts` | Input sanitization, validation utilities |
 | `src/types/ai-interview.ts` | Interview question/answer types |
 | `src/types/bulk-interview.ts` | Bulk interview types and phases |
+### Shared Validation Schemas (`src/shared/validation/`)
 
+| File | Purpose |
+|------|---------||
+| `pipeline-activity.schema.ts` | Canonical Zod schema for `PipelineActivity` — single source of truth |
+| `preset-output.schema.ts` | Canonical Zod schema for `PresetOutput` — converted to JSON Schema for AJV via `zod-to-json-schema` |
+| `index.ts` | Barrel export for easy imports |
+
+These schemas eliminate drift between the TypeScript types used in `src/` and the JSON Schema used by AJV in `netlify/functions/lib/ai/validation/preset-schema.ts`.
 ### Frontend - Hooks
 
 | File | Purpose |

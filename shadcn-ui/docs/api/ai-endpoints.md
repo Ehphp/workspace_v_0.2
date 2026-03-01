@@ -24,6 +24,7 @@ All endpoints enforce:
 | **CORS Origin Allowlist** | `lib/security/cors.ts` — Only allowed origins can call endpoints |
 | **Auth Token Validation** | `lib/auth/auth-validator.ts` — Validates Supabase JWT tokens |
 | **Rate Limiting** | `lib/security/rate-limiter.ts` — Redis-backed throttling (disabled in dev) |
+| **AI Response Cache** | `lib/ai/ai-cache.ts` — Redis-backed cache for deterministic AI actions |
 | **Server-Side API Key** | `OPENAI_API_KEY` environment variable, never exposed to client |
 | **Input Sanitization** | `sanitizePromptInput()` applied at both client and server |
 

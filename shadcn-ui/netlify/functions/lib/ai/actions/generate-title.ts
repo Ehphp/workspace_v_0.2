@@ -1,4 +1,10 @@
 import { getDefaultProvider } from '../openai-client';
+import {
+    buildCacheKey,
+    getCachedResponse,
+    setCachedResponse,
+    CACHE_TITLE,
+} from '../ai-cache';
 
 export interface GenerateTitleRequest {
     description: string;
@@ -18,6 +24,11 @@ export async function generateTitle(request: GenerateTitleRequest): Promise<Gene
 
     console.log('Generating title for description:', description.substring(0, 100));
 
+    // ── Cache lookup ────────────────────────────────────────────────
+    const cacheKey = buildCacheKey([description.slice(0, 200)], CACHE_TITLE);
+    const cached = await getCachedResponse<GenerateTitleResponse>(cacheKey, CACHE_TITLE);
+    if (cached) return cached;
+
     const provider = getDefaultProvider();
     const systemPrompt = 'Create concise requirement titles (max 10 words). The description may include sections formatted as "**ColumnName**" followed by the value; use these values and their labels as context but do not repeat the label prefix in the title. Return only the title.';
 
@@ -33,5 +44,10 @@ export async function generateTitle(request: GenerateTitleRequest): Promise<Gene
 
     console.log('Generated title:', title);
 
-    return { title };
+    const result: GenerateTitleResponse = { title };
+
+    // ── Cache store ─────────────────────────────────────────────────
+    await setCachedResponse(cacheKey, result, CACHE_TITLE);
+
+    return result;
 }

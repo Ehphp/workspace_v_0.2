@@ -1,142 +1,25 @@
 /**
  * AJV Schema Validation for AI-Generated Presets
+ *
+ * Schema is derived from the canonical Zod schemas in src/shared/validation/
+ * via zod-to-json-schema, eliminating the risk of drift between TS types
+ * and runtime JSON Schema validation.
  */
 
-import Ajv, { JSONSchemaType } from 'ajv';
-import { PipelineActivity } from '../../../../../src/types/ai-validation';
+import Ajv from 'ajv';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import { PresetOutputSchema } from '../../../../../src/shared/validation/preset-output.schema';
 
-/**
- * Full preset structure for validation
- */
-export interface PresetOutput {
-    name: string;
-    description: string;
-    detailedDescription: string;
-    techCategory: 'FRONTEND' | 'BACKEND' | 'MULTI';
-    activities: PipelineActivity[];
-    driverValues: Record<string, number>;
-    riskCodes: string[];
-    reasoning: string;
-    confidence: number;
-}
+// Re-export the Zod-inferred type for consumers
+export type { PresetOutput } from '../../../../../src/shared/validation/preset-output.schema';
 
-/**
- * AJV schema for preset validation
- */
-const presetSchema: JSONSchemaType<PresetOutput> = {
-    type: 'object',
-    properties: {
-        name: {
-            type: 'string',
-            minLength: 5,
-            maxLength: 100
-        },
-        description: {
-            type: 'string',
-            minLength: 20,
-            maxLength: 500
-        },
-        detailedDescription: {
-            type: 'string',
-            minLength: 100,
-            maxLength: 2000
-        },
-        techCategory: {
-            type: 'string',
-            enum: ['FRONTEND', 'BACKEND', 'MULTI']
-        },
-        activities: {
-            type: 'array',
-            minItems: 5,
-            maxItems: 20,
-            items: {
-                type: 'object',
-                properties: {
-                    title: { type: 'string', minLength: 10, maxLength: 150 },
-                    description: { type: 'string', nullable: true },
-                    group: {
-                        type: 'string',
-                        enum: ['ANALYSIS', 'DEV', 'TEST', 'OPS', 'GOVERNANCE']
-                    },
-                    estimatedHours: { type: 'number', minimum: 1, maximum: 320 },
-                    priority: {
-                        type: 'string',
-                        enum: ['core', 'recommended', 'optional']
-                    },
-                    confidence: { type: 'number', minimum: 0, maximum: 1, nullable: true },
-                    acceptanceCriteria: {
-                        type: 'array',
-                        items: { type: 'string' },
-                        nullable: true
-                    },
-                    technicalDetails: {
-                        type: 'object',
-                        nullable: true,
-                        properties: {
-                            suggestedFiles: {
-                                type: 'array',
-                                items: { type: 'string' },
-                                nullable: true
-                            },
-                            suggestedCommands: {
-                                type: 'array',
-                                items: { type: 'string' },
-                                nullable: true
-                            },
-                            suggestedTests: {
-                                type: 'array',
-                                items: { type: 'string' },
-                                nullable: true
-                            },
-                            dependencies: {
-                                type: 'array',
-                                items: { type: 'string' },
-                                nullable: true
-                            }
-                        },
-                        required: []
-                    },
-                    estimatedHoursJustification: { type: 'string', nullable: true }
-                },
-                required: ['title', 'group', 'estimatedHours', 'priority']
-            }
-        },
-        driverValues: {
-            type: 'object',
-            additionalProperties: { type: 'number' },
-            required: []
-        },
-        riskCodes: {
-            type: 'array',
-            items: { type: 'string' }
-        },
-        reasoning: {
-            type: 'string',
-            minLength: 50,
-            maxLength: 2000
-        },
-        confidence: {
-            type: 'number',
-            minimum: 0,
-            maximum: 1
-        }
-    },
-    required: [
-        'name',
-        'description',
-        'detailedDescription',
-        'techCategory',
-        'activities',
-        'driverValues',
-        'riskCodes',
-        'reasoning',
-        'confidence'
-    ]
-};
-
-// Create AJV validator instance
+// Convert Zod → JSON Schema and compile an AJV validator
+const jsonSchema = zodToJsonSchema(PresetOutputSchema, 'PresetOutput');
 const ajv = new Ajv({ allErrors: true, verbose: true });
-export const validatePreset = ajv.compile(presetSchema);
+export const validatePreset = ajv.compile(
+    // zodToJsonSchema wraps under $defs.PresetOutput — extract the definition
+    (jsonSchema as any).$defs?.PresetOutput ?? jsonSchema
+);
 
 /**
  * Fallback preset for when AI generation fails

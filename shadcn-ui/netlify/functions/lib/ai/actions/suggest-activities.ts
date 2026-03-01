@@ -9,6 +9,12 @@ import { validateAISuggestion } from '../../../../../src/types/ai-validation';
 import { validateRequirementDescription } from '../../validation/requirement-validator';
 import { searchSimilarActivities, isVectorSearchEnabled } from '../vector-search';
 import { retrieveRAGContext, getRAGSystemPromptAddition } from '../rag';
+import {
+    buildCacheKey,
+    getCachedResponse,
+    setCachedResponse,
+    CACHE_SUGGEST,
+} from '../ai-cache';
 
 // Model configuration - use env variable AI_ESTIMATION_MODEL or default to gpt-4o
 // NOTE: gpt-5 has limitations (no custom temperature, no json_schema response_format)
@@ -66,6 +72,17 @@ export async function suggestActivities(request: SuggestActivitiesRequest): Prom
             activityCodes: [],
             reasoning: descriptionCheck.reason || 'Requirement description is too vague or looks like test data',
         };
+    }
+
+    // ── Cache lookup (skip in testMode) ──────────────────────────────
+    const activityCodes = activities.map(a => a.code).sort().join(',');
+    const suggestCacheKey = buildCacheKey(
+        [description.slice(0, 200), preset.id, activityCodes],
+        CACHE_SUGGEST,
+    );
+    if (!testMode) {
+        const cached = await getCachedResponse<AIActivitySuggestion>(suggestCacheKey, CACHE_SUGGEST);
+        if (cached) return cached;
     }
 
     // Filter activities relevant to the preset's tech category
@@ -228,6 +245,11 @@ export async function suggestActivities(request: SuggestActivitiesRequest): Prom
         };
 
     console.log('Validated suggestion:', JSON.stringify(finalSuggestion, null, 2));
+
+    // ── Cache store (skip in testMode) ───────────────────────────────
+    if (!testMode && finalSuggestion.isValidRequirement) {
+        await setCachedResponse(suggestCacheKey, finalSuggestion, CACHE_SUGGEST);
+    }
 
     return finalSuggestion;
 }

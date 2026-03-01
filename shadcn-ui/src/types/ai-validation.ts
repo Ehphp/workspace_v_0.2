@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+// Re-export PipelineActivity from the canonical shared schema
+// This ensures a single source of truth for both frontend and backend
+export { PipelineActivity, PipelineActivitySchema } from '@/shared/validation/pipeline-activity.schema';
+import type { PipelineActivity } from '@/shared/validation/pipeline-activity.schema';
+
 /**
  * Schema di validazione per le risposte AI
  * Protegge da injection attacks e dati malformati
@@ -84,26 +89,6 @@ export type ValidatedAITitle = z.infer<typeof AITitleGenerationSchema>;
  */
 export function validateAITitle(rawData: unknown): ValidatedAITitle {
     return AITitleGenerationSchema.parse(rawData);
-}
-
-/**
- * Activity interface for pipeline processing
- */
-export interface PipelineActivity {
-    title: string;
-    description?: string;
-    group: 'ANALYSIS' | 'DEV' | 'TEST' | 'OPS' | 'GOVERNANCE';
-    estimatedHours: number;
-    priority: 'core' | 'recommended' | 'optional';
-    confidence?: number;
-    acceptanceCriteria?: string[];
-    technicalDetails?: {
-        suggestedFiles?: string[];
-        suggestedCommands?: string[];
-        suggestedTests?: string[];
-        dependencies?: string[];
-    };
-    estimatedHoursJustification?: string;
 }
 
 /**

@@ -3,42 +3,14 @@
  * Uses Lua script for atomic operations
  */
 
-import { createClient, RedisClientType } from 'redis';
+import { getRedisClient, closeRedisConnection } from './redis-client';
+
+// Re-export for consumers that previously imported from here
+export { closeRedisConnection };
 
 // Configurable rate limiting
 const RATE_LIMIT_MAX = Number(process.env.AI_RATE_LIMIT_MAX || 50);
 const RATE_LIMIT_WINDOW_MS = Number(process.env.AI_RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000);
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-
-// Redis client singleton
-let redisClient: RedisClientType | null = null;
-
-/**
- * Get or create Redis client
- */
-async function getRedisClient(): Promise<RedisClientType> {
-    if (redisClient && redisClient.isOpen) {
-        return redisClient;
-    }
-
-    redisClient = createClient({
-        url: REDIS_URL,
-        socket: {
-            connectTimeout: 5000,
-            reconnectStrategy: (retries) => {
-                if (retries > 3) return new Error('Redis connection failed');
-                return Math.min(retries * 100, 3000);
-            }
-        }
-    });
-
-    redisClient.on('error', (err) => {
-        console.error('[rate-limiter] Redis error:', err);
-    });
-
-    await redisClient.connect();
-    return redisClient;
-}
 
 // Fallback in-memory rate limiting (if Redis unavailable)
 const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
@@ -133,14 +105,4 @@ function checkRateLimitInMemory(key: string): RateLimitResult {
     entry.count += 1;
     rateLimitMap.set(key, entry);
     return { allowed: true };
-}
-
-/**
- * Close Redis connection (for graceful shutdown)
- */
-export async function closeRedisConnection(): Promise<void> {
-    if (redisClient && redisClient.isOpen) {
-        await redisClient.quit();
-        redisClient = null;
-    }
 }

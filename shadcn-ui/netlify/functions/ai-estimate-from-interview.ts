@@ -266,8 +266,15 @@ export const handler = createAIHandler<RequestBody>({
         if (AI_AGENTIC) {
             console.log('[ai-estimate-from-interview] Using AGENTIC pipeline (Phase 3)');
 
+            // Filter activities by tech_category BEFORE building agent input
+            // This reduces token count by ~40% by sending only relevant activities
+            const filteredForAgent = body.activities.filter(
+                a => a.tech_category === (body.techCategory || 'MULTI') || a.tech_category === 'MULTI'
+            );
+            console.log(`[agentic] Filtered activities: ${filteredForAgent.length}/${body.activities.length}`);
+
             // Build activities in agent format
-            const agentActivities = body.activities.map(a => ({
+            const agentActivities = filteredForAgent.map(a => ({
                 code: a.code,
                 name: a.name,
                 description: a.description || '',
@@ -387,6 +394,15 @@ export const handler = createAIHandler<RequestBody>({
             } catch (err) {
                 console.warn('[ai-estimate-from-interview] RAG retrieval failed:', err);
             }
+        }
+
+        // Filter by tech_category when vector search was not used (fallback path)
+        // This mirrors the logic in suggest-activities.ts to avoid sending the full catalog
+        if (searchMethod === 'frontend-provided' && body.techCategory) {
+            activitiesToUse = activitiesToUse.filter(
+                a => a.tech_category === body.techCategory || a.tech_category === 'MULTI'
+            );
+            console.log(`[legacy] tech_category fallback filter: ${activitiesToUse.length} activities`);
         }
 
         // Format data for prompt
