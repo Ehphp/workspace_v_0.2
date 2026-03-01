@@ -8,6 +8,7 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { searchSimilarRequirements, isVectorSearchEnabled } from './vector-search';
+import { recordRAGCall } from './rag-metrics';
 
 // RAG configuration
 const MAX_HISTORICAL_EXAMPLES = 3;
@@ -145,13 +146,13 @@ export async function retrieveRAGContext(
     };
 
     if (!isVectorSearchEnabled()) {
-        console.log('[rag] Vector search disabled, skipping RAG');
+        console.log(JSON.stringify({ module: 'rag', action: 'skip', reason: 'vector_search_disabled' }));
         return context;
     }
 
     const supabase = getSupabaseClient();
     if (!supabase) {
-        console.log('[rag] Supabase not configured');
+        console.log(JSON.stringify({ module: 'rag', action: 'skip', reason: 'supabase_not_configured' }));
         return context;
     }
 
@@ -163,7 +164,7 @@ export async function retrieveRAGContext(
             MAX_HISTORICAL_EXAMPLES * 2 // Fetch more to filter by quality
         );
 
-        console.log(`[rag] Found ${similarReqs.length} similar requirements`);
+        console.log(JSON.stringify({ module: 'rag', action: 'search', similarCount: similarReqs.length }));
 
         // Fetch estimation data for each similar requirement
         const examples: HistoricalExample[] = [];
@@ -202,7 +203,25 @@ export async function retrieveRAGContext(
             context.promptFragment = buildRAGPromptFragment(examples);
         }
 
-        console.log(`[rag] Built context with ${examples.length} examples in ${context.searchLatencyMs}ms`);
+        // Record metrics for observability (S2-4)
+        const avgSim = context.examples.length > 0
+            ? context.examples.reduce((s, e) => s + e.similarity, 0) / context.examples.length
+            : 0;
+
+        recordRAGCall({
+            hasExamples: context.hasExamples,
+            exampleCount: context.examples.length,
+            avgSimilarity: avgSim,
+            latencyMs: context.searchLatencyMs,
+        });
+
+        console.log(JSON.stringify({
+            module: 'rag',
+            action: 'retrieveContext',
+            examples: context.examples.length,
+            latencyMs: context.searchLatencyMs,
+            avgSimilarity: Math.round(avgSim * 100) / 100,
+        }));
         return context;
     } catch (err) {
         console.error('[rag] Error retrieving context:', err);

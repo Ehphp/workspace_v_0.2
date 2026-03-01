@@ -16,6 +16,7 @@ import ConfigurationPresets from './pages/configuration/ConfigurationPresets';
 import HowItWorks from './pages/HowItWorks';
 import Profile from './pages/configuration/Profile';
 import { OrganizationSettings } from './pages/configuration/OrganizationSettings';
+import EstimationAccuracy from './pages/analytics/EstimationAccuracy';
 
 const queryClient = new QueryClient();
 
@@ -91,6 +92,14 @@ const App = () => (
             element={
               <AuthGuard>
                 <OrganizationSettings />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/analytics/accuracy"
+            element={
+              <AuthGuard>
+                <EstimationAccuracy />
               </AuthGuard>
             }
           />

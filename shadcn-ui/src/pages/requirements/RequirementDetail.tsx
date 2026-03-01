@@ -14,7 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescript
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { FileText, Calculator, History, AlertTriangle } from 'lucide-react';
+import { FileText, Calculator, History, AlertTriangle, ClipboardCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { suggestActivities } from '@/lib/openai';
 import { getConsultantAnalysis } from '@/lib/consultant-api';
@@ -29,6 +29,7 @@ import { RequirementHeader } from '@/components/requirements/detail/RequirementH
 import { OverviewTab } from '@/components/requirements/detail/tabs/OverviewTab';
 import { EstimationTab } from '@/components/requirements/detail/tabs/EstimationTab';
 import { HistoryTab } from '@/components/requirements/detail/tabs/HistoryTab';
+import { ActualHoursTab } from '@/components/requirements/detail/tabs/ActualHoursTab';
 
 const HISTORY_PAGE_SIZE = 50;
 
@@ -619,6 +620,13 @@ export default function RequirementDetail() {
                                     <History className="w-4 h-4 mr-2" />
                                     Storico
                                 </TabsTrigger>
+                                <TabsTrigger
+                                    value="actuals"
+                                    className="data-[state=active]:bg-white/90 data-[state=active]:shadow-md rounded-xl border-2 border-transparent data-[state=active]:border-blue-500/20 px-5 py-2.5 transition-all duration-200"
+                                >
+                                    <ClipboardCheck className="w-4 h-4 mr-2" />
+                                    Consuntivo
+                                </TabsTrigger>
                             </TabsList>
                         </div>
                     </div>
@@ -667,6 +675,15 @@ export default function RequirementDetail() {
                             assignedEstimationId={requirement.assigned_estimation_id}
                             onAssign={refetchRequirement}
                             requirementId={requirement.id}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="actuals" className="flex-1 min-h-0 m-0 focus-visible:outline-none h-full">
+                        <ActualHoursTab
+                            assignedEstimation={assignedEstimation || null}
+                            estimationHistory={estimationHistory}
+                            userId={user?.id}
+                            onRefetch={refetchAll}
                         />
                     </TabsContent>
                 </Tabs>

@@ -13,6 +13,7 @@ import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { getCorsHeaders, isOriginAllowed } from './lib/security/cors';
 import { isVectorSearchEnabled } from './lib/ai/vector-search';
+import { getRAGMetrics, type RAGMetrics } from './lib/ai/rag-metrics';
 
 interface HealthStatus {
     vectorSearchEnabled: boolean;
@@ -34,6 +35,7 @@ interface HealthStatus {
         requirementsCoverage: string;
     } | null;
     recommendations: string[];
+    rag: RAGMetrics | null;
 }
 
 /**
@@ -149,6 +151,7 @@ export const handler: Handler = async (
         },
         embeddings: null,
         recommendations: [],
+        rag: null,
     };
 
     const supabase = getSupabaseClient();
@@ -208,6 +211,14 @@ export const handler: Handler = async (
 
     if (!status.envVariables.OPENAI_API_KEY) {
         status.recommendations.push('OpenAI API key not configured. Required for generating embeddings.');
+    }
+
+    // RAG metrics (in-memory; null right after cold start)
+    try {
+        const ragMetrics = getRAGMetrics();
+        status.rag = ragMetrics.totalCalls > 0 ? ragMetrics : null;
+    } catch {
+        status.rag = null;
     }
 
     return {

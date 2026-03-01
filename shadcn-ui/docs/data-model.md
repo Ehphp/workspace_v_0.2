@@ -180,6 +180,48 @@ Saved calculation snapshots.
 | `scenario_name` | VARCHAR(255) | User-defined label (e.g., "Optimistic") |
 | `senior_consultant_analysis` | JSONB | AI consultant analysis (tips, discrepancies, risks) |
 | `ai_reasoning` | TEXT | AI explanation for estimation decisions |
+| `actual_hours` | DECIMAL(8,2) | Actual hours spent (consuntivo). NULL until recorded |
+| `actual_start_date` | DATE | Real start date (optional) |
+| `actual_end_date` | DATE | Real end date (optional) |
+| `actual_notes` | TEXT | Free-text notes on actual work |
+| `actual_recorded_at` | TIMESTAMPTZ | When actuals were last saved |
+| `actual_recorded_by` | UUID | User who recorded actuals (FK auth.users) |
+
+**Migration**: `20260302_add_actual_fields.sql`
+
+#### estimation_accuracy (view)
+
+Pre-joined view for accuracy analytics.  Only includes estimations with `actual_hours IS NOT NULL`.
+
+| Column | Source |
+|--------|--------|
+| `estimation_id` | estimations.id |
+| `requirement_id` | estimations.requirement_id |
+| `total_days` | estimations.total_days |
+| `base_hours` | estimations.base_hours |
+| `actual_hours` | estimations.actual_hours |
+| `deviation_percent` | Computed: `((actual_hours/8 - total_days) / total_days) * 100` |
+| `requirement_title` | requirements.title |
+| `technology_name` | technologies.name |
+| `tech_category` | technologies.tech_category |
+| `scenario_name` | estimations.scenario_name |
+| `estimated_at` | estimations.created_at |
+| `actual_recorded_at` | estimations.actual_recorded_at |
+
+#### RPC: `update_estimation_actuals`
+
+Updates the actual/consuntivo fields on a single estimation.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `p_estimation_id` | UUID | Target estimation |
+| `p_user_id` | UUID | Calling user (verified against org membership) |
+| `p_actual_hours` | DECIMAL(8,2) | Hours actually spent |
+| `p_actual_start_date` | DATE | Optional real start |
+| `p_actual_end_date` | DATE | Optional real end |
+| `p_actual_notes` | TEXT | Optional notes |
+
+Security: `SECURITY DEFINER`, checks org membership (`admin`/`editor`/`owner`).
 
 ---
 
@@ -339,6 +381,9 @@ CREATE INDEX idx_requirements_list_id ON requirements(list_id);
 CREATE INDEX idx_estimations_requirement_id ON estimations(requirement_id);
 CREATE INDEX idx_activities_tech_category ON activities(tech_category);
 CREATE INDEX idx_activities_is_custom ON activities(is_custom);
+
+-- Partial index for accuracy queries (only rows with actuals)
+CREATE INDEX idx_estimations_with_actuals ON estimations(requirement_id) WHERE actual_hours IS NOT NULL;
 
 -- Vector indexes for semantic search (Phase 2)
 CREATE INDEX idx_activities_embedding ON activities USING ivfflat (embedding vector_cosine_ops);

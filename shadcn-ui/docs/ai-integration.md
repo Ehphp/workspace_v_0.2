@@ -772,6 +772,32 @@ Returns:
 - pgvector extension status
 - Configuration warnings
 - Recommended actions
+- **RAG metrics** (Sprint 2): in-memory telemetry for retrieval calls
+
+#### RAG Metrics (Sprint 2 — S2-4)
+
+The health endpoint now includes a `rag` field with in-memory metrics collected by `rag-metrics.ts`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `totalCalls` | number | Total `retrieveRAGContext()` invocations since cold start |
+| `hits` | number | Calls that returned ≥1 historical example |
+| `misses` | number | Calls with 0 examples |
+| `hitRate` | string | Percentage, e.g. `"72.5%"` |
+| `avgSimilarity` | number | Mean similarity score across hits |
+| `avgExamplesPerHit` | number | Mean examples returned per successful call |
+| `avgLatencyMs` | number | Mean retrieval time |
+| `p95LatencyMs` | number | 95th percentile retrieval time |
+| `lastResetAt` | string | ISO timestamp of last cold start / manual reset |
+
+**Note**: Metrics are in-memory and reset on each Netlify Functions cold start. The `rag` field is `null` if no RAG calls have been made since the last cold start.
+
+**Files**: `netlify/functions/lib/ai/rag-metrics.ts` (store + helpers), integrated in `rag.ts` via `recordRAGCall()`.
+
+Structured logs are also emitted as JSON on each call:
+```json
+{"module":"rag","action":"retrieveContext","examples":2,"latencyMs":340,"avgSimilarity":0.78}
+```
 
 ---
 

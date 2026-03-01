@@ -147,6 +147,13 @@ export interface Estimation {
   scenario_name: string;
   ai_reasoning?: string | null;
   created_at: string;
+  // Consuntivo (actual) fields — Sprint 2
+  actual_hours: number | null;
+  actual_start_date: string | null;   // ISO date
+  actual_end_date: string | null;     // ISO date
+  actual_notes: string | null;
+  actual_recorded_at: string | null;  // ISO timestamp
+  actual_recorded_by: string | null;  // user UUID
 }
 
 export interface EstimationActivity {

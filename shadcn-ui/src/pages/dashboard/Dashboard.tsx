@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, Layers, TrendingUp, ListChecks, BarChart3, PieChart, LayoutGrid, List as ListIcon } from 'lucide-react';
+import { Plus, Search, Layers, TrendingUp, ListChecks, BarChart3, PieChart, LayoutGrid, List as ListIcon, Target } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -295,6 +295,19 @@ export default function Dashboard() {
                 iconGradient="from-amber-500 to-orange-600"
                 subtitle="giorni/requisito"
               />
+            </div>
+
+            {/* Accuracy Analytics Link */}
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/analytics/accuracy')}
+                className="rounded-xl"
+              >
+                <Target className="w-4 h-4 mr-2" />
+                Analisi Accuratezza
+              </Button>
             </div>
 
             <div className="grid grid-cols-12 gap-4">
