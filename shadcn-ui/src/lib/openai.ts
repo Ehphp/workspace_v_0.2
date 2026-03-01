@@ -4,6 +4,36 @@ import { sanitizePromptInput } from '@/types/ai-validation';
 import { supabase } from '@/lib/supabase';
 import { buildFunctionUrl } from '@/lib/netlify';
 
+// ── AI Service Error Types (Sprint 3 — S3-3) ────────────────────────────
+
+export interface AIServiceError {
+  /** Structured error code from the backend */
+  code: string; // AI_UNAVAILABLE | AI_RATE_LIMITED | TIMEOUT | INTERNAL_ERROR
+  /** Human-readable message */
+  message: string;
+  /** Seconds to wait before retrying (from Retry-After header) */
+  retryAfterSeconds?: number;
+  /** Whether the frontend should offer a retry option */
+  isRetryable: boolean;
+}
+
+/**
+ * Parse a non-ok response into a structured AIServiceError.
+ * Works with the error format emitted by createAIHandler.
+ */
+export function parseAIError(response: Response, errorData: any): AIServiceError {
+  const code: string = errorData?.error?.code || 'INTERNAL_ERROR';
+  const retryAfterRaw = response.headers.get('Retry-After');
+  const retryAfter = retryAfterRaw ? parseInt(retryAfterRaw, 10) : undefined;
+
+  return {
+    code,
+    message: errorData?.error?.message || `HTTP ${response.status}`,
+    retryAfterSeconds: (retryAfter && !Number.isNaN(retryAfter)) ? retryAfter : undefined,
+    isRetryable: ['AI_UNAVAILABLE', 'AI_RATE_LIMITED', 'TIMEOUT'].includes(code),
+  };
+}
+
 interface SuggestActivitiesInput {
   description: string;
   preset: Technology;
@@ -72,7 +102,21 @@ export async function suggestActivities(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      const aiError = parseAIError(response, errorData);
+
+      // Graceful degradation: AI unavailable → let the user proceed manually
+      if (aiError.code === 'AI_UNAVAILABLE' || aiError.code === 'AI_RATE_LIMITED') {
+        return {
+          isValidRequirement: false,
+          activityCodes: [],
+          reasoning: aiError.code === 'AI_UNAVAILABLE'
+            ? 'Il servizio AI è temporaneamente non disponibile. Puoi selezionare le attività manualmente.'
+            : 'Limite di utilizzo AI raggiunto. Riprova tra qualche minuto.',
+          _serviceError: aiError,
+        } as AIActivitySuggestion;
+      }
+
+      throw new Error(aiError.message);
     }
 
     const suggestion = await response.json() as AIActivitySuggestion;
@@ -117,7 +161,9 @@ export async function generateTitleFromDescription(description: string): Promise
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      const aiError = parseAIError(response, errorData);
+      throw new Error(aiError.message);
     }
 
     const result = await response.json();
@@ -157,7 +203,9 @@ export async function normalizeRequirement(description: string): Promise<Normali
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      const aiError = parseAIError(response, errorData);
+      throw new Error(aiError.message);
     }
 
     return await response.json();

@@ -223,7 +223,10 @@ export const handler: Handler = async (
 
     return {
         statusCode: 200,
-        headers,
+        headers: {
+            ...headers,
+            'X-Deprecated': 'Use /.netlify/functions/ai-health instead',
+        },
         body: JSON.stringify(status, null, 2),
     };
 };

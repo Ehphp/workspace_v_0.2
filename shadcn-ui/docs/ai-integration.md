@@ -33,7 +33,8 @@ AI functionality is distributed across multiple serverless functions:
 | `ai-consultant.ts` | Senior consultant analysis | Post-estimation review |
 | `ai-generate-embeddings.ts` | Generate vector embeddings | Background/admin job (Phase 1) |
 | `ai-check-duplicates.ts` | Semantic activity deduplication | AI Technology Wizard (Phase 3) |
-| `ai-vector-health.ts` | Vector search health check | Monitoring (Phase 2-4) |
+| `ai-vector-health.ts` | Vector search health check *(deprecated)* | Monitoring (Phase 2-4) |
+| `ai-health.ts` | Consolidated health check (CB, DB, Redis, RAG) | Monitoring / frontend indicator (Sprint 3) |
 
 ### Actions (ai-suggest.ts)
 
@@ -906,3 +907,73 @@ Every estimation produced by the agentic pipeline passes through `validateWithEn
 - Updating vector search configuration
 - Adding RAG features
 - Modifying agentic pipeline tools or reflection logic
+- Changing resilience settings (circuit breaker, retry, degradation)
+
+---
+
+## Resilience (Sprint 3)
+
+### Circuit Breaker
+
+All OpenAI calls pass through an in-memory circuit breaker (`lib/ai/circuit-breaker.ts`) with three states:
+
+| State | Behavior |
+|-------|----------|
+| **CLOSED** | Requests pass through normally |
+| **OPEN** | Requests rejected immediately (`CircuitOpenError` → HTTP 503) |
+| **HALF_OPEN** | One probe request allowed; success → CLOSED, failure → OPEN |
+
+**Configuration** (singleton in `openai-client.ts`):
+
+| Setting | Value | Rationale |
+|---------|-------|-----------|
+| `failureThreshold` | 3 | Open after 3 consecutive failures |
+| `resetTimeoutMs` | 30 000 ms | Allow a probe after 30 s |
+
+The CB is in-memory per Netlify Function instance. Warm instances keep state for 5–10 min; cold starts reset to CLOSED (acceptable trade-off vs Redis latency).
+
+### Retry with Exponential Backoff
+
+`lib/ai/retry.ts` provides `withRetry()` that wraps each OpenAI call **inside** the circuit breaker:
+
+```
+Request → CB.execute() → withRetry() → OpenAI SDK call
+                              ↓ fail (retryable)
+                         wait ~1 s → retry 1
+                              ↓ fail
+                         wait ~2 s → retry 2
+                              ↓ fail
+                         throw → CB.onFailure()
+```
+
+- **Max retries**: 2 (3 total attempts)
+- **Initial delay**: 1 000 ms, multiplier × 2, cap 10 000 ms
+- **Jitter**: ±25 % to prevent thundering herd
+- **Retryable errors**: HTTP 429, 5xx, `ETIMEDOUT`, `ECONNABORTED`, `ECONNRESET`, empty model output
+- Timeout-aware: skips retry if remaining wall-clock time < 3 s
+
+Only errors that exhaust all retries count towards the CB failure threshold.
+
+### Graceful Degradation
+
+| Layer | Behavior |
+|-------|----------|
+| **Backend** (`create-ai-handler.ts`) | `CircuitOpenError` → 503 + `Retry-After`; HTTP 429 passthrough |
+| **Frontend** (`openai.ts`) | `parseAIError()` structures error; `suggestActivities()` returns degraded result with `_serviceError` |
+| **UI** (`AiUnavailableBanner.tsx`) | Amber banner with countdown, "Retry" and "Continue manually" buttons |
+| **Agentic pipeline** | If agentic fails (non-CB), falls back to legacy linear pipeline transparently |
+
+Error codes returned by the backend:
+
+| Code | HTTP | Meaning |
+|------|------|---------|
+| `AI_UNAVAILABLE` | 503 | Circuit breaker open |
+| `AI_RATE_LIMITED` | 429 | OpenAI rate limit exhausted after retries |
+| `TIMEOUT` | 504 | Network / function timeout |
+| `INTERNAL_ERROR` | 500 | Unexpected error |
+
+### Health Endpoint
+
+`GET /.netlify/functions/ai-health` returns a consolidated health status covering OpenAI CB, database, Redis, pgvector, embeddings, and RAG metrics. See [ai-endpoints.md](api/ai-endpoints.md) for full schema.
+
+The frontend hook `useAiHealth` (in `src/hooks/useAiHealth.ts`) polls this endpoint every 60 s and exposes `aiStatus`, `isAiAvailable`, and `circuitBreakerOpen`.

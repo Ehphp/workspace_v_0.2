@@ -592,10 +592,26 @@ This maximizes reuse of validated activities while allowing AI to fill gaps.
 ```typescript
 {
   success: false,
-  error: string,          // Error code/type
-  message?: string        // Human-readable message (Italian)
+  error: {
+    code: string,         // Error code (see table below)
+    message: string,      // Human-readable message (Italian)
+    details?: any         // Additional data (dev mode only)
+  }
 }
 ```
+
+### Error Codes (Sprint 3)
+
+| Code | HTTP | Description | Retry-After |
+|------|------|-------------|-------------|
+| `AI_UNAVAILABLE` | 503 | Circuit breaker open — OpenAI unreachable | Yes (seconds until probe) |
+| `AI_RATE_LIMITED` | 429 | OpenAI rate limit exceeded after retries | Yes (from OpenAI header) |
+| `TIMEOUT` | 504 | Request timed out | No |
+| `RATE_LIMITED` | 429 | App-level rate limit (Redis) | Yes |
+| `UNAUTHORIZED` | 401 | Missing/invalid auth token | No |
+| `VALIDATION_ERROR` | 400 | Input validation failed | No |
+| `LLM_NOT_CONFIGURED` | 500 | API key missing | No |
+| `INTERNAL_ERROR` | 500 | Unexpected server error | No |
 
 ### HTTP Status Codes
 
@@ -606,8 +622,10 @@ This maximizes reuse of validated activities while allowing AI to fill gaps.
 | 401 | Unauthorized (invalid/missing auth token) |
 | 403 | Forbidden (origin not allowed) |
 | 405 | Method not allowed (only POST accepted) |
-| 429 | Rate limit exceeded |
+| 429 | Rate limit exceeded (app or OpenAI) |
 | 500 | Server error (API key missing, OpenAI error) |
+| 503 | AI unavailable (circuit breaker open) |
+| 504 | Gateway timeout |
 
 ---
 
@@ -722,9 +740,11 @@ These endpoints support the pgvector-based semantic search infrastructure.
 
 ---
 
-### `GET /.netlify/functions/ai-vector-health`
+### `GET /.netlify/functions/ai-vector-health` *(deprecated)*
 
-**Purpose**: Health check for vector search infrastructure.
+> **Deprecated**: Use `GET /.netlify/functions/ai-health` instead. This endpoint returns an `X-Deprecated` header.
+
+**Purpose**: Legacy health check for vector search infrastructure.
 
 **When Used**: Monitoring, debugging, admin dashboards.
 
@@ -752,6 +772,58 @@ These endpoints support the pgvector-based semantic search infrastructure.
   recommendations: string[];
 }
 ```
+
+**No authentication required** — read-only status endpoint.
+
+---
+
+### `GET /.netlify/functions/ai-health`
+
+**Purpose**: Consolidated health check covering OpenAI circuit breaker, database, Redis, pgvector, embeddings, and RAG metrics.
+
+**When Used**: Monitoring dashboards, frontend health indicator (`useAiHealth` hook), ops alerts.
+
+**Output**:
+```typescript
+{
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  timestamp: string;               // ISO-8601
+  openai: {
+    configured: boolean;
+    circuitBreaker: {
+      state: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+      failures: number;
+      successes: number;
+      lastFailureAt: string | null;
+      lastSuccessAt: string | null;
+      openedAt: string | null;
+    };
+  };
+  database: {
+    connected: boolean;
+    pgvectorExtension: boolean | null;
+    latencyMs: number;
+  };
+  redis: {
+    connected: boolean;
+    latencyMs: number | null;
+  };
+  vectorSearch: {
+    enabled: boolean;
+  };
+  embeddings: { ... } | null;      // Same structure as ai-vector-health
+  rag: RAGMetrics | null;
+  recommendations: string[];        // Actionable items
+}
+```
+
+**Status derivation**:
+
+| Condition | Status |
+|-----------|--------|
+| CB OPEN or DB unreachable | `unhealthy` |
+| CB HALF_OPEN or Redis down | `degraded` |
+| Everything ok | `healthy` |
 
 **No authentication required** — read-only status endpoint.
 

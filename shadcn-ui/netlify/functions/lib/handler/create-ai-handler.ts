@@ -29,6 +29,7 @@ import { validateAuthToken, logAuthDebugInfo } from '../auth/auth-validator';
 import { getCorsHeaders, isOriginAllowed } from '../security/cors';
 import { checkRateLimit } from '../security/rate-limiter';
 import { isLLMConfigured } from '../ai/openai-client';
+import { CircuitOpenError } from '../ai/circuit-breaker';
 import { sanitizePromptInput } from '../sanitize';
 
 /**
@@ -242,7 +243,39 @@ export function createAIHandler<TBody = any, TResponse = any>(
                 status: error?.status,
             });
 
-            // Check for timeout errors
+            // ── Circuit breaker open → 503 with Retry-After ──
+            if (error instanceof CircuitOpenError) {
+                return {
+                    statusCode: 503,
+                    headers: {
+                        ...headers,
+                        'Retry-After': String(error.retryAfterSeconds),
+                    },
+                    body: JSON.stringify(createErrorResponse(
+                        'AI_UNAVAILABLE',
+                        'Il servizio AI è temporaneamente non disponibile. Riprova tra qualche minuto.',
+                        { retryAfterSeconds: error.retryAfterSeconds },
+                    )),
+                };
+            }
+
+            // ── OpenAI rate limit (429 that exhausted retries) ──
+            if (error?.status === 429) {
+                const retryAfter = error?.headers?.['retry-after'] ?? 60;
+                return {
+                    statusCode: 429,
+                    headers: {
+                        ...headers,
+                        'Retry-After': String(retryAfter),
+                    },
+                    body: JSON.stringify(createErrorResponse(
+                        'AI_RATE_LIMITED',
+                        'Limite di utilizzo AI raggiunto. Riprova tra qualche minuto.',
+                    )),
+                };
+            }
+
+            // ── Timeout errors → 504 ──
             const isTimeout = error?.code === 'ETIMEDOUT' ||
                 error?.code === 'ECONNABORTED' ||
                 error?.message?.includes('timeout');

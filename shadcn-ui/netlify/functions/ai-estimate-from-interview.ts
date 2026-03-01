@@ -13,6 +13,7 @@
 
 import { createAIHandler } from './lib/handler';
 import { getDefaultProvider } from './lib/ai/openai-client';
+import { CircuitOpenError } from './lib/ai/circuit-breaker';
 import { getPrompt } from './lib/ai/prompt-registry';
 import { searchSimilarActivities, isVectorSearchEnabled } from './lib/ai/vector-search';
 import { retrieveRAGContext, getRAGSystemPromptAddition } from './lib/ai/rag';
@@ -305,44 +306,60 @@ export const handler = createAIHandler<RequestBody>({
                 },
             };
 
-            const agentResult = await runAgentPipeline(agentInput);
+            try {
+                const agentResult = await runAgentPipeline(agentInput);
 
-            console.log('[ai-estimate-from-interview] Agent pipeline result:', {
-                success: agentResult.success,
-                activities: agentResult.activities.length,
-                totalBaseDays: agentResult.totalBaseDays,
-                confidence: agentResult.confidenceScore,
-                iterations: agentResult.agentMetadata.iterations,
-                toolCalls: agentResult.agentMetadata.toolCallCount,
-                durationMs: agentResult.agentMetadata.totalDurationMs,
-                reflectionAssessment: agentResult.agentMetadata.reflectionResult?.assessment,
-            });
-
-            if (!agentResult.success) {
-                throw new Error(agentResult.error || 'Agentic pipeline failed');
-            }
-
-            return {
-                success: true,
-                generatedTitle: agentResult.generatedTitle,
-                activities: agentResult.activities,
-                totalBaseDays: agentResult.totalBaseDays,
-                reasoning: agentResult.reasoning,
-                confidenceScore: agentResult.confidenceScore,
-                suggestedDrivers: agentResult.suggestedDrivers,
-                suggestedRisks: agentResult.suggestedRisks,
-                // Phase 3 metadata
-                agentMetadata: {
-                    executionId: agentResult.agentMetadata.executionId,
-                    totalDurationMs: agentResult.agentMetadata.totalDurationMs,
+                console.log('[ai-estimate-from-interview] Agent pipeline result:', {
+                    success: agentResult.success,
+                    activities: agentResult.activities.length,
+                    totalBaseDays: agentResult.totalBaseDays,
+                    confidence: agentResult.confidenceScore,
                     iterations: agentResult.agentMetadata.iterations,
-                    toolCallCount: agentResult.agentMetadata.toolCallCount,
-                    model: agentResult.agentMetadata.model,
+                    toolCalls: agentResult.agentMetadata.toolCallCount,
+                    durationMs: agentResult.agentMetadata.totalDurationMs,
                     reflectionAssessment: agentResult.agentMetadata.reflectionResult?.assessment,
-                    reflectionConfidence: agentResult.agentMetadata.reflectionResult?.confidence,
-                    engineValidation: agentResult.engineValidation,
-                },
-            };
+                });
+
+                if (!agentResult.success) {
+                    throw new Error(agentResult.error || 'Agentic pipeline failed');
+                }
+
+                return {
+                    success: true,
+                    generatedTitle: agentResult.generatedTitle,
+                    activities: agentResult.activities,
+                    totalBaseDays: agentResult.totalBaseDays,
+                    reasoning: agentResult.reasoning,
+                    confidenceScore: agentResult.confidenceScore,
+                    suggestedDrivers: agentResult.suggestedDrivers,
+                    suggestedRisks: agentResult.suggestedRisks,
+                    // Phase 3 metadata
+                    agentMetadata: {
+                        executionId: agentResult.agentMetadata.executionId,
+                        totalDurationMs: agentResult.agentMetadata.totalDurationMs,
+                        iterations: agentResult.agentMetadata.iterations,
+                        toolCallCount: agentResult.agentMetadata.toolCallCount,
+                        model: agentResult.agentMetadata.model,
+                        reflectionAssessment: agentResult.agentMetadata.reflectionResult?.assessment,
+                        reflectionConfidence: agentResult.agentMetadata.reflectionResult?.confidence,
+                        engineValidation: agentResult.engineValidation,
+                    },
+                };
+            } catch (agentError: any) {
+                // S3-3d: Progressive degradation — agentic → legacy → error
+                // If the circuit breaker is open, re-throw immediately so
+                // createAIHandler returns 503 with Retry-After.
+                if (agentError instanceof CircuitOpenError) {
+                    console.warn('[ai-estimate-from-interview] CB open, propagating 503');
+                    throw agentError;
+                }
+                // For other errors (transient LLM failures, parsing, etc.)
+                // fall through to the legacy linear pipeline below.
+                console.warn(
+                    '[ai-estimate-from-interview] Agentic pipeline failed, falling back to legacy:',
+                    agentError?.message || agentError,
+                );
+            }
         }
 
         // ─── Legacy Linear Pipeline ────────────────────────────────────
