@@ -33,7 +33,9 @@ export class EstimationEngineSDK {
 
   /**
    * Calculate contingency percentage based on risk score.
-   * 0-10: 10%
+   * Baseline contingency is always 10%, even with no risks.
+   * ≤0:  10% (baseline)
+   * 1-10: 10%
    * 11-20: 15%
    * 21-30: 20%
    * 31+: 25%

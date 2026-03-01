@@ -1,5 +1,4 @@
 import { getDefaultProvider } from '../openai-client';
-import { getCachedResponse, setCachedResponse } from '../ai-cache';
 import { createNormalizationSchema, createNormalizationSystemPrompt } from '../prompt-builder';
 import { getPrompt } from '../prompt-registry';
 
@@ -30,16 +29,6 @@ export async function normalizeRequirement(
 
     console.log('Normalizing requirement:', description.substring(0, 100));
 
-    // Check cache first (skip in test mode)
-    const cacheKey = `normalize:${description.substring(0, 200)}`;
-    if (!testMode) {
-        const cached = getCachedResponse(cacheKey);
-        if (cached) {
-            console.log('Using cached normalization');
-            return cached;
-        }
-    }
-
     const systemPrompt = await getPrompt('normalization') ?? createNormalizationSystemPrompt();
     const userPrompt = description.substring(0, 2000);
     const responseSchema = createNormalizationSchema();
@@ -59,11 +48,6 @@ export async function normalizeRequirement(
     }
 
     const result = JSON.parse(responseContent);
-
-    // Cache the result (skip in test mode)
-    if (!testMode) {
-        setCachedResponse(cacheKey, result);
-    }
 
     return result;
 }

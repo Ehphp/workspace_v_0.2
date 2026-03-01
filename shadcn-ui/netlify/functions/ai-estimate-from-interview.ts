@@ -16,11 +16,16 @@ import { getDefaultProvider } from './lib/ai/openai-client';
 import { getPrompt } from './lib/ai/prompt-registry';
 import { searchSimilarActivities, isVectorSearchEnabled } from './lib/ai/vector-search';
 import { retrieveRAGContext, getRAGSystemPromptAddition } from './lib/ai/rag';
+import { runAgentPipeline, AgentInput } from './lib/ai/agent';
 
 // Model configuration - use env variable AI_ESTIMATION_MODEL or default to gpt-4o
 // NOTE: gpt-5 has limitations (no custom temperature, no json_schema response_format)
 // Use gpt-4o as default for reliable structured output
 const AI_MODEL = process.env.AI_ESTIMATION_MODEL || 'gpt-4o';
+
+// Phase 3: Agentic pipeline feature flag
+// Set AI_AGENTIC=true to enable the reflection loop + tool use pipeline
+// NOTE: Read at request time inside handler (not module level) so env changes are picked up
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -252,11 +257,92 @@ export const handler = createAIHandler<RequestBody>({
     },
 
     handler: async (body, ctx) => {
-        // Get LLM provider
-        const provider = getDefaultProvider();
-
         // Sanitize description
         const sanitizedDescription = ctx.sanitize(body.description);
+
+        // ─── Phase 3: Agentic Pipeline ─────────────────────────────────
+        const AI_AGENTIC = process.env.AI_AGENTIC === 'true';
+        console.log(`[ai-estimate-from-interview] DEBUG AI_AGENTIC=${process.env.AI_AGENTIC} → flag=${AI_AGENTIC}`);
+        if (AI_AGENTIC) {
+            console.log('[ai-estimate-from-interview] Using AGENTIC pipeline (Phase 3)');
+
+            // Build activities in agent format
+            const agentActivities = body.activities.map(a => ({
+                code: a.code,
+                name: a.name,
+                description: a.description || '',
+                base_hours: a.base_hours,
+                group: a.group,
+                tech_category: a.tech_category,
+            }));
+
+            const agentInput: AgentInput = {
+                description: sanitizedDescription,
+                answers: body.answers,
+                activities: agentActivities,
+                validActivityCodes: agentActivities.map(a => a.code),
+                techCategory: body.techCategory || 'MULTI',
+                projectContext: body.projectContext ? {
+                    name: ctx.sanitize(body.projectContext.name),
+                    description: ctx.sanitize(body.projectContext.description),
+                    owner: body.projectContext.owner ? ctx.sanitize(body.projectContext.owner) : undefined,
+                } : undefined,
+                technologyName: body.techCategory,
+                userId: undefined, // Auth is optional for Quick Estimate
+                flags: {
+                    reflectionEnabled: process.env.AI_REFLECTION !== 'false',
+                    toolUseEnabled: process.env.AI_TOOL_USE !== 'false',
+                    maxReflectionIterations: Number(process.env.AI_MAX_REFLECTIONS || 2),
+                    reflectionConfidenceThreshold: Number(process.env.AI_REFLECTION_THRESHOLD || 75),
+                    autoApproveOnly: false,
+                },
+            };
+
+            const agentResult = await runAgentPipeline(agentInput);
+
+            console.log('[ai-estimate-from-interview] Agent pipeline result:', {
+                success: agentResult.success,
+                activities: agentResult.activities.length,
+                totalBaseDays: agentResult.totalBaseDays,
+                confidence: agentResult.confidenceScore,
+                iterations: agentResult.agentMetadata.iterations,
+                toolCalls: agentResult.agentMetadata.toolCallCount,
+                durationMs: agentResult.agentMetadata.totalDurationMs,
+                reflectionAssessment: agentResult.agentMetadata.reflectionResult?.assessment,
+            });
+
+            if (!agentResult.success) {
+                throw new Error(agentResult.error || 'Agentic pipeline failed');
+            }
+
+            return {
+                success: true,
+                generatedTitle: agentResult.generatedTitle,
+                activities: agentResult.activities,
+                totalBaseDays: agentResult.totalBaseDays,
+                reasoning: agentResult.reasoning,
+                confidenceScore: agentResult.confidenceScore,
+                suggestedDrivers: agentResult.suggestedDrivers,
+                suggestedRisks: agentResult.suggestedRisks,
+                // Phase 3 metadata
+                agentMetadata: {
+                    executionId: agentResult.agentMetadata.executionId,
+                    totalDurationMs: agentResult.agentMetadata.totalDurationMs,
+                    iterations: agentResult.agentMetadata.iterations,
+                    toolCallCount: agentResult.agentMetadata.toolCallCount,
+                    model: agentResult.agentMetadata.model,
+                    reflectionAssessment: agentResult.agentMetadata.reflectionResult?.assessment,
+                    reflectionConfidence: agentResult.agentMetadata.reflectionResult?.confidence,
+                    engineValidation: agentResult.engineValidation,
+                },
+            };
+        }
+
+        // ─── Legacy Linear Pipeline ────────────────────────────────────
+        console.log('[ai-estimate-from-interview] Using LINEAR pipeline (legacy)');
+
+        // Get LLM provider
+        const provider = getDefaultProvider();
 
         // Use vector search for more relevant activities (Phase 2)
         let activitiesToUse: Activity[] = body.activities;

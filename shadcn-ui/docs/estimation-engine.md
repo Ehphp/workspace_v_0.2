@@ -98,15 +98,18 @@ Contingency is determined by risk score thresholds:
 
 | Risk Score | Contingency |
 |------------|-------------|
-| 0 | 0% |
+| ≤0 | 10% (baseline) |
 | 1-10 | 10% |
 | 11-20 | 15% |
 | 21-30 | 20% |
 | 31+ | 25% |
 
+> **Note**: A 10% baseline contingency is always applied, even with zero risks.
+
 ```typescript
 function calculateContingency(riskScore: number): number {
-  if (riskScore <= 0) return 0.0;
+  // Baseline contingency is always 10%, even with no risks
+  if (riskScore <= 0) return 0.10;
   if (riskScore <= 10) return 0.10;
   if (riskScore <= 20) return 0.15;
   if (riskScore <= 30) return 0.20;
@@ -315,7 +318,34 @@ test('single activity with no drivers/risks', () => {
 
 ---
 
+## Phase 3: Agentic Pipeline Integration
+
+The agentic pipeline (Phase 3) introduces AI self-reflection and tool use, but the estimation engine invariant is **inviolable**. Every agentic estimation passes through `validateWithEngine()` which replicates the SDK's formulas:
+
+```typescript
+// agent-orchestrator.ts → VALIDATE state
+function validateWithEngine(draft, input): EngineValidationResult {
+    const totalHours = draft.activities.reduce((sum, a) => sum + a.baseHours, 0);
+    const baseDays = totalHours / 8.0;
+    const subtotal = baseDays * driverMultiplier;
+    // ... contingency calculation ...
+    const totalDays = subtotal + contingencyDays;
+    
+    // Correct any AI-reported discrepancy
+    if (Math.abs(calculatedBaseDays - draft.totalBaseDays) > 0.5) {
+        draft.totalBaseDays = calculatedBaseDays;  // Engine overrides AI
+    }
+}
+```
+
+**Guarantee**: Even when the AI uses tools, reflects, and self-corrects, the final numbers are always deterministically verified. The engine serves as the last guardrail against hallucinated totals.
+
+The `validate_estimation` tool also exposes the engine formula to the AI model during generation, allowing it to self-check before the mandatory validation step.
+
+---
+
 **Update this document when**:
 - Contingency thresholds change
 - New calculation steps are added
 - Formula is modified
+- Agentic pipeline validation logic changes

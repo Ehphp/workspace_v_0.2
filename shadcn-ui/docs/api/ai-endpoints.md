@@ -296,6 +296,39 @@ Endpoints that select activities based on gathered information.
 - Deterministic rules for activity variant selection (_SM vs _LG based on answer patterns)
 - Confidence score calculated from answer coverage
 
+**Phase 3 — Agentic Mode** (`AI_AGENTIC=true`):
+
+When the agentic pipeline is enabled, this endpoint uses the Agent Orchestrator instead of the linear flow. The response includes additional `agentMetadata`:
+
+```typescript
+{
+  // ... same fields as above ...
+  agentMetadata?: {
+    executionId: string;        // Unique trace ID
+    totalDurationMs: number;    // Pipeline duration
+    iterations: number;         // Reflection loop count
+    toolCallCount: number;      // Tools invoked by the model
+    model: string;              // LLM model used
+    reflectionAssessment?: 'approved' | 'needs_review' | 'concerns';
+    reflectionConfidence?: number;  // 0-100
+    engineValidation?: {        // Deterministic check result
+      baseDays: number;
+      driverMultiplier: number;
+      subtotal: number;
+      riskScore: number;
+      contingencyPercent: number;
+      contingencyDays: number;
+      totalDays: number;
+    };
+  };
+}
+```
+
+The agentic pipeline adds:
+1. **Tool Use**: Model can call `search_catalog`, `query_history`, `validate_estimation`, `get_activity_details`
+2. **Reflection Loop**: Draft estimation is critiqued by a Senior Consultant prompt; auto-corrected if issues found
+3. **Engine Validation**: Final result verified through deterministic formula
+
 ---
 
 #### `POST /.netlify/functions/ai-bulk-estimate-with-answers`

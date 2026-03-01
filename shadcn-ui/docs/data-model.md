@@ -406,6 +406,60 @@ find_duplicate_activities(
 
 ---
 
+## Phase 3: Agentic Pipeline Tables
+
+**Migration**: `supabase/migrations/20260301_consultant_analysis_history.sql`
+
+### consultant_analyses
+
+Stores Senior Consultant AI analysis runs with full context snapshots for traceability.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `requirement_id` | UUID | FK → requirements (CASCADE) |
+| `estimation_id` | UUID | FK → estimations (SET NULL) |
+| `user_id` | UUID | FK → auth.users |
+| `analysis` | JSONB | Full SeniorConsultantAnalysis result |
+| `requirement_snapshot` | JSONB | {title, description, priority, state, technology_id, technology_name} |
+| `estimation_snapshot` | JSONB | {total_days, base_hours, driver_multiplier, risk_score, activities, drivers} |
+| `created_at` | TIMESTAMPTZ | Auto-set |
+
+**RLS**: Users can read analyses for requirements in lists they own. Insert requires `user_id = auth.uid()`.
+
+### agent_execution_log
+
+Full execution trace of each agentic estimation pipeline run.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `execution_id` | TEXT | Unique agent execution ID |
+| `requirement_id` | UUID | FK → requirements (nullable) |
+| `user_id` | UUID | FK → auth.users (nullable) |
+| `input_description` | TEXT | Sanitized requirement description |
+| `input_tech_category` | TEXT | Technology category |
+| `success` | BOOLEAN | Pipeline success status |
+| `generated_title` | TEXT | AI-generated title |
+| `activity_count` | INTEGER | Number of selected activities |
+| `total_base_days` | NUMERIC(8,2) | Calculated base days |
+| `confidence_score` | NUMERIC(4,2) | AI confidence 0-1 |
+| `model` | TEXT | LLM model used |
+| `iterations` | INTEGER | Reflection loop iterations |
+| `tool_call_count` | INTEGER | Number of tool calls |
+| `total_duration_ms` | INTEGER | Total pipeline duration |
+| `execution_trace` | JSONB | {transitions, toolCalls, flags} |
+| `reflection_result` | JSONB | {assessment, confidence, issues, correctionPrompt} |
+| `engine_validation` | JSONB | {baseDays, driverMultiplier, subtotal, totalDays} |
+| `error_message` | TEXT | Error details (if failed) |
+| `created_at` | TIMESTAMPTZ | Auto-set |
+
+**RLS**: Users can view/insert their own executions and anonymous (Quick Estimate) sessions.
+
+**Indexes**: requirement_id, user_id, success status, failures (partial).
+
+---
+
 ## Maintenance Notes
 
 - **Schema changes**: Run migration SQL in Supabase SQL Editor.
@@ -413,6 +467,7 @@ find_duplicate_activities(
 - **History optimizations**: [estimation_history_optimizations.sql](../estimation_history_optimizations.sql) adds helper views.
 - **Vector embeddings**: Run `ai-generate-embeddings` endpoint after migration to populate embedding columns.
 - **Trigger fix (2026-02-28)**: `enforce_estimation_activity_category()` was updated to reference `technologies` (not the old `technology_presets`) and join through `requirements.technology_id`. Migration: `20260228_fix_estimation_activity_trigger.sql`.
+- **Agentic tables (2026-03-01)**: `consultant_analyses` and `agent_execution_log` added for Phase 3 agentic pipeline. Migration: `20260301_consultant_analysis_history.sql`.
 
 ---
 

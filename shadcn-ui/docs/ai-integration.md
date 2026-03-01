@@ -517,7 +517,6 @@ For the same input, 9/10 calls should return the same activityCodes (90%+ consis
 | `netlify/functions/lib/ai/prompt-builder.ts` | Prompt construction |
 | `netlify/functions/lib/ai/prompt-templates.ts` | **Unified Italian prompt templates** |
 | `netlify/functions/lib/ai/deterministic-rules.ts` | **Shared deterministic rules for activity selection** |
-| `netlify/functions/lib/ai/ai-cache.ts` | Response caching (24h TTL) |
 | `netlify/functions/lib/security/cors.ts` | Origin validation |
 | `netlify/functions/lib/security/rate-limiter.ts` | Redis-backed rate limiting |
 | `netlify/functions/lib/auth/auth-validator.ts` | Auth token validation |
@@ -554,7 +553,7 @@ For the same input, 9/10 calls should return the same activityCodes (90%+ consis
 | `src/components/configuration/presets/TechnologyDialog.tsx` | Technology creation dialog with integrated AI |
 | `src/components/configuration/presets/AiAssistPanel.tsx` | AI assist panel for preset generation |
 
-> **Note**: The `ai-wizard/` folder is deprecated. AI preset generation is now integrated directly into `TechnologyDialog` via `AiAssistPanel`, providing a unified creation experience that supports both manual configuration and AI-assisted generation.
+> **Note**: The `ai-wizard/` folder has been removed (Sprint 0 cleanup, March 2026). AI preset generation is integrated directly into `TechnologyDialog` via `AiAssistPanel`.
 
 ---
 
@@ -742,6 +741,91 @@ Returns:
 
 ---
 
+## Phase 3: Agentic Evolution
+
+### Overview
+
+Phase 3 transforms the estimation pipeline from a linear "Prompt → JSON" flow into an agentic system with self-reflection and active tool use.
+
+**Feature flag**: `AI_AGENTIC=true` (env variable)
+
+**Source**: `netlify/functions/lib/ai/agent/`
+
+### Architecture
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                   Agent Orchestrator                          │
+│                                                              │
+│  INIT → DRAFT → REFLECT → (REFINE|APPROVE) → VALIDATE → OK  │
+│         ▲  │                    ▲                             │
+│         │  │ function calling   │ correction prompt           │
+│         │  ▼                    │                             │
+│     ┌────────────────┐  ┌──────────────────┐                 │
+│     │  Agent Tools    │  │ Reflection Engine │                │
+│     │ - search_catalog│  │ (Senior Consultant│                │
+│     │ - query_history │  │  critique loop)   │                │
+│     │ - validate_est. │  └──────────────────┘                 │
+│     │ - get_details   │                                      │
+│     └────────────────┘                                       │
+│                          │                                   │
+│                          ▼                                   │
+│              ┌───────────────────────┐                       │
+│              │ EstimationEngine SDK  │  ← DETERMINISTIC      │
+│              │ (invariant preserved) │                        │
+│              └───────────────────────┘                       │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### State Machine
+
+| State | Description |
+|-------|-------------|
+| `INIT` | Pre-fetch RAG context, build prompts |
+| `DRAFT` | LLM generates estimation with tool-use (function calling) |
+| `REFLECT` | Lightweight consultant analysis of draft |
+| `REFINE` | Re-generate with correction instructions (if needed) |
+| `VALIDATE` | Deterministic engine check (formula invariant) |
+| `COMPLETE` | Final result with full execution trace |
+
+### Tool Use (Function Calling)
+
+The AI model can actively request tools during estimation:
+
+| Tool | Purpose | When Used |
+|------|---------|----------|
+| `search_catalog` | Semantic search via pgvector | Discover relevant activities |
+| `query_history` | RAG historical estimations | Calibrate against past data |
+| `validate_estimation` | Deterministic formula check | Verify totals before final |
+| `get_activity_details` | Full activity metadata | Deep-dive on specific codes |
+
+### Reflection Loop
+
+1. Draft estimation is analyzed by a Senior Consultant prompt (gpt-4o-mini, temp=0.0)
+2. Issues are classified: `missing_activity`, `unnecessary_activity`, `wrong_hours`, `missing_coverage`, `over_engineering`
+3. If high-severity or 2+ medium issues → auto-refinement with correction prompt
+4. Capped at `AI_MAX_REFLECTIONS` iterations (default: 2)
+
+### Configuration
+
+| Env Variable | Default | Description |
+|-------------|---------|-------------|
+| `AI_AGENTIC` | `false` | Enable agentic pipeline |
+| `AI_REFLECTION` | `true` | Enable reflection loop |
+| `AI_TOOL_USE` | `true` | Enable function calling |
+| `AI_MAX_REFLECTIONS` | `2` | Max reflection iterations |
+| `AI_REFLECTION_THRESHOLD` | `75` | Confidence threshold to skip reflection |
+
+### Deterministic Core Invariant
+
+Every estimation produced by the agentic pipeline passes through `validateWithEngine()` which replicates `EstimationEngine.calculateEstimation()`. This guarantees:
+
+- `Total Days = (Base/8) × DriversMultiplier × (1+Contingency)`
+- AI-reported `totalBaseDays` is corrected if it diverges from calculated value
+- The formula is explainable, verifiable, and protected from hallucinations
+
+---
+
 ## What AI Cannot Do
 
 1. **Invent activity codes**: Enum constraint restricts output to valid codes from catalog.
@@ -750,6 +834,7 @@ Returns:
 4. **Make final decisions**: User always confirms AI suggestions before saving.
 5. **Set driver/risk values**: AI can suggest, but user/engine determines final values.
 6. **Override calculation logic**: `base_hours` values come from database, not AI.
+7. **Skip engine validation**: Even agentic pipeline must pass through deterministic check (Phase 3).
 
 ---
 
@@ -760,3 +845,4 @@ Returns:
 - Changing caching behavior
 - Updating vector search configuration
 - Adding RAG features
+- Modifying agentic pipeline tools or reflection logic

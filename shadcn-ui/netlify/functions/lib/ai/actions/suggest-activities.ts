@@ -1,5 +1,4 @@
 import { getDefaultProvider } from '../openai-client';
-import { getCachedResponse, setCachedResponse, getCacheKey } from '../ai-cache';
 import {
     createDescriptivePrompt,
     createActivitySchema,
@@ -122,18 +121,7 @@ export async function suggestActivities(request: SuggestActivitiesRequest): Prom
 
     console.log('Filtered activities:', relevantActivities?.length);
 
-    // Check cache first (skip in test mode)
     const relevantActivityCodes = relevantActivities.map(a => a.code);
-    const cacheKey = getCacheKey(description, preset.id, relevantActivityCodes);
-    if (!testMode) {
-        const cached = getCachedResponse(cacheKey);
-        if (cached) {
-            console.log('Using cached AI suggestion');
-            return cached;
-        }
-    } else {
-        console.log('Test mode: cache disabled');
-    }
 
     // Retrieve RAG context (Phase 4: Historical Learning)
     let ragContext = { hasExamples: false, promptFragment: '', searchLatencyMs: 0 } as any;
@@ -240,12 +228,6 @@ export async function suggestActivities(request: SuggestActivitiesRequest): Prom
         };
 
     console.log('Validated suggestion:', JSON.stringify(finalSuggestion, null, 2));
-
-    // Cache the validated result (skip in test mode)
-    if (!testMode) {
-        setCachedResponse(cacheKey, finalSuggestion);
-        console.log('Cached response for future use');
-    }
 
     return finalSuggestion;
 }
