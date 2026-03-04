@@ -566,7 +566,7 @@ export default function Requirements() {
                                                                 </>
                                                             )}
                                                             <span className="text-slate-300">|</span>
-                                                            <span>{new Date(req.updated_at).toLocaleDateString('it-IT')}</span>
+                                                            <span>{new Date(req.updated_at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                                                         </div>
                                                     </div>
                                                 </div>

@@ -53,7 +53,7 @@ import { reflectOnDraft, buildRefinementPrompt } from './reflection-engine';
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Maximum tool-call iterations per DRAFT/REFINE pass (prevents infinite loops) */
-const MAX_TOOL_ITERATIONS = 5;
+const MAX_TOOL_ITERATIONS = 3;
 
 /** Model for estimation generation (supports function calling) */
 const ESTIMATION_MODEL = process.env.AI_ESTIMATION_MODEL || 'gpt-4o';
@@ -66,9 +66,22 @@ const ESTIMATION_MODEL = process.env.AI_ESTIMATION_MODEL || 'gpt-4o';
 const ORCHESTRATION_TIMEOUT_MS = 55000;
 
 /** Minimum remaining ms before starting a REFINE pass.
- *  If less time remains, skip refinement and go straight to VALIDATE
- *  with the current draft to avoid a timeout. */
-const REFINE_TIME_BUDGET_MS = 18000;
+ *  Tightened from 18s to 12s to reduce unnecessary skip-refine. */
+const REFINE_TIME_BUDGET_MS = 12000;
+
+/** Per-iteration time guard: if less than this remains, exit the tool loop
+ *  and force a structured final answer to avoid timeout. */
+const TOOL_ITERATION_BUDGET_MS = 8000;
+
+/** Max tokens for LLM calls. 4096 is sufficient for the structured JSON output.
+ *  Reasoning models (o-series, gpt-5) get higher budget for internal reasoning. */
+function getMaxTokens(): number {
+    const m = ESTIMATION_MODEL;
+    if (m.startsWith('gpt-5') || m.startsWith('o1') || m.startsWith('o3') || m.startsWith('o4')) {
+        return 8192;
+    }
+    return 4096;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // State Machine Helpers
@@ -183,7 +196,9 @@ FORMATO OUTPUT (JSON):
     }
   ],
   "suggestedRisks": ["RISK_CODE_1"]
-}`;
+}
+
+⚠️ IMPORTANTE: Rispondi ESCLUSIVAMENTE con JSON valido. NON usare markdown, NON aggiungere commenti, blocchi \`\`\`json o testo prima/dopo il JSON. La risposta DEVE iniziare con { e terminare con }.`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Build User Prompt
@@ -345,8 +360,17 @@ async function llmWithTools(
             break;
         }
 
+        // Per-iteration time guard: bail out early if insufficient time remains
+        const remainingMs = ORCHESTRATION_TIMEOUT_MS - (Date.now() - ctx.startedAt);
+        if (remainingMs < TOOL_ITERATION_BUDGET_MS) {
+            console.warn(`[agent] Tempo insufficiente per altra iterazione (${remainingMs}ms < ${TOOL_ITERATION_BUDGET_MS}ms budget), forzando risposta finale`);
+            break;
+        }
+
         // Determine if this should be a tool-use or final-answer call
         const useTools = ctx.flags.toolUseEnabled && iteration < MAX_TOOL_ITERATIONS - 1;
+
+        const maxTokens = getMaxTokens();
 
         let response: any;
         try {
@@ -358,7 +382,7 @@ async function llmWithTools(
                     tools: AGENT_TOOL_DEFINITIONS as any,
                     tool_choice: iteration === 0 ? 'auto' : 'auto',
                     temperature: 0.1, // Low temp for determinism
-                    max_tokens: 16384,
+                    max_tokens: maxTokens,
                 });
             } else {
                 // Final call: force structured output, no tools
@@ -367,7 +391,7 @@ async function llmWithTools(
                     model: ESTIMATION_MODEL,
                     messages,
                     temperature: 0.1,
-                    max_tokens: 16384,
+                    max_tokens: maxTokens,
                     response_format: responseSchema as any,
                 });
             }
@@ -448,7 +472,7 @@ async function llmWithTools(
                 model: ESTIMATION_MODEL,
                 messages,
                 temperature: 0.0,
-                max_tokens: 16384,
+                max_tokens: getMaxTokens(),
                 response_format: recoverySchema as any,
             });
 
@@ -495,7 +519,7 @@ async function llmWithTools(
         model: ESTIMATION_MODEL,
         messages,
         temperature: 0.1,
-        max_tokens: 16384,
+        max_tokens: getMaxTokens(),
         response_format: responseSchema as any,
     });
 
@@ -534,7 +558,7 @@ async function llmDirect(
         systemPrompt,
         userPrompt,
         temperature: 0.1,
-        maxTokens: 16384,
+        maxTokens: getMaxTokens(),
         options: { timeout: 55000 },
         responseFormat: responseSchema as any,
     });
@@ -760,7 +784,15 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
         console.log('─'.repeat(62));
 
         // ── REFLECT ──────────────────────────────────────────────────────
-        if (ctx.flags.reflectionEnabled && !isTimedOut(ctx)) {
+        // Fast-path gating: skip reflection if draft is already high quality
+        const allActivitiesValid = removedCount === 0;
+        const fewToolCalls = ctx.toolCalls.length <= 1;
+        const highConfidence = draft.confidenceScore >= 0.85;
+        const skipReflection = allActivitiesValid && fewToolCalls && highConfidence;
+
+        if (skipReflection) {
+            console.log(`[agent] Reflection FAST-PATH: skip (validActivities=${allActivitiesValid}, toolCalls=${ctx.toolCalls.length}, confidence=${draft.confidenceScore})`);
+        } else if (ctx.flags.reflectionEnabled && !isTimedOut(ctx)) {
             transition(ctx, 'REFLECT', 'Running reflection analysis');
             console.log(`[agent] Tempo trascorso: ${Date.now() - ctx.startedAt}ms / ${ORCHESTRATION_TIMEOUT_MS}ms`);
             const reflectStartMs = Date.now();
@@ -770,12 +802,20 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
             ctx.iteration++;
 
             // ── REFINE (if needed) ───────────────────────────────────────
+            // Tightened gating: only refine on HIGH severity issues (not medium)
+            // to avoid unnecessary extra LLM calls that add 10-25s latency.
             const remainingMs = ORCHESTRATION_TIMEOUT_MS - (Date.now() - ctx.startedAt);
             const hasBudgetForRefine = remainingMs >= REFINE_TIME_BUDGET_MS;
-            if (!hasBudgetForRefine && reflectionResult.refinementTriggered) {
+            const hasHighSeverity = reflectionResult.issues?.some((i: any) => i.severity === 'high');
+            const shouldRefine = reflectionResult.refinementTriggered && hasHighSeverity;
+
+            if (!hasBudgetForRefine && shouldRefine) {
                 console.warn(`[agent] Refinement richiesto ma tempo insufficiente (${remainingMs}ms < ${REFINE_TIME_BUDGET_MS}ms budget). Skip REFINE → VALIDATE per evitare timeout.`);
             }
-            if (reflectionResult.refinementTriggered && ctx.iteration < ctx.maxIterations && !isTimedOut(ctx) && hasBudgetForRefine) {
+            if (!shouldRefine && reflectionResult.refinementTriggered) {
+                console.log(`[agent] Refinement suggerito ma SKIP: nessun issue high severity (solo medium/low)`);
+            }
+            if (shouldRefine && ctx.iteration < ctx.maxIterations && !isTimedOut(ctx) && hasBudgetForRefine) {
                 console.log('─'.repeat(62));
                 console.log(`[agent] REFINEMENT NECESSARIO — Il Senior Consultant ha trovato problemi`);
                 console.log(`  Assessment: ${reflectionResult.assessment}`);

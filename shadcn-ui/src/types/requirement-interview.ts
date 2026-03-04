@@ -38,6 +38,28 @@ export interface TechnicalQuestionOption {
 }
 
 /**
+ * Pre-estimate from the information-gain planner (Round 0)
+ */
+export interface PreEstimate {
+    /** Optimistic estimate (best-case reasonable) */
+    minHours: number;
+    /** Pessimistic estimate (worst-case reasonable) */
+    maxHours: number;
+    /** Confidence that the range covers reality (0–1) */
+    confidence: number;
+}
+
+/**
+ * Impact metadata for an interview question (information-gain scoring)
+ */
+export interface QuestionImpact {
+    /** Expected percentage of range reduction if this question is answered */
+    expectedRangeReductionPct: number;
+    /** Importance tier derived from the reduction percentage */
+    importance: 'high' | 'medium' | 'low';
+}
+
+/**
  * Technical Question for Requirement Interview
  * 
  * Each question is designed to:
@@ -74,6 +96,8 @@ export interface TechnicalQuestion {
     placeholder?: string;
     /** For text questions: maximum character length */
     maxLength?: number;
+    /** Information-gain impact metadata (only present with planner v2) */
+    impact?: QuestionImpact;
 }
 
 /**
@@ -100,7 +124,11 @@ export interface RequirementInterviewRequest {
 export interface RequirementInterviewResponse {
     /** Whether generation was successful */
     success: boolean;
-    /** Generated technical questions (4-6 typical) */
+    /** Planner decision: ASK = show questions, SKIP = go directly to estimation */
+    decision?: 'ASK' | 'SKIP';
+    /** Pre-estimate range from Round 0 planner (information-gain) */
+    preEstimate?: PreEstimate;
+    /** Generated technical questions (0-3 with planner v2, 4-6 legacy) */
     questions: TechnicalQuestion[];
     /** AI reasoning for why these questions were chosen */
     reasoning: string;
@@ -110,6 +138,18 @@ export interface RequirementInterviewResponse {
     suggestedActivities: string[];
     /** Error message if success is false */
     error?: string;
+    /** Planner metrics (only present with planner v2) */
+    metrics?: {
+        totalMs: number;
+        llmMs: number;
+        activitiesFetchMs: number;
+        activitiesCatalogSize: number;
+        activitiesRanked: number;
+        activitiesSource: string;
+        questionCountRaw: number;
+        questionCountFiltered: number;
+        decisionOverridden: boolean;
+    };
 }
 
 /**
@@ -144,6 +184,8 @@ export interface EstimationFromInterviewRequest {
         description: string;
         owner?: string;
     };
+    /** Optional pre-estimate from Round 0 planner — used as anchoring context */
+    preEstimate?: PreEstimate;
 }
 
 /**
@@ -200,6 +242,20 @@ export interface EstimationFromInterviewResponse {
     suggestedRisks?: string[];
     /** Error message if success is false */
     error?: string;
+    /** Performance metrics for pipeline instrumentation */
+    metrics?: {
+        totalMs: number;
+        activitiesFetchMs?: number;
+        vectorSearchMs?: number;
+        ragRetrievalMs?: number;
+        draftDurationMs?: number;
+        reflectionDurationMs?: number;
+        refineDurationMs?: number;
+        pipeline: 'legacy' | 'agentic';
+        fallbackUsed?: boolean;
+        activitiesRanked?: number;
+        activitiesSent?: number;
+    };
 }
 
 /**
@@ -235,6 +291,11 @@ export const TechnicalQuestionOptionSchema = z.object({
     impactMultiplier: z.number().optional(),
 });
 
+export const QuestionImpactSchema = z.object({
+    expectedRangeReductionPct: z.number(),
+    importance: z.enum(['high', 'medium', 'low']),
+});
+
 export const TechnicalQuestionSchema = z.object({
     id: z.string(),
     type: z.enum(['single-choice', 'multiple-choice', 'text', 'range']),
@@ -253,11 +314,20 @@ export const TechnicalQuestionSchema = z.object({
     unit: z.string().optional(),
     placeholder: z.string().optional(),
     maxLength: z.number().optional(),
+    impact: QuestionImpactSchema.optional(),
+});
+
+export const PreEstimateSchema = z.object({
+    minHours: z.number(),
+    maxHours: z.number(),
+    confidence: z.number().min(0).max(1),
 });
 
 export const RequirementInterviewResponseSchema = z.object({
     success: z.boolean(),
-    questions: z.array(TechnicalQuestionSchema).min(3).max(8),
+    decision: z.enum(['ASK', 'SKIP']).optional(),
+    preEstimate: PreEstimateSchema.optional(),
+    questions: z.array(TechnicalQuestionSchema).max(8),
     reasoning: z.string(),
     estimatedComplexity: z.enum(['LOW', 'MEDIUM', 'HIGH']),
     suggestedActivities: z.array(z.string()),

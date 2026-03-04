@@ -338,11 +338,26 @@ export async function saveEstimation(input: SaveEstimationInput): Promise<void> 
   }).filter((i): i is NonNullable<typeof i> => i !== null);
 
   // 6. Insert details in parallel
-  await Promise.all([
-    activityInserts.length > 0 ? supabase.from('estimation_activities').insert(activityInserts) : Promise.resolve(),
-    driverInserts.length > 0 ? supabase.from('estimation_drivers').insert(driverInserts) : Promise.resolve(),
-    riskInserts.length > 0 ? supabase.from('estimation_risks').insert(riskInserts) : Promise.resolve(),
+  const [actRes, drvRes, rskRes] = await Promise.all([
+    activityInserts.length > 0 ? supabase.from('estimation_activities').insert(activityInserts) : Promise.resolve({ error: null }),
+    driverInserts.length > 0 ? supabase.from('estimation_drivers').insert(driverInserts) : Promise.resolve({ error: null }),
+    riskInserts.length > 0 ? supabase.from('estimation_risks').insert(riskInserts) : Promise.resolve({ error: null }),
   ]);
+
+  // Collect and report any junction-table errors
+  const junctionErrors = [
+    actRes.error ? `activities: ${actRes.error.message}` : null,
+    drvRes.error ? `drivers: ${drvRes.error.message}` : null,
+    rskRes.error ? `risks: ${rskRes.error.message}` : null,
+  ].filter(Boolean);
+
+  if (junctionErrors.length > 0) {
+    console.error('[saveEstimation] Junction table errors:', junctionErrors);
+    throw new ApiError(
+      `Estimation created but detail inserts failed: ${junctionErrors.join('; ')}`,
+      400
+    );
+  }
 
   // 7. Also update requirement_driver_values for persistence across sessions if needed
   // (Optional, but good for consistency)

@@ -5,7 +5,8 @@ import type {
   TechnicalQuestion,
   InterviewAnswer,
   SelectedActivityWithReason,
-  SuggestedDriver
+  SuggestedDriver,
+  PreEstimate
 } from '@/types/requirement-interview';
 
 /** Project context for AI to avoid redundant questions */
@@ -45,6 +46,9 @@ export interface WizardData {
   confidenceScore?: number;
   // AI analysis from estimation (the reasoning text shown in UI)
   aiAnalysis?: string;
+  // Information-gain planner fields
+  preEstimate?: PreEstimate;
+  plannerDecision?: 'ASK' | 'SKIP';
 }
 
 const STORAGE_KEY = 'estimation_wizard_data';
@@ -104,5 +108,7 @@ function getInitialData(): WizardData {
     suggestedRisks: undefined,
     confidenceScore: undefined,
     aiAnalysis: undefined,
+    preEstimate: undefined,
+    plannerDecision: undefined,
   };
 }

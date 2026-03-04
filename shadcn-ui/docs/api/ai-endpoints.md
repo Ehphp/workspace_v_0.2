@@ -128,9 +128,11 @@ Endpoints that produce technical questions for gathering estimation context.
 
 #### `POST /.netlify/functions/ai-requirement-interview`
 
-**Purpose**: Generate technical interview questions for a single requirement.
+**Purpose**: Information-gain interview planner — analyzes a requirement, produces a pre-estimate,
+decides whether questions are needed (ASK/SKIP), and if so returns only high-impact questions.
 
 **When Used**: Single-requirement interview flow — user clicks "Start Interview" on a requirement.
+With the planner, simple requirements may skip the interview entirely (SKIP path → 1 LLM call total).
 
 **Input**:
 ```typescript
@@ -150,26 +152,55 @@ Endpoints that produce technical questions for gathering estimation context.
 ```typescript
 {
   success: boolean;
+  // — Information-gain planner fields —
+  decision: "ASK" | "SKIP";     // ASK = show questions, SKIP = go to estimate
+  preEstimate: {
+    minHours: number;            // Optimistic range bound
+    maxHours: number;            // Pessimistic range bound
+    confidence: number;          // 0–1
+  };
+  // — Questions (empty array if SKIP) —
   questions: Array<{
-    id: string;                           // e.g., "q1_integration"
+    id: string;
     type: "single-choice" | "multiple-choice" | "range";
     category: "INTEGRATION" | "DATA" | "SECURITY" | "PERFORMANCE" | "UI_UX" | "ARCHITECTURE" | "TESTING" | "DEPLOYMENT";
     question: string;
-    technicalContext: string;             // Why this matters technically
-    impactOnEstimate: string;             // How answer affects estimate
+    technicalContext: string;
+    impactOnEstimate: string;
     options: Array<{ id: string; label: string; description?: string }>;
     required: boolean;
-    min?: number; max?: number; step?: number; unit?: string;  // For range type
+    min?: number; max?: number; step?: number; unit?: string;
+    impact: {                    // Information-gain metadata
+      expectedRangeReductionPct: number;
+      importance: "high" | "medium" | "low";
+    };
   }>;
+  // — Backward-compatible fields —
   reasoning: string;
   estimatedComplexity: "LOW" | "MEDIUM" | "HIGH";
+  suggestedActivities: string[];
+  // — Metrics —
+  metrics?: {
+    totalMs: number;
+    llmMs: number;
+    activitiesFetchMs: number;
+    activitiesCatalogSize: number;
+    activitiesRanked: number;
+    activitiesSource: string;
+    questionCountRaw: number;
+    questionCountFiltered: number;
+    decisionOverridden: boolean;
+  };
 }
 ```
 
 **Validation/Fallback**:
 - Description must be non-empty after sanitization
 - Technology category must be valid
-- Returns 4-6 technology-specific questions
+- SKIP decision only allowed when confidence >= 0.90 AND range <= 16h (server-enforced)
+- Questions filtered server-side: only those with expectedRangeReductionPct >= 15% are kept
+- Maximum 3 questions returned (highest impact first)
+- Fetches activity catalog server-side for pre-estimate anchoring
 - Questions avoid open "text" type — uses single-choice, multiple-choice, or range only
 
 ---
@@ -244,23 +275,23 @@ Endpoints that select activities based on gathered information.
 {
   description: string;
   techPresetId: string;
-  techCategory: string;
+  techCategory: string;          // Required — used for server-side activity filtering
   answers: Record<string, {
     questionId: string;
     category: string;
     value: string | string[] | number;
     timestamp: string;
   }>;
-  activities: Array<{           // Available activities for this tech category
+  activities?: Array<{           // Optional fallback — server fetches from Supabase by default
     code: string;
     name: string;
     description: string;
     base_hours: number;
     group: string;
     tech_category: string;
-    technology_id?: string;     // Canonical FK (preferred over tech_category)
+    technology_id?: string;
   }>;
-  projectContext?: {            // Optional project metadata for better context
+  projectContext?: {
     name: string;
     description: string;
     owner?: string;
@@ -268,34 +299,53 @@ Endpoints that select activities based on gathered information.
 }
 ```
 
+> **v2 Change**: `activities` is now **optional**. The server fetches activities from Supabase
+> using `techCategory`, ranks them by keyword relevance to the requirement description,
+> and sends only the top-20 to the LLM prompt. Client-provided activities are used only as
+> a fallback if the server-side fetch fails.
+
 **Output**:
 ```typescript
 {
   success: boolean;
-  generatedTitle: string;       // Short title for the requirement (max 60 chars)
+  generatedTitle: string;
   activities: Array<{
     code: string;
     name: string;
     baseHours: number;
-    reason: string;             // Why this activity was selected
-    fromAnswer?: string;        // Answer value that triggered selection
-    fromQuestionId?: string;    // Question that triggered selection
+    reason: string;
+    fromAnswer?: string;
+    fromQuestionId?: string;
   }>;
   totalBaseDays: number;
   reasoning: string;
-  confidenceScore: number;      // 0.60-0.90 based on answer completeness
+  confidenceScore: number;
   suggestedDrivers: Array<{
     code: string;
     suggestedValue: string;
     reason: string;
     fromQuestionId?: string;
   }>;
-  suggestedRisks: string[];     // Risk codes to pre-select
+  suggestedRisks: string[];
+  metrics?: {                    // Pipeline performance instrumentation (v2)
+    totalMs: number;
+    activitiesFetchMs?: number;
+    vectorSearchMs?: number;
+    ragRetrievalMs?: number;
+    draftDurationMs?: number;
+    reflectionDurationMs?: number;
+    refineDurationMs?: number;
+    pipeline: 'legacy' | 'agentic';
+    fallbackUsed?: boolean;
+    activitiesRanked?: number;
+    activitiesSent?: number;
+  };
 }
 ```
 
 **Validation/Fallback**:
-- Activity codes in response are constrained to provided `activities` array (enum in JSON schema)
+- Activity codes in response are constrained to server-fetched catalog (filtered by `techCategory`, ranked top-20)
+- Falls back to client-provided `activities` array if server-side Supabase fetch fails
 - Deterministic rules for activity variant selection (_SM vs _LG based on answer patterns)
 - Confidence score calculated from answer coverage
 
@@ -885,7 +935,7 @@ These endpoints support the pgvector-based semantic search infrastructure.
 When `USE_VECTOR_SEARCH=false`:
 - `ai-suggest` falls back to category-based activity filtering
 - `ai-generate-preset` uses standard catalog fetch (history lookup + validation pass skipped)
-- `ai-estimate-from-interview` uses frontend-provided activities (no semantic retrieval)
+- `ai-estimate-from-interview` uses server-fetched activities filtered by techCategory (no semantic retrieval)
 - `ai-bulk-estimate-with-answers` uses frontend-provided activities (no semantic retrieval)
 - `ai-check-duplicates` returns `hasDuplicates: false`
 - RAG (historical learning) is skipped in all endpoints
@@ -900,10 +950,12 @@ The following estimation endpoints automatically use vector search when enabled:
 |----------|---------------|-----|----------|
 | `ai-suggest` | ✅ Top-30 similar activities | ✅ Historical requirements | Category filter |
 | `ai-generate-preset` | ✅ Top-40 similar activities | ✅ Existing technologies (history lookup) | Category filter |
-| `ai-estimate-from-interview` | ✅ Top-20 similar activities | ✅ Historical requirements | Frontend-provided activities |
+| `ai-estimate-from-interview` | ✅ Top-20 similar activities | ✅ Historical requirements | Server-side Supabase fetch → client-provided fallback |
 | `ai-bulk-estimate-with-answers` | ✅ Top-25 similar activities | ❌ | Frontend-provided activities |
 
-**Question generation endpoints** (ai-requirement-interview, ai-generate-questions, ai-bulk-interview) do not use vector search as they don't involve activity retrieval.
+**Question generation endpoints** (ai-generate-questions, ai-bulk-interview) do not use vector search as they don't involve activity retrieval.
+
+> **Note**: `ai-requirement-interview` now fetches activities server-side (Supabase) for pre-estimate anchoring, but does _not_ use vector search.
 
 ---
 

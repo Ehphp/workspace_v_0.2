@@ -15,7 +15,7 @@ import type {
     EstimationFromInterviewResponse,
     InterviewAnswer,
 } from '@/types/requirement-interview';
-import type { Activity } from '@/types/database';
+
 
 /**
  * Generate technical interview questions based on requirement description
@@ -151,7 +151,7 @@ export async function generateInterviewQuestions(
  * @returns Promise with estimation result or error
  */
 export async function generateEstimateFromInterview(
-    request: EstimationFromInterviewRequest & { activities: Activity[] }
+    request: EstimationFromInterviewRequest
 ): Promise<EstimationFromInterviewResponse> {
     // 1. Validate required fields
     if (!request.description) {
@@ -165,7 +165,12 @@ export async function generateEstimateFromInterview(
         };
     }
 
-    if (!request.answers || Object.keys(request.answers).length === 0) {
+    // Allow empty answers when preEstimate is present (SKIP path — planner
+    // decided the requirement is clear enough to estimate without questions).
+    if (
+        (!request.answers || Object.keys(request.answers).length === 0) &&
+        !request.preEstimate
+    ) {
         return {
             success: false,
             activities: [],
@@ -173,17 +178,6 @@ export async function generateEstimateFromInterview(
             reasoning: '',
             confidenceScore: 0,
             error: 'Le risposte all\'interview sono obbligatorie.',
-        };
-    }
-
-    if (!request.activities || request.activities.length === 0) {
-        return {
-            success: false,
-            activities: [],
-            totalBaseDays: 0,
-            reasoning: '',
-            confidenceScore: 0,
-            error: 'Il catalogo delle attività è obbligatorio.',
         };
     }
 
@@ -196,17 +190,7 @@ export async function generateEstimateFromInterview(
         ? { Authorization: `Bearer ${session.access_token}` }
         : {};
 
-    // 4. Format activities for API
-    const formattedActivities = request.activities.map(a => ({
-        code: a.code,
-        name: a.name,
-        description: a.description || '',
-        base_hours: a.base_hours,
-        group: a.group,
-        tech_category: a.tech_category,
-    }));
-
-    // 5. Call backend endpoint
+    // 4. Call backend endpoint
     try {
         const response = await fetch(buildFunctionUrl('ai-estimate-from-interview'), {
             method: 'POST',
@@ -219,12 +203,12 @@ export async function generateEstimateFromInterview(
                 techPresetId: request.techPresetId,
                 techCategory: request.techCategory,
                 answers: request.answers,
-                activities: formattedActivities,
                 projectContext: request.projectContext,
+                preEstimate: request.preEstimate,
             }),
         });
 
-        // 6. Handle HTTP errors
+        // 5. Handle HTTP errors
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
 
@@ -238,7 +222,7 @@ export async function generateEstimateFromInterview(
             };
         }
 
-        // 7. Parse and return response
+        // 6. Parse and return response
         const data = await response.json();
 
         console.log('[requirement-interview-api] Estimate generated:', {
@@ -263,10 +247,15 @@ export async function generateEstimateFromInterview(
 }
 
 /**
- * Helper: Check if interview response has enough questions
+ * Helper: Check if interview response is actionable
+ * With the information-gain planner, a SKIP decision with 0 questions is valid.
  */
 export function hasValidQuestions(response: RequirementInterviewResponse): boolean {
-    return response.success && response.questions.length >= 3;
+    if (!response.success) return false;
+    // SKIP decision means we can proceed without questions
+    if (response.decision === 'SKIP') return true;
+    // ASK decision or legacy response (no decision field): need >= 1 question
+    return response.questions.length >= 1;
 }
 
 /**

@@ -42,10 +42,11 @@ export interface RAGContext {
 
 /**
  * Get Supabase client for RAG queries
+ * Uses service role key to bypass RLS (server-side trusted context)
  */
 function getSupabaseClient(): SupabaseClient | null {
     const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
         return null;
@@ -76,7 +77,7 @@ async function fetchEstimationHistory(
             .from('estimations')
             .select(`
                 total_days,
-                base_days,
+                base_hours,
                 actual_hours,
                 estimation_activities (
                     activity_id,
@@ -125,13 +126,14 @@ async function fetchEstimationHistory(
 
         // S4-1: compute deviation when actuals are available
         const actualHours = estimation.actual_hours ?? undefined;
+        const baseDays = (estimation.base_hours ?? 0) / 8;
         const deviationPercent = (actualHours != null && estimation.total_days > 0)
             ? Math.round(((actualHours / 8 - estimation.total_days) / estimation.total_days) * 1000) / 10
             : undefined;
 
         return {
             totalDays: estimation.total_days,
-            baseDays: estimation.base_days,
+            baseDays,
             activities,
             techPresetName,
             actualHours,
@@ -189,11 +191,13 @@ export async function retrieveRAGContext(
 
         for (const req of similarReqs) {
             if (req.similarity < MIN_SIMILARITY_FOR_RAG) {
+                console.log(`[rag] Skipping req ${req.req_id || req.id} — similarity ${(req.similarity * 100).toFixed(1)}% < threshold ${MIN_SIMILARITY_FOR_RAG * 100}%`);
                 continue; // Skip low-similarity matches
             }
 
             const history = await fetchEstimationHistory(supabase, req.id);
             if (!history || history.activities.length === 0) {
+                console.log(`[rag] Skipping req ${req.req_id || req.id} (sim ${(req.similarity * 100).toFixed(1)}%) — ${!history ? 'no estimation found' : 'estimation has 0 activities'}`);
                 continue; // Skip requirements without estimations
             }
 

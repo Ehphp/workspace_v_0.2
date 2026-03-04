@@ -62,7 +62,6 @@ export function useRequirementActions({ requirement, user, refetchRequirement }:
                     state: data.state,
                     business_owner: data.business_owner?.trim() || null,
                     technology_id: data.technology_id,
-                    updated_at: new Date().toISOString(),
                 })
                 .eq('id', requirement.id)
                 .select()
@@ -102,7 +101,6 @@ export function useRequirementActions({ requirement, user, refetchRequirement }:
                 .from('requirements')
                 .update({
                     description: description?.trim() || null,
-                    updated_at: new Date().toISOString(),
                 })
                 .eq('id', requirement.id)
                 .select()
@@ -137,7 +135,6 @@ export function useRequirementActions({ requirement, user, refetchRequirement }:
                     business_owner: data.business_owner?.trim() || null,
                     labels: data.labels,
                     technology_id: data.technology_id,
-                    updated_at: new Date().toISOString(),
                 })
                 .eq('id', requirement.id)
                 .select()

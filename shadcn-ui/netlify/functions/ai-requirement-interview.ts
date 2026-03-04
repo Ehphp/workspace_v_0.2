@@ -1,18 +1,64 @@
 /**
- * Netlify Function: AI Requirement Interview - Question Generation
- * 
- * Generates technical interview questions based on:
- * - Requirement description
- * - Selected technology preset
- * 
- * Questions are designed for technical-to-technical dialogue.
- * If the developer doesn't know an answer, they should ask the functional analyst.
- * 
+ * Netlify Function: AI Requirement Interview — Information-Gain Planner
+ *
+ * Replaces the previous "always generate 4-6 questions" approach with an
+ * **information-gain** strategy:
+ *
+ *   Round 0 (this endpoint — single LLM call):
+ *     - Pre-estimate the requirement (minHours / maxHours / confidence)
+ *     - Decide ASK or SKIP (is the interview worth the user's time?)
+ *     - If ASK: produce 1-3 high-impact questions with per-option impact scores
+ *
+ *   Round 1 (ai-estimate-from-interview, unchanged):
+ *     - After the user answers, generate the final detailed estimate.
+ *
+ * This gives:
+ *   • Simple requirements → 1 LLM call total (SKIP path)
+ *   • Complex requirements → 2 LLM calls total (ASK + estimate)
+ *
+ * Backward compatible: response still includes questions[], reasoning,
+ * estimatedComplexity, suggestedActivities.  New consumers also get
+ * decision, preEstimate, and per-question impact data.
+ *
  * POST /.netlify/functions/ai-requirement-interview
  */
 
 import { createAIHandler } from './lib/handler';
 import { getDefaultProvider } from './lib/ai/openai-client';
+import {
+    fetchActivitiesServerSide,
+    selectTopActivities,
+    formatActivitiesSummary,
+} from './lib/activities';
+import { retrieveRAGContext, getRAGSystemPromptAddition } from './lib/ai/rag';
+import { isVectorSearchEnabled } from './lib/ai/vector-search';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Configuration (tunable via env)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Minimum confidence to allow skipping the interview */
+const SKIP_CONFIDENCE_THRESHOLD = Number(process.env.AI_INTERVIEW_SKIP_CONFIDENCE ?? 0.90);
+
+/** Maximum range (hours) to allow skipping — even if confidence is high,
+ *  a wide range suggests the model is uncertain and should ASK. */
+const SKIP_MAX_RANGE_HOURS = Number(process.env.AI_INTERVIEW_SKIP_RANGE ?? 16);
+
+/** Minimum expectedRangeReductionPct for a question to be worth asking */
+const MIN_IMPACT_PCT = Number(process.env.AI_INTERVIEW_MIN_IMPACT ?? 15);
+
+/** Maximum questions to include in the planner output */
+const MAX_QUESTIONS = 3;
+
+/** Minimum similarity to inject historical examples into the planner prompt */
+const RAG_MIN_SIMILARITY = Number(process.env.AI_INTERVIEW_RAG_MIN_SIMILARITY ?? 0.60);
+
+/** Similarity threshold to force SKIP (very close historical match) */
+const RAG_AUTO_SKIP_SIMILARITY = Number(process.env.AI_INTERVIEW_RAG_SKIP_SIMILARITY ?? 0.85);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface ProjectContext {
     name: string;
@@ -27,206 +73,125 @@ interface RequestBody {
     projectContext?: ProjectContext;
 }
 
-/**
- * System prompt for generating technical interview questions
- */
-const SYSTEM_PROMPT = `Sei un Tech Lead esperto specializzato in {TECH_CATEGORY}.
-Genera 4-6 domande TECNICHE SPECIFICHE per questa tecnologia per stimare correttamente il requisito.
+// ─────────────────────────────────────────────────────────────────────────────
+// System Prompt (Information-Gain Planner)
+// ─────────────────────────────────────────────────────────────────────────────
 
-STACK TECNOLOGICO SELEZIONATO: {TECH_CATEGORY}
-Le tue domande DEVONO essere specifiche per questa tecnologia, non generiche!
+const SYSTEM_PROMPT = `Sei un Tech Lead esperto specializzato in {TECH_CATEGORY}.
+Devi analizzare un requisito software e decidere se servono domande chiarificatrici
+per produrre una stima accurata oppure se puoi già stimare con sufficiente confidenza.
+
+STACK TECNOLOGICO: {TECH_CATEGORY}
 
 {TECH_SPECIFIC_QUESTIONS}
 
-REGOLE FONDAMENTALI:
-1. Domande DA TECNICO A TECNICO - usa terminologia specifica di {TECH_CATEGORY}
-2. Se lo sviluppatore non sa rispondere, significa che deve chiedere chiarimenti al funzionale
-3. Ogni domanda deve avere impatto MISURABILE e DIRETTO sulla stima
-4. Sii SPECIFICO per questo requisito e questa tecnologia
-5. Genera tra 4 e 6 domande (non di più per non rallentare il processo)
-6. NON fare domande generiche - ogni domanda deve menzionare componenti/tool specifici di {TECH_CATEGORY}
+HAI A DISPOSIZIONE IL CATALOGO ATTIVITÀ (codice, nome, ore base).
+Usalo per ancorare la tua pre-stima a ore realistiche.
 
-⚠️ REGOLA CRITICA: EVITA DOMANDE APERTE!
-- NON usare type "text" - le domande aperte rallentano l'utente e sono vaghe
-- Usa SEMPRE scelte predefinite: single-choice, multiple-choice, range
-- Se pensi serva una domanda aperta, trasformala in multiple-choice con opzioni comuni
+═══════════════════════════════════════════════════
+FASE 1 — PRE-STIMA (obbligatoria)
+═══════════════════════════════════════════════════
+Analizza il requisito + il catalogo attività e produci:
+- minHours: stima ottimistica (caso migliore ragionevole)
+- maxHours: stima pessimistica (caso peggiore ragionevole)
+- confidence: 0.0-1.0 — quanto sei sicuro che il range copra la realtà
 
-FORMATO OUTPUT (JSON):
-{
-  "questions": [
-    {
-      "id": "q1_specifico_tecnologia",
-      "type": "single-choice" | "multiple-choice" | "range",
-      "category": "INTEGRATION" | "DATA" | "SECURITY" | "PERFORMANCE" | "UI_UX" | "ARCHITECTURE" | "TESTING" | "DEPLOYMENT",
-      "question": "Domanda SPECIFICA per {TECH_CATEGORY}",
-      "technicalContext": "Perché questo impatta {TECH_CATEGORY} specificamente",
-      "impactOnEstimate": "Come cambia la stima in termini di attività {TECH_CATEGORY}",
-      "options": [{"id": "opt1", "label": "Opzione tecnica", "description": "Impatto specifico"}],
-      "required": true,
-      "min": null, "max": null, "step": null, "unit": null
-    }
-  ],
-  "reasoning": "Spiegazione di perché queste domande sono rilevanti per {TECH_CATEGORY}",
-  "estimatedComplexity": "LOW" | "MEDIUM" | "HIGH",
-  "suggestedActivities": []
-}
+═══════════════════════════════════════════════════
+FASE 2 — DECISIONE (ASK o SKIP)
+═══════════════════════════════════════════════════
+Decidi "SKIP" (vai direttamente alla stima finale) SE:
+- confidence >= 0.90 E
+- (maxHours - minHours) <= 16
+Oppure se sono presenti ESEMPI STORICI con similarità >= 85%
+(il requisito è già stato stimato in passato con risultati simili).
+Altrimenti decidi "ASK".
 
-TIPI DI DOMANDA CONSENTITI (⛔ NO "text"):
-- single-choice: Per decisioni tecniche binarie o con poche opzioni (2-5 opzioni)
-- multiple-choice: Per selezione multipla di componenti/pattern/requisiti (3+ opzioni)
-- range: Per quantità numeriche (con min, max, step, unit)
+═══════════════════════════════════════════════════
+FASE 3 — DOMANDE con INFORMATION GAIN (solo se ASK)
+═══════════════════════════════════════════════════
+Proponi domande SOLO SE riducono significativamente l'incertezza della stima.
 
-IMPORTANTE:
-- Ogni opzione deve riflettere scelte implementative reali in {TECH_CATEGORY}
-- Per campi non usati (es. min/max per single-choice), metti null
-- Il campo "required" deve essere true per domande critiche
-- Fornisci SEMPRE almeno 2 opzioni per single-choice e 3+ per multiple-choice`;
+Per ogni domanda:
+1. Stima quanto la risposta restringerebbe o sposterebbe il range della pre-stima
+2. Calcola expectedRangeReductionPct (percentuale attesa di riduzione del range)
+3. Assegna importance: "high" (>= 30%), "medium" (15-29%), "low" (< 15%)
+4. Includi la domanda SOLO se expectedRangeReductionPct >= 15
 
-/**
- * Technology-specific question templates
- */
+REGOLE DOMANDE:
+- Massimo 3 domande (le più impattanti sulla stima)
+- Domande DA TECNICO A TECNICO — terminologia specifica di {TECH_CATEGORY}
+- ⛔ NO type "text" — solo single-choice, multiple-choice, range
+- Ogni opzione deve riflettere scelte implementative reali
+- Per single-choice: 2-5 opzioni. Per multiple-choice: 3+ opzioni
+- Per campi non usati (es. min/max per single-choice), usa null
+- Ordina le domande per expectedRangeReductionPct decrescente`;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Technology-specific guidance
+// ─────────────────────────────────────────────────────────────────────────────
+
 const TECH_SPECIFIC_PROMPTS: Record<string, string> = {
     'POWER_PLATFORM': `
-DOMANDE SPECIFICHE POWER PLATFORM:
-
-DATAVERSE (DATA):
-- Quante nuove tabelle/entità Dataverse servono?
-- Quanti campi custom per tabella? (few: 1-5, medium: 6-15, many: 15+)
-- Servono lookup/relazioni tra tabelle? Quante?
-- È necessaria migrazione dati da Excel/sistemi legacy?
-- Ci sono requisiti di row-level security (business units)?
-
-POWER APPS - CANVAS/MODEL-DRIVEN (UI_UX):
-- Canvas App o Model-Driven App?
-- Quante schermate/form sono necessarie?
-- Complessità form: campi semplici, validazioni condizionali, tab multipli?
-- Servono componenti custom (PCF)?
-- Integrazione con altri sistemi dalla UI (API calls)?
-
-POWER AUTOMATE (INTEGRATION):
-- Quanti flussi sono necessari?
-- Flussi trigger-based o scheduled?
-- Integrazioni con altri sistemi? Quali connettori?
-- Servono approval workflow?
-- Gestione errori/retry necessaria?
-
-BUSINESS RULES & LOGIC:
-- Quante Business Rules Dataverse?
-- Servono Plugin/Custom Actions?
-- JavaScript/TypeScript form scripting necessario?
-- Calculated/Rollup fields?
-
-TESTING & DEPLOY (TESTING/DEPLOYMENT):
-- Quanti ambienti (Dev/Test/UAT/Prod)?
-- Solution managed o unmanaged?
-- Test automation possibile? Test manuale richiesto?
-- Rollback strategy necessaria?`,
+AREE TIPICHE DI INCERTEZZA PER POWER PLATFORM:
+- Dataverse: numero tabelle/entità, campi custom, relazioni, migrazione dati, row-level security
+- Power Apps: Canvas vs Model-Driven, numero schermate/form, componenti custom (PCF)
+- Power Automate: numero flussi, trigger vs scheduled, connettori esterni, approval workflow
+- Business Rules: Plugin/Custom Actions, JavaScript form scripting
+- Deploy: numero ambienti, solution managed/unmanaged`,
 
     'BACKEND': `
-DOMANDE SPECIFICHE BACKEND (.NET/API):
-
-API DESIGN (ARCHITECTURE):
-- Quanti nuovi endpoint API?
-- REST, GraphQL, gRPC?
-- Autenticazione: JWT, OAuth2, API Key?
-- Versionamento API necessario?
-
-DATABASE (DATA):
-- Nuove tabelle/migrazioni EF Core?
-- Query complesse? Stored procedures?
-- Caching strategy (Redis, Memory Cache)?
-- Read replica necessaria?
-
-INTEGRATION (INTEGRATION):
-- Servizi esterni da chiamare?
-- Message queue (RabbitMQ, Azure Service Bus)?
-- Event-driven architecture?
-- Retry/Circuit breaker pattern?
-
-BUSINESS LOGIC:
-- Complessità logica di business (semplice CRUD vs. orchestrazione)?
-- Validazioni complesse?
-- Background jobs/workers?
-
-TESTING (TESTING):
-- Unit test coverage target?
-- Integration tests necessari?
-- Load/performance testing?
-
-DEPLOY (DEPLOYMENT):
-- Azure, AWS, on-premise?
-- Containerizzato (Docker/K8s)?
-- CI/CD pipeline da configurare?`,
+AREE TIPICHE DI INCERTEZZA PER BACKEND (.NET/API):
+- API Design: numero endpoint, REST/GraphQL/gRPC, autenticazione (JWT/OAuth2)
+- Database: nuove tabelle/migrazioni EF Core, stored procedures, caching (Redis)
+- Integration: servizi esterni, message queue, event-driven, circuit breaker
+- Business Logic: CRUD semplice vs orchestrazione complessa, background jobs
+- Deploy: Azure/AWS/on-premise, container, CI/CD`,
 
     'FRONTEND': `
-DOMANDE SPECIFICHE FRONTEND (React/Vue/Angular):
-
-UI COMPONENTS (UI_UX):
-- Quante nuove pagine/viste?
-- Complessità form (campi, validazioni, stepper)?
-- Design system esistente o da creare?
-- Responsive/mobile-first?
-- Accessibilità (WCAG) richiesta?
-
-STATE MANAGEMENT (ARCHITECTURE):
-- Store globale necessario (Redux, Zustand)?
-- Complessità stato locale vs globale?
-- Caching client-side?
-- Ottimistic updates?
-
-API INTEGRATION (INTEGRATION):
-- Quante API da integrare?
-- Real-time updates (WebSocket, SSE)?
-- Error handling/retry?
-- Loading states complessi?
-
-TESTING (TESTING):
-- Unit test componenti?
-- E2E testing (Cypress, Playwright)?
-- Visual regression testing?
-
-BUILD & DEPLOY (DEPLOYMENT):
-- SSR necessario?
-- CDN/hosting?
-- Bundle optimization?`,
+AREE TIPICHE DI INCERTEZZA PER FRONTEND (React/Vue/Angular):
+- UI: numero pagine/viste, complessità form, design system, responsive, WCAG
+- State: store globale (Redux/Zustand), caching client-side, optimistic updates
+- API: numero integrazioni, real-time (WebSocket/SSE), error handling
+- Testing: unit test componenti, E2E (Cypress/Playwright), visual regression
+- Build: SSR, CDN, bundle optimization`,
 
     'MULTI': `
-DOMANDE PER PROGETTI MULTI-STACK:
-
-ARCHITETTURA GENERALE (ARCHITECTURE):
-- Quanti layer/componenti coinvolti?
-- Comunicazione sync o async tra componenti?
-- API gateway necessario?
-
-COORDINAMENTO (INTEGRATION):
-- Quanti team coinvolti?
-- Contratti API da definire?
-- Dipendenze tra componenti?
-
-TESTING (TESTING):
-- Test E2E cross-system?
-- Environment di integrazione?
-- Test data management?`,
+AREE TIPICHE DI INCERTEZZA PER PROGETTI MULTI-STACK:
+- Architettura: numero layer/componenti, comunicazione sync/async, API gateway
+- Coordinamento: team coinvolti, contratti API, dipendenze tra componenti
+- Testing: E2E cross-system, environment di integrazione`,
 };
 
-/**
- * Get tech-specific prompt section
- */
 function getTechSpecificPrompt(techCategory: string): string {
     return TECH_SPECIFIC_PROMPTS[techCategory] || TECH_SPECIFIC_PROMPTS['MULTI'];
 }
 
-/**
- * JSON Schema for structured output
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// JSON Schema for Structured Output (OpenAI strict mode)
+// ─────────────────────────────────────────────────────────────────────────────
+
 const RESPONSE_SCHEMA = {
     type: 'json_schema' as const,
     json_schema: {
-        name: 'technical_interview_response',
+        name: 'interview_plan_response',
         strict: true,
         schema: {
             type: 'object',
             properties: {
+                decision: {
+                    type: 'string',
+                    enum: ['ASK', 'SKIP'],
+                },
+                preEstimate: {
+                    type: 'object',
+                    properties: {
+                        minHours: { type: 'number' },
+                        maxHours: { type: 'number' },
+                        confidence: { type: 'number' },
+                    },
+                    required: ['minHours', 'maxHours', 'confidence'],
+                    additionalProperties: false,
+                },
                 questions: {
                     type: 'array',
                     items: {
@@ -235,11 +200,14 @@ const RESPONSE_SCHEMA = {
                             id: { type: 'string' },
                             type: {
                                 type: 'string',
-                                enum: ['single-choice', 'multiple-choice', 'range']
+                                enum: ['single-choice', 'multiple-choice', 'range'],
                             },
                             category: {
                                 type: 'string',
-                                enum: ['INTEGRATION', 'DATA', 'SECURITY', 'PERFORMANCE', 'UI_UX', 'ARCHITECTURE', 'TESTING', 'DEPLOYMENT']
+                                enum: [
+                                    'INTEGRATION', 'DATA', 'SECURITY', 'PERFORMANCE',
+                                    'UI_UX', 'ARCHITECTURE', 'TESTING', 'DEPLOYMENT',
+                                ],
                             },
                             question: { type: 'string' },
                             technicalContext: { type: 'string' },
@@ -251,41 +219,61 @@ const RESPONSE_SCHEMA = {
                                     properties: {
                                         id: { type: 'string' },
                                         label: { type: 'string' },
-                                        description: { type: 'string' }
+                                        description: { type: 'string' },
                                     },
                                     required: ['id', 'label', 'description'],
-                                    additionalProperties: false
-                                }
+                                    additionalProperties: false,
+                                },
                             },
                             required: { type: 'boolean' },
                             min: { type: ['number', 'null'] },
                             max: { type: ['number', 'null'] },
                             step: { type: ['number', 'null'] },
-                            unit: { type: ['string', 'null'] }
+                            unit: { type: ['string', 'null'] },
+                            impact: {
+                                type: 'object',
+                                properties: {
+                                    expectedRangeReductionPct: { type: 'number' },
+                                    importance: {
+                                        type: 'string',
+                                        enum: ['high', 'medium', 'low'],
+                                    },
+                                },
+                                required: ['expectedRangeReductionPct', 'importance'],
+                                additionalProperties: false,
+                            },
                         },
-                        required: ['id', 'type', 'category', 'question', 'technicalContext', 'impactOnEstimate', 'required', 'options', 'min', 'max', 'step', 'unit'],
-                        additionalProperties: false
-                    }
+                        required: [
+                            'id', 'type', 'category', 'question', 'technicalContext',
+                            'impactOnEstimate', 'required', 'options',
+                            'min', 'max', 'step', 'unit', 'impact',
+                        ],
+                        additionalProperties: false,
+                    },
                 },
                 reasoning: { type: 'string' },
                 estimatedComplexity: {
                     type: 'string',
-                    enum: ['LOW', 'MEDIUM', 'HIGH']
+                    enum: ['LOW', 'MEDIUM', 'HIGH'],
                 },
                 suggestedActivities: {
                     type: 'array',
-                    items: { type: 'string' }
-                }
+                    items: { type: 'string' },
+                },
             },
-            required: ['questions', 'reasoning', 'estimatedComplexity', 'suggestedActivities'],
-            additionalProperties: false
-        }
-    }
+            required: [
+                'decision', 'preEstimate', 'questions',
+                'reasoning', 'estimatedComplexity', 'suggestedActivities',
+            ],
+            additionalProperties: false,
+        },
+    },
 };
 
-/**
- * Map tech category to human-readable description
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Tech Category Descriptions
+// ─────────────────────────────────────────────────────────────────────────────
+
 function getTechCategoryDescription(category: string): string {
     const descriptions: Record<string, string> = {
         'BACKEND': 'Backend .NET/API (C#, ASP.NET Core, Entity Framework)',
@@ -302,9 +290,12 @@ function getTechCategoryDescription(category: string): string {
         'SHAREPOINT': 'SharePoint / Microsoft 365',
         'MULTI': 'Multi-technology / Cross-platform',
     };
-
     return descriptions[category] || category;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Handler
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const handler = createAIHandler<RequestBody>({
     name: 'ai-requirement-interview',
@@ -322,22 +313,86 @@ export const handler = createAIHandler<RequestBody>({
     },
 
     handler: async (body, ctx) => {
+        const pipelineStart = Date.now();
         const sanitizedDescription = ctx.sanitize(body.description);
 
         if (sanitizedDescription.length < 15) {
             throw new Error('La descrizione deve contenere almeno 15 caratteri.');
         }
-
         if (sanitizedDescription.length > 2000) {
             throw new Error('La descrizione è troppo lunga (max 2000 caratteri).');
         }
 
-        // Initialize LLM provider with extended timeout
-        const provider = getDefaultProvider();
         const techCategoryDescription = getTechCategoryDescription(body.techCategory);
         const techSpecificPrompt = getTechSpecificPrompt(body.techCategory);
 
-        // Build project context section for the prompt
+        // ─── Fetch activities server-side (needed for pre-estimate) ─────────
+        const fetchResult = await fetchActivitiesServerSide(
+            body.techCategory,
+            body.techPresetId,
+        );
+
+        // Rank activities by description keywords (no answers yet in Round 0)
+        const rankedActivities = selectTopActivities(
+            fetchResult.activities,
+            sanitizedDescription,
+            undefined,
+            20,
+        );
+
+        const activitiesSummary = rankedActivities.length > 0
+            ? formatActivitiesSummary(rankedActivities)
+            : '(nessuna attività disponibile — stima senza catalogo)';
+
+        // ─── RAG: search for similar historical requirements ────────────
+        let ragFragment = '';
+        let ragTopSimilarity = 0;
+        let ragExampleCount = 0;
+        let ragMs = 0;
+
+        if (isVectorSearchEnabled()) {
+            try {
+                const ragContext = await retrieveRAGContext(sanitizedDescription, ctx.userId);
+                ragMs = ragContext.searchLatencyMs;
+                ragExampleCount = ragContext.examples.length;
+                if (ragContext.hasExamples) {
+                    ragTopSimilarity = Math.max(...ragContext.examples.map(e => e.similarity));
+                    // Only include examples above the planner threshold
+                    const relevant = ragContext.examples.filter(e => e.similarity >= RAG_MIN_SIMILARITY);
+                    if (relevant.length > 0) {
+                        ragFragment = ragContext.promptFragment;
+                        console.log(`[ai-requirement-interview] RAG: ${relevant.length} historical examples (top similarity: ${Math.round(ragTopSimilarity * 100)}%)`);
+                    }
+                }
+            } catch (ragErr) {
+                console.warn('[ai-requirement-interview] RAG search failed (non-blocking):', ragErr instanceof Error ? ragErr.message : ragErr);
+            }
+        }
+
+        console.log('[ai-requirement-interview] Planner starting:', {
+            descriptionLength: sanitizedDescription.length,
+            techCategory: body.techCategory,
+            techPresetId: body.techPresetId,
+            hasProjectContext: !!body.projectContext,
+            activitiesFetched: fetchResult.activities.length,
+            activitiesRanked: rankedActivities.length,
+            activitiesSource: fetchResult.source,
+            fetchMs: fetchResult.fetchMs,
+            ragExamples: ragExampleCount,
+            ragTopSimilarity: Math.round(ragTopSimilarity * 100),
+            ragMs,
+        });
+
+        // ─── Build prompts ──────────────────────────────────────────────────
+        let systemPromptFull = SYSTEM_PROMPT
+            .replace(/{TECH_CATEGORY}/g, techCategoryDescription)
+            .replace('{TECH_SPECIFIC_QUESTIONS}', techSpecificPrompt);
+
+        // Append RAG learning instructions if we have historical examples
+        if (ragFragment) {
+            systemPromptFull += '\n' + getRAGSystemPromptAddition();
+        }
+
         let projectContextSection = '';
         if (body.projectContext) {
             projectContextSection = `
@@ -345,83 +400,147 @@ CONTESTO PROGETTO (informazioni già note, NON chiedere domande su questi aspett
 - Nome progetto: ${body.projectContext.name}
 - Descrizione progetto: ${body.projectContext.description}
 ${body.projectContext.owner ? `- Responsabile: ${body.projectContext.owner}` : ''}
-
-IMPORTANTE: Non fare domande su informazioni già presenti nel contesto del progetto.
-Le tue domande devono concentrarsi SOLO sugli aspetti specifici di QUESTO requisito
-che non sono già chiari dalla descrizione del progetto.
 `;
         }
 
-        console.log('[ai-requirement-interview] Generating questions for:', {
-            descriptionLength: sanitizedDescription.length,
-            techCategory: body.techCategory,
-            techPresetId: body.techPresetId,
-            hasProjectContext: !!body.projectContext,
-        });
-
-        // Build system prompt with tech category and specific questions
-        const systemPromptWithCategory = SYSTEM_PROMPT
-            .replace(/{TECH_CATEGORY}/g, techCategoryDescription)
-            .replace('{TECH_SPECIFIC_QUESTIONS}', techSpecificPrompt);
-
-        // Build user prompt with optional project context
-        const userPrompt = body.projectContext
-            ? `${projectContextSection}
+        const userPrompt = `${projectContextSection}
 STACK: ${techCategoryDescription}
 
-Requisito da stimare:
+CATALOGO ATTIVITÀ DISPONIBILI (per ancorare la pre-stima):
+${activitiesSummary}
+${ragFragment ? `\n${ragFragment}` : ''}
+REQUISITO DA STIMARE:
 ${sanitizedDescription}
 
-Genera domande tecniche SPECIFICHE per ${techCategoryDescription} che chiariscono SOLO gli aspetti implementativi NON già coperti dal contesto del progetto.`
-            : `STACK: ${techCategoryDescription}
+Analizza il requisito, produci una pre-stima (minHours/maxHours/confidence), decidi ASK o SKIP, e se ASK genera max ${MAX_QUESTIONS} domande ad alto impatto informativo.${ragTopSimilarity >= RAG_AUTO_SKIP_SIMILARITY ? '\n\nNOTA: Esistono esempi storici molto simili (>85%). Considera fortemente SKIP se il requisito è sostanzialmente equivalente.' : ''}`;
 
-Requisito da stimare:
-${sanitizedDescription}
-
-Genera domande tecniche SPECIFICHE per ${techCategoryDescription} che chiariscono gli aspetti implementativi.`;
-
-        console.log('[ai-requirement-interview] Calling OpenAI API...');
+        // ─── Call LLM ───────────────────────────────────────────────────────
+        const provider = getDefaultProvider();
         const startTime = Date.now();
 
-        // Call LLM with deterministic settings
         const responseContent = await provider.generateContent({
             model: 'gpt-4o',
             temperature: 0,
-            maxTokens: 3000, // 4-6 structured questions with options need ~2000-2500 tokens
+            maxTokens: 4500, // More room for preEstimate + impact per question
             options: { timeout: 55000 },
-            systemPrompt: systemPromptWithCategory,
+            systemPrompt: systemPromptFull,
             userPrompt: userPrompt,
             responseFormat: RESPONSE_SCHEMA as any,
         });
 
-        console.log(`[ai-requirement-interview] LLM responded in ${Date.now() - startTime}ms`);
+        const llmMs = Date.now() - startTime;
+        console.log(`[ai-requirement-interview] LLM responded in ${llmMs}ms`);
 
-        // Parse response
         if (!responseContent) {
             throw new Error('Empty response from LLM');
         }
 
         const result = JSON.parse(responseContent);
 
-        // Validate we got questions
-        if (!result.questions || result.questions.length === 0) {
-            throw new Error('No questions generated');
+        // ─── Server-side decision enforcement ───────────────────────────────
+        // Apply conservative stop rule server-side regardless of model output:
+        //   SKIP only if confidence >= threshold AND range <= max allowed
+        const range = result.preEstimate.maxHours - result.preEstimate.minHours;
+        const modelDecision: string = result.decision;
+        let enforcedDecision: 'ASK' | 'SKIP' = modelDecision as 'ASK' | 'SKIP';
+
+        if (modelDecision === 'SKIP') {
+            // Allow SKIP if RAG found a very close historical match, even if
+            // the model's confidence/range wouldn't normally pass the threshold.
+            const ragBoost = ragTopSimilarity >= RAG_AUTO_SKIP_SIMILARITY;
+            if (!ragBoost && (result.preEstimate.confidence < SKIP_CONFIDENCE_THRESHOLD || range > SKIP_MAX_RANGE_HOURS)) {
+                console.log(
+                    '[ai-requirement-interview] Overriding SKIP→ASK (confidence=%s, range=%sh, ragBoost=%s)',
+                    result.preEstimate.confidence.toFixed(2), range, ragBoost,
+                );
+                enforcedDecision = 'ASK';
+            } else if (ragBoost) {
+                console.log(
+                    '[ai-requirement-interview] SKIP preserved (RAG boost: top similarity=%s%%)',
+                    Math.round(ragTopSimilarity * 100),
+                );
+            }
         }
 
-        // Log success
-        console.log('[ai-requirement-interview] Generated:', {
-            questionCount: result.questions.length,
-            categories: [...new Set(result.questions.map((q: any) => q.category))],
+        // Server-side auto-SKIP: if RAG found a very close match AND the model said ASK,
+        // but the pre-estimate confidence is still decent (>= 0.75), override to SKIP.
+        if (enforcedDecision === 'ASK' && ragTopSimilarity >= RAG_AUTO_SKIP_SIMILARITY && result.preEstimate.confidence >= 0.75) {
+            console.log(
+                '[ai-requirement-interview] RAG auto-SKIP override (ASK→SKIP, similarity=%s%%, confidence=%s)',
+                Math.round(ragTopSimilarity * 100), result.preEstimate.confidence.toFixed(2),
+            );
+            enforcedDecision = 'SKIP';
+        }
+
+        // If decision flipped to ASK but model produced no questions,
+        // fall back to SKIP rather than leaving the user stuck.
+        if (enforcedDecision === 'ASK' && (!result.questions || result.questions.length === 0)) {
+            console.warn('[ai-requirement-interview] ASK but no questions — falling back to SKIP');
+            enforcedDecision = 'SKIP';
+        }
+
+        // Filter questions by MIN_IMPACT_PCT (server-side guard)
+        let filteredQuestions = (result.questions || []).filter(
+            (q: any) => q.impact?.expectedRangeReductionPct >= MIN_IMPACT_PCT,
+        );
+
+        // Cap at MAX_QUESTIONS
+        filteredQuestions = filteredQuestions.slice(0, MAX_QUESTIONS);
+
+        // If ASK but all questions were filtered out, flip to SKIP
+        if (enforcedDecision === 'ASK' && filteredQuestions.length === 0) {
+            console.log('[ai-requirement-interview] All questions below impact threshold → SKIP');
+            enforcedDecision = 'SKIP';
+        }
+
+        const totalMs = Date.now() - pipelineStart;
+
+        console.log('[ai-requirement-interview] Planner result:', {
+            decision: enforcedDecision,
+            modelDecision,
+            preEstimate: result.preEstimate,
+            range,
+            questionCount: filteredQuestions.length,
+            categories: [...new Set(filteredQuestions.map((q: any) => q.category))],
             complexity: result.estimatedComplexity,
-            suggestedActivities: result.suggestedActivities?.length || 0,
+            totalMs,
+            llmMs,
+            activitiesFetchMs: fetchResult.fetchMs,
+            ragExamples: ragExampleCount,
+            ragTopSimilarity: Math.round(ragTopSimilarity * 100),
+            ragMs,
         });
 
+        // ─── Response ───────────────────────────────────────────────────────
+        // Backward-compatible: still has questions[], reasoning, etc.
+        // New fields: decision, preEstimate, per-question impact, metrics
         return {
             success: true,
-            questions: result.questions,
+            // — New information-gain fields —
+            decision: enforcedDecision,
+            preEstimate: result.preEstimate,
+            // — Questions (empty if SKIP) —
+            questions: enforcedDecision === 'SKIP' ? [] : filteredQuestions,
+            // — Backward-compatible fields —
             reasoning: result.reasoning,
             estimatedComplexity: result.estimatedComplexity,
             suggestedActivities: result.suggestedActivities || [],
+            // — Metrics —
+            metrics: {
+                totalMs,
+                llmMs,
+                activitiesFetchMs: fetchResult.fetchMs,
+                activitiesCatalogSize: fetchResult.activities.length,
+                activitiesRanked: rankedActivities.length,
+                activitiesSource: fetchResult.source,
+                questionCountRaw: (result.questions || []).length,
+                questionCountFiltered: filteredQuestions.length,
+                decisionOverridden: modelDecision !== enforcedDecision,
+                ragExamples: ragExampleCount,
+                ragTopSimilarity: Math.round(ragTopSimilarity * 100),
+                ragMs,
+                ragBoostApplied: ragTopSimilarity >= RAG_AUTO_SKIP_SIMILARITY,
+            },
         };
-    }
+    },
 });

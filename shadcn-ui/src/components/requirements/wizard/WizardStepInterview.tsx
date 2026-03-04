@@ -49,7 +49,7 @@ export function WizardStepInterview({
             // Already have questions, restore state
             setPhase('interviewing');
         } else if (data.description && data.techPresetId && data.techCategory) {
-            // Need to generate questions
+            // Need to generate questions (or get SKIP decision)
             generateQuestions();
         }
     }, []);
@@ -58,23 +58,62 @@ export function WizardStepInterview({
         setPhase('loading');
         setLocalError(null);
 
-        const success = await interview.generateQuestions(
+        const result = await interview.generateQuestions(
             data.description,
             data.techPresetId,
             data.techCategory,
             data.projectContext
         );
 
-        if (success) {
-            // Save questions to wizard state
+        if (result.success) {
+            // Save questions + planner data to wizard state
+            // Use data from return value (not stale React state)
             onUpdate({
-                interviewQuestions: interview.questions,
-                interviewReasoning: interview.reasoning,
-                estimatedComplexity: interview.estimatedComplexity,
+                interviewQuestions: result.questions,
+                interviewReasoning: result.reasoning,
+                estimatedComplexity: result.estimatedComplexity,
+                preEstimate: result.preEstimate,
+                plannerDecision: result.decision,
             });
-            setPhase('interviewing');
+
+            // If planner decided SKIP, go directly to estimation
+            if (result.decision === 'SKIP') {
+                console.log('[WizardStepInterview] Planner SKIP — generating estimate directly');
+                setPhase('generating');
+                await handleSkipToEstimate();
+            } else {
+                setPhase('interviewing');
+            }
         } else {
             setLocalError(interview.error || 'Failed to generate interview questions');
+            setPhase('error');
+        }
+    }, [data.description, data.techPresetId, data.techCategory, interview, onUpdate]);
+
+    /** Handle SKIP path: generate estimate immediately without interview answers */
+    const handleSkipToEstimate = useCallback(async () => {
+        const result = await interview.generateEstimate(
+            data.description,
+            data.techPresetId,
+            data.techCategory,
+            data.projectContext
+        );
+
+        if (result && result.success) {
+            const activityCodes = result.activities.map(a => a.code);
+            onUpdate({
+                title: result.generatedTitle || undefined,
+                selectedActivityCodes: activityCodes,
+                aiSuggestedActivityCodes: activityCodes,
+                activityBreakdown: result.activities,
+                suggestedDrivers: result.suggestedDrivers,
+                suggestedRisks: result.suggestedRisks,
+                confidenceScore: result.confidenceScore,
+                aiAnalysis: result.reasoning,
+            });
+            setPhase('result');
+        } else {
+            setLocalError(result?.error || interview.error || 'Failed to generate estimate');
             setPhase('error');
         }
     }, [data.description, data.techPresetId, data.techCategory, interview, onUpdate]);

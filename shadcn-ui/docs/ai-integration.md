@@ -218,32 +218,57 @@ return {
 
 ## AI Interview System
 
-The interview system enables more accurate activity selection by gathering technical context through targeted questions.
+The interview system enables more accurate activity selection by gathering technical context through targeted questions. It uses an **information-gain planner** to minimize unnecessary questions.
 
 ### Single-Requirement Interview
 
-A two-step flow for estimating individual requirements with higher precision.
+A 1–2 step flow for estimating individual requirements. The planner decides whether questions are worth asking.
 
-**Step 1: Generate Questions**
+**Round 0: Interview Planner (1 LLM call)**
 
 | Property | Value |
 |----------|-------|
 | Endpoint | `POST /.netlify/functions/ai-requirement-interview` |
-| Input | `description`, `technologyId`, `techCategory`, `projectContext?` |
-| Output | `questions[]`, `reasoning`, `estimatedComplexity` |
+| Input | `description`, `techPresetId`, `techCategory`, `projectContext?` |
+| Output | `decision`, `preEstimate`, `questions[]`, `reasoning`, `estimatedComplexity` |
 
-Questions are technology-specific (e.g., Dataverse entities, Power Automate flows) and use structured response types:
+The planner performs three steps in a single LLM call:
+1. **Pre-estimate** the requirement (minHours / maxHours / confidence) anchored to the activity catalog
+2. **Decide ASK or SKIP** — if confidence ≥ 0.90 and range ≤ 16h, the interview is skipped
+3. **Rank questions by information gain** — only questions with ≥ 15% expected range reduction are included (max 3)
+
+**RAG-boosted SKIP** (Sprint 4): Before the LLM call, the planner searches for similar historical requirements via `retrieveRAGContext()`. If a match with ≥ 85% similarity is found:
+- Historical examples are injected into the prompt so the model has calibration data
+- The server-side decision enforcement allows SKIP even if the model's confidence/range wouldn't normally qualify
+- If the model still says ASK but confidence ≥ 0.75 and a ≥ 85% match exists, the server overrides to SKIP
+
+| Env Variable | Default | Description |
+|-------------|---------|-------------|
+| `AI_INTERVIEW_RAG_MIN_SIMILARITY` | `0.60` | Min similarity to include examples in prompt |
+| `AI_INTERVIEW_RAG_SKIP_SIMILARITY` | `0.85` | Min similarity to trigger auto-SKIP boost |
+
+Response metrics include `ragExamples`, `ragTopSimilarity`, `ragMs`, and `ragBoostApplied` for observability.
+
+Questions use structured response types:
 - `single-choice`: Binary or limited options (2-5)
 - `multiple-choice`: Multi-select for components/patterns (3+)
 - `range`: Numeric values with min/max/step
 
-**Step 2: Generate Estimation**
+Each question includes `impact: { expectedRangeReductionPct, importance }` metadata.
+
+**SKIP path**: If `decision = SKIP`, the wizard bypasses the interview and goes directly to estimation. This saves the user time for simple, well-described requirements. Total: **1 LLM call**.
+
+**ASK path**: The wizard shows 1–3 high-impact questions, then proceeds to Round 1. Total: **2 LLM calls**.
+
+**Round 1: Generate Estimation**
 
 | Property | Value |
 |----------|-------|
 | Endpoint | `POST /.netlify/functions/ai-estimate-from-interview` |
-| Input | `description`, `techCategory`, `answers`, `activities[]`, `projectContext?` |
+| Input | `description`, `techCategory`, `answers`, `projectContext?`, `preEstimate?` |
 | Output | `activities[]`, `totalBaseDays`, `confidenceScore`, `suggestedDrivers[]`, `suggestedRisks[]` |
+
+The optional `preEstimate` field anchors the final estimation to the planner's initial range for coherence.
 
 Activity selection follows deterministic rules based on answers:
 - Answer indicates "simple", "few", "1-2" → `_SM` variant
@@ -258,6 +283,7 @@ Activity selection follows deterministic rules based on answers:
 | Activity variant (`_SM`/`_LG`) based on answers | `baseDays = Σ(hours) / 8` |
 | Confidence score (0.6-0.9) | `driverMultiplier`, `riskScore`, `contingency%` |
 | Suggested drivers/risks | `totalDays` calculation |
+| ASK/SKIP decision + preEstimate | Server-side threshold enforcement |
 
 ### Bulk Interview
 

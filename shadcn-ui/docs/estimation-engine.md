@@ -373,6 +373,60 @@ The export system (PDF/Excel/CSV) now includes a **Consuntivo** section when `ac
 
 ---
 
+## AI Pipeline Performance Optimizations (Quick Wins v2)
+
+The following optimizations reduce end-to-end latency for the AI estimation pipeline
+(both legacy and agentic modes) in `ai-estimate-from-interview`:
+
+### Server-Side Activity Fetch & Ranking
+
+Activities are now fetched **server-side** from Supabase (instead of being sent by the client),
+then ranked by keyword relevance and trimmed to the **top 20**. This reduces:
+- Request payload size (no more sending 100+ activities from the browser)
+- LLM prompt tokens (compact format: code, name, base_hours, truncated description)
+- Client-provided activities are used only as a fallback
+
+**Key functions**: `fetchActivitiesServerSide()`, `selectTopActivities()`, `formatActivitiesCatalog()`
+
+### Max Tokens Reduction
+
+`maxTokens` reduced from 16 384 → **4 096** (or 8 192 for reasoning models like gpt-5/o-series).
+This cuts response generation time proportionally.
+
+### Agentic Pipeline Tuning
+
+| Parameter | Before | After | Impact |
+|-----------|--------|-------|--------|
+| `MAX_TOOL_ITERATIONS` | 5 | **3** | Fewer LLM round-trips |
+| `TOOL_ITERATION_BUDGET_MS` | — | **8 000** | Per-iteration timebox guard |
+| `REFINE_TIME_BUDGET_MS` | 18 000 | **12 000** | Shorter refine window |
+| Reflection trigger | Always | **Fast-path skip** when confidence ≥ 0.85, all activities valid, ≤ 1 tool call | Skips ~40% of reflections |
+| Refine trigger | Medium + High severity | **High severity only** | Fewer unnecessary refines |
+
+### Metrics Instrumentation
+
+Both legacy and agentic pipelines now return a `metrics` object in the response:
+
+```typescript
+metrics?: {
+  totalMs: number;
+  activitiesFetchMs?: number;
+  vectorSearchMs?: number;
+  ragRetrievalMs?: number;
+  draftDurationMs?: number;
+  reflectionDurationMs?: number;
+  refineDurationMs?: number;
+  pipeline: 'legacy' | 'agentic';
+  fallbackUsed?: boolean;       // true when agentic → legacy fallback fires
+  activitiesRanked?: number;    // total activities before ranking
+  activitiesSent?: number;      // activities sent to LLM after ranking
+};
+```
+
+Use this data to measure actual latencies and decide whether Background Functions are needed.
+
+---
+
 **Update this document when**:
 - Contingency thresholds change
 - New calculation steps are added

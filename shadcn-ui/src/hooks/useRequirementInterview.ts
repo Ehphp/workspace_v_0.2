@@ -7,9 +7,7 @@
  * - Generate estimate from answers
  */
 
-import { useState, useCallback, useMemo } from 'react';
-import { supabase } from '@/lib/supabase';
-import { MOCK_ACTIVITIES } from '@/lib/mockData';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import {
     generateInterviewQuestions,
     generateEstimateFromInterview,
@@ -22,8 +20,18 @@ import type {
     EstimationFromInterviewResponse,
     SelectedActivityWithReason,
     SuggestedDriver,
+    PreEstimate,
 } from '@/types/requirement-interview';
-import type { Activity } from '@/types/database';
+
+/** Result returned by generateQuestions so callers get data synchronously */
+export interface GenerateQuestionsResult {
+    success: boolean;
+    decision?: 'ASK' | 'SKIP';
+    questions?: TechnicalQuestion[];
+    reasoning?: string;
+    estimatedComplexity?: 'LOW' | 'MEDIUM' | 'HIGH';
+    preEstimate?: PreEstimate;
+}
 
 interface UseRequirementInterviewReturn {
     // State
@@ -35,6 +43,10 @@ interface UseRequirementInterviewReturn {
     estimatedComplexity: 'LOW' | 'MEDIUM' | 'HIGH' | undefined;
     suggestedActivities: string[];
     error: string | null;
+    /** Information-gain planner decision (undefined for legacy responses) */
+    plannerDecision: 'ASK' | 'SKIP' | undefined;
+    /** Pre-estimate from Round 0 planner */
+    preEstimate: PreEstimate | undefined;
 
     // Computed
     progress: number;
@@ -54,7 +66,7 @@ interface UseRequirementInterviewReturn {
         techPresetId: string,
         techCategory: string,
         projectContext?: { name: string; description: string; owner?: string }
-    ) => Promise<boolean>;
+    ) => Promise<GenerateQuestionsResult>;
     answerQuestion: (questionId: string, value: string | string[] | number) => void;
     nextQuestion: () => void;
     previousQuestion: () => void;
@@ -89,6 +101,11 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
     const [estimatedComplexity, setEstimatedComplexity] = useState<'LOW' | 'MEDIUM' | 'HIGH' | undefined>();
     const [suggestedActivities, setSuggestedActivities] = useState<string[]>([]);
     const [error, setError] = useState<string | null>(null);
+    // Information-gain planner state
+    const [plannerDecision, setPlannerDecision] = useState<'ASK' | 'SKIP' | undefined>();
+    const [preEstimate, setPreEstimate] = useState<PreEstimate | undefined>();
+    // Ref keeps latest preEstimate accessible in closures without stale-state issues
+    const preEstimateRef = useRef<PreEstimate | undefined>();
 
     // Estimate result
     const [estimateResult, setEstimateResult] = useState<EstimationFromInterviewResponse | null>(null);
@@ -125,7 +142,7 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
         techPresetId: string,
         techCategory: string,
         projectContext?: { name: string; description: string; owner?: string }
-    ): Promise<boolean> => {
+    ): Promise<GenerateQuestionsResult> => {
         setPhase('loading-questions');
         setError(null);
 
@@ -137,25 +154,35 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
                 projectContext,
             });
 
-            if (response.success && response.questions.length > 0) {
+            if (response.success && (response.decision === 'SKIP' || response.questions.length > 0)) {
                 setQuestions(response.questions);
                 setReasoning(response.reasoning);
                 setEstimatedComplexity(response.estimatedComplexity);
                 setSuggestedActivities(response.suggestedActivities || []);
                 setCurrentQuestionIndex(0);
                 setAnswers(new Map());
+                setPlannerDecision(response.decision);
+                setPreEstimate(response.preEstimate);
+                preEstimateRef.current = response.preEstimate;
                 setPhase('interviewing');
-                return true;
+                return {
+                    success: true,
+                    decision: response.decision,
+                    questions: response.questions,
+                    reasoning: response.reasoning,
+                    estimatedComplexity: response.estimatedComplexity,
+                    preEstimate: response.preEstimate,
+                };
             } else {
                 setError(response.error || 'Impossibile generare le domande. Riprova.');
                 setPhase('error');
-                return false;
+                return { success: false };
             }
         } catch (err) {
             console.error('[useRequirementInterview] Error generating questions:', err);
             setError(err instanceof Error ? err.message : 'Errore durante la generazione delle domande.');
             setPhase('error');
-            return false;
+            return { success: false };
         }
     }, []);
 
@@ -209,36 +236,9 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
         setError(null);
 
         try {
-            // Fetch activities from database filtered by technology
-            console.log('[useRequirementInterview] Fetching activities for tech_category:', techCategory);
-
-            const { data: activitiesData, error: activitiesError } = await supabase
-                .from('activities')
-                .select('*')
-                .eq('active', true)
-                .or(`tech_category.eq.${techCategory},tech_category.eq.MULTI`);
-
-            console.log('[useRequirementInterview] Query result:', {
-                count: activitiesData?.length || 0,
-                error: activitiesError?.message,
-                sampleCodes: activitiesData?.slice(0, 5).map(a => `${a.code} (${a.tech_category})`),
-            });
-
-            let activities: Activity[];
-            if (activitiesError || !activitiesData || activitiesData.length === 0) {
-                console.warn('[useRequirementInterview] Using mock activities');
-                activities = MOCK_ACTIVITIES.filter(
-                    a => a.tech_category === techCategory || a.tech_category === 'MULTI'
-                );
-            } else {
-                activities = activitiesData;
-            }
-
-            if (activities.length === 0) {
-                setError('Nessuna attività disponibile per questa tecnologia.');
-                setPhase('error');
-                return null;
-            }
+            // Activities are now fetched server-side in the Netlify Function.
+            // This eliminates the client-side Supabase query and reduces payload.
+            console.log('[useRequirementInterview] Generating estimate (activities fetched server-side)');
 
             // Generate estimate
             const response = await generateEstimateFromInterview({
@@ -246,8 +246,8 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
                 techPresetId,
                 techCategory,
                 answers: answersMapToRecord(answers),
-                activities,
                 projectContext,
+                preEstimate: preEstimateRef.current ?? preEstimate,
             });
 
             if (response.success) {
@@ -265,7 +265,7 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
             setPhase('error');
             return null;
         }
-    }, [answers]);
+    }, [answers, preEstimate]);
 
     const reset = useCallback(() => {
         setPhase('idle');
@@ -277,6 +277,9 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
         setSuggestedActivities([]);
         setError(null);
         setEstimateResult(null);
+        setPlannerDecision(undefined);
+        setPreEstimate(undefined);
+        preEstimateRef.current = undefined;
     }, []);
 
     return {
@@ -289,6 +292,8 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
         estimatedComplexity,
         suggestedActivities,
         error,
+        plannerDecision,
+        preEstimate,
 
         // Computed
         progress,

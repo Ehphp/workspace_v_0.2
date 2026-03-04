@@ -46,10 +46,11 @@ export interface VectorSearchMetrics {
 
 /**
  * Get Supabase client for vector operations
+ * Uses service role key to bypass RLS (server-side trusted context)
  */
 function getSupabaseClient(): SupabaseClient | null {
     const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
         return null;
@@ -162,7 +163,9 @@ async function fallbackActivitySearch(
         return [];
     }
 
-    const { data, error } = await supabase
+    // Try with technology_id first; if the column doesn't exist yet fall back
+    // to a query without it (graceful degradation).
+    let { data, error } = await supabase
         .from('activities')
         .select('id, code, name, description, base_hours, tech_category, technology_id, group')
         .in('tech_category', techCategories)
@@ -171,12 +174,30 @@ async function fallbackActivitySearch(
         .order('base_hours')
         .limit(limit);
 
+    if (error && error.message?.includes('technology_id')) {
+        console.warn('[vector-search] technology_id column missing, retrying without it');
+        const retry = await supabase
+            .from('activities')
+            .select('id, code, name, description, base_hours, tech_category, group')
+            .in('tech_category', techCategories)
+            .eq('active', true)
+            .order('group')
+            .order('base_hours')
+            .limit(limit);
+        data = retry.data;
+        error = retry.error;
+    }
+
     if (error) {
         console.error('[vector-search] Fallback query failed:', error);
         return [];
     }
 
-    return (data || []) as ActivitySearchResult[];
+    // Normalise: ensure technology_id is always present (null when missing)
+    return (data || []).map(row => ({
+        ...row,
+        technology_id: row.technology_id ?? null,
+    })) as ActivitySearchResult[];
 }
 
 /**

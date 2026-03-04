@@ -18,11 +18,59 @@ import { getPrompt } from './lib/ai/prompt-registry';
 import { searchSimilarActivities, isVectorSearchEnabled } from './lib/ai/vector-search';
 import { retrieveRAGContext, getRAGSystemPromptAddition } from './lib/ai/rag';
 import { runAgentPipeline, AgentInput } from './lib/ai/agent';
+import {
+    fetchActivitiesServerSide,
+    selectTopActivities,
+    formatActivitiesCatalog,
+    type Activity,
+    type InterviewAnswerRecord,
+} from './lib/activities';
 
 // Model configuration - use env variable AI_ESTIMATION_MODEL or default to gpt-4o
 // NOTE: gpt-5 has limitations (no custom temperature, no json_schema response_format)
 // Use gpt-4o as default for reliable structured output
 const AI_MODEL = process.env.AI_ESTIMATION_MODEL || 'gpt-4o';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Metrics type for performance instrumentation
+// ─────────────────────────────────────────────────────────────────────────────
+interface EstimationMetrics {
+    totalDurationMs: number;
+    activitiesFetchMs: number;
+    vectorSearchMs: number;
+    ragRetrievalMs: number;
+    draftDurationMs: number;
+    reflectionDurationMs: number;
+    refineDurationMs: number;
+    toolIterations: number;
+    model: string;
+    promptTokensEstimate: number;
+    activitiesCatalogSize: number;
+    activitiesAfterRanking: number;
+    pipelineMode: 'legacy' | 'agentic';
+    timedOut: boolean;
+    fallbackUsed: boolean;
+}
+
+function createEmptyMetrics(): EstimationMetrics {
+    return {
+        totalDurationMs: 0,
+        activitiesFetchMs: 0,
+        vectorSearchMs: 0,
+        ragRetrievalMs: 0,
+        draftDurationMs: 0,
+        reflectionDurationMs: 0,
+        refineDurationMs: 0,
+        toolIterations: 0,
+        model: AI_MODEL,
+        promptTokensEstimate: 0,
+        activitiesCatalogSize: 0,
+        activitiesAfterRanking: 0,
+        pipelineMode: 'legacy',
+        timedOut: false,
+        fallbackUsed: false,
+    };
+}
 
 // Phase 3: Agentic pipeline feature flag
 // Set AI_AGENTIC=true to enable the reflection loop + tool use pipeline
@@ -39,21 +87,17 @@ interface InterviewAnswer {
     timestamp: string;
 }
 
-interface Activity {
-    code: string;
-    name: string;
-    description: string;
-    base_hours: number;
-    group: string;
-    tech_category: string;
-    /** Canonical FK to technologies.id */
-    technology_id?: string | null;
-}
-
 interface ProjectContext {
     name: string;
     description: string;
     owner?: string;
+}
+
+/** Pre-estimate from the interview planner (Round 0), used as anchor for coherence */
+interface PreEstimate {
+    minHours: number;
+    maxHours: number;
+    confidence: number;
 }
 
 interface RequestBody {
@@ -61,8 +105,11 @@ interface RequestBody {
     techPresetId: string;
     techCategory: string;
     answers: Record<string, InterviewAnswer>;
-    activities: Activity[];
+    /** @deprecated Activities are now fetched server-side. Kept for backward compat. */
+    activities?: Activity[];
     projectContext?: ProjectContext;
+    /** Optional pre-estimate from Round 0 planner — used as anchoring context */
+    preEstimate?: PreEstimate;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -141,7 +188,9 @@ GENERATED TITLE:
 - Max 60 caratteri
 - In italiano
 - Deve catturare l'essenza funzionale del requisito
-- Esempio: "Report utilizzo ESM per HR" o "Integrazione API candidature Talentum"`;
+- Esempio: "Report utilizzo ESM per HR" o "Integrazione API candidature Talentum"
+
+⚠️ IMPORTANTE: Rispondi ESCLUSIVAMENTE con JSON valido. NON usare markdown, NON aggiungere commenti, blocchi \`\`\`json o testo prima/dopo il JSON. La risposta DEVE iniziare con { e terminare con }.`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper Functions
@@ -209,14 +258,10 @@ function buildResponseSchema(validActivityCodes: string[]) {
     };
 }
 
-/**
- * Format activities catalog for prompt
- */
-function formatActivitiesCatalog(activities: Activity[]): string {
-    return activities
-        .map(a => `- ${a.code}: ${a.name} (${a.base_hours}h) [${a.group} | ${a.tech_category}] - ${a.description}`)
-        .join('\n');
-}
+// NOTE: formatActivitiesCatalog is now imported from './lib/activities' (shared module).
+
+// NOTE: fetchActivitiesServerSide, selectTopActivities, formatActivitiesCatalog,
+// and Activity type are now imported from './lib/activities' (shared module).
 
 /**
  * Format interview answers for prompt
@@ -253,44 +298,60 @@ export const handler = createAIHandler<RequestBody>({
         if (!body.answers || typeof body.answers !== 'object') {
             return 'Le risposte all\'interview sono obbligatorie.';
         }
-        if (!body.activities || !Array.isArray(body.activities) || body.activities.length === 0) {
-            return 'Il catalogo delle attività è obbligatorio.';
+        if (!body.techCategory || typeof body.techCategory !== 'string') {
+            return 'La categoria tecnologica è obbligatoria.';
         }
+        // activities is now optional — fetched server-side
         return null;
     },
 
     handler: async (body, ctx) => {
+        const pipelineStart = Date.now();
+        const metrics = createEmptyMetrics();
+
         // Sanitize description
         const sanitizedDescription = ctx.sanitize(body.description);
+        const techCat = body.techCategory || 'MULTI';
+
+        // ─── Server-side activity fetch (replaces client-side fetch) ───
+        const fetchResult = await fetchActivitiesServerSide(
+            techCat,
+            body.techPresetId,
+            body.activities // backward compat fallback
+        );
+        metrics.activitiesFetchMs = fetchResult.fetchMs;
+        metrics.activitiesCatalogSize = fetchResult.activities.length;
+
+        if (fetchResult.activities.length === 0) {
+            throw new Error('Nessuna attività disponibile per questa tecnologia.');
+        }
+
+        // ─── Deterministic ranking: select top 20 most relevant ────────
+        const rankedActivities = selectTopActivities(
+            fetchResult.activities,
+            sanitizedDescription,
+            body.answers,
+            20
+        );
+        metrics.activitiesAfterRanking = rankedActivities.length;
 
         // ─── Phase 3: Agentic Pipeline ─────────────────────────────────
         const AI_AGENTIC = process.env.AI_AGENTIC === 'true';
         console.log(`[ai-estimate-from-interview] DEBUG AI_AGENTIC=${process.env.AI_AGENTIC} → flag=${AI_AGENTIC}`);
         if (AI_AGENTIC) {
             console.log('[ai-estimate-from-interview] Using AGENTIC pipeline (Phase 3)');
+            metrics.pipelineMode = 'agentic';
 
-            // Filter activities by technology BEFORE building agent input
-            // Uses technology_id FK when available, falls back to tech_category string
-            const techCat = body.techCategory || 'MULTI';
-            const filteredForAgent = body.activities.filter(
-                a => {
-                    if (a.technology_id) {
-                        return a.technology_id === body.techPresetId || a.tech_category === 'MULTI';
-                    }
-                    return a.tech_category === techCat || a.tech_category === 'MULTI';
-                }
-            );
-            console.log(`[agentic] Filtered activities: ${filteredForAgent.length}/${body.activities.length}`);
-
-            // Build activities in agent format
-            const agentActivities = filteredForAgent.map(a => ({
+            // Build activities in agent format (already ranked)
+            const agentActivities = rankedActivities.map(a => ({
                 code: a.code,
                 name: a.name,
-                description: a.description || '',
+                description: a.description ? a.description.substring(0, 80) : '',
                 base_hours: a.base_hours,
                 group: a.group,
                 tech_category: a.tech_category,
             }));
+            console.log(`[agentic] Ranked activities for agent: ${agentActivities.length}`);
 
             const agentInput: AgentInput = {
                 description: sanitizedDescription,
@@ -304,7 +365,7 @@ export const handler = createAIHandler<RequestBody>({
                     owner: body.projectContext.owner ? ctx.sanitize(body.projectContext.owner) : undefined,
                 } : undefined,
                 technologyName: body.techCategory,
-                userId: undefined, // Auth is optional for Quick Estimate
+                userId: ctx.userId, // Pass through from auth (may be undefined for unauthenticated Quick Estimate)
                 flags: {
                     reflectionEnabled: process.env.AI_REFLECTION !== 'false',
                     toolUseEnabled: process.env.AI_TOOL_USE !== 'false',
@@ -332,6 +393,14 @@ export const handler = createAIHandler<RequestBody>({
                     throw new Error(agentResult.error || 'Agentic pipeline failed');
                 }
 
+                metrics.totalDurationMs = Date.now() - pipelineStart;
+                metrics.draftDurationMs = agentResult.agentMetadata.totalDurationMs;
+                metrics.toolIterations = agentResult.agentMetadata.toolCallCount;
+                metrics.reflectionDurationMs = agentResult.agentMetadata.reflectionResult ? (agentResult.agentMetadata.totalDurationMs * 0.2) : 0; // estimate
+                metrics.timedOut = false;
+
+                console.log('[ai-estimate-from-interview] METRICS:', JSON.stringify(metrics));
+
                 return {
                     success: true,
                     generatedTitle: agentResult.generatedTitle,
@@ -352,6 +421,7 @@ export const handler = createAIHandler<RequestBody>({
                         reflectionConfidence: agentResult.agentMetadata.reflectionResult?.confidence,
                         engineValidation: agentResult.engineValidation,
                     },
+                    metrics,
                 };
             } catch (agentError: any) {
                 // S3-3d: Progressive degradation — agentic → legacy → error
@@ -363,6 +433,7 @@ export const handler = createAIHandler<RequestBody>({
                 }
                 // For other errors (transient LLM failures, parsing, etc.)
                 // fall through to the legacy linear pipeline below.
+                metrics.fallbackUsed = true;
                 console.warn(
                     '[ai-estimate-from-interview] Agentic pipeline failed, falling back to legacy:',
                     agentError?.message || agentError,
@@ -372,14 +443,17 @@ export const handler = createAIHandler<RequestBody>({
 
         // ─── Legacy Linear Pipeline ────────────────────────────────────
         console.log('[ai-estimate-from-interview] Using LINEAR pipeline (legacy)');
+        metrics.pipelineMode = 'legacy';
+        const legacyStart = Date.now();
 
         // Get LLM provider
         const provider = getDefaultProvider();
 
         // Use vector search for more relevant activities (Phase 2)
-        let activitiesToUse: Activity[] = body.activities;
-        let searchMethod = 'frontend-provided';
+        let activitiesToUse: Activity[] = rankedActivities;
+        let searchMethod = fetchResult.source === 'server' ? 'server-ranked' : 'client-ranked';
 
+        const vectorSearchStart = Date.now();
         if (isVectorSearchEnabled() && body.techCategory) {
             try {
                 console.log('[ai-estimate-from-interview] Using vector search for activity retrieval');
@@ -387,7 +461,7 @@ export const handler = createAIHandler<RequestBody>({
                 const searchResult = await searchSimilarActivities(
                     sanitizedDescription,
                     techCategories,
-                    35, // Top-35 most relevant activities
+                    20, // Top-20 most relevant activities (reduced from 35)
                     0.45
                 );
 
@@ -404,11 +478,13 @@ export const handler = createAIHandler<RequestBody>({
                     console.log(`[ai-estimate-from-interview] Vector search returned ${activitiesToUse.length} activities in ${searchResult.metrics.latencyMs}ms`);
                 }
             } catch (err) {
-                console.warn('[ai-estimate-from-interview] Vector search failed, using provided activities:', err);
+                console.warn('[ai-estimate-from-interview] Vector search failed, using ranked activities:', err);
             }
         }
+        metrics.vectorSearchMs = Date.now() - vectorSearchStart;
 
         // Retrieve RAG context (Phase 4: Historical Learning)
+        const ragStart = Date.now();
         let ragContext = { hasExamples: false, promptFragment: '', searchLatencyMs: 0 } as any;
         if (isVectorSearchEnabled()) {
             try {
@@ -420,20 +496,10 @@ export const handler = createAIHandler<RequestBody>({
                 console.warn('[ai-estimate-from-interview] RAG retrieval failed:', err);
             }
         }
+        metrics.ragRetrievalMs = Date.now() - ragStart;
 
-        // Filter by technology when vector search was not used (fallback path)
-        // Uses technology_id FK when available, falls back to tech_category string
-        if (searchMethod === 'frontend-provided' && body.techCategory) {
-            activitiesToUse = activitiesToUse.filter(
-                a => {
-                    if (a.technology_id) {
-                        return a.technology_id === body.techPresetId || a.tech_category === 'MULTI';
-                    }
-                    return a.tech_category === body.techCategory || a.tech_category === 'MULTI';
-                }
-            );
-            console.log(`[legacy] technology fallback filter: ${activitiesToUse.length} activities`);
-        }
+        // Activities are already filtered and ranked by selectTopActivities above.
+        // No additional filtering needed.
 
         // Format data for prompt
         const activitiesCatalog = formatActivitiesCatalog(activitiesToUse);
@@ -466,9 +532,19 @@ NOTA: Usa il contesto del progetto per capire meglio lo scope e le convenzioni g
         }
 
         // Build user prompt with optional RAG context
+        // Include pre-estimate anchor if provided by Round 0 planner
+        let preEstimateSection = '';
+        if (body.preEstimate) {
+            preEstimateSection = `
+PRE-STIMA (dal planner, Round 0 — usala come ancora, puoi discostartene se le risposte lo giustificano):
+- Range: ${body.preEstimate.minHours}h – ${body.preEstimate.maxHours}h
+- Confidence iniziale: ${body.preEstimate.confidence}
+`;
+        }
+
         let userPrompt = `REQUISITO:
 ${sanitizedDescription}
-${projectContextSection}
+${projectContextSection}${preEstimateSection}
 RISPOSTE INTERVIEW TECNICA:
 ${interviewAnswers}
 
@@ -493,17 +569,25 @@ Collega ogni attività alla risposta che l'ha motivata.`;
 
         console.log(`[ai-estimate-from-interview] Using model: ${AI_MODEL}`);
 
+        // Estimate prompt size for metrics (rough: 4 chars ≈ 1 token)
+        metrics.promptTokensEstimate = Math.round((systemPrompt.length + userPrompt.length) / 4);
+
         // Call LLM with dynamic schema containing enum constraint
-        // gpt-5 uses internal reasoning tokens within max_output_tokens budget,
-        // so we need 16k even though the JSON output is ~2k tokens.
+        // maxTokens: 4096 is sufficient for the JSON output (~2-3k tokens).
+        // For reasoning models (gpt-5/o-series), keep higher to allow internal reasoning.
+        const isReasoningModel = AI_MODEL.startsWith('gpt-5') || AI_MODEL.startsWith('o1') || AI_MODEL.startsWith('o3') || AI_MODEL.startsWith('o4');
+        const maxTokens = isReasoningModel ? 8192 : 4096;
+
+        const draftStart = Date.now();
         const responseContent = await provider.generateContent({
             model: AI_MODEL,
             options: { timeout: 55000 },
-            maxTokens: 16384,
+            maxTokens,
             systemPrompt: systemPrompt,
             userPrompt: userPrompt,
             responseFormat: responseSchema as any,
         });
+        metrics.draftDurationMs = Date.now() - draftStart;
 
         // Parse response
         if (!responseContent) {
@@ -542,6 +626,10 @@ Collega ogni attività alla risposta che l'ha motivata.`;
             suggestedRisksCount: result.suggestedRisks?.length || 0,
         });
 
+        metrics.totalDurationMs = Date.now() - pipelineStart;
+
+        console.log('[ai-estimate-from-interview] METRICS:', JSON.stringify(metrics));
+
         // Return successful response (createAIHandler wraps with statusCode/headers)
         return {
             success: true,
@@ -552,6 +640,7 @@ Collega ogni attività alla risposta che l'ha motivata.`;
             confidenceScore: Number(confidenceScore.toFixed(2)),
             suggestedDrivers: result.suggestedDrivers || [],
             suggestedRisks: result.suggestedRisks || [],
+            metrics,
         };
     }
 });
