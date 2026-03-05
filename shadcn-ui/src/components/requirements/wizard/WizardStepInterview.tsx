@@ -13,7 +13,6 @@ import {
     ArrowRight,
     AlertCircle,
     RefreshCw,
-    MessageSquareCode
 } from 'lucide-react';
 import { useRequirementInterview } from '@/hooks/useRequirementInterview';
 import {
@@ -184,7 +183,11 @@ export function WizardStepInterview({
     if (phase === 'loading') {
         return (
             <div className="flex flex-col h-full">
-                <InterviewLoading techCategory={data.techCategory} />
+                <InterviewLoading
+                    techCategory={data.techCategory}
+                    description={data.description}
+                    variant="interview"
+                />
             </div>
         );
     }
@@ -219,18 +222,12 @@ export function WizardStepInterview({
 
     if (phase === 'generating') {
         return (
-            <div className="flex flex-col h-full items-center justify-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center animate-pulse">
-                    <MessageSquareCode className="w-8 h-8 text-white" />
-                </div>
-                <div className="text-center">
-                    <h3 className="text-lg font-semibold text-slate-900">
-                        Generazione stima in corso...
-                    </h3>
-                    <p className="text-slate-500 mt-1">
-                        Analisi delle risposte e selezione attività
-                    </p>
-                </div>
+            <div className="flex flex-col h-full">
+                <InterviewLoading
+                    techCategory={data.techCategory}
+                    description={data.description}
+                    variant="estimate"
+                />
             </div>
         );
     }
