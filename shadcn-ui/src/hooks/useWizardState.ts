@@ -8,6 +8,7 @@ import type {
   SuggestedDriver,
   PreEstimate
 } from '@/types/requirement-interview';
+import type { RequirementUnderstanding } from '@/types/requirement-understanding';
 
 /** Project context for AI to avoid redundant questions */
 export interface ProjectContext {
@@ -49,6 +50,9 @@ export interface WizardData {
   // Information-gain planner fields
   preEstimate?: PreEstimate;
   plannerDecision?: 'ASK' | 'SKIP';
+  // Requirement Understanding artifact (Phase 1c)
+  requirementUnderstanding?: RequirementUnderstanding;
+  requirementUnderstandingConfirmed?: boolean;
 }
 
 const STORAGE_KEY = 'estimation_wizard_data';
@@ -110,5 +114,8 @@ function getInitialData(): WizardData {
     aiAnalysis: undefined,
     preEstimate: undefined,
     plannerDecision: undefined,
+    // Requirement Understanding
+    requirementUnderstanding: undefined,
+    requirementUnderstandingConfirmed: undefined,
   };
 }

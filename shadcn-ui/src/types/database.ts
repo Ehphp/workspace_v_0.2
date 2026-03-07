@@ -191,6 +191,17 @@ export interface RequirementDriverValue {
   updated_at: string;
 }
 
+export interface RequirementUnderstandingRow {
+  id: string;
+  requirement_id: string | null;
+  understanding: Record<string, unknown>;
+  input_description: string;
+  input_tech_category: string | null;
+  user_id: string;
+  version: number;
+  created_at: string;
+}
+
 // Extended types with joins
 export interface RequirementWithEstimation extends Requirement {
   latest_estimation: Estimation | null;

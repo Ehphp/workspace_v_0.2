@@ -82,6 +82,7 @@ export async function generateInterviewQuestions(
                 techPresetId: request.techPresetId,
                 techCategory: request.techCategory,
                 projectContext: request.projectContext,
+                ...(request.requirementUnderstanding ? { requirementUnderstanding: request.requirementUnderstanding } : {}),
             }),
         });
 
@@ -205,6 +206,7 @@ export async function generateEstimateFromInterview(
                 answers: request.answers,
                 projectContext: request.projectContext,
                 preEstimate: request.preEstimate,
+                ...(request.requirementUnderstanding ? { requirementUnderstanding: request.requirementUnderstanding } : {}),
             }),
         });
 

@@ -30,6 +30,7 @@ AI functionality is distributed across multiple serverless functions:
 | `ai-bulk-estimate-with-answers.ts` | Batch activity selection | Bulk estimation |
 | `ai-generate-questions.ts` | Stage 1: preset wizard questions | Custom preset creation |
 | `ai-generate-preset.ts` | Stage 2: generate preset from answers | Custom preset creation |
+| `ai-requirement-understanding.ts` | Generate structured Requirement Understanding artifact | Wizard step 3 (Milestone 1) |
 | `ai-consultant.ts` | Senior consultant analysis | Post-estimation review |
 | `ai-generate-embeddings.ts` | Generate vector embeddings | Background/admin job (Phase 1) |
 | `ai-check-duplicates.ts` | Semantic activity deduplication | AI Technology Wizard (Phase 3) |
@@ -213,6 +214,97 @@ return {
   reasoning: 'AI service error – no activities suggested',
 };
 ```
+
+---
+
+## Requirement Understanding (Milestone 1)
+
+Before the technical interview, the wizard generates a structured **Requirement Understanding** artifact that formalizes what the AI understood from the raw description.
+
+### Purpose
+
+- Give the user an inspectable "contract" of what the system understood
+- Surface ambiguity through explicit assumptions (never invent facts)
+- Provide structured context to downstream AI steps (interview + estimation)
+- Persist a traceable record of the AI's interpretation at requirement creation time
+
+### Data Flow
+
+```
+┌────────────────────┐
+│  WizardStep2       │
+│  (Technology)      │
+└────────┬───────────┘
+         │ onNext()
+         ▼
+┌─────────────────────────────┐
+│  WizardStepUnderstanding    │
+│  (auto-generates on mount)  │
+└────────┬────────────────────┘
+         │ generateRequirementUnderstanding()
+         │ POST /ai-requirement-understanding
+         ▼
+┌─────────────────────────────┐
+│  generate-understanding.ts  │
+│  (gpt-4o-mini, temp=0.2)   │
+└────────┬────────────────────┘
+         │ Zod-validated JSON
+         ▼
+┌─────────────────────────────┐
+│  RequirementUnderstandingCard│
+│  (review: confirm/regen/skip)│
+└────────┬────────────────────┘
+         │ onConfirmAndContinue()
+         ▼
+┌─────────────────────────────┐
+│  WizardStepInterview        │
+│  (receives understanding as │
+│   context for questions +   │
+│   estimation prompts)       │
+└─────────────────────────────┘
+```
+
+### Artifact Shape
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `businessObjective` | string | Why the requirement exists |
+| `expectedOutput` | string | Deliverables |
+| `functionalPerimeter` | string[] | In-scope items (1–8) |
+| `exclusions` | string[] | Out-of-scope (0–5) |
+| `actors` | `{role, interaction}[]` | Stakeholders/systems (1–5) |
+| `stateTransition` | `{initialState, finalState}` | Before → after |
+| `preconditions` | string[] | Dependencies (0–5) |
+| `assumptions` | string[] | Explicit AI assumptions (0–5) |
+| `complexityAssessment` | `{level, rationale}` | LOW/MEDIUM/HIGH |
+| `confidence` | number | 0.0–1.0 |
+| `metadata` | object | generatedAt, model, techCategory, inputDescriptionLength |
+
+### Downstream Enrichment
+
+When the user confirms the understanding, it is forwarded as optional `requirementUnderstanding` field to:
+
+- `POST /ai-requirement-interview` — injected into the user prompt via `formatUnderstandingBlock()` to reduce ambiguous questions
+- `POST /ai-estimate-from-interview` — injected to improve activity selection reasoning
+
+Both endpoints remain backward-compatible: if `requirementUnderstanding` is absent or null, the prompt is built without it.
+
+### Persistence
+
+The confirmed understanding is saved to the `requirement_understanding` table (see [data-model.md](data-model.md)) after the requirement is created. On the detail page (`/dashboard/:listId/requirements/:reqId`), the latest understanding is loaded via `getLatestRequirementUnderstanding()` and displayed in the Overview tab.
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `src/types/requirement-understanding.ts` | TypeScript interfaces + Zod schemas |
+| `src/lib/requirement-understanding-api.ts` | Frontend API client |
+| `netlify/functions/ai-requirement-understanding.ts` | Endpoint (createAIHandler) |
+| `netlify/functions/lib/ai/actions/generate-understanding.ts` | AI action (cache → LLM → validate) |
+| `netlify/functions/lib/ai/prompts/understanding-generation.ts` | System prompt + JSON schema |
+| `src/components/requirements/wizard/WizardStepUnderstanding.tsx` | Wizard step (loading/review/error) |
+| `src/components/requirements/wizard/RequirementUnderstandingCard.tsx` | Presentational card |
+| `supabase/migrations/20260306_requirement_understanding.sql` | Table + RLS migration |
 
 ---
 
@@ -513,6 +605,7 @@ Deterministic AI actions (`suggest-activities`, `generate-title`, `normalize-req
 | `suggest-activities` | `ai:suggest` | 12h | `testMode=true` |
 | `ai-consultant` | — | No cache | Session-specific |
 | `ai-estimate-from-interview` | — | No cache | Unique per interview |
+| `ai-requirement-understanding` | `ai:understand` | 12h | `testMode=true` |
 
 **Cache key**: `{prefix}:{SHA-256(input parts)}` — e.g. for suggestions, the key hashes `description + preset.id + sorted activity codes`.
 
@@ -558,6 +651,7 @@ For the same input, 9/10 calls should return the same activityCodes (90%+ consis
 | `netlify/functions/ai-bulk-estimate-with-answers.ts` | Bulk estimation from answers |
 | `netlify/functions/ai-generate-questions.ts` | Preset wizard Stage 1 |
 | `netlify/functions/ai-generate-preset.ts` | Preset wizard Stage 2 |
+| `netlify/functions/ai-requirement-understanding.ts` | Requirement Understanding generation (Milestone 1) |
 
 ### Shared Libraries (Serverless)
 
@@ -565,6 +659,7 @@ For the same input, 9/10 calls should return the same activityCodes (90%+ consis
 |------|---------|
 | `netlify/functions/lib/ai/actions/suggest-activities.ts` | Activity suggestion logic |
 | `netlify/functions/lib/ai/actions/generate-title.ts` | Title generation logic |
+| `netlify/functions/lib/ai/actions/generate-understanding.ts` | Requirement Understanding generation logic (Milestone 1) |
 | `netlify/functions/lib/ai/actions/generate-questions.ts` | Question generation logic |
 | `netlify/functions/lib/ai/ai-cache.ts` | **Redis-backed AI response cache** |
 | `netlify/functions/lib/ai/prompt-builder.ts` | Prompt construction |
@@ -583,6 +678,7 @@ For the same input, 9/10 calls should return the same activityCodes (90%+ consis
 | `src/lib/ai-interview-api.ts` | Client API for single-requirement interview |
 | `src/lib/bulk-interview-api.ts` | Client API for bulk interview flow |
 | `src/lib/estimation-utils.ts` | **Unified estimation finalization wrapper** |
+| `src/lib/requirement-understanding-api.ts` | Client API for Requirement Understanding generation (Milestone 1) |
 
 ### Frontend - Types
 
@@ -591,6 +687,7 @@ For the same input, 9/10 calls should return the same activityCodes (90%+ consis
 | `src/types/ai-validation.ts` | Input sanitization, validation utilities |
 | `src/types/ai-interview.ts` | Interview question/answer types |
 | `src/types/bulk-interview.ts` | Bulk interview types and phases |
+| `src/types/requirement-understanding.ts` | Requirement Understanding interfaces + Zod schemas (Milestone 1) |
 ### Shared Validation Schemas (`src/shared/validation/`)
 
 | File | Purpose |

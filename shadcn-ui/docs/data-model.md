@@ -512,6 +512,37 @@ Full execution trace of each agentic estimation pipeline run.
 
 ---
 
+## Milestone 1: Requirement Understanding
+
+### requirement_understanding
+
+Stores structured AI-generated understanding artifacts for requirements. Each row captures one generation run, enabling version history.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `requirement_id` | UUID | FK → requirements (CASCADE). Nullable — understanding can be generated before the requirement is persisted. |
+| `understanding` | JSONB | Full `RequirementUnderstanding` artifact (businessObjective, expectedOutput, functionalPerimeter, exclusions, actors, stateTransition, preconditions, assumptions, complexityAssessment, confidence, metadata) |
+| `input_description` | TEXT | Snapshot of the description used to generate the understanding |
+| `input_tech_category` | TEXT | Technology category at generation time (nullable) |
+| `user_id` | UUID | FK → auth.users |
+| `version` | INTEGER | Auto-incremented per `requirement_id` (starts at 1) |
+| `created_at` | TIMESTAMPTZ | Auto-set |
+
+**Indexes**:
+- `idx_requirement_understanding_requirement` — `(requirement_id, created_at DESC)` for fast latest-version lookup
+- `idx_requirement_understanding_user` — `(user_id)` for RLS policy
+
+**RLS**:
+- **SELECT**: User can read understanding for requirements they own (via `requirements → lists → user_id`) or that they created (`user_id = auth.uid()`)
+- **INSERT**: `user_id = auth.uid()`
+- **UPDATE**: `user_id = auth.uid()`
+- **DELETE**: `user_id = auth.uid()`
+
+**Migration**: [20260306_requirement_understanding.sql](../supabase/migrations/20260306_requirement_understanding.sql)
+
+---
+
 ## Maintenance Notes
 
 - **Schema changes**: Run migration SQL in Supabase SQL Editor.
@@ -526,6 +557,7 @@ Full execution trace of each agentic estimation pipeline run.
 - **Vector search technology_id fix (2026-03-04)**: Idempotent migration that ensures `activities.technology_id` column exists before the `search_similar_activities` RPC references it. Required when `20260301_canonical_technology_model` was not applied before `20260301_fix_vector_search_rpc`. Also back-fills `technology_id` from `tech_category` and re-creates the RPC. Migration: `20260304_fix_vector_search_technology_id.sql`.
 - **Junction table RLS fix (2026-03-04)**: Replaced legacy `user_id`-based RLS on `estimation_activities`, `estimation_drivers`, `estimation_risks` with organization-based policies consistent with the multitenancy migration. Migration: `20260304_fix_junction_table_rls.sql`.
 - **Smart updated_at trigger (2026-03-04)**: Replaced blanket `update_requirements_updated_at` trigger with `update_requirements_updated_at_smart()`. The new trigger only bumps `updated_at` when user-facing content columns change (`title`, `description`, `priority`, `state`, `business_owner`, `technology_id`, `req_id`). System writes (embedding, `assigned_estimation_id`, labels) no longer touch `updated_at`. Migration: `20260304_fix_updated_at_trigger.sql`.
+- **Requirement Understanding (2026-03-06)**: `requirement_understanding` table added for Milestone 1. Stores structured AI understanding artifacts with version history. JSONB `understanding` column holds the full `RequirementUnderstanding` interface. Migration: `20260306_requirement_understanding.sql`.
 
 ---
 

@@ -6,6 +6,7 @@
  */
 
 import { z } from 'zod';
+import type { RequirementUnderstanding } from './requirement-understanding';
 
 /**
  * Categories of technical questions that impact estimation
@@ -116,6 +117,8 @@ export interface RequirementInterviewRequest {
         description: string;
         owner?: string;
     };
+    /** Optional structured understanding from Phase 1 — enriches AI context */
+    requirementUnderstanding?: RequirementUnderstanding;
 }
 
 /**
@@ -186,6 +189,8 @@ export interface EstimationFromInterviewRequest {
     };
     /** Optional pre-estimate from Round 0 planner — used as anchoring context */
     preEstimate?: PreEstimate;
+    /** Optional structured understanding from Phase 1 — enriches AI context */
+    requirementUnderstanding?: RequirementUnderstanding;
 }
 
 /**

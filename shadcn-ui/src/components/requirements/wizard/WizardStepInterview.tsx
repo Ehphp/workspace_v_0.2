@@ -61,7 +61,8 @@ export function WizardStepInterview({
             data.description,
             data.techPresetId,
             data.techCategory,
-            data.projectContext
+            data.projectContext,
+            data.requirementUnderstanding
         );
 
         if (result.success) {
@@ -95,7 +96,8 @@ export function WizardStepInterview({
             data.description,
             data.techPresetId,
             data.techCategory,
-            data.projectContext
+            data.projectContext,
+            data.requirementUnderstanding
         );
 
         if (result && result.success) {
@@ -135,7 +137,8 @@ export function WizardStepInterview({
             data.description,
             data.techPresetId,
             data.techCategory,
-            data.projectContext
+            data.projectContext,
+            data.requirementUnderstanding
         );
 
         if (result && result.success) {

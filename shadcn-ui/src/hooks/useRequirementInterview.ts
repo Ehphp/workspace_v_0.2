@@ -22,6 +22,7 @@ import type {
     SuggestedDriver,
     PreEstimate,
 } from '@/types/requirement-interview';
+import type { RequirementUnderstanding } from '@/types/requirement-understanding';
 
 /** Result returned by generateQuestions so callers get data synchronously */
 export interface GenerateQuestionsResult {
@@ -65,7 +66,8 @@ interface UseRequirementInterviewReturn {
         description: string,
         techPresetId: string,
         techCategory: string,
-        projectContext?: { name: string; description: string; owner?: string }
+        projectContext?: { name: string; description: string; owner?: string },
+        requirementUnderstanding?: RequirementUnderstanding
     ) => Promise<GenerateQuestionsResult>;
     answerQuestion: (questionId: string, value: string | string[] | number) => void;
     nextQuestion: () => void;
@@ -75,7 +77,8 @@ interface UseRequirementInterviewReturn {
         description: string,
         techPresetId: string,
         techCategory: string,
-        projectContext?: { name: string; description: string; owner?: string }
+        projectContext?: { name: string; description: string; owner?: string },
+        requirementUnderstanding?: RequirementUnderstanding
     ) => Promise<EstimationFromInterviewResponse | null>;
     reset: () => void;
 }
@@ -141,7 +144,8 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
         description: string,
         techPresetId: string,
         techCategory: string,
-        projectContext?: { name: string; description: string; owner?: string }
+        projectContext?: { name: string; description: string; owner?: string },
+        requirementUnderstanding?: RequirementUnderstanding
     ): Promise<GenerateQuestionsResult> => {
         setPhase('loading-questions');
         setError(null);
@@ -152,6 +156,7 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
                 techPresetId,
                 techCategory,
                 projectContext,
+                requirementUnderstanding,
             });
 
             if (response.success && (response.decision === 'SKIP' || response.questions.length > 0)) {
@@ -230,7 +235,8 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
         description: string,
         techPresetId: string,
         techCategory: string,
-        projectContext?: { name: string; description: string; owner?: string }
+        projectContext?: { name: string; description: string; owner?: string },
+        requirementUnderstanding?: RequirementUnderstanding
     ): Promise<EstimationFromInterviewResponse | null> => {
         setPhase('generating-estimate');
         setError(null);
@@ -248,6 +254,7 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
                 answers: answersMapToRecord(answers),
                 projectContext,
                 preEstimate: preEstimateRef.current ?? preEstimate,
+                requirementUnderstanding,
             });
 
             if (response.success) {

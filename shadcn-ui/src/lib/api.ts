@@ -5,6 +5,7 @@ import type {
   List,
   Requirement,
   RequirementDriverValue,
+  RequirementUnderstandingRow,
   Technology,
   TechnologyPreset,
   Risk,
@@ -432,4 +433,66 @@ export async function updateMemberRole(orgId: string, userId: string, newRole: '
   });
 
   if (error) throw new ApiError(error.message, parseInt(error.code), error);
+}
+
+// ── Requirement Understanding persistence ──
+
+export interface SaveRequirementUnderstandingInput {
+  requirementId?: string;
+  understanding: Record<string, unknown>;
+  inputDescription: string;
+  inputTechCategory?: string;
+}
+
+export async function saveRequirementUnderstanding(
+  input: SaveRequirementUnderstandingInput
+): Promise<RequirementUnderstandingRow> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new ApiError('Utente non autenticato', 401);
+
+  // Determine version: max existing version + 1
+  let version = 1;
+  if (input.requirementId) {
+    const { data: existing } = await supabase
+      .from('requirement_understanding')
+      .select('version')
+      .eq('requirement_id', input.requirementId)
+      .order('version', { ascending: false })
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      version = existing[0].version + 1;
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('requirement_understanding')
+    .insert({
+      requirement_id: input.requirementId ?? null,
+      understanding: input.understanding,
+      input_description: input.inputDescription,
+      input_tech_category: input.inputTechCategory ?? null,
+      user_id: user.id,
+      version,
+    })
+    .select()
+    .single();
+
+  if (error) throw new ApiError(error.message, parseInt(error.code), error);
+  return data as RequirementUnderstandingRow;
+}
+
+export async function getLatestRequirementUnderstanding(
+  requirementId: string
+): Promise<RequirementUnderstandingRow | null> {
+  const { data, error } = await supabase
+    .from('requirement_understanding')
+    .select('*')
+    .eq('requirement_id', requirementId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (error) throw new ApiError(error.message, parseInt(error.code), error);
+  if (!data || data.length === 0) return null;
+  return data[0] as RequirementUnderstandingRow;
 }

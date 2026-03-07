@@ -18,10 +18,12 @@ import { FileText, Calculator, History, AlertTriangle, ClipboardCheck } from 'lu
 import { toast } from 'sonner';
 import { suggestActivities } from '@/lib/openai';
 import { getConsultantAnalysis } from '@/lib/consultant-api';
+import { getLatestRequirementUnderstanding } from '@/lib/api';
 import { filterActivitiesByTechnology } from '@/lib/technology-helpers';
 import { Header } from '@/components/layout/Header';
 import type { EstimationWithDetails } from '@/types/database';
 import type { SeniorConsultantAnalysis } from '@/types/estimation';
+import type { RequirementUnderstanding } from '@/types/requirement-understanding';
 
 // New Components
 import { RequirementHeader } from '@/components/requirements/detail/RequirementHeader';
@@ -114,6 +116,20 @@ export default function RequirementDetail() {
         loading: consultantHistoryLoading,
         saveAnalysis: saveConsultantAnalysis,
     } = useConsultantHistory(requirement?.id);
+
+    // Requirement Understanding (loaded from DB for reopen path)
+    const [requirementUnderstanding, setRequirementUnderstanding] = useState<RequirementUnderstanding | null>(null);
+
+    useEffect(() => {
+        if (!requirement?.id) return;
+        getLatestRequirementUnderstanding(requirement.id)
+            .then((row) => {
+                if (row?.understanding) {
+                    setRequirementUnderstanding(row.understanding as unknown as RequirementUnderstanding);
+                }
+            })
+            .catch((err) => console.warn('Failed to load requirement understanding:', err));
+    }, [requirement?.id]);
 
     // Initialize consultantAnalysis from latest history record if available
     useEffect(() => {
@@ -638,6 +654,7 @@ export default function RequirementDetail() {
                             consultantAnalysis={consultantAnalysis}
                             consultantHistory={consultantHistory}
                             consultantHistoryLoading={consultantHistoryLoading}
+                            requirementUnderstanding={requirementUnderstanding}
                         />
                     </TabsContent>
 

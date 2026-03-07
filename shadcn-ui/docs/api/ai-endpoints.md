@@ -959,6 +959,92 @@ The following estimation endpoints automatically use vector search when enabled:
 
 ---
 
+## Requirement Understanding Endpoint
+
+### POST `/.netlify/functions/ai-requirement-understanding`
+
+**Purpose**: Generates a structured Requirement Understanding artifact from a raw requirement description. The artifact captures what the AI understood — objective, perimeter, actors, state transition, assumptions, and complexity — giving the user an inspectable "contract" before proceeding to estimation.
+
+**When Used**: Wizard step 3 ("Understanding") — auto-triggered after technology selection and before the technical interview.
+
+**Auth**: Required (`requireAuth: true`)
+
+**Input**:
+```typescript
+{
+  description: string;             // Requirement description (15–2000 chars)
+  techCategory?: string;           // e.g. "POWER_PLATFORM", "BACKEND"
+  techPresetId?: string;           // Selected technology preset ID
+  projectContext?: {               // Optional project metadata
+    name: string;
+    description: string;
+    owner?: string;
+  };
+  normalizationResult?: {          // If user ran "Analizza e Migliora" first
+    normalizedDescription: string;
+  };
+}
+```
+
+**Output**:
+```typescript
+{
+  success: boolean;
+  understanding: {
+    businessObjective: string;       // Why the requirement exists
+    expectedOutput: string;          // Deliverables
+    functionalPerimeter: string[];   // In-scope items (1–8)
+    exclusions: string[];            // Out-of-scope items (0–5)
+    actors: Array<{                  // Stakeholders/systems (1–5)
+      role: string;
+      interaction: string;
+    }>;
+    stateTransition: {
+      initialState: string;          // Before implementation
+      finalState: string;            // After implementation
+    };
+    preconditions: string[];         // Dependencies (0–5)
+    assumptions: string[];           // Explicit assumptions (0–5)
+    complexityAssessment: {
+      level: "LOW" | "MEDIUM" | "HIGH";
+      rationale: string;
+    };
+    confidence: number;              // 0.0–1.0
+    metadata: {
+      generatedAt: string;           // ISO timestamp
+      model: string;                 // "gpt-4o-mini"
+      techCategory?: string;
+      inputDescriptionLength: number;
+    };
+  };
+  metrics?: {
+    totalMs: number;
+    llmMs: number;
+    model: string;
+  };
+}
+```
+
+**Model Configuration**:
+- Model: `gpt-4o-mini`
+- Temperature: `0.2`
+- Max tokens: `2000`
+- Structured output via strict JSON schema
+
+**Caching**: Redis-backed, prefix `ai:understand`, TTL 12 hours. Cache key hashes `description[0:300] + techCategory`.
+
+**Validation/Fallback**:
+- Description must be 15–2000 characters after sanitization
+- Server applies `ctx.sanitize()` (defense in depth)
+- Prefers `normalizationResult.normalizedDescription` when available
+- LLM output validated against Zod schema; throws on invalid JSON or schema mismatch
+
+**Downstream enrichment**: When the understanding is confirmed by the user, it is passed as `requirementUnderstanding` to both `ai-requirement-interview` and `ai-estimate-from-interview`, where `formatUnderstandingBlock()` injects it into the user prompt as structured context.
+
+**Persistence**: The confirmed understanding is saved to `requirement_understanding` table via `saveRequirementUnderstanding()` in `src/lib/api.ts` after the requirement is created.
+
+---
+
 ## Analysis Endpoints
 
 ### POST `/.netlify/functions/ai-consultant`

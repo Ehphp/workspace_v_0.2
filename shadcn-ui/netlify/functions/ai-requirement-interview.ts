@@ -71,6 +71,8 @@ interface RequestBody {
     techPresetId: string;
     techCategory: string;
     projectContext?: ProjectContext;
+    /** Optional structured understanding from Requirement Understanding step */
+    requirementUnderstanding?: Record<string, unknown>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -294,6 +296,50 @@ function getTechCategoryDescription(category: string): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Requirement Understanding → compact prompt block (optional enrichment)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function formatUnderstandingBlock(ru: Record<string, unknown> | undefined): string {
+    if (!ru || typeof ru !== 'object') return '';
+    try {
+        const lines: string[] = [];
+        lines.push('\nCOMPRENSIONE STRUTTURATA DEL REQUISITO (validata dall\'utente — usala per ridurre ambiguità, NON ignorare descrizione originale):');
+        if (ru.businessObjective) lines.push(`- Obiettivo: ${ru.businessObjective}`);
+        if (ru.expectedOutput) lines.push(`- Output atteso: ${ru.expectedOutput}`);
+        if (Array.isArray(ru.functionalPerimeter) && ru.functionalPerimeter.length > 0) {
+            lines.push(`- Perimetro: ${ru.functionalPerimeter.join('; ')}`);
+        }
+        if (Array.isArray(ru.exclusions) && ru.exclusions.length > 0) {
+            lines.push(`- Esclusioni: ${ru.exclusions.join('; ')}`);
+        }
+        if (Array.isArray(ru.actors) && ru.actors.length > 0) {
+            const actorStr = ru.actors.map((a: any) => `${a.role} (${a.interaction})`).join(', ');
+            lines.push(`- Attori: ${actorStr}`);
+        }
+        const st = ru.stateTransition as any;
+        if (st?.initialState && st?.finalState) {
+            lines.push(`- Transizione: da "${st.initialState}" a "${st.finalState}"`);
+        }
+        if (Array.isArray(ru.preconditions) && ru.preconditions.length > 0) {
+            lines.push(`- Precondizioni: ${ru.preconditions.join('; ')}`);
+        }
+        if (Array.isArray(ru.assumptions) && ru.assumptions.length > 0) {
+            lines.push(`- Assunzioni: ${ru.assumptions.join('; ')}`);
+        }
+        const ca = ru.complexityAssessment as any;
+        if (ca?.level) {
+            lines.push(`- Complessità stimata: ${ca.level}${ca.rationale ? ` — ${ca.rationale}` : ''}`);
+        }
+        if (typeof ru.confidence === 'number') {
+            lines.push(`- Confidenza comprensione: ${Math.round((ru.confidence as number) * 100)}%`);
+        }
+        return lines.length > 1 ? lines.join('\n') : '';
+    } catch {
+        return '';
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Handler
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -374,6 +420,7 @@ export const handler = createAIHandler<RequestBody>({
             techCategory: body.techCategory,
             techPresetId: body.techPresetId,
             hasProjectContext: !!body.projectContext,
+            hasRequirementUnderstanding: !!body.requirementUnderstanding,
             activitiesFetched: fetchResult.activities.length,
             activitiesRanked: rankedActivities.length,
             activitiesSource: fetchResult.source,
@@ -403,7 +450,7 @@ ${body.projectContext.owner ? `- Responsabile: ${body.projectContext.owner}` : '
 `;
         }
 
-        const userPrompt = `${projectContextSection}
+        const userPrompt = `${projectContextSection}${formatUnderstandingBlock(body.requirementUnderstanding)}
 STACK: ${techCategoryDescription}
 
 CATALOGO ATTIVITÀ DISPONIBILI (per ancorare la pre-stima):

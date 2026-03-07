@@ -110,6 +110,8 @@ interface RequestBody {
     projectContext?: ProjectContext;
     /** Optional pre-estimate from Round 0 planner — used as anchoring context */
     preEstimate?: PreEstimate;
+    /** Optional structured understanding from Requirement Understanding step */
+    requirementUnderstanding?: Record<string, unknown>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -280,6 +282,50 @@ function formatInterviewAnswers(answers: Record<string, InterviewAnswer>): strin
             return `[${answer.category}] ${answer.questionId}: ${valueStr}`;
         })
         .join('\n');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Requirement Understanding → compact prompt block (optional enrichment)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function formatUnderstandingBlock(ru: Record<string, unknown> | undefined): string {
+    if (!ru || typeof ru !== 'object') return '';
+    try {
+        const lines: string[] = [];
+        lines.push('\nCOMPRENSIONE STRUTTURATA DEL REQUISITO (validata dall\'utente — usala per migliorare selezione attività e ragionamento, NON ignorare descrizione e risposte):');
+        if (ru.businessObjective) lines.push(`- Obiettivo: ${ru.businessObjective}`);
+        if (ru.expectedOutput) lines.push(`- Output atteso: ${ru.expectedOutput}`);
+        if (Array.isArray(ru.functionalPerimeter) && ru.functionalPerimeter.length > 0) {
+            lines.push(`- Perimetro: ${ru.functionalPerimeter.join('; ')}`);
+        }
+        if (Array.isArray(ru.exclusions) && ru.exclusions.length > 0) {
+            lines.push(`- Esclusioni: ${ru.exclusions.join('; ')}`);
+        }
+        if (Array.isArray(ru.actors) && ru.actors.length > 0) {
+            const actorStr = ru.actors.map((a: any) => `${a.role} (${a.interaction})`).join(', ');
+            lines.push(`- Attori: ${actorStr}`);
+        }
+        const st = ru.stateTransition as any;
+        if (st?.initialState && st?.finalState) {
+            lines.push(`- Transizione: da "${st.initialState}" a "${st.finalState}"`);
+        }
+        if (Array.isArray(ru.preconditions) && ru.preconditions.length > 0) {
+            lines.push(`- Precondizioni: ${ru.preconditions.join('; ')}`);
+        }
+        if (Array.isArray(ru.assumptions) && ru.assumptions.length > 0) {
+            lines.push(`- Assunzioni: ${ru.assumptions.join('; ')}`);
+        }
+        const ca = ru.complexityAssessment as any;
+        if (ca?.level) {
+            lines.push(`- Complessità stimata: ${ca.level}${ca.rationale ? ` — ${ca.rationale}` : ''}`);
+        }
+        if (typeof ru.confidence === 'number') {
+            lines.push(`- Confidenza comprensione: ${Math.round((ru.confidence as number) * 100)}%`);
+        }
+        return lines.length > 1 ? lines.join('\n') : '';
+    } catch {
+        return '';
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -512,6 +558,7 @@ export const handler = createAIHandler<RequestBody>({
             activitiesCount: activitiesToUse.length,
             techCategory: body.techCategory,
             hasProjectContext: !!body.projectContext,
+            hasRequirementUnderstanding: !!body.requirementUnderstanding,
             searchMethod,
             ragExamples: ragContext.examples?.length || 0,
             validCodes: validActivityCodes.slice(0, 5).join(', ') + (validActivityCodes.length > 5 ? '...' : ''),
@@ -544,7 +591,7 @@ PRE-STIMA (dal planner, Round 0 — usala come ancora, puoi discostartene se le 
 
         let userPrompt = `REQUISITO:
 ${sanitizedDescription}
-${projectContextSection}${preEstimateSection}
+${projectContextSection}${preEstimateSection}${formatUnderstandingBlock(body.requirementUnderstanding)}
 RISPOSTE INTERVIEW TECNICA:
 ${interviewAnswers}
 

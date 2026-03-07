@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useWizardState } from '@/hooks/useWizardState';
 import { WizardStep1 } from './wizard/WizardStep1';
 import { WizardStep2 } from './wizard/WizardStep2';
+import { WizardStepUnderstanding } from './wizard/WizardStepUnderstanding';
 import { WizardStepInterview } from './wizard/WizardStepInterview';
 import { WizardStep4 } from './wizard/WizardStep4';
 import { WizardStep5 } from './wizard/WizardStep5';
-import { createRequirement, saveEstimation } from '@/lib/api';
+import { createRequirement, saveEstimation, saveRequirementUnderstanding } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
@@ -45,6 +46,7 @@ export function RequirementWizard({ listId, projectContext, onSuccess, onCancel,
     const steps = [
         { title: 'Requirement', component: WizardStep1 },
         { title: 'Technology', component: WizardStep2 },
+        { title: 'Understanding', component: WizardStepUnderstanding },
         { title: 'Technical Interview', component: WizardStepInterview },
         { title: 'Drivers & Risks', component: WizardStep4 },
         { title: 'Results', component: WizardStep5 },
@@ -113,7 +115,22 @@ export function RequirementWizard({ listId, projectContext, onSuccess, onCancel,
                 technology_id: data.techPresetId || null,
             });
 
-            // 2. Save Estimation
+            // 2. Persist Requirement Understanding (if confirmed)
+            if (data.requirementUnderstanding && data.requirementUnderstandingConfirmed) {
+                try {
+                    await saveRequirementUnderstanding({
+                        requirementId: requirement.id,
+                        understanding: data.requirementUnderstanding as Record<string, unknown>,
+                        inputDescription: data.description,
+                        inputTechCategory: data.techCategory || undefined,
+                    });
+                } catch (err) {
+                    // Non-blocking: log but don't fail the whole save
+                    console.error('Failed to persist requirement understanding:', err);
+                }
+            }
+
+            // 3. Save Estimation
             await saveEstimation({
                 requirementId: requirement.id,
                 userId: user.id,

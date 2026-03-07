@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Calculator, FileText, User, Tag, Zap, Settings, ChevronDown, ChevronUp, Sparkles, ShieldCheck } from 'lucide-react';
+import { Calculator, FileText, User, Tag, Zap, Settings, ChevronDown, ChevronUp, Sparkles, ShieldCheck, Brain } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { Requirement, Technology, EstimationWithDetails, Activity } from '@/types/database';
 import type { SeniorConsultantAnalysis } from '@/types/estimation';
+import type { RequirementUnderstanding } from '@/types/requirement-understanding';
 import { RequirementProgress } from '../RequirementProgress';
 import { ConsultantAnalysisCard } from '@/components/estimation/ConsultantAnalysisCard';
 import { ConsultantHistoryPanel } from '@/components/estimation/ConsultantHistoryPanel';
+import { RequirementUnderstandingCard } from '@/components/requirements/wizard/RequirementUnderstandingCard';
 import type { ConsultantAnalysisRecord } from '@/hooks/useConsultantHistory';
 
 interface OverviewTabProps {
@@ -21,6 +23,7 @@ interface OverviewTabProps {
     consultantAnalysis?: SeniorConsultantAnalysis | null;
     consultantHistory?: ConsultantAnalysisRecord[];
     consultantHistoryLoading?: boolean;
+    requirementUnderstanding?: RequirementUnderstanding | null;
 }
 
 const priorityColors = {
@@ -35,9 +38,10 @@ const stateColors = {
     DONE: 'bg-emerald-100 text-emerald-700 border-emerald-200',
 };
 
-export function OverviewTab({ requirement, presets, refetchRequirement, latestEstimation, activities = [], onRequestConsultant, isConsultantLoading, consultantAnalysis, consultantHistory = [], consultantHistoryLoading = false }: OverviewTabProps) {
+export function OverviewTab({ requirement, presets, refetchRequirement, latestEstimation, activities = [], onRequestConsultant, isConsultantLoading, consultantAnalysis, consultantHistory = [], consultantHistoryLoading = false, requirementUnderstanding }: OverviewTabProps) {
     const preset = presets.find(p => p.id === requirement.technology_id);
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+    const [isUnderstandingExpanded, setIsUnderstandingExpanded] = useState(true);
     const [isAiAnalysisExpanded, setIsAiAnalysisExpanded] = useState(true);
     const [isConsultantExpanded, setIsConsultantExpanded] = useState(true);
 
@@ -85,6 +89,39 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
                                     </div>
                                 </CardContent>
                             </Card>
+
+                            {/* Requirement Understanding Card - Show if persisted */}
+                            {requirementUnderstanding && (
+                                <Card className="rounded-2xl shadow-lg border-violet-200/50 bg-gradient-to-br from-violet-50/80 to-indigo-50/80 backdrop-blur-xl shrink-0">
+                                    <CardContent className="p-5">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-xl shadow-md">
+                                                    <Brain className="w-4 h-4 text-white" />
+                                                </div>
+                                                <span className="text-sm font-bold text-slate-800 uppercase tracking-wide">Comprensione AI</span>
+                                                <Badge variant="outline" className="text-[10px] border-violet-300 text-violet-700 bg-violet-100/50">
+                                                    Confermata
+                                                </Badge>
+                                            </div>
+                                            <button
+                                                onClick={() => setIsUnderstandingExpanded(!isUnderstandingExpanded)}
+                                                className="p-2 hover:bg-violet-100 rounded-xl transition-all duration-200"
+                                                title={isUnderstandingExpanded ? "Comprimi" : "Espandi"}
+                                            >
+                                                {isUnderstandingExpanded ? (
+                                                    <ChevronUp className="w-4 h-4 text-violet-600" />
+                                                ) : (
+                                                    <ChevronDown className="w-4 h-4 text-violet-600" />
+                                                )}
+                                            </button>
+                                        </div>
+                                        <div className={`${isUnderstandingExpanded ? '' : 'max-h-0 overflow-hidden'} transition-all duration-300`}>
+                                            <RequirementUnderstandingCard understanding={requirementUnderstanding} />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
 
                             {/* AI Analysis Card - Only show if estimation has AI reasoning */}
                             {hasAiAnalysis && (
