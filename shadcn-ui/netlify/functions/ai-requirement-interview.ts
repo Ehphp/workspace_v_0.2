@@ -73,6 +73,8 @@ interface RequestBody {
     projectContext?: ProjectContext;
     /** Optional structured understanding from Requirement Understanding step */
     requirementUnderstanding?: Record<string, unknown>;
+    /** Optional impact map from Impact Map step */
+    impactMap?: Record<string, unknown>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -340,6 +342,37 @@ function formatUnderstandingBlock(ru: Record<string, unknown> | undefined): stri
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Impact Map → compact prompt block (optional enrichment)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function formatImpactMapBlock(im: Record<string, unknown> | undefined): string {
+    if (!im || typeof im !== 'object') return '';
+    try {
+        const lines: string[] = [];
+        lines.push('\nMAPPA IMPATTO ARCHITETTURALE (validata dall\'utente — usala per focalizzare domande sui layer a bassa confidenza, NON sostituisce descrizione o comprensione):');
+        if (im.summary) lines.push(`Sintesi: ${im.summary}`);
+        if (typeof im.overallConfidence === 'number') {
+            lines.push(`Confidenza complessiva: ${Math.round((im.overallConfidence as number) * 100)}%`);
+        }
+        if (Array.isArray(im.impacts) && im.impacts.length > 0) {
+            lines.push('Impatti:');
+            for (const item of im.impacts) {
+                if (!item || typeof item !== 'object') continue;
+                const layer = item.layer || '?';
+                const action = item.action || '?';
+                const components = Array.isArray(item.components) ? item.components.join(', ') : '';
+                const reason = item.reason || '';
+                const conf = typeof item.confidence === 'number' ? ` (${Math.round(item.confidence * 100)}%)` : '';
+                lines.push(`- ${layer} [${action}]: ${components} — ${reason}${conf}`);
+            }
+        }
+        return lines.length > 1 ? lines.join('\n') : '';
+    } catch {
+        return '';
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Handler
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -421,6 +454,7 @@ export const handler = createAIHandler<RequestBody>({
             techPresetId: body.techPresetId,
             hasProjectContext: !!body.projectContext,
             hasRequirementUnderstanding: !!body.requirementUnderstanding,
+            hasImpactMap: !!body.impactMap,
             activitiesFetched: fetchResult.activities.length,
             activitiesRanked: rankedActivities.length,
             activitiesSource: fetchResult.source,
@@ -450,7 +484,7 @@ ${body.projectContext.owner ? `- Responsabile: ${body.projectContext.owner}` : '
 `;
         }
 
-        const userPrompt = `${projectContextSection}${formatUnderstandingBlock(body.requirementUnderstanding)}
+        const userPrompt = `${projectContextSection}${formatUnderstandingBlock(body.requirementUnderstanding)}${formatImpactMapBlock(body.impactMap)}
 STACK: ${techCategoryDescription}
 
 CATALOGO ATTIVITÀ DISPONIBILI (per ancorare la pre-stima):

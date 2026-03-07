@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import type {
   Activity,
   Driver,
+  ImpactMapRow,
   List,
   Requirement,
   RequirementDriverValue,
@@ -495,4 +496,68 @@ export async function getLatestRequirementUnderstanding(
   if (error) throw new ApiError(error.message, parseInt(error.code), error);
   if (!data || data.length === 0) return null;
   return data[0] as RequirementUnderstandingRow;
+}
+
+// ── Impact Map persistence ──
+
+export interface SaveImpactMapInput {
+  requirementId?: string;
+  impactMap: Record<string, unknown>;
+  inputDescription: string;
+  inputTechCategory?: string;
+  hasRequirementUnderstanding: boolean;
+}
+
+export async function saveImpactMap(
+  input: SaveImpactMapInput
+): Promise<ImpactMapRow> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new ApiError('Utente non autenticato', 401);
+
+  // Determine version: max existing version + 1
+  let version = 1;
+  if (input.requirementId) {
+    const { data: existing } = await supabase
+      .from('impact_map')
+      .select('version')
+      .eq('requirement_id', input.requirementId)
+      .order('version', { ascending: false })
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      version = existing[0].version + 1;
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('impact_map')
+    .insert({
+      requirement_id: input.requirementId ?? null,
+      impact_map: input.impactMap,
+      input_description: input.inputDescription,
+      input_tech_category: input.inputTechCategory ?? null,
+      has_requirement_understanding: input.hasRequirementUnderstanding,
+      user_id: user.id,
+      version,
+    })
+    .select()
+    .single();
+
+  if (error) throw new ApiError(error.message, parseInt(error.code), error);
+  return data as ImpactMapRow;
+}
+
+export async function getLatestImpactMap(
+  requirementId: string
+): Promise<ImpactMapRow | null> {
+  const { data, error } = await supabase
+    .from('impact_map')
+    .select('*')
+    .eq('requirement_id', requirementId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (error) throw new ApiError(error.message, parseInt(error.code), error);
+  if (!data || data.length === 0) return null;
+  return data[0] as ImpactMapRow;
 }

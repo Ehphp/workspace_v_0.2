@@ -83,6 +83,7 @@ export async function generateInterviewQuestions(
                 techCategory: request.techCategory,
                 projectContext: request.projectContext,
                 ...(request.requirementUnderstanding ? { requirementUnderstanding: request.requirementUnderstanding } : {}),
+                ...(request.impactMap ? { impactMap: request.impactMap } : {}),
             }),
         });
 
@@ -207,6 +208,7 @@ export async function generateEstimateFromInterview(
                 projectContext: request.projectContext,
                 preEstimate: request.preEstimate,
                 ...(request.requirementUnderstanding ? { requirementUnderstanding: request.requirementUnderstanding } : {}),
+                ...(request.impactMap ? { impactMap: request.impactMap } : {}),
             }),
         });
 

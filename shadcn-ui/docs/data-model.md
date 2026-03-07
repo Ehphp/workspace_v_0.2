@@ -543,6 +543,38 @@ Stores structured AI-generated understanding artifacts for requirements. Each ro
 
 ---
 
+## Milestone 2: Impact Map
+
+### impact_map
+
+Stores structured AI-generated architectural impact analysis artifacts for requirements. Each row captures one generation run, enabling version history. The Impact Map identifies which system layers are affected by a requirement and what structural action each requires — without estimating effort.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `requirement_id` | UUID | FK → requirements (CASCADE). Nullable — impact map can be generated before the requirement is persisted. |
+| `impact_map` | JSONB | Full `ImpactMap` artifact (summary, impacts[]{layer, action, components[], reason, confidence}, overallConfidence) |
+| `input_description` | TEXT | Snapshot of the description used to generate the impact map |
+| `input_tech_category` | TEXT | Technology category at generation time (nullable) |
+| `has_requirement_understanding` | BOOLEAN | Whether a confirmed Requirement Understanding was available as input (DEFAULT FALSE) |
+| `user_id` | UUID | FK → auth.users |
+| `version` | INTEGER | Auto-incremented per `requirement_id` (starts at 1) |
+| `created_at` | TIMESTAMPTZ | Auto-set |
+
+**Indexes**:
+- `idx_impact_map_requirement` — `(requirement_id, created_at DESC)` for fast latest-version lookup
+- `idx_impact_map_user` — `(user_id)` for RLS policy
+
+**RLS**:
+- **SELECT**: User can read impact maps for requirements they own (via `requirements → lists → user_id`) or that they created (`user_id = auth.uid()`)
+- **INSERT**: `user_id = auth.uid()`
+- **UPDATE**: `user_id = auth.uid()`
+- **DELETE**: `user_id = auth.uid()`
+
+**Migration**: [20260308_impact_map.sql](../supabase/migrations/20260308_impact_map.sql)
+
+---
+
 ## Maintenance Notes
 
 - **Schema changes**: Run migration SQL in Supabase SQL Editor.
@@ -558,6 +590,7 @@ Stores structured AI-generated understanding artifacts for requirements. Each ro
 - **Junction table RLS fix (2026-03-04)**: Replaced legacy `user_id`-based RLS on `estimation_activities`, `estimation_drivers`, `estimation_risks` with organization-based policies consistent with the multitenancy migration. Migration: `20260304_fix_junction_table_rls.sql`.
 - **Smart updated_at trigger (2026-03-04)**: Replaced blanket `update_requirements_updated_at` trigger with `update_requirements_updated_at_smart()`. The new trigger only bumps `updated_at` when user-facing content columns change (`title`, `description`, `priority`, `state`, `business_owner`, `technology_id`, `req_id`). System writes (embedding, `assigned_estimation_id`, labels) no longer touch `updated_at`. Migration: `20260304_fix_updated_at_trigger.sql`.
 - **Requirement Understanding (2026-03-06)**: `requirement_understanding` table added for Milestone 1. Stores structured AI understanding artifacts with version history. JSONB `understanding` column holds the full `RequirementUnderstanding` interface. Migration: `20260306_requirement_understanding.sql`.
+- **Impact Map (2026-03-08)**: `impact_map` table added for Milestone 2. Stores structured AI architectural impact analysis artifacts with version history. JSONB `impact_map` column holds the full `ImpactMap` interface (summary, impacts[], overallConfidence). Boolean `has_requirement_understanding` tracks whether the understanding was available as input. Migration: `20260308_impact_map.sql`.
 
 ---
 

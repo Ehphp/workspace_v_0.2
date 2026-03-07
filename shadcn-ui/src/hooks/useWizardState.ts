@@ -9,6 +9,7 @@ import type {
   PreEstimate
 } from '@/types/requirement-interview';
 import type { RequirementUnderstanding } from '@/types/requirement-understanding';
+import type { ImpactMap } from '@/types/impact-map';
 
 /** Project context for AI to avoid redundant questions */
 export interface ProjectContext {
@@ -53,6 +54,9 @@ export interface WizardData {
   // Requirement Understanding artifact (Phase 1c)
   requirementUnderstanding?: RequirementUnderstanding;
   requirementUnderstandingConfirmed?: boolean;
+  // Impact Map artifact (Phase 2d)
+  impactMap?: ImpactMap;
+  impactMapConfirmed?: boolean;
 }
 
 const STORAGE_KEY = 'estimation_wizard_data';
@@ -117,5 +121,8 @@ function getInitialData(): WizardData {
     // Requirement Understanding
     requirementUnderstanding: undefined,
     requirementUnderstandingConfirmed: undefined,
+    // Impact Map
+    impactMap: undefined,
+    impactMapConfirmed: undefined,
   };
 }

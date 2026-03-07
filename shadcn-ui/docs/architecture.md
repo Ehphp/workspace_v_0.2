@@ -49,6 +49,7 @@ Syntero is a requirements estimation system with three distinct layers:
 | **PresetWizard** | AI-assisted preset creation | `src/components/configuration/presets/ai-wizard/` |
 | **Estimation Engine** | Deterministic calculation | `src/lib/estimationEngine.ts` |
 | **AI Clients** | Serverless AI proxy calls | `src/lib/openai.ts`, `src/lib/ai-interview-api.ts`, `src/lib/bulk-interview-api.ts` |
+| **ImpactMap** | Architectural impact analysis step | `src/components/requirements/wizard/WizardStepImpactMap.tsx`, `src/lib/impact-map-api.ts` |
 | **Dashboard** | Project/list management | `src/pages/Dashboard.tsx`, `src/pages/Lists.tsx` |
 | **Admin** | Activity/preset management | `src/pages/AdminActivities.tsx`, `src/pages/Presets.tsx` |
 
@@ -58,6 +59,7 @@ Syntero is a requirements estimation system with three distinct layers:
 |----------|----------------|---------|
 | `ai-suggest.ts` | Activity suggestions, title generation, normalization | Quick estimation |
 | `ai-requirement-interview.ts` | Generate technical questions for single requirement | Interview flow |
+| `ai-impact-map.ts` | Generate architectural impact analysis | Impact Map (Milestone 2) |
 | `ai-estimate-from-interview.ts` | Select activities based on interview answers | Interview flow |
 | `ai-bulk-interview.ts` | Aggregated questions for multiple requirements | Bulk estimation |
 | `ai-bulk-estimate-with-answers.ts` | Batch activity selection from bulk answers | Bulk estimation |
@@ -73,6 +75,8 @@ Syntero is a requirements estimation system with three distinct layers:
 | `lib/ai/actions/generate-questions.ts` | Question generation for preset wizard |
 | `lib/ai/prompt-builder.ts` | Constructs GPT prompts |
 | `lib/ai/ai-cache.ts` | Redis-backed AI response cache (24h/12h TTL) |
+| `lib/ai/actions/generate-impact-map.ts` | Impact map generation action (cache → LLM → validate) |
+| `lib/ai/prompts/impact-map-generation.ts` | Impact map system prompt + JSON schema |
 | `lib/security/redis-client.ts` | Shared Redis client singleton |
 | `lib/security/cors.ts` | Origin validation |
 | `lib/security/rate-limiter.ts` | Redis-backed request throttling |
@@ -98,6 +102,7 @@ Syntero is a requirements estimation system with three distinct layers:
 | `requirements` | Individual requirements within lists |
 | `estimations` | Saved estimation snapshots |
 | `estimation_activities/drivers/risks` | Junction tables |
+| `impact_map` | AI-generated architectural impact analysis artifacts |
 
 ---
 

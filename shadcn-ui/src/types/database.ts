@@ -202,6 +202,18 @@ export interface RequirementUnderstandingRow {
   created_at: string;
 }
 
+export interface ImpactMapRow {
+  id: string;
+  requirement_id: string | null;
+  impact_map: Record<string, unknown>;
+  input_description: string;
+  input_tech_category: string | null;
+  has_requirement_understanding: boolean;
+  user_id: string;
+  version: number;
+  created_at: string;
+}
+
 // Extended types with joins
 export interface RequirementWithEstimation extends Requirement {
   latest_estimation: Estimation | null;

@@ -7,6 +7,7 @@
 
 import { z } from 'zod';
 import type { RequirementUnderstanding } from './requirement-understanding';
+import type { ImpactMap } from './impact-map';
 
 /**
  * Categories of technical questions that impact estimation
@@ -119,11 +120,9 @@ export interface RequirementInterviewRequest {
     };
     /** Optional structured understanding from Phase 1 — enriches AI context */
     requirementUnderstanding?: RequirementUnderstanding;
+    /** Optional impact map from Phase 2 — enriches AI context with architectural layer info */
+    impactMap?: ImpactMap;
 }
-
-/**
- * Response from question generation
- */
 export interface RequirementInterviewResponse {
     /** Whether generation was successful */
     success: boolean;
@@ -191,6 +190,8 @@ export interface EstimationFromInterviewRequest {
     preEstimate?: PreEstimate;
     /** Optional structured understanding from Phase 1 — enriches AI context */
     requirementUnderstanding?: RequirementUnderstanding;
+    /** Optional impact map from Phase 2 — enriches AI context with architectural layer info */
+    impactMap?: ImpactMap;
 }
 
 /**

@@ -308,6 +308,94 @@ The confirmed understanding is saved to the `requirement_understanding` table (s
 
 ---
 
+## Impact Map (Milestone 2)
+
+After the Requirement Understanding is confirmed, the wizard generates a structured **Impact Map** artifact that identifies which architectural layers are affected by the requirement and what structural action each requires.
+
+### Purpose
+
+- Map the requirement onto technology-agnostic architectural layers (frontend, logic, data, integration, etc.)
+- Classify each impact by action type (read, modify, create, configure) and affected components
+- Provide per-impact and overall confidence scores to guide downstream interview focus
+- Persist a traceable record of the AI's architectural analysis before estimation begins
+
+### Data Flow
+
+```
+┌─────────────────────────────┐
+│  WizardStepUnderstanding    │
+│  (confirmed)                │
+└────────┬────────────────────┘
+         │ onNext()
+         ▼
+┌─────────────────────────────┐
+│  WizardStepImpactMap        │
+│  (auto-generates on mount)  │
+└────────┬────────────────────┘
+         │ generateImpactMap()
+         │ POST /ai-impact-map
+         ▼
+┌─────────────────────────────┐
+│  generate-impact-map.ts     │
+│  (gpt-4o-mini, temp=0.2)   │
+└────────┬────────────────────┘
+         │ Zod-validated JSON
+         ▼
+┌─────────────────────────────┐
+│  ImpactMapCard              │
+│  (review: confirm/regen/skip)│
+└────────┬────────────────────┘
+         │ onConfirmAndContinue()
+         ▼
+┌─────────────────────────────┐
+│  WizardStepInterview        │
+│  (receives impactMap as     │
+│   context for questions +   │
+│   estimation prompts)       │
+└─────────────────────────────┘
+```
+
+### Artifact Shape
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `summary` | string | One-paragraph architectural summary (20–1000 chars) |
+| `impacts` | `ImpactItem[]` | Layer impacts (1–15) |
+| `impacts[].layer` | enum | `frontend` \| `logic` \| `data` \| `integration` \| `automation` \| `configuration` \| `ai_pipeline` |
+| `impacts[].action` | enum | `read` \| `modify` \| `create` \| `configure` |
+| `impacts[].components` | string[] | Affected components (1–10, architecture-oriented nouns) |
+| `impacts[].reason` | string | Why this layer is impacted (10–500 chars) |
+| `impacts[].confidence` | number | 0.0–1.0 |
+| `overallConfidence` | number | Aggregate confidence (0.0–1.0) |
+
+### Downstream Enrichment
+
+When the user confirms the impact map, it is forwarded as optional `impactMap` field to:
+
+- `POST /ai-requirement-interview` — injected via `formatImpactMapBlock()` to focus questions on low-confidence layers
+- `POST /ai-estimate-from-interview` — injected to improve activity selection, layer coverage, and reasoning
+
+Both endpoints remain backward-compatible: if `impactMap` is absent or null, the prompt is built without it.
+
+### Persistence
+
+The confirmed impact map is saved to the `impact_map` table (see [data-model.md](data-model.md)) after the requirement is created. The `has_requirement_understanding` boolean tracks whether a confirmed understanding was available as input context.
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `src/types/impact-map.ts` | TypeScript interfaces + Zod schemas |
+| `src/lib/impact-map-api.ts` | Frontend API client |
+| `netlify/functions/ai-impact-map.ts` | Endpoint (createAIHandler) |
+| `netlify/functions/lib/ai/actions/generate-impact-map.ts` | AI action (cache → LLM → validate) |
+| `netlify/functions/lib/ai/prompts/impact-map-generation.ts` | System prompt + JSON schema |
+| `src/components/requirements/wizard/WizardStepImpactMap.tsx` | Wizard step (loading/review/error) |
+| `src/components/requirements/wizard/ImpactMapCard.tsx` | Presentational card |
+| `supabase/migrations/20260308_impact_map.sql` | Table + RLS migration |
+
+---
+
 ## AI Interview System
 
 The interview system enables more accurate activity selection by gathering technical context through targeted questions. It uses an **information-gain planner** to minimize unnecessary questions.

@@ -145,6 +145,8 @@ With the planner, simple requirements may skip the interview entirely (SKIP path
     description: string;
     owner?: string;
   };
+  requirementUnderstanding?: object;  // Confirmed understanding (Milestone 1)
+  impactMap?: object;                 // Confirmed impact map (Milestone 2) — focuses questions on low-confidence layers
 }
 ```
 
@@ -296,6 +298,8 @@ Endpoints that select activities based on gathered information.
     description: string;
     owner?: string;
   };
+  requirementUnderstanding?: object;  // Confirmed understanding (Milestone 1)
+  impactMap?: object;                 // Confirmed impact map (Milestone 2) — improves activity selection and layer coverage
 }
 ```
 
@@ -732,12 +736,15 @@ This maximizes reuse of validated activities while allowing AI to fill gaps.
 | `ai-bulk-estimate-with-answers` | 28s | Batch processing |
 | `ai-generate-questions` | 20s | Simpler prompt |
 | `ai-generate-preset` | 50s | Complex preset generation |
+| `ai-impact-map` | 55s | Architectural impact analysis |
 
 ---
 
 ## Caching
 
 - **ai-suggest**: 24h TTL cache keyed by `hash(description + presetId + activityCodes)`
+- **ai-requirement-understanding**: 12h TTL cache, prefix `ai:understand`, keyed by `hash(description[0:300] + techCategory)`
+- **ai-impact-map**: 12h TTL cache, prefix `ai:impactmap`, keyed by `hash(description[0:300] + techCategory + ru:1/ru:0)`
 - **Other endpoints**: No caching (interview/estimation responses depend on user-specific context)
 
 Cache implementation: `lib/ai/ai-cache.ts`
@@ -1042,6 +1049,92 @@ The following estimation endpoints automatically use vector search when enabled:
 **Downstream enrichment**: When the understanding is confirmed by the user, it is passed as `requirementUnderstanding` to both `ai-requirement-interview` and `ai-estimate-from-interview`, where `formatUnderstandingBlock()` injects it into the user prompt as structured context.
 
 **Persistence**: The confirmed understanding is saved to `requirement_understanding` table via `saveRequirementUnderstanding()` in `src/lib/api.ts` after the requirement is created.
+
+---
+
+## Impact Map Endpoint
+
+### POST `/.netlify/functions/ai-impact-map`
+
+**Purpose**: Generates a structured Impact Map artifact that identifies which architectural layers are affected by a requirement, the type of structural action required, and the components involved. This is a pre-task artifact — it describes WHERE the system is impacted, not WHAT to build or HOW LONG it takes.
+
+**When Used**: Wizard step 4 ("Impact Map") — auto-triggered after Requirement Understanding confirmation and before the technical interview.
+
+**Auth**: Required (`requireAuth: true`)
+
+**Input**:
+```typescript
+{
+  description: string;             // Requirement description (15–2000 chars)
+  techCategory?: string;           // e.g. "POWER_PLATFORM", "BACKEND"
+  techPresetId?: string;           // Selected technology preset ID
+  projectContext?: {               // Optional project metadata
+    name: string;
+    description: string;
+    owner?: string;
+  };
+  requirementUnderstanding?: {     // Confirmed understanding from previous step
+    businessObjective: string;
+    expectedOutput: string;
+    functionalPerimeter: string[];
+    exclusions: string[];
+    actors: Array<{ role: string; interaction: string }>;
+    stateTransition: { initialState: string; finalState: string };
+    preconditions: string[];
+    assumptions: string[];
+    complexityAssessment: { level: string; rationale: string };
+    confidence: number;
+  };
+}
+```
+
+**Output**:
+```typescript
+{
+  success: boolean;
+  impactMap: {
+    summary: string;                 // Architectural summary (20–1000 chars)
+    impacts: Array<{
+      layer: "frontend" | "logic" | "data" | "integration" | "automation" | "configuration" | "ai_pipeline";
+      action: "read" | "modify" | "create" | "configure";
+      components: string[];          // Architecture-oriented nouns (1–10)
+      reason: string;                // Traced to requirement (10–500 chars)
+      confidence: number;            // 0.0–1.0
+    }>;                              // 1–15 impacts
+    overallConfidence: number;       // 0.0–1.0
+  };
+  metadata?: {
+    generatedAt: string;             // ISO timestamp
+    model: string;                   // "gpt-4o-mini"
+    techCategory?: string;
+    inputDescriptionLength: number;
+    hasRequirementUnderstanding: boolean;
+  };
+  metrics?: {
+    totalMs: number;
+    llmMs: number;
+    model: string;
+  };
+}
+```
+
+**Model Configuration**:
+- Model: `gpt-4o-mini`
+- Temperature: `0.2`
+- Max tokens: `2000`
+- Structured output via strict JSON schema
+
+**Caching**: Redis-backed, prefix `ai:impactmap`, TTL 12 hours. Cache key hashes `description[0:300] + techCategory + ru:1/ru:0` (tracks whether Requirement Understanding was provided).
+
+**Validation/Fallback**:
+- Description must be 15–2000 characters after sanitization
+- Server applies `ctx.sanitize()` (defense in depth)
+- When `requirementUnderstanding` is provided, it is formatted into the user prompt via `formatUnderstandingBlock()` for richer architectural context
+- LLM output validated against `ImpactMapSchema` (Zod); throws on invalid JSON or schema mismatch
+
+**Downstream enrichment**: When the impact map is confirmed by the user, it is passed as `impactMap` to both `ai-requirement-interview` and `ai-estimate-from-interview`, where `formatImpactMapBlock()` injects it into the user prompt. The interview endpoint uses it to focus questions on low-confidence layers; the estimation endpoint uses it to improve activity selection and layer coverage.
+
+**Persistence**: The confirmed impact map is saved to `impact_map` table via `saveImpactMap()` in `src/lib/api.ts` after the requirement is created.
 
 ---
 

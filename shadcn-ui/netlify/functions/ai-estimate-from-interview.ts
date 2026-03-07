@@ -112,6 +112,8 @@ interface RequestBody {
     preEstimate?: PreEstimate;
     /** Optional structured understanding from Requirement Understanding step */
     requirementUnderstanding?: Record<string, unknown>;
+    /** Optional impact map from Impact Map step */
+    impactMap?: Record<string, unknown>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -321,6 +323,37 @@ function formatUnderstandingBlock(ru: Record<string, unknown> | undefined): stri
         }
         if (typeof ru.confidence === 'number') {
             lines.push(`- Confidenza comprensione: ${Math.round((ru.confidence as number) * 100)}%`);
+        }
+        return lines.length > 1 ? lines.join('\n') : '';
+    } catch {
+        return '';
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Impact Map → compact prompt block (optional enrichment)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function formatImpactMapBlock(im: Record<string, unknown> | undefined): string {
+    if (!im || typeof im !== 'object') return '';
+    try {
+        const lines: string[] = [];
+        lines.push('\nMAPPA IMPATTO ARCHITETTURALE (validata dall\'utente — usala per migliorare selezione attività, copertura layer e ragionamento, NON sostituisce descrizione o risposte):');
+        if (im.summary) lines.push(`Sintesi: ${im.summary}`);
+        if (typeof im.overallConfidence === 'number') {
+            lines.push(`Confidenza complessiva: ${Math.round((im.overallConfidence as number) * 100)}%`);
+        }
+        if (Array.isArray(im.impacts) && im.impacts.length > 0) {
+            lines.push('Impatti:');
+            for (const item of im.impacts) {
+                if (!item || typeof item !== 'object') continue;
+                const layer = item.layer || '?';
+                const action = item.action || '?';
+                const components = Array.isArray(item.components) ? item.components.join(', ') : '';
+                const reason = item.reason || '';
+                const conf = typeof item.confidence === 'number' ? ` (${Math.round(item.confidence * 100)}%)` : '';
+                lines.push(`- ${layer} [${action}]: ${components} — ${reason}${conf}`);
+            }
         }
         return lines.length > 1 ? lines.join('\n') : '';
     } catch {
@@ -559,6 +592,7 @@ export const handler = createAIHandler<RequestBody>({
             techCategory: body.techCategory,
             hasProjectContext: !!body.projectContext,
             hasRequirementUnderstanding: !!body.requirementUnderstanding,
+            hasImpactMap: !!body.impactMap,
             searchMethod,
             ragExamples: ragContext.examples?.length || 0,
             validCodes: validActivityCodes.slice(0, 5).join(', ') + (validActivityCodes.length > 5 ? '...' : ''),
@@ -591,7 +625,7 @@ PRE-STIMA (dal planner, Round 0 — usala come ancora, puoi discostartene se le 
 
         let userPrompt = `REQUISITO:
 ${sanitizedDescription}
-${projectContextSection}${preEstimateSection}${formatUnderstandingBlock(body.requirementUnderstanding)}
+${projectContextSection}${preEstimateSection}${formatUnderstandingBlock(body.requirementUnderstanding)}${formatImpactMapBlock(body.impactMap)}
 RISPOSTE INTERVIEW TECNICA:
 ${interviewAnswers}
 
