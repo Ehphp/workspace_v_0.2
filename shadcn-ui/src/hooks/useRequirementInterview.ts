@@ -24,6 +24,7 @@ import type {
 } from '@/types/requirement-interview';
 import type { RequirementUnderstanding } from '@/types/requirement-understanding';
 import type { ImpactMap } from '@/types/impact-map';
+import type { EstimationBlueprint } from '@/types/estimation-blueprint';
 
 /** Result returned by generateQuestions so callers get data synchronously */
 export interface GenerateQuestionsResult {
@@ -69,7 +70,8 @@ interface UseRequirementInterviewReturn {
         techCategory: string,
         projectContext?: { name: string; description: string; owner?: string },
         requirementUnderstanding?: RequirementUnderstanding,
-        impactMap?: ImpactMap
+        impactMap?: ImpactMap,
+        estimationBlueprint?: EstimationBlueprint
     ) => Promise<GenerateQuestionsResult>;
     answerQuestion: (questionId: string, value: string | string[] | number) => void;
     nextQuestion: () => void;
@@ -81,7 +83,8 @@ interface UseRequirementInterviewReturn {
         techCategory: string,
         projectContext?: { name: string; description: string; owner?: string },
         requirementUnderstanding?: RequirementUnderstanding,
-        impactMap?: ImpactMap
+        impactMap?: ImpactMap,
+        estimationBlueprint?: EstimationBlueprint
     ) => Promise<EstimationFromInterviewResponse | null>;
     reset: () => void;
 }
@@ -149,7 +152,8 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
         techCategory: string,
         projectContext?: { name: string; description: string; owner?: string },
         requirementUnderstanding?: RequirementUnderstanding,
-        impactMap?: ImpactMap
+        impactMap?: ImpactMap,
+        estimationBlueprint?: EstimationBlueprint
     ): Promise<GenerateQuestionsResult> => {
         setPhase('loading-questions');
         setError(null);
@@ -162,6 +166,7 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
                 projectContext,
                 requirementUnderstanding,
                 impactMap,
+                estimationBlueprint,
             });
 
             if (response.success && (response.decision === 'SKIP' || response.questions.length > 0)) {
@@ -242,7 +247,8 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
         techCategory: string,
         projectContext?: { name: string; description: string; owner?: string },
         requirementUnderstanding?: RequirementUnderstanding,
-        impactMap?: ImpactMap
+        impactMap?: ImpactMap,
+        estimationBlueprint?: EstimationBlueprint
     ): Promise<EstimationFromInterviewResponse | null> => {
         setPhase('generating-estimate');
         setError(null);
@@ -262,6 +268,7 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
                 preEstimate: preEstimateRef.current ?? preEstimate,
                 requirementUnderstanding,
                 impactMap,
+                estimationBlueprint,
             });
 
             if (response.success) {

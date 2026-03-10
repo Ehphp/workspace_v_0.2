@@ -114,6 +114,8 @@ interface RequestBody {
     requirementUnderstanding?: Record<string, unknown>;
     /** Optional impact map from Impact Map step */
     impactMap?: Record<string, unknown>;
+    /** Optional estimation blueprint — structured technical work model */
+    estimationBlueprint?: Record<string, unknown>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -362,6 +364,42 @@ function formatImpactMapBlock(im: Record<string, unknown> | undefined): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Estimation Blueprint → compact prompt block (optional enrichment)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function formatBlueprintBlock(bp: Record<string, unknown> | undefined): string {
+    if (!bp || typeof bp !== 'object') return '';
+    try {
+        const lines: string[] = [];
+        lines.push('\nBLUEPRINT TECNICO (modello strutturale validato dall\'utente — usalo per migliorare selezione attività e copertura componenti, NON sostituisce descrizione o risposte):');
+        if (bp.summary) lines.push(`Sintesi: ${bp.summary}`);
+        if (typeof bp.overallConfidence === 'number') {
+            lines.push(`Confidenza complessiva: ${Math.round((bp.overallConfidence as number) * 100)}%`);
+        }
+        if (Array.isArray(bp.components) && bp.components.length > 0) {
+            lines.push('Componenti:');
+            for (const c of bp.components) {
+                if (!c || typeof c !== 'object') continue;
+                const name = c.name || '?';
+                const layer = c.layer || '?';
+                const intervention = c.interventionType || '?';
+                const complexity = c.complexity || '?';
+                lines.push(`- ${name} [${layer}/${intervention}] complessità: ${complexity}`);
+            }
+        }
+        if (Array.isArray(bp.integrations) && bp.integrations.length > 0) {
+            lines.push('Integrazioni: ' + bp.integrations.map((i: any) => `${i.systemName || '?'} (${i.direction || '?'})`).join(', '));
+        }
+        if (Array.isArray(bp.uncertainties) && bp.uncertainties.length > 0) {
+            lines.push('Incertezze: ' + bp.uncertainties.join('; '));
+        }
+        return lines.length > 1 ? lines.join('\n') : '';
+    } catch {
+        return '';
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Handler
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -410,7 +448,8 @@ export const handler = createAIHandler<RequestBody>({
             fetchResult.activities,
             sanitizedDescription,
             body.answers,
-            20
+            20,
+            body.estimationBlueprint
         );
         metrics.activitiesAfterRanking = rankedActivities.length;
 
@@ -625,7 +664,7 @@ PRE-STIMA (dal planner, Round 0 — usala come ancora, puoi discostartene se le 
 
         let userPrompt = `REQUISITO:
 ${sanitizedDescription}
-${projectContextSection}${preEstimateSection}${formatUnderstandingBlock(body.requirementUnderstanding)}${formatImpactMapBlock(body.impactMap)}
+${projectContextSection}${preEstimateSection}${formatUnderstandingBlock(body.requirementUnderstanding)}${formatImpactMapBlock(body.impactMap)}${formatBlueprintBlock(body.estimationBlueprint)}
 RISPOSTE INTERVIEW TECNICA:
 ${interviewAnswers}
 

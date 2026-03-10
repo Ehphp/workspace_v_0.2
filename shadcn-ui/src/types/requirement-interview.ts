@@ -8,6 +8,7 @@
 import { z } from 'zod';
 import type { RequirementUnderstanding } from './requirement-understanding';
 import type { ImpactMap } from './impact-map';
+import type { EstimationBlueprint } from './estimation-blueprint';
 
 /**
  * Categories of technical questions that impact estimation
@@ -122,6 +123,8 @@ export interface RequirementInterviewRequest {
     requirementUnderstanding?: RequirementUnderstanding;
     /** Optional impact map from Phase 2 — enriches AI context with architectural layer info */
     impactMap?: ImpactMap;
+    /** Optional estimation blueprint — structured technical work model */
+    estimationBlueprint?: EstimationBlueprint;
 }
 export interface RequirementInterviewResponse {
     /** Whether generation was successful */
@@ -192,6 +195,8 @@ export interface EstimationFromInterviewRequest {
     requirementUnderstanding?: RequirementUnderstanding;
     /** Optional impact map from Phase 2 — enriches AI context with architectural layer info */
     impactMap?: ImpactMap;
+    /** Optional estimation blueprint — structured technical work model */
+    estimationBlueprint?: EstimationBlueprint;
 }
 
 /**

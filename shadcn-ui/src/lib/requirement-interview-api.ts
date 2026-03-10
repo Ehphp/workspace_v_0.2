@@ -84,6 +84,7 @@ export async function generateInterviewQuestions(
                 projectContext: request.projectContext,
                 ...(request.requirementUnderstanding ? { requirementUnderstanding: request.requirementUnderstanding } : {}),
                 ...(request.impactMap ? { impactMap: request.impactMap } : {}),
+                ...(request.estimationBlueprint ? { estimationBlueprint: request.estimationBlueprint } : {}),
             }),
         });
 
@@ -209,6 +210,7 @@ export async function generateEstimateFromInterview(
                 preEstimate: request.preEstimate,
                 ...(request.requirementUnderstanding ? { requirementUnderstanding: request.requirementUnderstanding } : {}),
                 ...(request.impactMap ? { impactMap: request.impactMap } : {}),
+                ...(request.estimationBlueprint ? { estimationBlueprint: request.estimationBlueprint } : {}),
             }),
         });
 

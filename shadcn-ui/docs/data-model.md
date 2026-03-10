@@ -575,6 +575,41 @@ Stores structured AI-generated architectural impact analysis artifacts for requi
 
 ---
 
+### estimation_blueprint
+
+Stores structured AI-generated Estimation Blueprint artifacts for requirements. Each row captures one generation run with version tracking.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key (DEFAULT gen_random_uuid()) |
+| `requirement_id` | UUID | FK → requirements (CASCADE). Nullable — blueprint can be generated before the requirement is persisted. |
+| `blueprint` | JSONB | Full `EstimationBlueprint` artifact (summary, components[], integrations[], dataEntities[], testingScope[], assumptions[], exclusions[], uncertainties[], overallConfidence, reasoning) |
+| `input_description` | TEXT | Snapshot of the description used to generate the blueprint |
+| `input_tech_category` | TEXT | Technology category at generation time |
+| `based_on_understanding_id` | UUID | FK → requirement_understanding. Tracks which understanding informed this blueprint. |
+| `based_on_impact_map_id` | UUID | FK → impact_map. Tracks which impact map informed this blueprint. |
+| `confidence_score` | NUMERIC(3,2) | Overall confidence score (0.00–1.00) |
+| `user_id` | UUID | FK → auth.users. Who triggered the generation. |
+| `version` | INTEGER | Monotonically increasing per requirement_id. |
+| `created_at` | TIMESTAMPTZ | DEFAULT now() |
+| `updated_at` | TIMESTAMPTZ | DEFAULT now() |
+
+**Indexes**:
+- `idx_estimation_blueprint_requirement` — `(requirement_id, created_at DESC)` for fast latest-version lookup
+- `idx_estimation_blueprint_user` — `(user_id)` for RLS policy
+
+**RLS Policies**:
+- **SELECT**: User can read blueprints for requirements they own (via `requirements → lists → user_id`) or that they created (`user_id = auth.uid()`)
+- **INSERT**: `user_id = auth.uid()`
+- **UPDATE**: `user_id = auth.uid()`
+- **DELETE**: `user_id = auth.uid()`
+
+**Auditability**: The `estimations` table has a `blueprint_id UUID` FK column (nullable) that links each estimation to the blueprint that informed it. This enables full traceability: requirement → understanding → impact map → blueprint → estimation.
+
+**Migration**: [20260311_estimation_blueprint.sql](../supabase/migrations/20260311_estimation_blueprint.sql)
+
+---
+
 ## Maintenance Notes
 
 - **Schema changes**: Run migration SQL in Supabase SQL Editor.
@@ -591,6 +626,7 @@ Stores structured AI-generated architectural impact analysis artifacts for requi
 - **Smart updated_at trigger (2026-03-04)**: Replaced blanket `update_requirements_updated_at` trigger with `update_requirements_updated_at_smart()`. The new trigger only bumps `updated_at` when user-facing content columns change (`title`, `description`, `priority`, `state`, `business_owner`, `technology_id`, `req_id`). System writes (embedding, `assigned_estimation_id`, labels) no longer touch `updated_at`. Migration: `20260304_fix_updated_at_trigger.sql`.
 - **Requirement Understanding (2026-03-06)**: `requirement_understanding` table added for Milestone 1. Stores structured AI understanding artifacts with version history. JSONB `understanding` column holds the full `RequirementUnderstanding` interface. Migration: `20260306_requirement_understanding.sql`.
 - **Impact Map (2026-03-08)**: `impact_map` table added for Milestone 2. Stores structured AI architectural impact analysis artifacts with version history. JSONB `impact_map` column holds the full `ImpactMap` interface (summary, impacts[], overallConfidence). Boolean `has_requirement_understanding` tracks whether the understanding was available as input. Migration: `20260308_impact_map.sql`.
+- **Estimation Blueprint (2026-03-11)**: `estimation_blueprint` table added for Milestone 3. Stores structured AI estimation blueprint artifacts with technical component decomposition, integrations, data entities, testing scope, and confidence scoring. FKs to `requirement_understanding` and `impact_map` for provenance. Also adds `blueprint_id UUID` FK to `estimations` table for audit traceability. Migration: `20260311_estimation_blueprint.sql`.
 
 ---
 

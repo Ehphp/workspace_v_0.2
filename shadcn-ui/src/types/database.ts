@@ -214,6 +214,21 @@ export interface ImpactMapRow {
   created_at: string;
 }
 
+export interface EstimationBlueprintRow {
+  id: string;
+  requirement_id: string | null;
+  blueprint: Record<string, unknown>;
+  input_description: string;
+  input_tech_category: string | null;
+  based_on_understanding_id: string | null;
+  based_on_impact_map_id: string | null;
+  confidence_score: number | null;
+  user_id: string;
+  version: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // Extended types with joins
 export interface RequirementWithEstimation extends Requirement {
   latest_estimation: Estimation | null;

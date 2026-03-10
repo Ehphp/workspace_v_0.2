@@ -102,12 +102,18 @@ export async function fetchActivitiesServerSide(
  * Deterministic keyword-based ranking to select the most relevant activities.
  * Scores each activity by keyword overlap with the requirement + optional interview answers,
  * then returns the top N (default 20).
+ *
+ * When an estimation blueprint is provided, its components, integrations, and
+ * data entities are extracted as additional keywords and each match gets a
+ * boosted weight (+2 per keyword) so that structurally relevant activities
+ * rank higher.
  */
 export function selectTopActivities(
     activities: Activity[],
     description: string,
     answers: Record<string, InterviewAnswerRecord> | undefined,
-    topN: number = 20
+    topN: number = 20,
+    blueprint?: Record<string, unknown>
 ): Activity[] {
     if (activities.length <= topN) return activities;
 
@@ -126,6 +132,49 @@ export function selectTopActivities(
         .filter(w => w.length > 2);
     const keywordSet = new Set(keywords);
 
+    // Blueprint-boosted keywords (higher weight for structural matches)
+    const blueprintKeywords = new Set<string>();
+    if (blueprint && typeof blueprint === 'object') {
+        const bpParts: string[] = [];
+        if (Array.isArray(blueprint.components)) {
+            for (const c of blueprint.components) {
+                if (c && typeof c === 'object') {
+                    if (c.name) bpParts.push(String(c.name));
+                    if (c.layer) bpParts.push(String(c.layer));
+                    if (c.interventionType) bpParts.push(String(c.interventionType));
+                    if (c.description) bpParts.push(String(c.description));
+                }
+            }
+        }
+        if (Array.isArray(blueprint.integrations)) {
+            for (const i of blueprint.integrations) {
+                if (i && typeof i === 'object') {
+                    if (i.systemName) bpParts.push(String(i.systemName));
+                    if (i.protocol) bpParts.push(String(i.protocol));
+                }
+            }
+        }
+        if (Array.isArray(blueprint.dataEntities)) {
+            for (const d of blueprint.dataEntities) {
+                if (d && typeof d === 'object') {
+                    if (d.name) bpParts.push(String(d.name));
+                    if (Array.isArray(d.operations)) bpParts.push(d.operations.join(' '));
+                }
+            }
+        }
+        if (Array.isArray(blueprint.testingScope)) {
+            for (const t of blueprint.testingScope) {
+                if (t && typeof t === 'object') {
+                    if (t.area) bpParts.push(String(t.area));
+                }
+            }
+        }
+        const bpText = bpParts.join(' ').toLowerCase();
+        for (const w of bpText.split(/[^a-zA-ZÀ-ÿ0-9]+/).filter(w => w.length > 2)) {
+            blueprintKeywords.add(w);
+        }
+    }
+
     // Score each activity
     const scored = activities.map(a => {
         const activityText = `${a.code} ${a.name} ${a.description || ''} ${a.group}`.toLowerCase();
@@ -133,6 +182,8 @@ export function selectTopActivities(
         let score = 0;
         for (const word of activityWords) {
             if (keywordSet.has(word)) score += 1;
+            // Blueprint keywords get a stronger boost (structural relevance)
+            if (blueprintKeywords.has(word)) score += 2;
         }
         // Boost MULTI activities slightly (cross-cutting concerns)
         if (a.tech_category === 'MULTI') score += 0.5;

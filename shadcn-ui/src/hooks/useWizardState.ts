@@ -10,6 +10,7 @@ import type {
 } from '@/types/requirement-interview';
 import type { RequirementUnderstanding } from '@/types/requirement-understanding';
 import type { ImpactMap } from '@/types/impact-map';
+import type { EstimationBlueprint } from '@/types/estimation-blueprint';
 
 /** Project context for AI to avoid redundant questions */
 export interface ProjectContext {
@@ -57,6 +58,9 @@ export interface WizardData {
   // Impact Map artifact (Phase 2d)
   impactMap?: ImpactMap;
   impactMapConfirmed?: boolean;
+  // Estimation Blueprint artifact
+  estimationBlueprint?: EstimationBlueprint;
+  estimationBlueprintConfirmed?: boolean;
 }
 
 const STORAGE_KEY = 'estimation_wizard_data';
@@ -124,5 +128,8 @@ function getInitialData(): WizardData {
     // Impact Map
     impactMap: undefined,
     impactMapConfirmed: undefined,
+    // Estimation Blueprint
+    estimationBlueprint: undefined,
+    estimationBlueprintConfirmed: undefined,
   };
 }

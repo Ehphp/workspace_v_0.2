@@ -386,6 +386,8 @@ then ranked by keyword relevance and trimmed to the **top 20**. This reduces:
 - LLM prompt tokens (compact format: code, name, base_hours, truncated description)
 - Client-provided activities are used only as a fallback
 
+**Blueprint-boosted ranking** (Milestone 3): When an Estimation Blueprint is available, `selectTopActivities()` extracts keywords from the blueprint's components, integrations, data entities, and testing scope. Each blueprint-derived keyword match receives a **+2 boost** (vs +1 for description keywords), ensuring that structurally relevant activities rank higher. This makes the blueprint an operational artifact — not just prompt decoration — by directly influencing which activities the LLM sees.
+
 **Key functions**: `fetchActivitiesServerSide()`, `selectTopActivities()`, `formatActivitiesCatalog()`
 
 ### Max Tokens Reduction

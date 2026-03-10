@@ -147,6 +147,7 @@ With the planner, simple requirements may skip the interview entirely (SKIP path
   };
   requirementUnderstanding?: object;  // Confirmed understanding (Milestone 1)
   impactMap?: object;                 // Confirmed impact map (Milestone 2) — focuses questions on low-confidence layers
+  estimationBlueprint?: object;       // Confirmed blueprint (Milestone 3) — focuses questions on high-complexity components
 }
 ```
 
@@ -300,6 +301,7 @@ Endpoints that select activities based on gathered information.
   };
   requirementUnderstanding?: object;  // Confirmed understanding (Milestone 1)
   impactMap?: object;                 // Confirmed impact map (Milestone 2) — improves activity selection and layer coverage
+  estimationBlueprint?: object;       // Confirmed blueprint (Milestone 3) — boosts activity ranking + improves estimation
 }
 ```
 
@@ -737,6 +739,7 @@ This maximizes reuse of validated activities while allowing AI to fill gaps.
 | `ai-generate-questions` | 20s | Simpler prompt |
 | `ai-generate-preset` | 50s | Complex preset generation |
 | `ai-impact-map` | 55s | Architectural impact analysis |
+| `ai-estimation-blueprint` | 55s | Technical blueprint generation |
 
 ---
 
@@ -745,6 +748,7 @@ This maximizes reuse of validated activities while allowing AI to fill gaps.
 - **ai-suggest**: 24h TTL cache keyed by `hash(description + presetId + activityCodes)`
 - **ai-requirement-understanding**: 12h TTL cache, prefix `ai:understand`, keyed by `hash(description[0:300] + techCategory)`
 - **ai-impact-map**: 12h TTL cache, prefix `ai:impactmap`, keyed by `hash(description[0:300] + techCategory + ru:1/ru:0)`
+- **ai-estimation-blueprint**: 12h TTL cache, prefix `ai:blueprint`, keyed by `hash(description[0:300] + techCategory + ru:1/ru:0 + im:1/im:0)`
 - **Other endpoints**: No caching (interview/estimation responses depend on user-specific context)
 
 Cache implementation: `lib/ai/ai-cache.ts`
@@ -1135,6 +1139,101 @@ The following estimation endpoints automatically use vector search when enabled:
 **Downstream enrichment**: When the impact map is confirmed by the user, it is passed as `impactMap` to both `ai-requirement-interview` and `ai-estimate-from-interview`, where `formatImpactMapBlock()` injects it into the user prompt. The interview endpoint uses it to focus questions on low-confidence layers; the estimation endpoint uses it to improve activity selection and layer coverage.
 
 **Persistence**: The confirmed impact map is saved to `impact_map` table via `saveImpactMap()` in `src/lib/api.ts` after the requirement is created.
+
+---
+
+## Estimation Blueprint Endpoint
+
+### POST `/.netlify/functions/ai-estimation-blueprint`
+
+**Purpose**: Generates a structured Estimation Blueprint artifact that decomposes a requirement into technical components, integrations, data entities, testing scope, assumptions, and uncertainties. This is a **structured intermediate representation** positioned between the Impact Map's architectural analysis and the estimation engine's activity selection.
+
+**When Used**: Wizard step 5 ("Blueprint") — auto-triggered after Impact Map confirmation and before the technical interview.
+
+**Auth**: Optional (`requireAuth: false`, allows Quick Estimate demo)
+
+**Input**:
+```typescript
+{
+  description: string;             // Requirement description (15–2000 chars)
+  techCategory?: string;           // e.g. "POWER_PLATFORM", "BACKEND"
+  techPresetId?: string;           // Selected technology preset ID
+  projectContext?: {               // Optional project metadata
+    name: string;
+    description: string;
+    owner?: string;
+  };
+  requirementUnderstanding?: object;  // Confirmed understanding
+  impactMap?: object;                 // Confirmed impact map
+}
+```
+
+**Output**:
+```typescript
+{
+  success: boolean;
+  blueprint: {
+    summary: string;
+    components: Array<{
+      name: string;
+      layer: "frontend" | "logic" | "data" | "integration" | "automation" | "configuration" | "ai_pipeline";
+      interventionType: "new" | "modify" | "extend" | "configure" | "migrate";
+      complexity: "trivial" | "low" | "medium" | "high" | "very_high";
+      description: string;
+      estimatedEffortHours: number;
+      notes?: string;
+    }>;
+    integrations: Array<{
+      systemName: string;
+      direction: "inbound" | "outbound" | "bidirectional";
+      protocol: string;
+      complexity: "trivial" | "low" | "medium" | "high" | "very_high";
+      notes?: string;
+    }>;
+    dataEntities: Array<{
+      name: string;
+      operations: ("create" | "read" | "update" | "delete")[];
+      isNew: boolean;
+      notes?: string;
+    }>;
+    testingScope: Array<{
+      area: string;
+      criticality: "low" | "medium" | "high" | "critical";
+      notes?: string;
+    }>;
+    assumptions: string[];
+    exclusions: string[];
+    uncertainties: string[];
+    overallConfidence: number;       // 0.0–1.0
+    reasoning?: string;
+  };
+  metadata?: {
+    generatedAt: string;
+    model: string;
+    techCategory?: string;
+    inputDescriptionLength: number;
+    hasRequirementUnderstanding: boolean;
+    hasImpactMap: boolean;
+  };
+  metrics?: {
+    totalMs: number;
+    llmMs: number;
+    model: string;
+  };
+}
+```
+
+**Model Configuration**:
+- Model: `gpt-4o-mini`
+- Temperature: `0.2`
+- Max tokens: `3000`
+- Structured output via strict JSON schema
+
+**Caching**: Redis-backed, prefix `ai:blueprint`, TTL 12 hours. Cache key hashes `description[0:300] + techCategory + ru:1/ru:0 + im:1/im:0`.
+
+**Downstream enrichment**: When the blueprint is confirmed by the user, it is passed as `estimationBlueprint` to both `ai-requirement-interview` and `ai-estimate-from-interview`, where `formatBlueprintBlock()` injects it into the user prompt. Additionally, `selectTopActivities()` uses blueprint keywords with a +2 boost weight for structural activity ranking.
+
+**Persistence**: The confirmed blueprint is saved to `estimation_blueprint` table via `saveEstimationBlueprint()` in `src/lib/api.ts`. The `estimations.blueprint_id` FK links each estimation to the blueprint that informed it.
 
 ---
 

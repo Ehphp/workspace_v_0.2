@@ -31,6 +31,8 @@ AI functionality is distributed across multiple serverless functions:
 | `ai-generate-questions.ts` | Stage 1: preset wizard questions | Custom preset creation |
 | `ai-generate-preset.ts` | Stage 2: generate preset from answers | Custom preset creation |
 | `ai-requirement-understanding.ts` | Generate structured Requirement Understanding artifact | Wizard step 3 (Milestone 1) |
+| `ai-impact-map.ts` | Generate structured Impact Map artifact | Wizard step 4 (Milestone 2) |
+| `ai-estimation-blueprint.ts` | Generate structured Estimation Blueprint artifact | Wizard step 5 (Milestone 3) |
 | `ai-consultant.ts` | Senior consultant analysis | Post-estimation review |
 | `ai-generate-embeddings.ts` | Generate vector embeddings | Background/admin job (Phase 1) |
 | `ai-check-duplicates.ts` | Semantic activity deduplication | AI Technology Wizard (Phase 3) |
@@ -396,6 +398,109 @@ The confirmed impact map is saved to the `impact_map` table (see [data-model.md]
 
 ---
 
+## Milestone 3: Estimation Blueprint
+
+### Purpose
+
+The Estimation Blueprint is a structured intermediate representation that captures the **technical anatomy** of a requirement — components, integrations, data entities, testing scope, assumptions, and uncertainties — before activity selection. It bridges the gap between the Impact Map's architectural "where" and the estimation engine's concrete activity catalog.
+
+### Goals
+
+- Decompose the requirement into concrete technical components with layer/complexity metadata
+- Identify integration points, data entities, and testing scope
+- Surface assumptions, exclusions, and uncertainties explicitly
+- Provide an overall confidence score
+- **Structurally boost** activity ranking via keyword extraction from blueprint components
+
+### Data Flow
+
+```
+┌─────────────────────────────┐
+│  WizardStepImpactMap        │
+│  (confirmed)                │
+└────────┬────────────────────┘
+         │ onNext()
+         ▼
+┌─────────────────────────────┐
+│  WizardStepBlueprint        │
+│  (auto-generates on mount)  │
+└────────┬────────────────────┘
+         │ generateEstimationBlueprint()
+         │ POST /ai-estimation-blueprint
+         ▼
+┌─────────────────────────────┐
+│  generate-estimation-       │
+│  blueprint.ts               │
+│  (gpt-4o-mini, temp=0.2)   │
+└────────┬────────────────────┘
+         │ Zod-validated JSON
+         ▼
+┌─────────────────────────────┐
+│  EstimationBlueprintCard    │
+│  (review: confirm/regen/skip)│
+└────────┬────────────────────┘
+         │ onConfirmAndContinue()
+         ▼
+┌─────────────────────────────┐
+│  WizardStepInterview        │
+│  (receives blueprint as     │
+│   context for questions,    │
+│   estimation, AND activity  │
+│   ranking boost)            │
+└─────────────────────────────┘
+```
+
+### Artifact Shape
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `summary` | string | Technical summary of the work involved |
+| `components` | `BlueprintComponent[]` | Technical components to build/modify (1–20) |
+| `components[].name` | string | Component name |
+| `components[].layer` | enum | `frontend` \| `logic` \| `data` \| `integration` \| `automation` \| `configuration` \| `ai_pipeline` |
+| `components[].interventionType` | enum | `new` \| `modify` \| `extend` \| `configure` \| `migrate` |
+| `components[].complexity` | enum | `trivial` \| `low` \| `medium` \| `high` \| `very_high` |
+| `components[].description` | string | What needs to be done |
+| `components[].estimatedEffortHours` | number | Rough effort estimate |
+| `integrations` | `BlueprintIntegration[]` | External system integration points |
+| `dataEntities` | `BlueprintDataEntity[]` | Data entities involved |
+| `testingScope` | `BlueprintTestingScope[]` | Testing areas and criticality |
+| `assumptions` | string[] | Technical assumptions |
+| `exclusions` | string[] | Explicitly out of scope |
+| `uncertainties` | string[] | Open questions / unknowns |
+| `overallConfidence` | number | 0.0–1.0 |
+| `reasoning` | string | Optional reasoning for the blueprint |
+
+### Downstream Enrichment
+
+When the user confirms the blueprint, it is forwarded as optional `estimationBlueprint` field to:
+
+- `POST /ai-requirement-interview` — injected via `formatBlueprintBlock()` to focus questions on high-complexity components
+- `POST /ai-estimate-from-interview` — injected to improve activity selection and component coverage
+- `selectTopActivities()` in `lib/activities.ts` — blueprint component/integration keywords get **+2 boost** per keyword match (vs +1 for description keywords), structurally influencing deterministic activity ranking
+
+All endpoints remain backward-compatible: if `estimationBlueprint` is absent or null, prompts and ranking proceed unchanged.
+
+### Persistence & Auditability
+
+- The confirmed blueprint is saved to the `estimation_blueprint` table (see [data-model.md](data-model.md)) after the requirement is created
+- The `estimations.blueprint_id` FK links each estimation to the blueprint that informed it, enabling full artifact traceability
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `src/types/estimation-blueprint.ts` | TypeScript interfaces + Zod schemas |
+| `src/lib/estimation-blueprint-api.ts` | Frontend API client |
+| `netlify/functions/ai-estimation-blueprint.ts` | Endpoint (createAIHandler) |
+| `netlify/functions/lib/ai/actions/generate-estimation-blueprint.ts` | AI action (cache → LLM → validate) |
+| `netlify/functions/lib/ai/prompts/blueprint-generation.ts` | System prompt + JSON schema |
+| `src/components/requirements/wizard/WizardStepBlueprint.tsx` | Wizard step (loading/review/error) |
+| `src/components/requirements/wizard/EstimationBlueprintCard.tsx` | Presentational card |
+| `supabase/migrations/20260311_estimation_blueprint.sql` | Table + RLS + blueprint_id FK migration |
+
+---
+
 ## AI Interview System
 
 The interview system enables more accurate activity selection by gathering technical context through targeted questions. It uses an **information-gain planner** to minimize unnecessary questions.
@@ -694,6 +799,8 @@ Deterministic AI actions (`suggest-activities`, `generate-title`, `normalize-req
 | `ai-consultant` | — | No cache | Session-specific |
 | `ai-estimate-from-interview` | — | No cache | Unique per interview |
 | `ai-requirement-understanding` | `ai:understand` | 12h | `testMode=true` |
+| `ai-impact-map` | `ai:impactmap` | 12h | `testMode=true` |
+| `ai-estimation-blueprint` | `ai:blueprint` | 12h | `testMode=true` |
 
 **Cache key**: `{prefix}:{SHA-256(input parts)}` — e.g. for suggestions, the key hashes `description + preset.id + sorted activity codes`.
 
@@ -740,6 +847,8 @@ For the same input, 9/10 calls should return the same activityCodes (90%+ consis
 | `netlify/functions/ai-generate-questions.ts` | Preset wizard Stage 1 |
 | `netlify/functions/ai-generate-preset.ts` | Preset wizard Stage 2 |
 | `netlify/functions/ai-requirement-understanding.ts` | Requirement Understanding generation (Milestone 1) |
+| `netlify/functions/ai-impact-map.ts` | Impact Map generation (Milestone 2) |
+| `netlify/functions/ai-estimation-blueprint.ts` | Estimation Blueprint generation (Milestone 3) |
 
 ### Shared Libraries (Serverless)
 
@@ -748,6 +857,8 @@ For the same input, 9/10 calls should return the same activityCodes (90%+ consis
 | `netlify/functions/lib/ai/actions/suggest-activities.ts` | Activity suggestion logic |
 | `netlify/functions/lib/ai/actions/generate-title.ts` | Title generation logic |
 | `netlify/functions/lib/ai/actions/generate-understanding.ts` | Requirement Understanding generation logic (Milestone 1) |
+| `netlify/functions/lib/ai/actions/generate-impact-map.ts` | Impact Map generation logic (Milestone 2) |
+| `netlify/functions/lib/ai/actions/generate-estimation-blueprint.ts` | Estimation Blueprint generation logic (Milestone 3) |
 | `netlify/functions/lib/ai/actions/generate-questions.ts` | Question generation logic |
 | `netlify/functions/lib/ai/ai-cache.ts` | **Redis-backed AI response cache** |
 | `netlify/functions/lib/ai/prompt-builder.ts` | Prompt construction |

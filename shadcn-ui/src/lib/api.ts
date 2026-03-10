@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import type {
   Activity,
   Driver,
+  EstimationBlueprintRow,
   ImpactMapRow,
   List,
   Requirement,
@@ -266,6 +267,7 @@ export interface SaveEstimationInput {
   riskScore: number;
   contingencyPercent: number;
   aiReasoning?: string;
+  blueprintId?: string;
   activities: {
     code: string;
     isAiSuggested: boolean;
@@ -298,6 +300,7 @@ export async function saveEstimation(input: SaveEstimationInput): Promise<void> 
       contingency_percent: input.contingencyPercent,
       scenario_name: 'Wizard',
       ai_reasoning: input.aiReasoning || null,
+      blueprint_id: input.blueprintId || null,
     })
     .select()
     .single();
@@ -560,4 +563,72 @@ export async function getLatestImpactMap(
   if (error) throw new ApiError(error.message, parseInt(error.code), error);
   if (!data || data.length === 0) return null;
   return data[0] as ImpactMapRow;
+}
+
+// ── Estimation Blueprint persistence ──
+
+export interface SaveEstimationBlueprintInput {
+  requirementId?: string;
+  blueprint: Record<string, unknown>;
+  inputDescription: string;
+  inputTechCategory?: string;
+  basedOnUnderstandingId?: string;
+  basedOnImpactMapId?: string;
+  confidenceScore?: number;
+}
+
+export async function saveEstimationBlueprint(
+  input: SaveEstimationBlueprintInput
+): Promise<EstimationBlueprintRow> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new ApiError('Utente non autenticato', 401);
+
+  // Determine version: max existing version + 1
+  let version = 1;
+  if (input.requirementId) {
+    const { data: existing } = await supabase
+      .from('estimation_blueprint')
+      .select('version')
+      .eq('requirement_id', input.requirementId)
+      .order('version', { ascending: false })
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      version = existing[0].version + 1;
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('estimation_blueprint')
+    .insert({
+      requirement_id: input.requirementId ?? null,
+      blueprint: input.blueprint,
+      input_description: input.inputDescription,
+      input_tech_category: input.inputTechCategory ?? null,
+      based_on_understanding_id: input.basedOnUnderstandingId ?? null,
+      based_on_impact_map_id: input.basedOnImpactMapId ?? null,
+      confidence_score: input.confidenceScore ?? null,
+      user_id: user.id,
+      version,
+    })
+    .select()
+    .single();
+
+  if (error) throw new ApiError(error.message, parseInt(error.code), error);
+  return data as EstimationBlueprintRow;
+}
+
+export async function getLatestEstimationBlueprint(
+  requirementId: string
+): Promise<EstimationBlueprintRow | null> {
+  const { data, error } = await supabase
+    .from('estimation_blueprint')
+    .select('*')
+    .eq('requirement_id', requirementId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (error) throw new ApiError(error.message, parseInt(error.code), error);
+  if (!data || data.length === 0) return null;
+  return data[0] as EstimationBlueprintRow;
 }

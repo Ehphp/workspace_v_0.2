@@ -63,7 +63,8 @@ export function WizardStepInterview({
             data.techCategory,
             data.projectContext,
             data.requirementUnderstanding,
-            data.impactMap
+            data.impactMap,
+            data.estimationBlueprint
         );
 
         if (result.success) {
@@ -99,7 +100,8 @@ export function WizardStepInterview({
             data.techCategory,
             data.projectContext,
             data.requirementUnderstanding,
-            data.impactMap
+            data.impactMap,
+            data.estimationBlueprint
         );
 
         if (result && result.success) {
@@ -141,7 +143,8 @@ export function WizardStepInterview({
             data.techCategory,
             data.projectContext,
             data.requirementUnderstanding,
-            data.impactMap
+            data.impactMap,
+            data.estimationBlueprint
         );
 
         if (result && result.success) {

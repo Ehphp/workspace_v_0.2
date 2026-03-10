@@ -4,10 +4,11 @@ import { WizardStep1 } from './wizard/WizardStep1';
 import { WizardStep2 } from './wizard/WizardStep2';
 import { WizardStepUnderstanding } from './wizard/WizardStepUnderstanding';
 import { WizardStepImpactMap } from './wizard/WizardStepImpactMap';
+import { WizardStepBlueprint } from './wizard/WizardStepBlueprint';
 import { WizardStepInterview } from './wizard/WizardStepInterview';
 import { WizardStep4 } from './wizard/WizardStep4';
 import { WizardStep5 } from './wizard/WizardStep5';
-import { createRequirement, saveEstimation, saveRequirementUnderstanding, saveImpactMap } from '@/lib/api';
+import { createRequirement, saveEstimation, saveRequirementUnderstanding, saveImpactMap, saveEstimationBlueprint } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
@@ -49,6 +50,7 @@ export function RequirementWizard({ listId, projectContext, onSuccess, onCancel,
         { title: 'Technology', component: WizardStep2 },
         { title: 'Understanding', component: WizardStepUnderstanding },
         { title: 'Impact Map', component: WizardStepImpactMap },
+        { title: 'Blueprint', component: WizardStepBlueprint },
         { title: 'Technical Interview', component: WizardStepInterview },
         { title: 'Drivers & Risks', component: WizardStep4 },
         { title: 'Results', component: WizardStep5 },
@@ -148,6 +150,24 @@ export function RequirementWizard({ listId, projectContext, onSuccess, onCancel,
                 }
             }
 
+            // 2c. Persist Estimation Blueprint (if confirmed)
+            let savedBlueprintId: string | undefined;
+            if (data.estimationBlueprint && data.estimationBlueprintConfirmed) {
+                try {
+                    const savedBlueprint = await saveEstimationBlueprint({
+                        requirementId: requirement.id,
+                        blueprint: data.estimationBlueprint as Record<string, unknown>,
+                        inputDescription: data.description,
+                        inputTechCategory: data.techCategory || undefined,
+                        confidenceScore: data.estimationBlueprint.overallConfidence,
+                    });
+                    savedBlueprintId = savedBlueprint.id;
+                } catch (err) {
+                    // Non-blocking: log but don't fail the whole save
+                    console.error('Failed to persist estimation blueprint:', err);
+                }
+            }
+
             // 3. Save Estimation
             await saveEstimation({
                 requirementId: requirement.id,
@@ -158,6 +178,7 @@ export function RequirementWizard({ listId, projectContext, onSuccess, onCancel,
                 riskScore: estimationResult.riskScore,
                 contingencyPercent: estimationResult.contingencyPercent,
                 aiReasoning: data.aiAnalysis, // Pass AI analysis text
+                blueprintId: savedBlueprintId,
                 activities: data.selectedActivityCodes.map(code => ({
                     code,
                     isAiSuggested: data.aiSuggestedActivityCodes.includes(code)
