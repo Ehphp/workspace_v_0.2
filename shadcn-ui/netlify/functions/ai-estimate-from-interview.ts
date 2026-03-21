@@ -25,6 +25,14 @@ import {
     type Activity,
     type InterviewAnswerRecord,
 } from './lib/activities';
+import {
+    mapBlueprintToActivities,
+    isBlueprintMappable,
+    type BlueprintMappingResult,
+    type MappedActivity,
+    type ActivityProvenance,
+} from './lib/blueprint-activity-mapper';
+import { buildProvenanceMap, attachProvenance, provenanceBreakdown } from './lib/provenance-map';
 
 // Model configuration - use env variable AI_ESTIMATION_MODEL or default to gpt-4o
 // NOTE: gpt-5 has limitations (no custom temperature, no json_schema response_format)
@@ -50,6 +58,17 @@ interface EstimationMetrics {
     pipelineMode: 'legacy' | 'agentic';
     timedOut: boolean;
     fallbackUsed: boolean;
+    /** How the candidate set was generated */
+    candidateSource: 'blueprint-mapper' | 'keyword-ranking' | 'vector-search';
+    /** Coverage report from blueprint mapper (if used) */
+    blueprintCoverage?: {
+        componentCoveragePercent: number;
+        fromBlueprint: number;
+        fromFallback: number;
+        missingGroups: string[];
+    };
+    /** Non-blocking quality warnings from blueprint mapper */
+    blueprintWarnings?: Array<{ level: string; code: string; message: string }>;
 }
 
 function createEmptyMetrics(): EstimationMetrics {
@@ -69,6 +88,7 @@ function createEmptyMetrics(): EstimationMetrics {
         pipelineMode: 'legacy',
         timedOut: false,
         fallbackUsed: false,
+        candidateSource: 'keyword-ranking',
     };
 }
 
@@ -443,15 +463,71 @@ export const handler = createAIHandler<RequestBody>({
             throw new Error('Nessuna attività disponibile per questa tecnologia.');
         }
 
-        // ─── Deterministic ranking: select top 20 most relevant ────────
-        const rankedActivities = selectTopActivities(
-            fetchResult.activities,
-            sanitizedDescription,
-            body.answers,
-            20,
-            body.estimationBlueprint
-        );
+        // ─── Candidate Generation: Blueprint-first, keyword-fallback ───
+        //
+        // Strategy:
+        //   1. If a confirmed Blueprint is available → mapBlueprintToActivities (structural)
+        //   2. selectTopActivities fills coverage gaps (keyword-based fallback)
+        //   3. If no Blueprint → selectTopActivities alone (legacy path)
+        //
+        let rankedActivities: Activity[];
+        let blueprintMappingResult: BlueprintMappingResult | undefined;
+
+        if (isBlueprintMappable(body.estimationBlueprint)) {
+            // PRIMARY PATH: Blueprint-driven candidate generation
+            console.log('[ai-estimate-from-interview] Using BLUEPRINT-DRIVEN candidate generation');
+
+            blueprintMappingResult = mapBlueprintToActivities(
+                body.estimationBlueprint!,
+                fetchResult.activities,
+                techCat,
+                // Fallback: keyword ranking on remaining activities to fill gaps
+                (catalog, excludeCodes) => {
+                    const remaining = catalog.filter(a => !excludeCodes.has(a.code));
+                    return selectTopActivities(
+                        remaining,
+                        sanitizedDescription,
+                        body.answers,
+                        10, // fill up to 10 gap activities
+                    );
+                },
+            );
+
+            rankedActivities = blueprintMappingResult.allActivities.map(m => m.activity);
+            metrics.candidateSource = 'blueprint-mapper';
+            metrics.blueprintCoverage = {
+                componentCoveragePercent: blueprintMappingResult.coverage.componentCoveragePercent,
+                fromBlueprint: blueprintMappingResult.coverage.fromBlueprint,
+                fromFallback: blueprintMappingResult.coverage.fromFallback,
+                missingGroups: blueprintMappingResult.coverage.missingGroups,
+            };
+
+            console.log(`[ai-estimate-from-interview] Blueprint mapped ${blueprintMappingResult.coverage.fromBlueprint} activities, fallback added ${blueprintMappingResult.coverage.fromFallback}. Component coverage: ${blueprintMappingResult.coverage.componentCoveragePercent}%`);
+            if (blueprintMappingResult.warnings.length > 0) {
+                metrics.blueprintWarnings = blueprintMappingResult.warnings;
+                console.log(`[ai-estimate-from-interview] Blueprint warnings: ${blueprintMappingResult.warnings.map(w => `[${w.code}] ${w.message}`).join('; ')}`);
+            }
+        } else {
+            // FALLBACK PATH: keyword-based ranking (legacy behavior)
+            console.log('[ai-estimate-from-interview] No mappable blueprint — using KEYWORD RANKING (fallback)');
+            rankedActivities = selectTopActivities(
+                fetchResult.activities,
+                sanitizedDescription,
+                body.answers,
+                20,
+                body.estimationBlueprint
+            );
+            metrics.candidateSource = 'keyword-ranking';
+        }
+
         metrics.activitiesAfterRanking = rankedActivities.length;
+
+        // ─── Provenance Map: deterministic code → provenance lookup ────
+        // Built before agent execution.  Precedence (first wins):
+        //   blueprint-component > blueprint-integration > blueprint-data >
+        //   blueprint-testing > multi-crosscutting > keyword-fallback
+        // Codes discovered at runtime by agent tool-use get 'agent-discovered'.
+        const provenanceMap = buildProvenanceMap(blueprintMappingResult, rankedActivities);
 
         // ─── Phase 3: Agentic Pipeline ─────────────────────────────────
         const AI_AGENTIC = process.env.AI_AGENTIC === 'true';
@@ -505,6 +581,7 @@ export const handler = createAIHandler<RequestBody>({
                     toolCalls: agentResult.agentMetadata.toolCallCount,
                     durationMs: agentResult.agentMetadata.totalDurationMs,
                     reflectionAssessment: agentResult.agentMetadata.reflectionResult?.assessment,
+                    expandedActivityCodes: agentResult.expandedActivityCodes?.length ?? 0,
                 });
 
                 if (!agentResult.success) {
@@ -517,12 +594,22 @@ export const handler = createAIHandler<RequestBody>({
                 metrics.reflectionDurationMs = agentResult.agentMetadata.reflectionResult ? (agentResult.agentMetadata.totalDurationMs * 0.2) : 0; // estimate
                 metrics.timedOut = false;
 
+                // ─── Provenance re-attachment (deterministic post-processing) ───
+                const enrichedActivities = attachProvenance(
+                    agentResult.activities,
+                    provenanceMap,
+                    agentResult.expandedActivityCodes,
+                );
+
+                // Provenance breakdown for observability
+                console.log('[ai-estimate-from-interview] Provenance breakdown:', provenanceBreakdown(enrichedActivities));
+
                 console.log('[ai-estimate-from-interview] METRICS:', JSON.stringify(metrics));
 
                 return {
                     success: true,
                     generatedTitle: agentResult.generatedTitle,
-                    activities: agentResult.activities,
+                    activities: enrichedActivities,
                     totalBaseDays: agentResult.totalBaseDays,
                     reasoning: agentResult.reasoning,
                     confidenceScore: agentResult.confidenceScore,
@@ -568,18 +655,22 @@ export const handler = createAIHandler<RequestBody>({
         const provider = getDefaultProvider();
 
         // Use vector search for more relevant activities (Phase 2)
+        // NOTE: When blueprint mapper was used, vector search only SUPPLEMENTS
+        // (does not replace) the structurally-derived candidate set.
         let activitiesToUse: Activity[] = rankedActivities;
-        let searchMethod = fetchResult.source === 'server' ? 'server-ranked' : 'client-ranked';
+        let searchMethod = blueprintMappingResult ? 'blueprint-mapped' : (fetchResult.source === 'server' ? 'server-ranked' : 'client-ranked');
 
         const vectorSearchStart = Date.now();
-        if (isVectorSearchEnabled() && body.techCategory) {
+        if (isVectorSearchEnabled() && body.techCategory && !blueprintMappingResult) {
+            // Only use vector search as primary when NO blueprint mapping was done.
+            // When blueprint mapping is active, the structural mapping is more reliable.
             try {
                 console.log('[ai-estimate-from-interview] Using vector search for activity retrieval');
                 const techCategories = [body.techCategory, 'MULTI'];
                 const searchResult = await searchSimilarActivities(
                     sanitizedDescription,
                     techCategories,
-                    20, // Top-20 most relevant activities (reduced from 35)
+                    20,
                     0.45
                 );
 
@@ -593,6 +684,7 @@ export const handler = createAIHandler<RequestBody>({
                         tech_category: r.tech_category,
                     }));
                     searchMethod = searchResult.metrics.usedFallback ? 'vector-fallback' : 'vector';
+                    metrics.candidateSource = 'vector-search';
                     console.log(`[ai-estimate-from-interview] Vector search returned ${activitiesToUse.length} activities in ${searchResult.metrics.latencyMs}ms`);
                 }
             } catch (err) {
@@ -616,13 +708,22 @@ export const handler = createAIHandler<RequestBody>({
         }
         metrics.ragRetrievalMs = Date.now() - ragStart;
 
-        // Activities are already filtered and ranked by selectTopActivities above.
-        // No additional filtering needed.
-
         // Format data for prompt
         const activitiesCatalog = formatActivitiesCatalog(activitiesToUse);
         const interviewAnswers = formatInterviewAnswers(body.answers);
         const validActivityCodes = activitiesToUse.map(a => a.code);
+
+        // Build provenance hint for the LLM when blueprint mapping was used
+        let provenanceHint = '';
+        if (blueprintMappingResult) {
+            const bpActs = blueprintMappingResult.blueprintActivities;
+            if (bpActs.length > 0) {
+                const provenanceLines = bpActs.map(m =>
+                    `- ${m.activity.code}: derivato da ${m.sourceLabel} (${m.provenance}, confidenza ${Math.round(m.confidence * 100)}%)`
+                );
+                provenanceHint = `\n\nATTIVITÀ PRE-DERIVATE DAL BLUEPRINT (alta priorità — queste attività sono state derivate strutturalmente dal blueprint tecnico confermato dall'utente. Valuta la loro inclusione con priorità rispetto ad attività non derivate):\n${provenanceLines.join('\n')}\n`;
+            }
+        }
 
         console.log('[ai-estimate-from-interview] Processing:', {
             descriptionLength: sanitizedDescription.length,
@@ -632,6 +733,9 @@ export const handler = createAIHandler<RequestBody>({
             hasProjectContext: !!body.projectContext,
             hasRequirementUnderstanding: !!body.requirementUnderstanding,
             hasImpactMap: !!body.impactMap,
+            hasBlueprint: !!body.estimationBlueprint,
+            candidateSource: metrics.candidateSource,
+            blueprintCoverage: metrics.blueprintCoverage,
             searchMethod,
             ragExamples: ragContext.examples?.length || 0,
             validCodes: validActivityCodes.slice(0, 5).join(', ') + (validActivityCodes.length > 5 ? '...' : ''),
@@ -664,7 +768,7 @@ PRE-STIMA (dal planner, Round 0 — usala come ancora, puoi discostartene se le 
 
         let userPrompt = `REQUISITO:
 ${sanitizedDescription}
-${projectContextSection}${preEstimateSection}${formatUnderstandingBlock(body.requirementUnderstanding)}${formatImpactMapBlock(body.impactMap)}${formatBlueprintBlock(body.estimationBlueprint)}
+${projectContextSection}${preEstimateSection}${formatUnderstandingBlock(body.requirementUnderstanding)}${formatImpactMapBlock(body.impactMap)}${formatBlueprintBlock(body.estimationBlueprint)}${provenanceHint}
 RISPOSTE INTERVIEW TECNICA:
 ${interviewAnswers}
 
@@ -748,13 +852,18 @@ Collega ogni attività alla risposta che l'ha motivata.`;
 
         metrics.totalDurationMs = Date.now() - pipelineStart;
 
+        // ─── Provenance re-attachment (legacy pipeline) ────────────────
+        const enrichedLegacyActivities = attachProvenance(validatedActivities, provenanceMap);
+
+        console.log('[ai-estimate-from-interview] Legacy provenance breakdown:', provenanceBreakdown(enrichedLegacyActivities));
+
         console.log('[ai-estimate-from-interview] METRICS:', JSON.stringify(metrics));
 
         // Return successful response (createAIHandler wraps with statusCode/headers)
         return {
             success: true,
             generatedTitle: result.generatedTitle || '',
-            activities: validatedActivities,
+            activities: enrichedLegacyActivities,
             totalBaseDays: Number(totalBaseDays.toFixed(2)),
             reasoning: result.reasoning,
             confidenceScore: Number(confidenceScore.toFixed(2)),

@@ -475,9 +475,9 @@ The Estimation Blueprint is a structured intermediate representation that captur
 
 When the user confirms the blueprint, it is forwarded as optional `estimationBlueprint` field to:
 
-- `POST /ai-requirement-interview` — injected via `formatBlueprintBlock()` to focus questions on high-complexity components
-- `POST /ai-estimate-from-interview` — injected to improve activity selection and component coverage
-- `selectTopActivities()` in `lib/activities.ts` — blueprint component/integration keywords get **+2 boost** per keyword match (vs +1 for description keywords), structurally influencing deterministic activity ranking
+- `POST /ai-requirement-interview` — injected via `formatBlueprintBlock()` to focus questions on high-complexity components; **blueprint-first candidate generation** via `mapBlueprintToActivities()` with `selectTopActivities()` as gap-filler; blueprint warnings logged
+- `POST /ai-estimate-from-interview` — injected to improve activity selection and component coverage; **blueprint-first candidate generation** via `mapBlueprintToActivities()` with `selectTopActivities()` as gap-filler; end-to-end provenance propagation via `provenance-map.ts` (`buildProvenanceMap()` + `attachProvenance()`) re-attaches provenance deterministically in backend post-processing — never LLM-generated; agent-discovered codes marked explicitly; blueprint warnings captured in `EstimationMetrics.blueprintWarnings`
+- `mapBlueprintToActivities()` in `lib/blueprint-activity-mapper.ts` — deterministically maps blueprint components (layer × techCategory → activity code prefixes), integrations, data entities, and testing scope to candidate activities with provenance and confidence metadata. All prefixes are catalog-validated (e.g., `PP_FLOW_SIMPLE`/`PP_FLOW_COMPLEX` instead of non-existent `PP_FLOW`). Complexity-based prefix routing selects SIMPLE for LOW/MEDIUM, COMPLEX for HIGH. Unsupported layers (`ai_pipeline`, `ml_model`, etc.) produce `UNSUPPORTED_LAYER` warnings. Returns `CoverageWarning[]` for observability. `selectTopActivities()` fills gaps only (10 slots).
 
 All endpoints remain backward-compatible: if `estimationBlueprint` is absent or null, prompts and ranking proceed unchanged.
 
@@ -493,6 +493,8 @@ All endpoints remain backward-compatible: if `estimationBlueprint` is absent or 
 | `src/types/estimation-blueprint.ts` | TypeScript interfaces + Zod schemas |
 | `src/lib/estimation-blueprint-api.ts` | Frontend API client |
 | `netlify/functions/ai-estimation-blueprint.ts` | Endpoint (createAIHandler) |
+| `netlify/functions/lib/blueprint-activity-mapper.ts` | Deterministic blueprint → activity mapping + provenance + catalog-validated prefixes + CoverageWarning system |
+| `netlify/functions/lib/provenance-map.ts` | Deterministic provenance re-attachment: `buildProvenanceMap()`, `attachProvenance()`, `provenanceBreakdown()` |
 | `netlify/functions/lib/ai/actions/generate-estimation-blueprint.ts` | AI action (cache → LLM → validate) |
 | `netlify/functions/lib/ai/prompts/blueprint-generation.ts` | System prompt + JSON schema |
 | `src/components/requirements/wizard/WizardStepBlueprint.tsx` | Wizard step (loading/review/error) |

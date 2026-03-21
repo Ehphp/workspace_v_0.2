@@ -22,7 +22,8 @@ import {
     ArrowRight,
     Sparkles,
     Info,
-    ChevronRight
+    ChevronRight,
+    Shield
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type {
@@ -176,6 +177,65 @@ export function EstimationResultStep({
                 </motion.div>
             )}
 
+            {/* Blueprint Coverage Summary */}
+            {result.metrics?.candidateSource === 'blueprint-mapper' && result.metrics.blueprintCoverage && (
+                <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.25 }}
+                >
+                    <Card className="p-4 bg-emerald-50 border-emerald-100">
+                        <div className="flex items-start gap-3">
+                            <Shield className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                            <div className="flex-1 space-y-2">
+                                <p className="font-medium text-emerald-900 text-sm">Blueprint Coverage</p>
+                                <div className="flex items-center gap-4 text-sm">
+                                    <span className="text-emerald-700">
+                                        {result.metrics.blueprintCoverage.componentCoveragePercent}% components covered
+                                    </span>
+                                    <span className="text-emerald-600">
+                                        {result.metrics.blueprintCoverage.fromBlueprint} from blueprint
+                                    </span>
+                                    {result.metrics.blueprintCoverage.fromFallback > 0 && (
+                                        <span className="text-amber-600">
+                                            {result.metrics.blueprintCoverage.fromFallback} from fallback
+                                        </span>
+                                    )}
+                                </div>
+                                {result.metrics.blueprintCoverage.missingGroups.length > 0 && (
+                                    <p className="text-xs text-emerald-600">
+                                        Unmapped: {result.metrics.blueprintCoverage.missingGroups.join(', ')}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </Card>
+                </motion.div>
+            )}
+
+            {/* Blueprint Warnings */}
+            {result.metrics?.blueprintWarnings && result.metrics.blueprintWarnings.length > 0 && (
+                <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.28 }}
+                >
+                    <Card className="p-4 bg-amber-50 border-amber-100">
+                        <div className="flex items-start gap-3">
+                            <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                            <div className="space-y-1">
+                                <p className="font-medium text-amber-900 text-sm">Mapping Notes</p>
+                                {result.metrics.blueprintWarnings.map((w, i) => (
+                                    <p key={i} className="text-xs text-amber-700">
+                                        {w.message}
+                                    </p>
+                                ))}
+                            </div>
+                        </div>
+                    </Card>
+                </motion.div>
+            )}
+
             {/* Activities Breakdown */}
             <motion.div
                 initial={{ y: 20, opacity: 0 }}
@@ -316,6 +376,19 @@ function ActivityCard({ activity, index }: { activity: SelectedActivityWithReaso
                             <Badge variant="outline" className="text-xs font-mono">
                                 {activity.code}
                             </Badge>
+                            {activity.provenance && (
+                                <Badge
+                                    variant="outline"
+                                    className={`text-[10px] ${activity.provenance.startsWith('blueprint')
+                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                            : activity.provenance === 'keyword-fallback'
+                                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                                : 'bg-blue-50 text-blue-700 border-blue-200'
+                                        }`}
+                                >
+                                    {activity.provenance.replace('blueprint-', '').replace('-', ' ')}
+                                </Badge>
+                            )}
                             <span className="font-medium text-slate-900 text-sm truncate">
                                 {activity.name}
                             </span>

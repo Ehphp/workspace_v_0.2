@@ -309,6 +309,14 @@ Endpoints that select activities based on gathered information.
 > using `techCategory`, ranks them by keyword relevance to the requirement description,
 > and sends only the top-20 to the LLM prompt. Client-provided activities are used only as
 > a fallback if the server-side fetch fails.
+>
+> **v3 Change (Blueprint-first, consolidated)**: When `estimationBlueprint` is present and mappable,
+> `mapBlueprintToActivities()` deterministically maps blueprint components to candidate
+> activities using catalog-validated prefixes (e.g., `PP_FLOW_SIMPLE`/`PP_FLOW_COMPLEX`).
+> Complexity-based prefix routing selects SIMPLE for LOW/MEDIUM, COMPLEX for HIGH.
+> Unsupported layers produce quality warnings (non-blocking). `selectTopActivities()` is
+> demoted to gap-filler (10 slots). When no blueprint is available, legacy keyword-ranking
+> runs unchanged.
 
 **Output**:
 ```typescript
@@ -322,6 +330,7 @@ Endpoints that select activities based on gathered information.
     reason: string;
     fromAnswer?: string;
     fromQuestionId?: string;
+    provenance?: 'blueprint-component' | 'blueprint-integration' | 'blueprint-data' | 'blueprint-testing' | 'keyword-fallback' | 'multi-crosscutting' | 'agent-discovered';
   }>;
   totalBaseDays: number;
   reasoning: string;
@@ -345,15 +354,30 @@ Endpoints that select activities based on gathered information.
     fallbackUsed?: boolean;
     activitiesRanked?: number;
     activitiesSent?: number;
+    candidateSource?: 'blueprint-mapper' | 'keyword-ranking' | 'vector-search';
+    blueprintCoverage?: {
+      componentCoveragePercent: number;
+      fromBlueprint: number;
+      fromFallback: number;
+      missingGroups: string[];
+    };
+    blueprintWarnings?: Array<{  // Quality warnings from blueprint mapping (consolidated)
+      level: 'info' | 'warn';
+      code: 'UNSUPPORTED_LAYER' | 'LOW_COVERAGE' | 'HIGH_FALLBACK_RATIO' | 'UNMAPPED_COMPONENTS' | 'EMPTY_BLUEPRINT';
+      message: string;
+    }>;
   };
 }
 ```
 
 **Validation/Fallback**:
-- Activity codes in response are constrained to server-fetched catalog (filtered by `techCategory`, ranked top-20)
+- When `estimationBlueprint` is present and mappable, `mapBlueprintToActivities()` generates candidates deterministically; `selectTopActivities()` fills remaining gaps (up to 10 slots)
+- When no blueprint is available, falls back to `selectTopActivities()` alone (20 slots) — preserving legacy behavior
+- Activity codes in response are constrained to server-fetched catalog (filtered by `techCategory`)
 - Falls back to client-provided `activities` array if server-side Supabase fetch fails
-- Deterministic rules for activity variant selection (_SM vs _LG based on answer patterns)
+- Deterministic rules for activity variant selection (_SM vs _LG based on component complexity)
 - Confidence score calculated from answer coverage
+- Response `metrics` includes `candidateSource` ('blueprint-mapper' | 'keyword-ranking') and `blueprintCoverage` object
 
 **Phase 3 — Agentic Mode** (`AI_AGENTIC=true`):
 
@@ -1231,7 +1255,14 @@ The following estimation endpoints automatically use vector search when enabled:
 
 **Caching**: Redis-backed, prefix `ai:blueprint`, TTL 12 hours. Cache key hashes `description[0:300] + techCategory + ru:1/ru:0 + im:1/im:0`.
 
-**Downstream enrichment**: When the blueprint is confirmed by the user, it is passed as `estimationBlueprint` to both `ai-requirement-interview` and `ai-estimate-from-interview`, where `formatBlueprintBlock()` injects it into the user prompt. Additionally, `selectTopActivities()` uses blueprint keywords with a +2 boost weight for structural activity ranking.
+**Downstream enrichment**: When the blueprint is confirmed by the user, it is passed as `estimationBlueprint` to both `ai-requirement-interview` and `ai-estimate-from-interview`, where:
+
+1. **`mapBlueprintToActivities()` (blueprint-activity-mapper)** deterministically maps blueprint components, integrations, data entities, and testing scope to candidate activities. Each mapped activity carries provenance metadata (`blueprint-component`, `blueprint-integration`, `blueprint-data`, `blueprint-testing`, `multi-crosscutting`) and a confidence score.
+2. **`selectTopActivities()` acts as gap-filler** — only runs on activities not already covered by the blueprint mapping, capped at 10 slots.
+3. **`formatBlueprintBlock()`** injects the confirmed blueprint into the user prompt.
+4. A `provenanceHint` string is injected into the estimation prompt, listing each pre-derived activity with its source and confidence so the LLM can reason about pre-selected vs. gap-fill activities.
+
+If no blueprint is available (or `isBlueprintMappable()` returns false), the legacy path runs: `selectTopActivities()` alone with 20 slots.
 
 **Persistence**: The confirmed blueprint is saved to `estimation_blueprint` table via `saveEstimationBlueprint()` in `src/lib/api.ts`. The `estimations.blueprint_id` FK links each estimation to the blueprint that informed it.
 

@@ -505,7 +505,7 @@ export default function RequirementDetail() {
                 risks: selectedRiskIds.map(id => ({
                     risk_id: id,
                 })),
-                seniorConsultantAnalysis: consultantAnalysis || null,
+                seniorConsultantAnalysis: (consultantAnalysis as unknown as Record<string, unknown>) || null,
             });
 
             toast.success('Estimation saved successfully');
@@ -656,7 +656,7 @@ export default function RequirementDetail() {
                     <TabsContent value="actuals" className="flex-1 min-h-0 m-0 focus-visible:outline-none h-full">
                         <ActualHoursTab
                             assignedEstimation={assignedEstimation || null}
-                            estimationHistory={estimationHistory}
+                            estimationHistory={estimationHistory as unknown as EstimationWithDetails[]}
                             userId={user?.id}
                             onRefetch={refetchAll}
                         />

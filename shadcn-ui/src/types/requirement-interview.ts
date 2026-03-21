@@ -215,6 +215,8 @@ export interface SelectedActivityWithReason {
     fromAnswer?: string;
     /** Question ID that influenced this selection */
     fromQuestionId?: string;
+    /** How this activity was sourced (blueprint mapper, keyword fallback, etc.) */
+    provenance?: 'blueprint-component' | 'blueprint-integration' | 'blueprint-data' | 'blueprint-testing' | 'keyword-fallback' | 'multi-crosscutting' | 'agent-discovered';
 }
 
 /**
@@ -266,6 +268,17 @@ export interface EstimationFromInterviewResponse {
         fallbackUsed?: boolean;
         activitiesRanked?: number;
         activitiesSent?: number;
+        /** How the candidate set was generated */
+        candidateSource?: 'blueprint-mapper' | 'keyword-ranking' | 'vector-search';
+        /** Coverage report from blueprint mapper (if used) */
+        blueprintCoverage?: {
+            componentCoveragePercent: number;
+            fromBlueprint: number;
+            fromFallback: number;
+            missingGroups: string[];
+        };
+        /** Non-blocking quality warnings from blueprint mapper */
+        blueprintWarnings?: Array<{ level: string; code: string; message: string }>;
     };
 }
 

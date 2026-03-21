@@ -30,6 +30,10 @@ import {
     selectTopActivities,
     formatActivitiesSummary,
 } from './lib/activities';
+import {
+    mapBlueprintToActivities,
+    isBlueprintMappable,
+} from './lib/blueprint-activity-mapper';
 import { retrieveRAGContext, getRAGSystemPromptAddition } from './lib/ai/rag';
 import { isVectorSearchEnabled } from './lib/ai/vector-search';
 
@@ -449,14 +453,33 @@ export const handler = createAIHandler<RequestBody>({
             body.techPresetId,
         );
 
-        // Rank activities by description keywords (no answers yet in Round 0)
-        const rankedActivities = selectTopActivities(
-            fetchResult.activities,
-            sanitizedDescription,
-            undefined,
-            20,
-            body.estimationBlueprint
-        );
+        // ─── Candidate generation: blueprint-first, keyword-fallback ─────
+        let rankedActivities;
+        if (isBlueprintMappable(body.estimationBlueprint)) {
+            console.log('[ai-requirement-interview] Using BLUEPRINT-DRIVEN candidate generation');
+            const mappingResult = mapBlueprintToActivities(
+                body.estimationBlueprint!,
+                fetchResult.activities,
+                body.techCategory,
+                (catalog, excludeCodes) => {
+                    const remaining = catalog.filter(a => !excludeCodes.has(a.code));
+                    return selectTopActivities(remaining, sanitizedDescription, undefined, 10);
+                },
+            );
+            rankedActivities = mappingResult.allActivities.map(m => m.activity);
+            if (mappingResult.warnings.length > 0) {
+                console.log(`[ai-requirement-interview] Blueprint warnings: ${mappingResult.warnings.map(w => `[${w.code}] ${w.message}`).join('; ')}`);
+            }
+        } else {
+            console.log('[ai-requirement-interview] No mappable blueprint — using keyword ranking (fallback)');
+            rankedActivities = selectTopActivities(
+                fetchResult.activities,
+                sanitizedDescription,
+                undefined,
+                20,
+                body.estimationBlueprint
+            );
+        }
 
         const activitiesSummary = rankedActivities.length > 0
             ? formatActivitiesSummary(rankedActivities)

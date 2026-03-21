@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { ConsultantAnalysisCard } from '@/components/estimation/ConsultantAnalysisCard';
 import {
     ShieldCheck,
@@ -75,12 +73,9 @@ export function ConsultantHistoryPanel({
 
     if (history.length === 0 && !currentAnalysis) {
         return (
-            <div className="text-center py-8">
-                <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center">
-                    <ShieldCheck className="w-7 h-7 text-emerald-400" />
-                </div>
-                <p className="text-sm text-slate-500 font-medium">Nessuna analisi effettuata</p>
-                <p className="text-xs text-slate-400 mt-1">Richiedi un&apos;analisi Senior Consultant</p>
+            <div className="text-center py-6">
+                <ShieldCheck className="w-5 h-5 mx-auto mb-1.5 text-slate-300" />
+                <p className="text-xs text-slate-400">Nessuna analisi effettuata</p>
             </div>
         );
     }
@@ -89,10 +84,8 @@ export function ConsultantHistoryPanel({
         <div className="space-y-3">
             {/* Header */}
             <div className="flex items-center gap-2 mb-2">
-                <div className="p-1.5 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg shadow-sm">
-                    <History className="w-3.5 h-3.5 text-white" />
-                </div>
-                <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                <History className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-xs font-semibold text-slate-600">
                     Storico Analisi ({history.length})
                 </span>
             </div>
@@ -101,7 +94,7 @@ export function ConsultantHistoryPanel({
             <div className="relative space-y-2">
                 {/* Timeline line */}
                 {history.length > 1 && (
-                    <div className="absolute left-[15px] top-6 bottom-6 w-px bg-gradient-to-b from-emerald-300 via-slate-200 to-transparent" />
+                    <div className="absolute left-[15px] top-6 bottom-6 w-px bg-slate-200" />
                 )}
 
                 {history.map((record, index) => {
@@ -115,16 +108,15 @@ export function ConsultantHistoryPanel({
                         <div key={record.id} className="relative">
                             {/* Timeline dot */}
                             <div className={`absolute left-[11px] top-3 w-2.5 h-2.5 rounded-full border-2 z-10 ${isLatest
-                                    ? 'bg-emerald-500 border-emerald-300 shadow-md shadow-emerald-200'
+                                    ? 'bg-emerald-500 border-emerald-300'
                                     : 'bg-white border-slate-300'
                                 }`} />
 
                             <div className={`ml-8 ${isLatest ? '' : 'opacity-90'}`}>
-                                <Card className={`rounded-xl border transition-all duration-200 ${isLatest
-                                        ? 'border-emerald-200/80 bg-gradient-to-r from-emerald-50/50 to-teal-50/50 shadow-sm'
-                                        : 'border-slate-200/60 bg-white/80 hover:border-slate-300'
+                                <div className={`rounded-lg border p-3 transition-colors ${isLatest
+                                        ? 'border-emerald-200 bg-emerald-50/40'
+                                        : 'border-slate-200 bg-white hover:border-slate-300'
                                     }`}>
-                                    <CardContent className="p-3">
                                         {/* Analysis Header */}
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="flex-1 min-w-0">
@@ -181,18 +173,16 @@ export function ConsultantHistoryPanel({
                                             </div>
 
                                             {/* Expand button */}
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-7 w-7 p-0 shrink-0"
+                                            <button
+                                                className="h-7 w-7 flex items-center justify-center rounded hover:bg-slate-100 shrink-0"
                                                 onClick={() => setExpandedId(isExpanded ? null : record.id)}
                                             >
                                                 {isExpanded ? (
-                                                    <ChevronUp className="w-4 h-4 text-slate-500" />
+                                                    <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
                                                 ) : (
-                                                    <ChevronDown className="w-4 h-4 text-slate-500" />
+                                                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                                                 )}
-                                            </Button>
+                                            </button>
                                         </div>
 
                                         {/* Discrepancy + Risk summary (always visible) */}
@@ -218,15 +208,13 @@ export function ConsultantHistoryPanel({
                                             <div className="mt-3 pt-3 border-t border-slate-200/60 space-y-3">
                                                 {/* Toggle to show snapshot */}
                                                 <div className="flex items-center gap-2">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="h-7 text-[11px] border-slate-200"
+                                                    <button
+                                                        className="h-7 px-2.5 text-[11px] border border-slate-200 rounded-md hover:bg-slate-50 flex items-center gap-1 text-slate-600"
                                                         onClick={() => setShowSnapshot(isSnapshotVisible ? null : record.id)}
                                                     >
-                                                        <FileText className="w-3 h-3 mr-1" />
+                                                        <FileText className="w-3 h-3" />
                                                         {isSnapshotVisible ? 'Nascondi Contesto' : 'Mostra Contesto al Momento'}
-                                                    </Button>
+                                                    </button>
                                                 </div>
 
                                                 {/* Snapshot details */}
@@ -308,8 +296,7 @@ export function ConsultantHistoryPanel({
                                                 />
                                             </div>
                                         )}
-                                    </CardContent>
-                                </Card>
+                                </div>
                             </div>
                         </div>
                     );

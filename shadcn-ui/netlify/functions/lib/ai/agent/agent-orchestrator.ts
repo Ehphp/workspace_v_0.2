@@ -972,6 +972,13 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
             flags: ctx.flags,
         };
 
+        // B1: compute which codes were dynamically discovered during tool-use
+        const initialCodeSet = new Set(input.validActivityCodes);
+        const discoveredCodes = expandedCodes.filter(c => !initialCodeSet.has(c));
+        if (discoveredCodes.length > 0) {
+            console.log(`[agent] B1 expansion summary: ${discoveredCodes.length} new codes discovered via search_catalog: ${discoveredCodes.join(', ')}`);
+        }
+
         return {
             success: true,
             generatedTitle: draft.generatedTitle,
@@ -983,6 +990,7 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
             suggestedRisks: draft.suggestedRisks,
             engineValidation,
             agentMetadata: metadata,
+            expandedActivityCodes: discoveredCodes.length > 0 ? discoveredCodes : undefined,
         };
 
     } catch (error) {

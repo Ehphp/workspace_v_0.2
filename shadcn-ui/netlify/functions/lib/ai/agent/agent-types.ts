@@ -158,6 +158,8 @@ export interface AgentOutput {
     agentMetadata: AgentMetadata;
     /** Error message (if success=false) */
     error?: string;
+    /** Activity codes discovered via search_catalog during tool-use (B1 expansion) */
+    expandedActivityCodes?: string[];
 }
 
 export interface SelectedActivityResult {
@@ -167,6 +169,8 @@ export interface SelectedActivityResult {
     reason: string;
     fromAnswer: string | null;
     fromQuestionId: string | null;
+    /** Deterministic provenance — attached via backend post-processing, never LLM-generated */
+    provenance?: import('../../blueprint-activity-mapper').ActivityProvenance;
 }
 
 export interface SuggestedDriver {

@@ -1,6 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
 import { CheckCircle2, Circle } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { useActivityActions } from '@/hooks/useActivityActions';
@@ -70,7 +69,7 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
             {/* Progress Bar */}
             <div className="space-y-2">
                 <div className="flex justify-between items-end">
-                    <h3 className="text-sm font-medium text-slate-700">Implementation Progress</h3>
+                    <h3 className="text-sm font-medium text-slate-700">Progresso Implementazione</h3>
                     <span className="text-2xl font-bold text-blue-600">{progress}%</span>
                 </div>
                 <Progress value={progress} className="h-2" />
@@ -79,7 +78,7 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
             {/* Activity Checklist */}
             <div className="space-y-3">
                 <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Activities ({estimationActivities.length})
+                    Attività ({estimationActivities.length})
                 </h4>
                 <div className="grid gap-2">
                     {estimationActivities.map((estAct) => {
@@ -94,15 +93,13 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
                         const isUpdating = updating === estAct.id;
 
                         return (
-                            <motion.div
+                            <div
                                 key={estAct.id}
-                                layout
-                                initial={false}
                                 className={cn(
-                                    "group flex items-center gap-2 p-2 rounded-md border transition-all duration-200 cursor-pointer",
+                                    "group flex items-center gap-2 p-2 rounded-md border transition-colors cursor-pointer",
                                     isDone
                                         ? "bg-blue-50/50 border-blue-100"
-                                        : "bg-white border-slate-200 hover:border-blue-300 hover:shadow-sm"
+                                        : "bg-white border-slate-200 hover:border-blue-300"
                                 )}
                                 onClick={() => !isUpdating && handleToggle(estAct.id, isDone)}
                             >
@@ -132,7 +129,7 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
                                 )}>
                                     {activity.base_hours}h
                                 </div>
-                            </motion.div>
+                            </div>
                         );
                     })}
                 </div>
