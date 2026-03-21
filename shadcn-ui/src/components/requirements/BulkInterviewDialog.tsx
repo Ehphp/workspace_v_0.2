@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { saveEstimationByIds } from '@/lib/api';
 import { calculateEstimation } from '@/lib/estimationEngine';
 import { useBulkInterview } from '@/hooks/useBulkInterview';
 import type { Activity } from '@/types/database';
@@ -227,22 +228,18 @@ export function BulkInterviewDialog({
                 });
 
                 // Save to database
-                const { error: saveError } = await supabase.rpc('save_estimation_atomic', {
-                    p_requirement_id: estimation.requirementId,
-                    p_user_id: userId,
-                    p_total_days: estimationCalc.totalDays,
-                    p_base_hours: estimationCalc.baseDays * 8,
-                    p_driver_multiplier: 1.0,
-                    p_risk_score: 0,
-                    p_contingency_percent: 10,
-                    p_scenario_name: 'AI Generated (Bulk Interview)',
-                    p_activities: activitiesPayload,
-                    p_drivers: null,
-                    p_risks: null,
-                    p_ai_reasoning: estimation.reasoning || null,
+                await saveEstimationByIds({
+                    requirementId: estimation.requirementId,
+                    userId,
+                    totalDays: estimationCalc.totalDays,
+                    baseHours: estimationCalc.baseDays * 8,
+                    driverMultiplier: 1.0,
+                    riskScore: 0,
+                    contingencyPercent: 10,
+                    scenarioName: 'AI Generated (Bulk Interview)',
+                    activities: activitiesPayload as { activity_id: string; is_ai_suggested: boolean; notes?: string | null }[],
+                    aiReasoning: estimation.reasoning || null,
                 });
-
-                if (saveError) throw saveError;
                 successCount++;
             } catch (error) {
                 console.error(`Error saving estimation for ${estimation.reqCode}:`, error);

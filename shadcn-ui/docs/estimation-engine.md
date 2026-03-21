@@ -216,7 +216,9 @@ The system provides three distinct entry points for creating estimations, each u
 | Drivers | Neutral defaults | User-selected via wizard | User-selected |
 | Risks | None (no template) | User-selected via wizard | User-selected |
 | `scenario_name` | `"AI Bulk Estimate"` | `"Wizard"` | `"Manual Edit"` |
-| User Interaction | Zero (automatic) | 5-step wizard | Full manual control |
+| User Interaction | Zero (automatic) | 8-step wizard | Full manual control |
+| Save Function | `saveEstimationByIds()` | `saveEstimationByIds()` | `saveEstimationByIds()` |
+| Persistence | RPC `save_estimation_atomic` | RPC `save_estimation_atomic` | RPC `save_estimation_atomic` |
 
 ### Flow Details
 
@@ -236,13 +238,16 @@ Fast batch processing for multiple requirements:
 
 #### 2. Wizard (Nuovo Requisito)
 
-Guided creation with AI interview:
+Guided creation with AI artifacts + interview:
 
 1. **Step 1**: Enter requirement description
 2. **Step 2**: Select technology
-3. **Step 3**: AI interview (contextual questions)
-4. **Step 4**: Review/adjust drivers and risks
-5. **Step 5**: Review estimation and save
+3. **Step 3**: AI Requirement Understanding
+4. **Step 4**: AI Impact Map
+5. **Step 5**: AI Estimation Blueprint
+6. **Step 6**: AI interview (contextual questions)
+7. **Step 7**: Review/adjust drivers and risks
+8. **Step 8**: Review estimation and save
 
 **Use case**: Creating new requirements with accurate estimates.
 
@@ -256,6 +261,15 @@ Full control over existing requirements:
 4. Explicit save action
 
 **Use case**: Refining estimates or re-estimating requirements.
+
+### Unified Persistence
+
+All three flows now converge on a single save path:
+
+1. **`saveEstimation(input)`** (code-based) — resolves activity/driver/risk codes → UUIDs, then delegates to `saveEstimationByIds()`
+2. **`saveEstimationByIds(input)`** (ID-based) — calls `supabase.rpc('save_estimation_atomic')` directly
+
+Bulk Estimate, Manual Edit, and Bulk Interview all call `saveEstimationByIds()` directly because they already have resolved UUIDs. The Wizard uses `saveEstimation()` which wraps the resolution step.
 
 ### AI Suggestion Tracking
 
@@ -278,7 +292,7 @@ p_activities: selectedActivityIds.map(id => ({
 | Suggest activities | AI (via `ai-suggest.ts`) |
 | Validate requirement text | AI + deterministic rules |
 | Select drivers/risks | User |
-| Store estimations | Supabase RPC |
+| Store estimations | `saveEstimationByIds()` → Supabase RPC `save_estimation_atomic` |
 
 ---
 

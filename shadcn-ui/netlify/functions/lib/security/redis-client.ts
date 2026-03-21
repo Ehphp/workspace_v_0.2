@@ -16,6 +16,7 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 // Redis client singleton
 let redisClient: RedisClientType | null = null;
 let connectionFailed = false;
+let redisErrorLogged = false;
 
 /**
  * Internal: create + connect a Redis client.
@@ -37,7 +38,10 @@ async function connectRedis(): Promise<RedisClientType> {
     });
 
     client.on('error', (err) => {
-        console.error('[redis-client] Redis error:', err);
+        if (!redisErrorLogged) {
+            console.warn(`[redis-client] Redis unavailable at ${REDIS_URL} — graceful degradation active`);
+            redisErrorLogged = true;
+        }
     });
 
     await client.connect();

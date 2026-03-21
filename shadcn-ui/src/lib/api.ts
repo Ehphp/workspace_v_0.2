@@ -268,6 +268,7 @@ export interface SaveEstimationInput {
   contingencyPercent: number;
   aiReasoning?: string;
   blueprintId?: string;
+  seniorConsultantAnalysis?: Record<string, unknown>;
   activities: {
     code: string;
     isAiSuggested: boolean;
@@ -287,85 +288,47 @@ export async function saveEstimation(input: SaveEstimationInput): Promise<void> 
     throw new ApiError('Cannot save an estimation without activities', 400);
   }
 
-  // 1. Create estimation record
-  const { data: estimation, error: estError } = await supabase
-    .from('estimations')
-    .insert({
-      requirement_id: input.requirementId,
-      user_id: input.userId,
-      total_days: input.totalDays,
-      base_hours: input.baseDays * 8,
-      driver_multiplier: input.driverMultiplier,
-      risk_score: input.riskScore,
-      contingency_percent: input.contingencyPercent,
-      scenario_name: 'Wizard',
-      ai_reasoning: input.aiReasoning || null,
-      blueprint_id: input.blueprintId || null,
-    })
-    .select()
-    .single();
-
-  if (estError) throw new ApiError(estError.message, parseInt(estError.code), estError);
-
-  // 2. Get master data to map codes to IDs
+  // 1. Get master data to map codes to IDs
   const masterData = await fetchEstimationMasterData();
 
-  // 3. Prepare activities
-  const activityInserts = input.activities.map((a) => {
+  // 2. Map codes → IDs
+  const activities = input.activities.map((a) => {
     const activity = masterData.activities.find((ma) => ma.code === a.code);
     if (!activity) return null;
-    return {
-      estimation_id: estimation.id,
-      activity_id: activity.id,
-      is_ai_suggested: a.isAiSuggested,
-    };
+    return { activity_id: activity.id, is_ai_suggested: a.isAiSuggested, notes: '' };
   }).filter((i): i is NonNullable<typeof i> => i !== null);
 
-  // 4. Prepare drivers
-  const driverInserts = input.drivers.map((d) => {
+  const drivers = input.drivers.map((d) => {
     const driver = masterData.drivers.find((md) => md.code === d.code);
     if (!driver) return null;
-    return {
-      estimation_id: estimation.id,
-      driver_id: driver.id,
-      selected_value: d.value,
-    };
+    return { driver_id: driver.id, selected_value: d.value };
   }).filter((i): i is NonNullable<typeof i> => i !== null);
 
-  // 5. Prepare risks
-  const riskInserts = input.risks.map((r) => {
+  const risks = input.risks.map((r) => {
     const risk = masterData.risks.find((mr) => mr.code === r.code);
     if (!risk) return null;
-    return {
-      estimation_id: estimation.id,
-      risk_id: risk.id,
-    };
+    return { risk_id: risk.id };
   }).filter((i): i is NonNullable<typeof i> => i !== null);
 
-  // 6. Insert details in parallel
-  const [actRes, drvRes, rskRes] = await Promise.all([
-    activityInserts.length > 0 ? supabase.from('estimation_activities').insert(activityInserts) : Promise.resolve({ error: null }),
-    driverInserts.length > 0 ? supabase.from('estimation_drivers').insert(driverInserts) : Promise.resolve({ error: null }),
-    riskInserts.length > 0 ? supabase.from('estimation_risks').insert(riskInserts) : Promise.resolve({ error: null }),
-  ]);
+  // 3. Delegate to the unified RPC-based save
+  await saveEstimationByIds({
+    requirementId: input.requirementId,
+    userId: input.userId,
+    totalDays: input.totalDays,
+    baseHours: input.baseDays * 8,
+    driverMultiplier: input.driverMultiplier,
+    riskScore: input.riskScore,
+    contingencyPercent: input.contingencyPercent,
+    scenarioName: 'Wizard',
+    aiReasoning: input.aiReasoning,
+    seniorConsultantAnalysis: input.seniorConsultantAnalysis,
+    blueprintId: input.blueprintId,
+    activities,
+    drivers: drivers.length > 0 ? drivers : null,
+    risks: risks.length > 0 ? risks : null,
+  });
 
-  // Collect and report any junction-table errors
-  const junctionErrors = [
-    actRes.error ? `activities: ${actRes.error.message}` : null,
-    drvRes.error ? `drivers: ${drvRes.error.message}` : null,
-    rskRes.error ? `risks: ${rskRes.error.message}` : null,
-  ].filter(Boolean);
-
-  if (junctionErrors.length > 0) {
-    console.error('[saveEstimation] Junction table errors:', junctionErrors);
-    throw new ApiError(
-      `Estimation created but detail inserts failed: ${junctionErrors.join('; ')}`,
-      400
-    );
-  }
-
-  // 7. Also update requirement_driver_values for persistence across sessions if needed
-  // (Optional, but good for consistency)
+  // 4. Update requirement_driver_values for persistence across sessions
   const reqDriverInserts = input.drivers.map((d) => {
     const driver = masterData.drivers.find((md) => md.code === d.code);
     if (!driver) return null;
@@ -378,9 +341,61 @@ export async function saveEstimation(input: SaveEstimationInput): Promise<void> 
   }).filter((i): i is NonNullable<typeof i> => i !== null);
 
   if (reqDriverInserts.length > 0) {
-    // First delete existing to avoid duplicates/conflicts
     await supabase.from('requirement_driver_values').delete().eq('requirement_id', input.requirementId);
     await supabase.from('requirement_driver_values').insert(reqDriverInserts);
+  }
+}
+
+/**
+ * Low-level save function that accepts pre-resolved IDs and delegates to the
+ * transactional RPC `save_estimation_atomic`. Use this when the caller already
+ * has activity/driver/risk UUIDs (e.g. RequirementDetail, BulkEstimate).
+ */
+export interface SaveEstimationByIdsInput {
+  requirementId: string;
+  userId: string;
+  totalDays: number;
+  baseHours: number;
+  driverMultiplier: number;
+  riskScore: number;
+  contingencyPercent: number;
+  scenarioName: string;
+  aiReasoning?: string | null;
+  seniorConsultantAnalysis?: Record<string, unknown> | null;
+  blueprintId?: string | null;
+  activities: { activity_id: string; is_ai_suggested: boolean; notes?: string | null }[];
+  drivers?: { driver_id: string; selected_value: string }[] | null;
+  risks?: { risk_id: string }[] | null;
+}
+
+export async function saveEstimationByIds(input: SaveEstimationByIdsInput): Promise<void> {
+  if (!input.activities || input.activities.length === 0) {
+    throw new ApiError('Cannot save an estimation without activities', 400);
+  }
+
+  const { error } = await supabase.rpc('save_estimation_atomic', {
+    p_requirement_id: input.requirementId,
+    p_user_id: input.userId,
+    p_total_days: input.totalDays,
+    p_base_hours: input.baseHours,
+    p_driver_multiplier: input.driverMultiplier,
+    p_risk_score: input.riskScore,
+    p_contingency_percent: input.contingencyPercent,
+    p_scenario_name: input.scenarioName,
+    p_activities: input.activities.map(a => ({
+      activity_id: a.activity_id,
+      is_ai_suggested: a.is_ai_suggested,
+      notes: a.notes || '',
+    })),
+    p_drivers: input.drivers && input.drivers.length > 0 ? input.drivers : null,
+    p_risks: input.risks && input.risks.length > 0 ? input.risks : null,
+    p_ai_reasoning: input.aiReasoning || null,
+    p_senior_consultant_analysis: input.seniorConsultantAnalysis || null,
+    p_blueprint_id: input.blueprintId || null,
+  });
+
+  if (error) {
+    throw new ApiError(`Failed to save estimation: ${error.message}`, undefined, error);
   }
 }
 

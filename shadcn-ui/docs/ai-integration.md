@@ -534,6 +534,8 @@ The planner performs three steps in a single LLM call:
 
 Response metrics include `ragExamples`, `ragTopSimilarity`, `ragMs`, and `ragBoostApplied` for observability.
 
+**RAG quality filter**: The `retrieveRAGContext()` producer now verifies that each historical example has at least one activity (`activities.length > 0`). Examples without activities are excluded from the prompt and from `hasExamples` evaluation, preventing empty examples from polluting the LLM context.
+
 Questions use structured response types:
 - `single-choice`: Binary or limited options (2-5)
 - `multiple-choice`: Multi-select for components/patterns (3+)
@@ -734,7 +736,7 @@ Legacy: Analysis is also still saved to `estimations.senior_consultant_analysis`
 |--------|-------|
 | Cache Hit | <100ms |
 | Cache Miss | ~1.5s |
-| Timeout | 30s (suggest), 28s (bulk), 50s (preset) |
+| Timeout | 85s (suggest), 28s (bulk), 50s (preset) |
 | Cache TTL | 24 hours |
 
 ### Token Usage
@@ -804,7 +806,7 @@ Deterministic AI actions (`suggest-activities`, `generate-title`, `normalize-req
 
 **Cache key**: `{prefix}:{SHA-256(input parts)}` — e.g. for suggestions, the key hashes `description + preset.id + sorted activity codes`.
 
-**Graceful degradation**: If Redis is unavailable, cache calls return `null` silently and the AI call proceeds normally.
+**Graceful degradation**: The cache layer uses `tryGetRedisClient()` which returns `null` immediately if Redis is unavailable (no retries, no timeout waste). On first failure, a single warning is logged: `"[redis-client] Redis unavailable — graceful degradation active"`. Subsequent failures are silenced to avoid log noise. The AI call proceeds normally without cache.
 
 **Environment Variables**:
 
@@ -860,7 +862,7 @@ For the same input, 9/10 calls should return the same activityCodes (90%+ consis
 | `netlify/functions/lib/ai/actions/generate-impact-map.ts` | Impact Map generation logic (Milestone 2) |
 | `netlify/functions/lib/ai/actions/generate-estimation-blueprint.ts` | Estimation Blueprint generation logic (Milestone 3) |
 | `netlify/functions/lib/ai/actions/generate-questions.ts` | Question generation logic |
-| `netlify/functions/lib/ai/ai-cache.ts` | **Redis-backed AI response cache** |
+| `netlify/functions/lib/ai/ai-cache.ts` | **Redis-backed AI response cache** (uses `tryGetRedisClient()` for graceful degradation) |
 | `netlify/functions/lib/ai/prompt-builder.ts` | Prompt construction |
 | `netlify/functions/lib/ai/prompt-templates.ts` | **Unified Italian prompt templates** |
 | `netlify/functions/lib/ai/deterministic-rules.ts` | **Shared deterministic rules for activity selection** |

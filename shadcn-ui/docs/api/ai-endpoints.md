@@ -101,7 +101,7 @@ The centralized OpenAI client (`lib/ai/openai-client.ts`) supports configurable 
 
 ```typescript
 const openai = getOpenAIClient({
-    timeout: 55000,    // Timeout in ms (default: 55000)
+    timeout: 85000,    // Timeout in ms (default: 85000, ai-suggest uses 85s for gpt-5)
     maxRetries: 1,     // Retry count (default: 1)
 });
 ```
@@ -514,7 +514,7 @@ The agentic pipeline adds:
 - gpt-4o/gpt-4o-mini models use the legacy **Chat Completions API** (`chat.completions.create`)
 - Temperature: `0.0` (deterministic) or `0.7` in test mode (ignored for gpt-5/o-series)
 - Automatic 1-retry on empty model output for gpt-5/o-series
-- `max_output_tokens` set to 1000 (Responses API)
+- `max_output_tokens` set to 4096 (reduced from 16384 — actual responses are ~2K tokens, reducing unused reservation improves latency)
 
 **Validation/Fallback**:
 - Filters activities by `technology_id` FK (canonical), with `tech_category` string fallback
@@ -731,7 +731,7 @@ This maximizes reuse of validated activities while allowing AI to fill gaps.
 
 | Endpoint | Timeout | Rationale |
 |----------|---------|-----------|
-| `ai-suggest` | 55s | Netlify function limit 60s |
+| `ai-suggest` | 85s (SDK) / 90s (Netlify) | gpt-5 reasoning tokens require extended timeout |
 | `ai-requirement-interview` | 55s | Complex prompt generation |
 | `ai-estimate-from-interview` | 55s | Activity selection with reasoning |
 | `ai-bulk-interview` | 28s | Must finish before 30s lambda hard limit |

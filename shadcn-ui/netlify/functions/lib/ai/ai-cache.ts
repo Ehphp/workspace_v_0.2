@@ -12,7 +12,7 @@
  */
 
 import { createHash } from 'crypto';
-import { getRedisClient } from '../security/redis-client';
+import { tryGetRedisClient } from '../security/redis-client';
 
 // Feature flag — default enabled
 const AI_CACHE_ENABLED = () => process.env.AI_CACHE_ENABLED !== 'false';
@@ -76,7 +76,8 @@ export async function getCachedResponse<T>(
     if (!AI_CACHE_ENABLED()) return null;
 
     try {
-        const client = await getRedisClient();
+        const client = await tryGetRedisClient();
+        if (!client) return null;
         const raw = await client.get(key);
         if (raw === null) {
             console.log(`[ai-cache] MISS ${config.prefix} key=${key.slice(-12)}`);
@@ -103,7 +104,8 @@ export async function setCachedResponse<T>(
     if (!AI_CACHE_ENABLED()) return;
 
     try {
-        const client = await getRedisClient();
+        const client = await tryGetRedisClient();
+        if (!client) return;
         await client.setEx(key, config.ttlSeconds, JSON.stringify(value));
         console.log(`[ai-cache] SET ${config.prefix} key=${key.slice(-12)} ttl=${config.ttlSeconds}s`);
     } catch (err) {

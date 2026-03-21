@@ -223,11 +223,14 @@ export async function retrieveRAGContext(
             return b.similarity - a.similarity;
         });
         context.examples = examples.slice(0, MAX_HISTORICAL_EXAMPLES);
-        context.hasExamples = examples.length > 0;
+        // Only flag hasExamples when at least one example has usable activities
+        context.hasExamples = context.examples.some(e => e.activities.length > 0);
         context.searchLatencyMs = Date.now() - startTime;
 
         if (context.hasExamples) {
-            context.promptFragment = buildRAGPromptFragment(examples);
+            context.promptFragment = buildRAGPromptFragment(
+                context.examples.filter(e => e.activities.length > 0)
+            );
         }
 
         // Record metrics for observability (S2-4)

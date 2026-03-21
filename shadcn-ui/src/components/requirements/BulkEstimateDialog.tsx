@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { saveEstimationByIds } from '@/lib/api';
 import { calculateEstimation } from '@/lib/estimationEngine';
 import type { Activity, Driver, Risk, Technology } from '@/types/database';
 import { sanitizePromptInput } from '@/types/ai-validation';
@@ -302,24 +303,20 @@ export function BulkEstimateDialog({
                     // Prepare risks payload (empty — no template defaults)
                     const risksPayload: { risk_id: string }[] = [];
 
-                    const { error: saveError } = await supabase.rpc('save_estimation_atomic', {
-                        p_requirement_id: req.id,
-                        p_user_id: userId,
-                        p_total_days: estimation.totalDays,
-                        p_base_hours: estimation.baseDays * 8, // Convert back to hours for storage
-                        p_driver_multiplier: estimation.driverMultiplier,
-                        p_risk_score: estimation.riskScore,
-                        p_contingency_percent: estimation.contingencyPercent,
-                        p_scenario_name: 'AI Bulk Estimate',
-                        p_activities: activitiesPayload,
-                        p_drivers: driversPayload.length > 0 ? driversPayload : null,
-                        p_risks: risksPayload.length > 0 ? risksPayload : null,
-                        p_ai_reasoning: aiSuggestion.reasoning || null,
+                    await saveEstimationByIds({
+                        requirementId: req.id,
+                        userId,
+                        totalDays: estimation.totalDays,
+                        baseHours: estimation.baseDays * 8,
+                        driverMultiplier: estimation.driverMultiplier,
+                        riskScore: estimation.riskScore,
+                        contingencyPercent: estimation.contingencyPercent,
+                        scenarioName: 'AI Bulk Estimate',
+                        activities: activitiesPayload,
+                        drivers: driversPayload.length > 0 ? driversPayload : null,
+                        risks: risksPayload.length > 0 ? risksPayload : null,
+                        aiReasoning: aiSuggestion.reasoning || null,
                     });
-
-                    if (saveError) {
-                        throw saveError;
-                    }
 
                     return { requirementId: req.id, success: true };
                 } catch (error) {

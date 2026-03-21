@@ -18,7 +18,7 @@ import { FileText, Calculator, History, AlertTriangle, ClipboardCheck } from 'lu
 import { toast } from 'sonner';
 import { suggestActivities } from '@/lib/openai';
 import { getConsultantAnalysis } from '@/lib/consultant-api';
-import { getLatestRequirementUnderstanding } from '@/lib/api';
+import { getLatestRequirementUnderstanding, saveEstimationByIds } from '@/lib/api';
 import { filterActivitiesByTechnology } from '@/lib/technology-helpers';
 import { Header } from '@/components/layout/Header';
 import type { EstimationWithDetails } from '@/types/database';
@@ -484,36 +484,29 @@ export default function RequirementDetail() {
 
         setIsSaving(true);
         try {
-            const autoScenarioName = 'Manual Edit';
-            // Prepare data for RPC
-            const estimationData = {
-                p_requirement_id: requirement.id,
-                p_user_id: user.id,
-                p_total_days: estimationResult.totalDays,
-                p_base_hours: estimationResult.baseDays * 8, // Convert back to hours for storage if needed, OR if p_base_days was renamed to p_base_hours in RPC
-                p_driver_multiplier: estimationResult.driverMultiplier,
-                p_risk_score: estimationResult.riskScore,
-                p_contingency_percent: estimationResult.contingencyPercent,
-                p_scenario_name: autoScenarioName,
-                p_activities: selectedActivityIds.map(id => ({
+            await saveEstimationByIds({
+                requirementId: requirement.id,
+                userId: user.id,
+                totalDays: estimationResult.totalDays,
+                baseHours: estimationResult.baseDays * 8,
+                driverMultiplier: estimationResult.driverMultiplier,
+                riskScore: estimationResult.riskScore,
+                contingencyPercent: estimationResult.contingencyPercent,
+                scenarioName: 'Manual Edit',
+                activities: selectedActivityIds.map(id => ({
                     activity_id: id,
                     is_ai_suggested: aiSuggestedIds.includes(id),
-                    notes: null
+                    notes: null,
                 })),
-                p_drivers: Object.entries(selectedDriverValues).map(([driverId, value]) => ({
+                drivers: Object.entries(selectedDriverValues).map(([driverId, value]) => ({
                     driver_id: driverId,
-                    selected_value: value
+                    selected_value: value,
                 })),
-                p_risks: selectedRiskIds.map(id => ({
-                    risk_id: id
+                risks: selectedRiskIds.map(id => ({
+                    risk_id: id,
                 })),
-                p_ai_reasoning: null, // Not from AI interview flow
-                p_senior_consultant_analysis: consultantAnalysis || null // Include consultant analysis if available
-            };
-
-            const { error } = await supabase.rpc('save_estimation_atomic', estimationData);
-
-            if (error) throw error;
+                seniorConsultantAnalysis: consultantAnalysis || null,
+            });
 
             toast.success('Estimation saved successfully');
             refetchHistory(); // Refresh history

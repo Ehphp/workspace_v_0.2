@@ -202,12 +202,12 @@ export async function suggestActivities(request: SuggestActivitiesRequest): Prom
     const provider = getDefaultProvider();
     const temperature = testMode ? 0.7 : 0.0;
     // gpt-5 uses internal reasoning tokens that count against max_output_tokens,
-    // so we need a generous budget (16k) even though the JSON output is ~300 tokens.
+    // so we need a generous budget even though the JSON output is ~300 tokens.
     const responseContent = await provider.generateContent({
         model: AI_MODEL,
         temperature,
-        maxTokens: 16384,
-        options: { timeout: 55000 },
+        maxTokens: 4096,
+        options: { timeout: 85000 },
         responseFormat: responseSchema as any,
         systemPrompt: systemPrompt,
         userPrompt: userPrompt

@@ -331,16 +331,19 @@ async function llmWithTools(
     provider: ILLMProvider,
     systemPrompt: string,
     userPrompt: string,
-    validActivityCodes: string[],
+    initialValidCodes: string[],
     toolCtx: ToolExecutionContext,
     ctx: AgentContext
-): Promise<{ draft: DraftEstimation; toolCalls: ToolCallRecord[] }> {
+): Promise<{ draft: DraftEstimation; toolCalls: ToolCallRecord[]; expandedCodes: string[] }> {
     const OpenAI = (await import('openai')).default;
     const client = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY,
         timeout: 50000,
         maxRetries: 0,
     });
+
+    // B1: mutable copy — search_catalog discoveries are merged here
+    const validActivityCodes = [...initialValidCodes];
 
     const toolCallRecords: ToolCallRecord[] = [];
 
@@ -435,6 +438,33 @@ async function llmWithTools(
                     tool_call_id: tc.id,
                     content: JSON.stringify(result)
                 });
+
+                // B1: merge discovered codes from search_catalog
+                if (toolName === 'search_catalog' && result?.activities && Array.isArray(result.activities)) {
+                    const existingCodes = new Set(validActivityCodes);
+                    const newActivities = result.activities.filter(
+                        (a: any) => a.code && !existingCodes.has(a.code)
+                    );
+                    if (newActivities.length > 0) {
+                        for (const a of newActivities) {
+                            validActivityCodes.push(a.code);
+                        }
+                        const catalogCodes = new Set(toolCtx.activitiesCatalog.map(x => x.code));
+                        for (const a of newActivities) {
+                            if (!catalogCodes.has(a.code)) {
+                                toolCtx.activitiesCatalog.push({
+                                    code: a.code,
+                                    name: a.name,
+                                    description: a.description || '',
+                                    base_hours: a.baseHours,
+                                    group: a.group || 'UNKNOWN',
+                                    tech_category: a.techCategory,
+                                });
+                            }
+                        }
+                        console.log(`[agent] search_catalog expansion: +${newActivities.length} codes → validActivityCodes now ${validActivityCodes.length}`);
+                    }
+                }
             }
 
             // Continue loop — model will process tool results
@@ -508,7 +538,7 @@ async function llmWithTools(
             suggestedRisks: parsed.suggestedRisks || [],
         };
 
-        return { draft, toolCalls: toolCallRecords };
+        return { draft, toolCalls: toolCallRecords, expandedCodes: validActivityCodes };
     }
 
     // If we exhausted tool iterations, do a final call without tools
@@ -539,7 +569,7 @@ async function llmWithTools(
         suggestedRisks: parsed.suggestedRisks || [],
     };
 
-    return { draft, toolCalls: toolCallRecords };
+    return { draft, toolCalls: toolCallRecords, expandedCodes: validActivityCodes };
 }
 
 /**
@@ -737,6 +767,9 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
         console.log(`[agent] Modalità: ${ctx.flags.toolUseEnabled ? 'TOOL USE (function calling)' : 'DIRECT (senza tools)'}`);
         const draftStartMs = Date.now();
 
+        // B1: expandedCodes captures any codes discovered by search_catalog during tool-use
+        let expandedCodes = input.validActivityCodes;
+
         if (ctx.flags.toolUseEnabled) {
             const result = await llmWithTools(
                 provider,
@@ -747,6 +780,7 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
                 ctx
             );
             draft = result.draft;
+            expandedCodes = result.expandedCodes;
         } else {
             draft = await llmDirect(provider, systemPrompt, userPrompt, input.validActivityCodes);
         }
@@ -754,8 +788,8 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
         const draftElapsedMs = Date.now() - draftStartMs;
         console.log(`[agent] Draft generata in ${draftElapsedMs}ms`);
 
-        // Validate activities are from catalog
-        const validCodes = new Set(input.validActivityCodes);
+        // Validate activities are from catalog (B1: uses expanded set, not initial input)
+        const validCodes = new Set(expandedCodes);
         const beforeFilterCount = draft.activities.length;
         draft.activities = draft.activities.filter(a => validCodes.has(a.code));
         const removedCount = beforeFilterCount - draft.activities.length;
@@ -836,18 +870,20 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
                         provider,
                         systemPrompt,
                         refinedUserPrompt,
-                        input.validActivityCodes,
+                        expandedCodes,
                         toolCtx,
                         ctx
                     );
                     draft = result.draft;
+                    expandedCodes = result.expandedCodes;
                 } else {
-                    draft = await llmDirect(provider, systemPrompt, refinedUserPrompt, input.validActivityCodes);
+                    draft = await llmDirect(provider, systemPrompt, refinedUserPrompt, expandedCodes);
                 }
 
-                // Re-validate activities
+                // Re-validate activities (B1: uses expanded set from refine pass)
+                const refineValidCodes = new Set(expandedCodes);
                 const beforeRefineCount = draft.activities.length;
-                draft.activities = draft.activities.filter(a => validCodes.has(a.code));
+                draft.activities = draft.activities.filter(a => refineValidCodes.has(a.code));
                 if (beforeRefineCount !== draft.activities.length) {
                     console.warn(`[agent] Post-refine: ${beforeRefineCount - draft.activities.length} attività rimosse (non nel catalogo)`);
                 }

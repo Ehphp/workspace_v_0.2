@@ -353,7 +353,8 @@ CREATE OR REPLACE FUNCTION save_estimation_atomic(
   p_drivers JSONB,
   p_risks JSONB,
   p_ai_reasoning TEXT DEFAULT NULL,
-  p_senior_consultant_analysis JSONB DEFAULT NULL
+  p_senior_consultant_analysis JSONB DEFAULT NULL,
+  p_blueprint_id UUID DEFAULT NULL
 ) RETURNS UUID AS $$
 DECLARE
   v_estimation_id UUID;
@@ -627,6 +628,7 @@ Stores structured AI-generated Estimation Blueprint artifacts for requirements. 
 - **Requirement Understanding (2026-03-06)**: `requirement_understanding` table added for Milestone 1. Stores structured AI understanding artifacts with version history. JSONB `understanding` column holds the full `RequirementUnderstanding` interface. Migration: `20260306_requirement_understanding.sql`.
 - **Impact Map (2026-03-08)**: `impact_map` table added for Milestone 2. Stores structured AI architectural impact analysis artifacts with version history. JSONB `impact_map` column holds the full `ImpactMap` interface (summary, impacts[], overallConfidence). Boolean `has_requirement_understanding` tracks whether the understanding was available as input. Migration: `20260308_impact_map.sql`.
 - **Estimation Blueprint (2026-03-11)**: `estimation_blueprint` table added for Milestone 3. Stores structured AI estimation blueprint artifacts with technical component decomposition, integrations, data entities, testing scope, and confidence scoring. FKs to `requirement_understanding` and `impact_map` for provenance. Also adds `blueprint_id UUID` FK to `estimations` table for audit traceability. Migration: `20260311_estimation_blueprint.sql`.
+- **Persistence Convergence (2026-03-21)**: All estimation save paths now converge on `saveEstimationByIds()` → `save_estimation_atomic` RPC. Added `p_blueprint_id UUID DEFAULT NULL` parameter to the RPC. Dropped all 4 historical overloads (11-param NUMERIC/TEXT, 12-param DECIMAL/VARCHAR, 13-param +JSONB, 14-param +UUID) and created definitive 14-param version. Migration: `20260321_add_blueprint_id_to_rpc.sql`.
 
 ---
 
