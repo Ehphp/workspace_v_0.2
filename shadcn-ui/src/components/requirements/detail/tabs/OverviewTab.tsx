@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Calculator, FileText, User, Tag, Zap, Settings, ChevronDown, ChevronUp, Sparkles, ShieldCheck, Brain } from 'lucide-react';
+import { Calculator, FileText, ChevronDown, ChevronUp, Sparkles, ShieldCheck, Brain, ArrowRight, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { Requirement, Technology, EstimationWithDetails, Activity } from '@/types/database';
@@ -24,297 +23,264 @@ interface OverviewTabProps {
     consultantHistory?: ConsultantAnalysisRecord[];
     consultantHistoryLoading?: boolean;
     requirementUnderstanding?: RequirementUnderstanding | null;
+    onNavigateToTab?: (tab: string) => void;
 }
 
-const priorityColors = {
-    HIGH: 'bg-red-100 text-red-700 border-red-200',
-    MEDIUM: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-    LOW: 'bg-green-100 text-green-700 border-green-200',
-};
-
-const stateColors = {
-    CREATED: 'bg-slate-100 text-slate-700 border-slate-200',
-    IN_PROGRESS: 'bg-blue-100 text-blue-700 border-blue-200',
-    DONE: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-};
-
-export function OverviewTab({ requirement, presets, refetchRequirement, latestEstimation, activities = [], onRequestConsultant, isConsultantLoading, consultantAnalysis, consultantHistory = [], consultantHistoryLoading = false, requirementUnderstanding }: OverviewTabProps) {
-    const preset = presets.find(p => p.id === requirement.technology_id);
-    const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+export function OverviewTab({ requirement, presets, refetchRequirement, latestEstimation, activities = [], onRequestConsultant, isConsultantLoading, consultantAnalysis, consultantHistory = [], consultantHistoryLoading = false, requirementUnderstanding, onNavigateToTab }: OverviewTabProps) {
+    const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(true);
     const [isUnderstandingExpanded, setIsUnderstandingExpanded] = useState(true);
     const [isAiAnalysisExpanded, setIsAiAnalysisExpanded] = useState(true);
     const [isConsultantExpanded, setIsConsultantExpanded] = useState(true);
 
-    // Check if estimation has AI analysis
     const hasAiAnalysis = latestEstimation?.ai_reasoning && latestEstimation.ai_reasoning.trim().length > 0;
 
     return (
         <div className="h-full flex flex-col overflow-hidden">
-            <div className="flex-1 min-h-0 overflow-hidden">
-                <div className="container mx-auto px-6 py-4 h-full">
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 lg:h-full">
-                        {/* Left: Compact Info Grid (3/5) */}
-                        <div className="lg:col-span-3 space-y-4 overflow-y-auto lg:pr-2 lg:h-full flex flex-col [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200/50 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-300">
-                            {/* Description Card */}
-                            <Card className={`rounded-2xl shadow-lg border-slate-200/50 bg-white/80 backdrop-blur-xl ${latestEstimation ? 'shrink-0' : 'flex-1 min-h-0 flex flex-col'}`}>
-                                <CardContent className={`p-5 ${latestEstimation ? '' : 'flex-1 flex flex-col min-h-0'}`}>
-                                    {/* Description Header */}
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-gradient-to-br from-slate-500 to-slate-700 rounded-xl shadow-md">
-                                                <FileText className="w-4 h-4 text-white" />
-                                            </div>
-                                            <span className="text-sm font-bold text-slate-800 uppercase tracking-wide">Descrizione</span>
-                                        </div>
-                                        {latestEstimation && (
-                                            <button
-                                                onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                                                className="p-2 hover:bg-slate-100 rounded-xl transition-all duration-200"
-                                                title={isDescriptionExpanded ? "Comprimi" : "Espandi"}
-                                            >
-                                                {isDescriptionExpanded ? (
-                                                    <ChevronUp className="w-4 h-4 text-slate-600" />
-                                                ) : (
-                                                    <ChevronDown className="w-4 h-4 text-slate-600" />
-                                                )}
-                                            </button>
-                                        )}
-                                    </div>
+            <div className="flex-1 min-h-0 overflow-y-auto">
+                <div className="container mx-auto px-6 py-5 space-y-6">
 
-                                    {/* Description Content */}
-                                    <div className={`${latestEstimation ? (isDescriptionExpanded ? 'max-h-[30vh]' : 'max-h-[15vh]') : 'flex-1'} overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent transition-all duration-300`}>
-                                        <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
-                                            {requirement.description || 'Nessuna descrizione fornita'}
-                                        </p>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                    {/* ═══ Hero: Description (left 70%) + Estimation (right 30%) ═══ */}
+                    <div className="grid grid-cols-1 lg:grid-cols-10 gap-5">
 
-                            {/* Requirement Understanding Card - Show if persisted */}
+                        {/* Left column — Description */}
+                        <div className="lg:col-span-7 space-y-5">
+
+                            {/* Description section */}
+                            <section>
+                                <button
+                                    className="flex items-center gap-2 mb-2 group"
+                                    onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                                >
+                                    <FileText className="w-4 h-4 text-slate-400" />
+                                    <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Descrizione</h2>
+                                    {isDescriptionExpanded
+                                        ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                                        : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                                    }
+                                </button>
+                                <div className={`${isDescriptionExpanded ? 'max-h-[40vh]' : 'max-h-16'} overflow-y-auto transition-all duration-300 pr-1`}>
+                                    <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                                        {requirement.description || 'Nessuna descrizione fornita'}
+                                    </p>
+                                </div>
+                            </section>
+
+                            {/* AI Understanding — structured 2x2 grid layout */}
                             {requirementUnderstanding && (
-                                <Card className="rounded-2xl shadow-lg border-violet-200/50 bg-gradient-to-br from-violet-50/80 to-indigo-50/80 backdrop-blur-xl shrink-0">
-                                    <CardContent className="p-5">
-                                        <div className="flex items-center justify-between mb-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-xl shadow-md">
-                                                    <Brain className="w-4 h-4 text-white" />
-                                                </div>
-                                                <span className="text-sm font-bold text-slate-800 uppercase tracking-wide">Comprensione AI</span>
-                                                <Badge variant="outline" className="text-[10px] border-violet-300 text-violet-700 bg-violet-100/50">
-                                                    Confermata
-                                                </Badge>
-                                            </div>
-                                            <button
-                                                onClick={() => setIsUnderstandingExpanded(!isUnderstandingExpanded)}
-                                                className="p-2 hover:bg-violet-100 rounded-xl transition-all duration-200"
-                                                title={isUnderstandingExpanded ? "Comprimi" : "Espandi"}
-                                            >
-                                                {isUnderstandingExpanded ? (
-                                                    <ChevronUp className="w-4 h-4 text-violet-600" />
-                                                ) : (
-                                                    <ChevronDown className="w-4 h-4 text-violet-600" />
-                                                )}
-                                            </button>
-                                        </div>
-                                        <div className={`${isUnderstandingExpanded ? '' : 'max-h-0 overflow-hidden'} transition-all duration-300`}>
-                                            <RequirementUnderstandingCard understanding={requirementUnderstanding} />
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                                <section className="border-t border-slate-100 pt-4">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <button
+                                            className="flex items-center gap-2 group"
+                                            onClick={() => setIsUnderstandingExpanded(!isUnderstandingExpanded)}
+                                        >
+                                            <Brain className="w-4 h-4 text-blue-500" />
+                                            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Analisi AI</h2>
+                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-blue-200 text-blue-600 bg-blue-50">
+                                                Confermata
+                                            </Badge>
+                                            {isUnderstandingExpanded
+                                                ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                                                : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                                            }
+                                        </button>
+                                    </div>
+                                    {isUnderstandingExpanded && (
+                                        <RequirementUnderstandingCard understanding={requirementUnderstanding} />
+                                    )}
+                                </section>
                             )}
 
-                            {/* AI Analysis Card - Only show if estimation has AI reasoning */}
+                            {/* AI Reasoning from estimation */}
                             {hasAiAnalysis && (
-                                <Card className="rounded-2xl shadow-lg border-blue-200/50 bg-gradient-to-br from-blue-50/80 to-indigo-50/80 backdrop-blur-xl shrink-0">
-                                    <CardContent className="p-5">
-                                        {/* AI Analysis Header */}
-                                        <div className="flex items-center justify-between mb-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
-                                                    <Sparkles className="w-4 h-4 text-white" />
-                                                </div>
-                                                <span className="text-sm font-bold text-slate-800 uppercase tracking-wide">Analisi AI</span>
-                                                <Badge variant="outline" className="text-[10px] border-blue-300 text-blue-700 bg-blue-100/50">
-                                                    Generato
-                                                </Badge>
-                                            </div>
-                                            <button
-                                                onClick={() => setIsAiAnalysisExpanded(!isAiAnalysisExpanded)}
-                                                className="p-2 hover:bg-blue-100 rounded-xl transition-all duration-200"
-                                                title={isAiAnalysisExpanded ? "Comprimi" : "Espandi"}
-                                            >
-                                                {isAiAnalysisExpanded ? (
-                                                    <ChevronUp className="w-4 h-4 text-blue-600" />
-                                                ) : (
-                                                    <ChevronDown className="w-4 h-4 text-blue-600" />
-                                                )}
-                                            </button>
-                                        </div>
-
-                                        {/* AI Analysis Content */}
-                                        <div className={`${isAiAnalysisExpanded ? 'max-h-[25vh]' : 'max-h-0'} overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-transparent transition-all duration-300`}>
-                                            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
-                                                {latestEstimation.ai_reasoning}
+                                <section className="border-t border-slate-100 pt-4">
+                                    <button
+                                        className="flex items-center gap-2 mb-2"
+                                        onClick={() => setIsAiAnalysisExpanded(!isAiAnalysisExpanded)}
+                                    >
+                                        <Sparkles className="w-4 h-4 text-blue-500" />
+                                        <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ragionamento AI</h2>
+                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-slate-200 text-slate-500">
+                                            Generato
+                                        </Badge>
+                                        {isAiAnalysisExpanded
+                                            ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                                            : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                                        }
+                                    </button>
+                                    {isAiAnalysisExpanded && (
+                                        <div className="max-h-[25vh] overflow-y-auto pr-1">
+                                            <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
+                                                {latestEstimation!.ai_reasoning}
                                             </p>
                                         </div>
-                                    </CardContent>
-                                </Card>
+                                    )}
+                                </section>
                             )}
 
-                            {/* Consultant Analysis Card */}
+                            {/* Consultant Analysis */}
                             {consultantAnalysis && (
-                                <Card className="rounded-2xl shadow-lg border-emerald-200/50 bg-gradient-to-br from-emerald-50/80 to-teal-50/80 backdrop-blur-xl shrink-0">
-                                    <CardContent className="p-5">
-                                        {/* Consultant Header */}
-                                        <div className="flex items-center justify-between mb-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-md">
-                                                    <ShieldCheck className="w-4 h-4 text-white" />
-                                                </div>
-                                                <span className="text-sm font-bold text-slate-800 uppercase tracking-wide">Senior Consultant</span>
-                                                <Badge variant="outline" className="text-[10px] border-emerald-300 text-emerald-700 bg-emerald-100/50">
-                                                    Analisi
-                                                </Badge>
-                                            </div>
-                                            <button
-                                                onClick={() => setIsConsultantExpanded(!isConsultantExpanded)}
-                                                className="p-2 hover:bg-emerald-100 rounded-xl transition-all duration-200"
-                                                title={isConsultantExpanded ? "Comprimi" : "Espandi"}
-                                            >
-                                                {isConsultantExpanded ? (
-                                                    <ChevronUp className="w-4 h-4 text-emerald-600" />
-                                                ) : (
-                                                    <ChevronDown className="w-4 h-4 text-emerald-600" />
-                                                )}
-                                            </button>
-                                        </div>
-
-                                        {/* Consultant Content */}
-                                        <div className={`${isConsultantExpanded ? '' : 'max-h-0 overflow-hidden'} transition-all duration-300`}>
-                                            <ConsultantAnalysisCard analysis={consultantAnalysis} />
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                                <section className="border-t border-slate-100 pt-4">
+                                    <button
+                                        className="flex items-center gap-2 mb-2"
+                                        onClick={() => setIsConsultantExpanded(!isConsultantExpanded)}
+                                    >
+                                        <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                                        <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Senior Consultant</h2>
+                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-200 text-emerald-600 bg-emerald-50">
+                                            Analisi
+                                        </Badge>
+                                        {isConsultantExpanded
+                                            ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                                            : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                                        }
+                                    </button>
+                                    {isConsultantExpanded && (
+                                        <ConsultantAnalysisCard analysis={consultantAnalysis} />
+                                    )}
+                                </section>
                             )}
 
-                            {/* Consultant Analysis History */}
+                            {/* Consultant History */}
                             {(consultantHistory.length > 0 || consultantHistoryLoading) && (
-                                <Card className="rounded-2xl shadow-lg border-slate-200/50 bg-white/80 backdrop-blur-xl shrink-0">
-                                    <CardContent className="p-5">
-                                        <ConsultantHistoryPanel
-                                            history={consultantHistory}
-                                            loading={consultantHistoryLoading}
-                                            currentAnalysis={consultantAnalysis}
-                                        />
-                                    </CardContent>
-                                </Card>
+                                <section className="border-t border-slate-100 pt-4">
+                                    <ConsultantHistoryPanel
+                                        history={consultantHistory}
+                                        loading={consultantHistoryLoading}
+                                        currentAnalysis={consultantAnalysis}
+                                    />
+                                </section>
                             )}
 
-                            {/* Progress Section */}
+                            {/* Progress */}
                             {latestEstimation && (
-                                <Card className="rounded-2xl shadow-lg border-slate-200/50 bg-white/80 backdrop-blur-xl shrink-0 transition-all duration-300">
-                                    <CardContent className="p-5">
-                                        <RequirementProgress
-                                            estimation={latestEstimation}
-                                            activities={activities}
-                                            onUpdate={refetchRequirement}
-                                        />
-                                    </CardContent>
-                                </Card>
+                                <section className="border-t border-slate-100 pt-4">
+                                    <RequirementProgress
+                                        estimation={latestEstimation}
+                                        activities={activities}
+                                        onUpdate={refetchRequirement}
+                                    />
+                                </section>
                             )}
-
-
                         </div>
 
-                        {/* Right: Estimation Summary (2/5) */}
-                        <div className="lg:col-span-2 lg:h-full lg:overflow-hidden">
-                            <Card className="rounded-2xl shadow-lg border-slate-200/50 bg-white/80 backdrop-blur-xl h-full min-h-min">
-                                <CardContent className="p-5">
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
-                                            <Calculator className="w-4 h-4 text-white" />
-                                        </div>
-                                        <h3 className="text-sm font-bold text-slate-900">Ultima Stima</h3>
+                        {/* ═══ Right column — Estimation Summary Panel ═══ */}
+                        <div className="lg:col-span-3">
+                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm sticky top-0">
+                                <div className="px-4 py-3 border-b border-slate-100">
+                                    <div className="flex items-center gap-2">
+                                        <Calculator className="w-4 h-4 text-blue-600" />
+                                        <h3 className="text-sm font-semibold text-slate-900">Stima corrente</h3>
                                     </div>
+                                </div>
 
-                                    {latestEstimation ? (
-                                        <div className="space-y-4">
-                                            {/* Total Days - Compact */}
-                                            <div className="text-center py-4 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl border border-blue-200/50">
-                                                <div className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                                                    {latestEstimation.total_days.toFixed(1)}
-                                                </div>
-                                                <div className="text-xs text-slate-600 font-semibold uppercase tracking-wider mt-1">
-                                                    Giorni Totali
-                                                </div>
+                                {latestEstimation ? (
+                                    <div className="p-4 space-y-4">
+                                        {/* Hero number */}
+                                        <div className="text-center py-3 bg-slate-50 rounded-lg">
+                                            <div className="text-4xl font-bold text-blue-700">
+                                                {latestEstimation.total_days.toFixed(1)}
                                             </div>
-
-                                            {/* Compact Breakdown */}
-                                            <div className="space-y-2 text-sm">
-                                                <div className="flex justify-between items-center py-2 px-3 bg-slate-50 rounded-xl">
-                                                    <span className="text-slate-600">Base:</span>
-                                                    <span className="font-bold text-slate-900">{(latestEstimation.base_hours / 8).toFixed(1)} gg</span>
-                                                </div>
-                                                <div className="flex justify-between items-center py-2 px-3 bg-slate-50 rounded-xl">
-                                                    <span className="text-slate-600">Moltiplicatore:</span>
-                                                    <span className="font-bold text-slate-900">{latestEstimation.driver_multiplier.toFixed(2)}x</span>
-                                                </div>
-                                                <div className="flex justify-between items-center py-2 px-3 bg-slate-100 rounded-xl border-t border-slate-200">
-                                                    <span className="text-slate-600">Subtotale:</span>
-                                                    <span className="font-bold text-slate-900">
-                                                        {((latestEstimation.base_hours / 8) * latestEstimation.driver_multiplier).toFixed(1)} gg
-                                                    </span>
-                                                </div>
-                                                <div className="flex justify-between items-center py-2 px-3 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl border border-orange-200/50">
-                                                    <span className="text-slate-600">Contingenza:</span>
-                                                    <span className="font-bold text-orange-700">{latestEstimation.contingency_percent}%</span>
-                                                </div>
+                                            <div className="text-[11px] text-slate-500 font-medium uppercase tracking-wider mt-0.5">
+                                                giorni totali
                                             </div>
+                                        </div>
 
-                                            {/* Senior Consultant Button */}
-                                            {onRequestConsultant && (
-                                                <div className="mt-4 pt-4 border-t border-slate-200">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={onRequestConsultant}
-                                                        disabled={isConsultantLoading}
-                                                        className={`w-full h-9 text-xs ${consultantAnalysis
-                                                            ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                                                            : 'border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700'
-                                                            } transition-colors`}
-                                                    >
-                                                        {isConsultantLoading ? (
-                                                            <>
-                                                                <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
-                                                                Analisi in corso...
-                                                            </>
-                                                        ) : consultantAnalysis ? (
-                                                            <>
-                                                                <ShieldCheck className="h-4 w-4 mr-2" />
-                                                                Aggiorna Analisi Consultant
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <ShieldCheck className="h-4 w-4 mr-2" />
-                                                                Richiedi Senior Consultant
-                                                            </>
-                                                        )}
-                                                    </Button>
+                                        {/* Breakdown table */}
+                                        <div className="space-y-1 text-sm">
+                                            <div className="flex justify-between py-1.5 px-2">
+                                                <span className="text-slate-500">Base</span>
+                                                <span className="font-medium text-slate-800">{(latestEstimation.base_hours / 8).toFixed(1)} gg</span>
+                                            </div>
+                                            <div className="flex justify-between py-1.5 px-2">
+                                                <span className="text-slate-500">Moltiplicatore</span>
+                                                <span className="font-medium text-slate-800">{latestEstimation.driver_multiplier.toFixed(2)}x</span>
+                                            </div>
+                                            <div className="flex justify-between py-1.5 px-2 bg-slate-50 rounded">
+                                                <span className="text-slate-600 font-medium">Subtotale</span>
+                                                <span className="font-semibold text-slate-900">
+                                                    {((latestEstimation.base_hours / 8) * latestEstimation.driver_multiplier).toFixed(1)} gg
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between py-1.5 px-2">
+                                                <span className="text-slate-500">Contingenza</span>
+                                                <span className="font-medium text-orange-600">{latestEstimation.contingency_percent}%</span>
+                                            </div>
+                                            {latestEstimation.risk_score > 0 && (
+                                                <div className="flex justify-between py-1.5 px-2">
+                                                    <span className="text-slate-500">Rischio</span>
+                                                    <span className="font-medium text-slate-800">{latestEstimation.risk_score}</span>
                                                 </div>
                                             )}
                                         </div>
-                                    ) : (
-                                        <div className="text-center py-8">
-                                            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-                                                <FileText className="w-8 h-8 text-slate-400" />
-                                            </div>
-                                            <p className="text-sm text-slate-500 font-medium">Nessuna stima</p>
-                                            <p className="text-xs text-slate-400 mt-1">Vai alla tab Stima</p>
+
+                                        {/* Last update */}
+                                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 px-2">
+                                            <Clock className="w-3 h-3" />
+                                            Aggiornata {new Date(latestEstimation.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
                                         </div>
-                                    )}
-                                </CardContent>
-                            </Card>
+
+                                        {/* Action buttons */}
+                                        <div className="space-y-2 pt-2 border-t border-slate-100">
+                                            <Button
+                                                size="sm"
+                                                className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700"
+                                                onClick={() => onNavigateToTab?.('estimation')}
+                                            >
+                                                <ArrowRight className="h-3.5 w-3.5 mr-1.5" />
+                                                Rivedi stima
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="w-full h-8 text-xs"
+                                                onClick={() => onNavigateToTab?.('history')}
+                                            >
+                                                Timeline
+                                            </Button>
+
+                                            {/* Consultant CTA */}
+                                            {onRequestConsultant && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={onRequestConsultant}
+                                                    disabled={isConsultantLoading}
+                                                    className={`w-full h-8 text-xs ${consultantAnalysis
+                                                        ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                                                        : 'hover:border-emerald-200 hover:text-emerald-700 hover:bg-emerald-50'
+                                                        } transition-colors`}
+                                                >
+                                                    {isConsultantLoading ? (
+                                                        <>
+                                                            <div className="h-3 w-3 mr-1.5 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+                                                            Analisi...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
+                                                            {consultantAnalysis ? 'Aggiorna Consultant' : 'Richiedi Consultant'}
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="p-6 text-center">
+                                        <Calculator className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                                        <p className="text-sm text-slate-500 font-medium">Nessuna stima</p>
+                                        <p className="text-xs text-slate-400 mt-1 mb-3">Avvia una stima per questo requisito</p>
+                                        <Button
+                                            size="sm"
+                                            className="h-8 text-xs bg-blue-600 hover:bg-blue-700"
+                                            onClick={() => onNavigateToTab?.('estimation')}
+                                        >
+                                            <ArrowRight className="h-3.5 w-3.5 mr-1.5" />
+                                            Vai alla Stima
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

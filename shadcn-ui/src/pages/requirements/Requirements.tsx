@@ -1,19 +1,11 @@
 import type React from 'react';
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useRequirementsList } from '@/hooks/useRequirementsList';
 import type { Requirement } from '@/types/database';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { CreateRequirementDialog } from '@/components/requirements/CreateRequirementDialog';
 import { ImportRequirementsDialog } from '@/components/requirements/ImportRequirementsDialog';
 import { ClearListDialog } from '@/components/lists/ClearListDialog';
@@ -25,10 +17,11 @@ import { PageShell } from '@/components/layout/PageShell';
 import { useAuthStore } from '@/store/useAuthStore';
 import { RequirementsHeader } from '@/components/requirements/RequirementsHeader';
 import { RequirementsFilters, type ViewMode } from '@/components/requirements/RequirementsFilters';
-import { RequirementsStats } from '@/components/requirements/RequirementsStats';
+import { RequirementsKpiGrid } from '@/components/requirements/RequirementsKpiGrid';
+import { RequirementsInsightPanel } from '@/components/requirements/RequirementsInsightPanel';
 import { RequirementsDashboardView } from '@/components/requirements/RequirementsDashboardView';
-import { PriorityBadge, PRIORITY_CONFIGS } from '@/components/shared/RequirementBadges';
-import { Plus, Upload, MoreVertical, Loader2, Sparkles, FileText, Search } from 'lucide-react';
+import { RequirementRow } from '@/components/requirements/RequirementRow';
+import { Plus, Upload, Loader2, FileText, Search } from 'lucide-react';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { generateTitleFromDescription } from '@/lib/openai';
 import { supabase } from '@/lib/supabase';
@@ -36,7 +29,6 @@ import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
 
 export default function Requirements() {
-    const navigate = useNavigate();
     const { listId } = useParams<{ listId: string }>();
     const { user } = useAuth();
     const { toast } = useToast();
@@ -284,15 +276,25 @@ export default function Requirements() {
 
     const isEmpty = !loading && filteredRequirements.length === 0;
 
+    // Derived stats for KPI grid
+    const highPriorityCount = useMemo(() => requirements.filter(r => r.priority === 'HIGH').length, [requirements]);
+    const highPriorityUnestimated = useMemo(() => requirements.filter(r => r.priority === 'HIGH' && !r.latest_estimation).length, [requirements]);
+    const avgRiskScore = useMemo(() => {
+        const estimated = requirements.filter(r => r.latest_estimation);
+        if (estimated.length === 0) return null;
+        const sum = estimated.reduce((acc, r) => acc + (r.latest_estimation?.risk_score || 0), 0);
+        return sum / estimated.length;
+    }, [requirements]);
+
     // Skeleton loading cards
     const skeletonCards = Array.from({ length: 3 }).map((_, idx) => (
-        <Card key={`skeleton-${idx}`} className="border-slate-200/60 bg-white/80">
+        <div key={`skeleton-${idx}`} className="border border-slate-200/60 rounded-xl bg-white/80">
             <div className="flex items-center p-3 gap-4 animate-pulse">
                 <div className="h-5 w-16 rounded bg-slate-200/80"></div>
                 <div className="flex-1 h-5 rounded bg-slate-200/80"></div>
                 <div className="h-5 w-20 rounded bg-slate-200/80"></div>
             </div>
-        </Card>
+        </div>
     ));
 
     if (loading) {
@@ -396,12 +398,18 @@ export default function Requirements() {
                         />
                     ) : (
                         <>
-                            {/* Stats Summary (Moved from Header) */}
-                            <RequirementsStats
+                            {/* KPI Grid */}
+                            <RequirementsKpiGrid
                                 totalEstimation={totalEstimation}
                                 estimatedCount={estimatedCount}
                                 notEstimatedCount={notEstimatedCount}
+                                highPriorityCount={highPriorityCount}
+                                highPriorityUnestimated={highPriorityUnestimated}
+                                avgRiskScore={avgRiskScore}
                             />
+
+                            {/* Insight / Alert Panel */}
+                            <RequirementsInsightPanel requirements={requirements} />
 
                             {filteredRequirements.length === 0 ? (
                                 <div className="max-w-4xl mx-auto">
@@ -461,119 +469,16 @@ export default function Requirements() {
                                 </div>
                             ) : (
                                 <div className="max-w-7xl mx-auto">
-                                    {/* Requirements List - Card style like Dashboard */}
-                                    <div className="grid gap-3">
-                                        {filteredRequirements.map((req, idx) => {
-                                            const estimation = req.latest_estimation;
-                                            const hasEstimation = !!estimation;
-                                            const priorityConfig = PRIORITY_CONFIGS[req.priority as keyof typeof PRIORITY_CONFIGS] || PRIORITY_CONFIGS.MEDIUM;
-                                            const isGeneratingTitle = req.labels?.includes('AI_TITLE_PENDING');
-
-                                            // State colors for inline badge
-                                            const stateColors: Record<string, { bg: string; text: string; dot: string }> = {
-                                                PROPOSED: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
-                                                SELECTED: { bg: 'bg-violet-50', text: 'text-violet-700', dot: 'bg-violet-500' },
-                                                SCHEDULED: { bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500' },
-                                                DONE: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
-                                            };
-                                            const stateStyle = stateColors[req.state] || stateColors.PROPOSED;
-
-                                            // Priority border colors
-                                            const priorityBorders: Record<string, string> = {
-                                                HIGH: 'border-t-red-500',
-                                                MEDIUM: 'border-t-amber-500',
-                                                LOW: 'border-t-emerald-500',
-                                            };
-                                            const priorityBorder = priorityBorders[req.priority] || 'border-t-slate-300';
-
-                                            return (
-                                                <div
-                                                    key={req.id}
-                                                    className={`group bg-white rounded-xl border border-slate-200 border-t-4 ${priorityBorder} shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-pointer overflow-hidden`}
-                                                    onClick={() => navigate(`/dashboard/${listId}/requirements/${req.id}`)}
-                                                    role="button"
-                                                    tabIndex={0}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter' || e.key === ' ') {
-                                                            e.preventDefault();
-                                                            navigate(`/dashboard/${listId}/requirements/${req.id}`);
-                                                        }
-                                                    }}
-                                                >
-                                                    <div className="p-4">
-                                                        {/* Header row: ID + State badge + Actions */}
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-mono text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                                                                    {req.req_id}
-                                                                </span>
-                                                                <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${stateStyle.bg} ${stateStyle.text}`}>
-                                                                    <span className={`w-1.5 h-1.5 rounded-full ${stateStyle.dot}`}></span>
-                                                                    {req.state}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                {hasEstimation && (
-                                                                    <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">
-                                                                        {estimation.total_days.toFixed(1)} gg
-                                                                    </span>
-                                                                )}
-                                                                <DropdownMenu>
-                                                                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-7 w-7 text-slate-400 hover:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                        >
-                                                                            <MoreVertical className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </DropdownMenuTrigger>
-                                                                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()} className="rounded-lg">
-                                                                        <DropdownMenuItem
-                                                                            className="text-destructive focus:text-destructive"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                setDeleteRequirement(req);
-                                                                            }}
-                                                                        >
-                                                                            Elimina
-                                                                        </DropdownMenuItem>
-                                                                    </DropdownMenuContent>
-                                                                </DropdownMenu>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Title */}
-                                                        {isGeneratingTitle ? (
-                                                            <div className="flex items-center gap-2 text-slate-500 mb-2">
-                                                                <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                                                                <span className="text-sm">Generazione titolo...</span>
-                                                            </div>
-                                                        ) : (
-                                                            <h3 className="text-sm font-semibold text-slate-800 leading-snug group-hover:text-blue-700 transition-colors mb-2 line-clamp-2">
-                                                                {req.title}
-                                                            </h3>
-                                                        )}
-
-                                                        {/* Footer: metadata */}
-                                                        <div className="flex items-center gap-3 text-xs text-slate-500">
-                                                            <span className="inline-flex items-center gap-1">
-                                                                <span className="text-sm">{priorityConfig.icon}</span>
-                                                                <span className="capitalize">{req.priority.toLowerCase()}</span>
-                                                            </span>
-                                                            {req.business_owner && (
-                                                                <>
-                                                                    <span className="text-slate-300">|</span>
-                                                                    <span className="truncate max-w-[150px]">{req.business_owner}</span>
-                                                                </>
-                                                            )}
-                                                            <span className="text-slate-300">|</span>
-                                                            <span>{new Date(req.updated_at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                    {/* Requirements List - Compact rows */}
+                                    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden divide-y divide-slate-100">
+                                        {filteredRequirements.map((req) => (
+                                            <RequirementRow
+                                                key={req.id}
+                                                req={req}
+                                                listId={listId || ''}
+                                                onDelete={setDeleteRequirement}
+                                            />
+                                        ))}
                                     </div>
                                 </div>
                             )}

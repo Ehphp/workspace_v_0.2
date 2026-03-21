@@ -66,10 +66,10 @@ export function WizardStepUnderstanding({
                 techPresetId: data.techPresetId || undefined,
                 projectContext: data.projectContext
                     ? {
-                          name: data.projectContext.name,
-                          description: data.projectContext.description,
-                          owner: data.projectContext.owner,
-                      }
+                        name: data.projectContext.name,
+                        description: data.projectContext.description,
+                        owner: data.projectContext.owner,
+                    }
                     : undefined,
                 normalizationResult: data.normalizationResult?.normalizedDescription
                     ? { normalizedDescription: data.normalizationResult.normalizedDescription }

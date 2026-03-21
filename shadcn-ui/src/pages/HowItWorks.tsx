@@ -13,7 +13,11 @@ import {
   Code2,
   Building2,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Brain,
+  Layers,
+  FileSearch,
+  SlidersHorizontal
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -24,7 +28,7 @@ const steps = [
   {
     icon: Wand2,
     title: 'Descrivi il Requisito',
-    description: 'Scrivi come parli. L\'AI capisce il contesto e valida automaticamente.',
+    description: 'Scrivi come parli. L\'AI capisce il contesto e, se vuoi, normalizza automaticamente il testo.',
     example: '"Integrazione CRM con notifiche push"',
     time: '10 sec',
     gradient: 'from-blue-500 to-cyan-500',
@@ -42,31 +46,61 @@ const steps = [
     iconBg: 'bg-gradient-to-br from-indigo-500 to-purple-500',
   },
   {
-    icon: GitBranch,
-    title: 'Rispondi alle Domande',
-    description: 'L\'AI ti fa 4-6 domande mirate. Nessun testo libero, solo click.',
-    example: 'Complessità? Integrazioni? Scope?',
-    time: '30 sec',
+    icon: Brain,
+    title: 'Understanding AI',
+    description: 'L\'AI analizza obiettivo, perimetro, attori e complessità. Revisioni e confermi.',
+    example: 'Obiettivo • Perimetro • Attori • Complessità',
+    time: '~15 sec',
+    gradient: 'from-cyan-500 to-blue-500',
+    bgGradient: 'from-cyan-50 to-blue-50',
+    iconBg: 'bg-gradient-to-br from-cyan-500 to-blue-500',
+  },
+  {
+    icon: Layers,
+    title: 'Impact Map',
+    description: 'L\'AI mappa i layer architetturali impattati: frontend, logica, dati, integrazioni.',
+    example: 'Frontend • Logic • Data • Integration',
+    time: '~15 sec',
+    gradient: 'from-violet-500 to-indigo-500',
+    bgGradient: 'from-violet-50 to-indigo-50',
+    iconBg: 'bg-gradient-to-br from-violet-500 to-indigo-500',
+  },
+  {
+    icon: FileSearch,
+    title: 'Blueprint Tecnico',
+    description: 'L\'AI decompone componenti, integrazioni, entità dati e scope di testing.',
+    example: 'Componenti • API • Entità • Test',
+    time: '~15 sec',
     gradient: 'from-purple-500 to-pink-500',
     bgGradient: 'from-purple-50 to-pink-50',
     iconBg: 'bg-gradient-to-br from-purple-500 to-pink-500',
   },
   {
-    icon: Shield,
-    title: 'Ricevi la Stima',
-    description: 'Breakdown dettagliato per fase. Ore già calcolate dal tuo catalogo.',
-    example: 'Analisi • Sviluppo • Test • Deploy',
-    time: '~2 min',
+    icon: GitBranch,
+    title: 'Interview Tecnica',
+    description: 'Se l\'AI ha dubbi, ti fa 1-3 domande mirate. Se è già sicura, salta direttamente alla stima.',
+    example: 'Planner AI: SKIP o ASK?',
+    time: '0-30 sec',
     gradient: 'from-pink-500 to-rose-500',
     bgGradient: 'from-pink-50 to-rose-50',
     iconBg: 'bg-gradient-to-br from-pink-500 to-rose-500',
   },
   {
-    icon: Lock,
-    title: 'Blocca e Presenta',
-    description: 'Aggiungi buffer di rischio, blocca i margini, esporta per il cliente.',
-    example: 'PDF professionale in un click',
-    time: '30 sec',
+    icon: SlidersHorizontal,
+    title: 'Driver e Rischi',
+    description: 'Seleziona attività, driver di complessità e rischi dal tuo catalogo.',
+    example: 'Attività • Moltiplicatori • Buffer rischio',
+    time: '~30 sec',
+    gradient: 'from-amber-500 to-orange-500',
+    bgGradient: 'from-amber-50 to-orange-50',
+    iconBg: 'bg-gradient-to-br from-amber-500 to-orange-500',
+  },
+  {
+    icon: Shield,
+    title: 'Risultati e Salvataggio',
+    description: 'Review finale della stima con breakdown per attività. Salva e presenta al cliente.',
+    example: 'Ore totali • Breakdown • Salvataggio',
+    time: '~30 sec',
     gradient: 'from-emerald-500 to-teal-500',
     bgGradient: 'from-emerald-50 to-teal-50',
     iconBg: 'bg-gradient-to-br from-emerald-500 to-teal-500',
@@ -224,7 +258,7 @@ export default function HowItWorks() {
                 {/* Connection Line */}
                 <div className="absolute top-[4.5rem] left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-500 rounded-full opacity-20" />
 
-                <div className="grid grid-cols-5 gap-4">
+                <div className="grid grid-cols-4 gap-3 lg:grid-cols-8">
                   {steps.map((step, index) => (
                     <motion.div
                       key={index}
@@ -235,28 +269,28 @@ export default function HowItWorks() {
                       className="relative"
                     >
                       {/* Step Number Circle */}
-                      <div className="flex justify-center mb-4">
-                        <div className={`w-16 h-16 rounded-2xl ${step.iconBg} flex items-center justify-center shadow-lg shadow-slate-900/10 relative z-10`}>
-                          <step.icon className="w-7 h-7 text-white" />
+                      <div className="flex justify-center mb-3">
+                        <div className={`w-12 h-12 rounded-xl ${step.iconBg} flex items-center justify-center shadow-lg shadow-slate-900/10 relative z-10`}>
+                          <step.icon className="w-5 h-5 text-white" />
                         </div>
                       </div>
 
                       {/* Card */}
-                      <div className={`p-5 rounded-2xl bg-gradient-to-br ${step.bgGradient} border border-white/60 shadow-sm hover:shadow-md transition-all duration-300 group h-full`}>
+                      <div className={`p-3 rounded-xl bg-gradient-to-br ${step.bgGradient} border border-white/60 shadow-sm hover:shadow-md transition-all duration-300 group h-full`}>
                         {/* Time Badge */}
-                        <div className="flex justify-between items-start mb-3">
-                          <span className="text-xs font-bold text-slate-400">STEP {index + 1}</span>
-                          <span className={`text-xs font-bold px-2 py-1 rounded-full bg-gradient-to-r ${step.gradient} text-white`}>
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-[10px] font-bold text-slate-400">STEP {index + 1}</span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gradient-to-r ${step.gradient} text-white`}>
                             {step.time}
                           </span>
                         </div>
 
-                        <h3 className="text-lg font-bold text-slate-900 mb-2 leading-tight">{step.title}</h3>
-                        <p className="text-sm text-slate-600 leading-relaxed mb-3">{step.description}</p>
+                        <h3 className="text-sm font-bold text-slate-900 mb-1 leading-tight">{step.title}</h3>
+                        <p className="text-xs text-slate-600 leading-relaxed mb-2">{step.description}</p>
 
                         {/* Example */}
-                        <div className="pt-3 border-t border-slate-200/50">
-                          <p className="text-xs text-slate-500 italic">{step.example}</p>
+                        <div className="pt-2 border-t border-slate-200/50">
+                          <p className="text-[10px] text-slate-500 italic">{step.example}</p>
                         </div>
                       </div>
                     </motion.div>
@@ -326,7 +360,7 @@ export default function HowItWorks() {
                 </Badge>
                 <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Perché Questa AI è Diversa</h2>
                 <p className="text-lg text-slate-600 max-w-3xl mx-auto">
-                  Non è ChatGPT che "inventa" numeri. È un sistema che usa <strong>le tue regole</strong>, <strong>il tuo catalogo</strong>, <strong>i tuoi prezzi</strong>. L'AI decide solo quali attività includere.
+                  Non è ChatGPT che "inventa" numeri. È una pipeline strutturata: <strong>Understanding → Impact Map → Blueprint → Interview</strong>. Ogni artefatto AI guida il successivo. Le ore escono solo dal <strong>tuo catalogo</strong>.
                 </p>
               </div>
 
@@ -344,22 +378,22 @@ export default function HowItWorks() {
                       1
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold text-slate-900 mb-3">L'AI Ti Fa le Domande Giuste</h3>
+                      <h3 className="text-xl font-bold text-slate-900 mb-3">3 Artefatti AI Prima della Stima</h3>
                       <p className="text-slate-600 mb-4 leading-relaxed">
-                        Basta perdere tempo a scrivere documenti. L'AI capisce il requisito e ti fa <strong>solo le domande che contano</strong> per stimare correttamente. Rispondi con un click, non con un documento.
+                        Prima di stimare, l'AI costruisce 3 artefatti strutturati che puoi revisionare e confermare. Ogni artefatto guida il successivo, eliminando ambiguità e imprecisioni.
                       </p>
                       <div className="grid md:grid-cols-3 gap-4 mt-6">
                         <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
-                          <div className="text-sm font-semibold text-blue-700 mb-1">Zero Testo Libero</div>
-                          <div className="text-xs text-blue-600">Solo click su opzioni pronte</div>
+                          <div className="text-sm font-semibold text-blue-700 mb-1">Understanding</div>
+                          <div className="text-xs text-blue-600">Obiettivo, perimetro, attori, complessità</div>
                         </div>
                         <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-100">
-                          <div className="text-sm font-semibold text-indigo-700 mb-1">Domande Mirate</div>
-                          <div className="text-xs text-indigo-600">Cambiano in base allo stack scelto</div>
+                          <div className="text-sm font-semibold text-indigo-700 mb-1">Impact Map</div>
+                          <div className="text-xs text-indigo-600">Layer architetturali impattati</div>
                         </div>
                         <div className="p-4 rounded-xl bg-purple-50 border border-purple-100">
-                          <div className="text-sm font-semibold text-purple-700 mb-1">30 Secondi</div>
-                          <div className="text-xs text-purple-600">Per rispondere a tutto</div>
+                          <div className="text-sm font-semibold text-purple-700 mb-1">Blueprint Tecnico</div>
+                          <div className="text-xs text-purple-600">Componenti, integrazioni, testing</div>
                         </div>
                       </div>
                     </div>
@@ -379,9 +413,9 @@ export default function HowItWorks() {
                       2
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold text-slate-900 mb-3">Usa il TUO Catalogo Attività</h3>
+                      <h3 className="text-xl font-bold text-slate-900 mb-3">Planner Decisionale + TUO Catalogo</h3>
                       <p className="text-slate-600 mb-4 leading-relaxed">
-                        L'AI non inventa ore a caso. Seleziona attività <strong>dal catalogo che hai già configurato</strong> con le tue tariffe e i tuoi tempi standard. Il risultato? Stime coerenti con la tua storia.
+                        Un planner AI valuta se la confidenza è sufficiente. Se sì, <strong>salta le domande</strong> (SKIP). Se serve chiarezza, fa <strong>1-3 domande mirate</strong> (ASK). Le attività escono sempre <strong>dal tuo catalogo configurato</strong>, mai inventate.
                       </p>
                       <div className="bg-slate-900 rounded-xl p-5 text-sm mt-4">
                         <div className="text-slate-400 mb-3 text-xs uppercase tracking-wide">Esempio di output generato</div>
@@ -469,21 +503,21 @@ export default function HowItWorks() {
                     </h3>
                     <div className="grid md:grid-cols-3 gap-6">
                       <div>
-                        <div className="text-lg font-semibold text-blue-300 mb-2">Risposte Vincolate</div>
+                        <div className="text-lg font-semibold text-blue-300 mb-2">Pipeline Strutturata</div>
                         <p className="text-slate-300 text-sm leading-relaxed">
-                          L'AI può rispondere SOLO con codici attività validi del tuo catalogo. Non può inventare.
+                          Understanding → Impact Map → Blueprint → Interview. Ogni artefatto alimenta il successivo.
                         </p>
                       </div>
                       <div>
-                        <div className="text-lg font-semibold text-indigo-300 mb-2">Zero Casualità</div>
+                        <div className="text-lg font-semibold text-indigo-300 mb-2">Planner SKIP/ASK</div>
                         <p className="text-slate-300 text-sm leading-relaxed">
-                          Configurazione "deterministica": stessa domanda = stessa risposta. Sempre. Garantito.
+                          L'AI valuta confidenza e range: se ≥90% e range ≤16h, salta le domande. Altrimenti chiede solo ciò che serve.
                         </p>
                       </div>
                       <div>
-                        <div className="text-lg font-semibold text-purple-300 mb-2">Regole, Non Opinioni</div>
+                        <div className="text-lg font-semibold text-purple-300 mb-2">Codici Vincolati</div>
                         <p className="text-slate-300 text-sm leading-relaxed">
-                          L'AI segue regole precise, non "pensa". Se menzioni X, include Y. Nessuna interpretazione.
+                          L'AI risponde SOLO con codici attività del tuo catalogo. Blueprint e Impact Map guidano il ranking.
                         </p>
                       </div>
                     </div>

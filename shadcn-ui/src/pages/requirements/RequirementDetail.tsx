@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { motion } from 'framer-motion';
+
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -548,49 +548,14 @@ export default function RequirementDetail() {
         <PageShell
             fullHeight
             noContainer
-            headerClassName="relative z-20 bg-white/70 backdrop-blur-xl border-b border-white/50"
-            className="relative"
+            headerClassName="relative z-20 bg-white border-b border-slate-200"
+            className="bg-slate-50"
             contentClassName="flex flex-col overflow-hidden"
-            backgroundSlot={
-                <>
-                    {/* Background Pattern */}
-                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
-
-                    {/* Animated Background Blobs */}
-                    <motion.div
-                        animate={{
-                            x: [0, 100, 0],
-                            y: [0, -50, 0],
-                            scale: [1, 1.1, 1],
-                        }}
-                        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                        className="absolute top-0 -left-20 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
-                    />
-                    <motion.div
-                        animate={{
-                            x: [0, -100, 0],
-                            y: [0, 50, 0],
-                            scale: [1, 1.2, 1],
-                        }}
-                        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-                        className="absolute top-1/3 -right-20 w-[30rem] h-[30rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
-                    />
-                    <motion.div
-                        animate={{
-                            x: [0, 50, 0],
-                            y: [0, 100, 0],
-                            scale: [1, 1.1, 1],
-                        }}
-                        transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
-                        className="absolute bottom-0 left-1/3 w-[25rem] h-[25rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
-                    />
-                </>
-            }
         >
 
-            {/* Page specific info bar - flex-shrink-0 */}
-            <div className="flex-shrink-0 relative z-10 border-b border-white/50 bg-white/60 backdrop-blur-xl">
-                <div className="container mx-auto px-6 py-4">
+            {/* Header — compact */}
+            <div className="flex-shrink-0 border-b border-slate-200 bg-white">
+                <div className="container mx-auto px-6 py-3">
                     <RequirementHeader
                         requirement={requirement}
                         onBack={handleBack}
@@ -600,39 +565,39 @@ export default function RequirementDetail() {
                 </div>
             </div>
 
-            {/* Content Area - Tab-based Layout (No Global Scroll) */}
-            <div className="flex-1 relative z-10 flex flex-col min-h-0">
+            {/* Content Area - Tab-based Layout */}
+            <div className="flex-1 flex flex-col min-h-0">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-                    {/* Tab Navigation */}
-                    <div className="flex-shrink-0 border-b border-slate-200/50 bg-white/60 backdrop-blur-xl">
+                    {/* Tab Navigation — underline style */}
+                    <div className="flex-shrink-0 border-b border-slate-200 bg-white">
                         <div className="container mx-auto px-6">
-                            <TabsList className="h-14 bg-transparent border-0 gap-2">
+                            <TabsList className="h-11 bg-transparent border-0 gap-1 p-0">
                                 <TabsTrigger
                                     value="info"
-                                    className="data-[state=active]:bg-white/90 data-[state=active]:shadow-md rounded-xl border-2 border-transparent data-[state=active]:border-blue-500/20 px-5 py-2.5 transition-all duration-200"
+                                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-700 px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors"
                                 >
-                                    <FileText className="w-4 h-4 mr-2" />
+                                    <FileText className="w-4 h-4 mr-1.5" />
                                     Panoramica
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="estimation"
-                                    className="data-[state=active]:bg-white/90 data-[state=active]:shadow-md rounded-xl border-2 border-transparent data-[state=active]:border-blue-500/20 px-5 py-2.5 transition-all duration-200"
+                                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-700 px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors"
                                 >
-                                    <Calculator className="w-4 h-4 mr-2" />
+                                    <Calculator className="w-4 h-4 mr-1.5" />
                                     Stima
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="history"
-                                    className="data-[state=active]:bg-white/90 data-[state=active]:shadow-md rounded-xl border-2 border-transparent data-[state=active]:border-blue-500/20 px-5 py-2.5 transition-all duration-200"
+                                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-700 px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors"
                                 >
-                                    <History className="w-4 h-4 mr-2" />
-                                    Storico
+                                    <History className="w-4 h-4 mr-1.5" />
+                                    Timeline
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="actuals"
-                                    className="data-[state=active]:bg-white/90 data-[state=active]:shadow-md rounded-xl border-2 border-transparent data-[state=active]:border-blue-500/20 px-5 py-2.5 transition-all duration-200"
+                                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-700 px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors"
                                 >
-                                    <ClipboardCheck className="w-4 h-4 mr-2" />
+                                    <ClipboardCheck className="w-4 h-4 mr-1.5" />
                                     Consuntivo
                                 </TabsTrigger>
                             </TabsList>
@@ -653,6 +618,7 @@ export default function RequirementDetail() {
                             consultantHistory={consultantHistory}
                             consultantHistoryLoading={consultantHistoryLoading}
                             requirementUnderstanding={requirementUnderstanding}
+                            onNavigateToTab={setActiveTab}
                         />
                     </TabsContent>
 

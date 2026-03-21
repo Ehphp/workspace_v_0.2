@@ -8,7 +8,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { PriorityBadge, StateBadge } from '@/components/shared/RequirementBadges';
 import { useWorkflow } from '@/hooks/workflow/useWorkflow';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface RequirementHeaderProps {
@@ -187,177 +186,145 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
     const currentPreset = presets.find(p => p.id === currentTechId);
 
     return (
-        <div className="flex flex-col gap-4">
-            <div className="flex items-start gap-5">
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="mt-1 shrink-0 hover:bg-slate-100 rounded-xl transition-all duration-200 w-10 h-10"
-                    onClick={onBack}
-                >
-                    <ArrowLeft className="h-5 w-5 text-slate-600" />
-                </Button>
+        <div className="flex items-center gap-3">
+            {/* Back button */}
+            <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0 hover:bg-slate-100 rounded-lg w-8 h-8"
+                onClick={onBack}
+            >
+                <ArrowLeft className="h-4 w-4 text-slate-500" />
+            </Button>
 
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-3 flex-1">
-                            {/* Title Section */}
-                            <div className="flex items-center gap-3 min-h-[40px]">
-                                {isEditingTitle ? (
-                                    <input
-                                        ref={titleInputRef}
-                                        type="text"
-                                        value={tempTitle}
-                                        onChange={(e) => setTempTitle(e.target.value)}
-                                        className="text-2xl font-bold text-slate-900 tracking-tight leading-tight outline-none bg-white border-b-2 border-blue-500 w-full px-1 rounded-lg"
-                                        onBlur={handleSaveTitle}
-                                        onKeyDown={handleKeyDownTitle}
-                                    />
-                                ) : (
-                                    <h1
-                                        onClick={() => setIsEditingTitle(true)}
-                                        className={cn(
-                                            "text-2xl font-bold text-slate-900 tracking-tight leading-tight cursor-pointer hover:bg-slate-100/70 rounded-xl px-2 py-1 -ml-2 transition-all duration-200 border border-transparent hover:border-slate-200",
-                                            !titleInputRef.current && "truncate"
-                                        )}
-                                        title="Clicca per modificare il titolo"
-                                    >
-                                        {requirement.title}
-                                    </h1>
-                                )}
-                            </div>
+            {/* Title — click to edit */}
+            <div className="flex-1 min-w-0">
+                {isEditingTitle ? (
+                    <input
+                        ref={titleInputRef}
+                        type="text"
+                        value={tempTitle}
+                        onChange={(e) => setTempTitle(e.target.value)}
+                        className="text-lg font-semibold text-slate-900 outline-none bg-white border-b-2 border-blue-500 w-full"
+                        onBlur={handleSaveTitle}
+                        onKeyDown={handleKeyDownTitle}
+                    />
+                ) : (
+                    <h1
+                        onClick={() => setIsEditingTitle(true)}
+                        className="text-lg font-semibold text-slate-900 truncate cursor-pointer hover:text-slate-700 transition-colors"
+                        title="Clicca per modificare il titolo"
+                    >
+                        {requirement.title}
+                    </h1>
+                )}
+            </div>
 
-                            {/* Badges Section */}
-                            <div className="flex items-center gap-3">
-                                {/* Priority Dropdown */}
-                                <Select
-                                    value={currentPriority}
-                                    onValueChange={handlePriorityChange}
-                                >
-                                    <SelectTrigger className="w-auto h-auto p-0 border-0 bg-transparent hover:bg-slate-100/70 rounded-lg focus:ring-0 [&>svg]:hidden transition-all duration-200">
-                                        <PriorityBadge priority={currentPriority as any} />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl">
-                                        <SelectItem value="LOW">Priorità Bassa</SelectItem>
-                                        <SelectItem value="MEDIUM">Priorità Media</SelectItem>
-                                        <SelectItem value="HIGH">Priorità Alta</SelectItem>
-                                    </SelectContent>
-                                </Select>
+            {/* Inline metadata chips */}
+            <div className="flex items-center gap-2 shrink-0">
+                {/* Priority */}
+                <Select value={currentPriority} onValueChange={handlePriorityChange}>
+                    <SelectTrigger className="w-auto h-auto p-0 border-0 bg-transparent hover:bg-slate-100/70 rounded-md focus:ring-0 [&>svg]:hidden">
+                        <PriorityBadge priority={currentPriority as any} />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                        <SelectItem value="LOW">Priorità Bassa</SelectItem>
+                        <SelectItem value="MEDIUM">Priorità Media</SelectItem>
+                        <SelectItem value="HIGH">Priorità Alta</SelectItem>
+                    </SelectContent>
+                </Select>
 
-                                {/* State Dropdown */}
-                                <Select
-                                    value={currentState}
-                                    onValueChange={handleStateChange}
-                                >
-                                    <SelectTrigger className="w-auto h-auto p-0 border-0 bg-transparent hover:bg-slate-100/70 rounded-lg focus:ring-0 [&>svg]:hidden transition-all duration-200">
-                                        <StateBadge state={currentState as any} />
-                                    </SelectTrigger>
-                                    <SelectContent className="min-w-[200px] rounded-xl">
-                                        {uniqueStateOptions.length === 0 ? (
-                                            <div className="px-2 py-1.5 text-xs text-slate-500">Nessuna transizione disponibile</div>
-                                        ) : (
-                                            uniqueStateOptions.map((opt) => (
-                                                <div key={opt.value}>
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <SelectItem
-                                                                    value={opt.value}
-                                                                    disabled={!opt.isAllowed && opt.value !== currentState}
-                                                                    className="flex items-center justify-between w-full"
-                                                                >
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span>{opt.label}</span>
-                                                                        {(!opt.isAllowed && opt.value !== currentState) && (
-                                                                            <Lock className="h-3 w-3 text-slate-400" />
-                                                                        )}
-                                                                    </div>
-                                                                </SelectItem>
-                                                            </TooltipTrigger>
-                                                            {(!opt.isAllowed && opt.value !== currentState && (opt as any).reasons?.length > 0) && (
-                                                                <TooltipContent side="right">
-                                                                    <div className="text-xs">
-                                                                        {/* @ts-ignore */}
-                                                                        {(opt as any).reasons.map((r: string, i: number) => (
-                                                                            <div key={i}>• {r}</div>
-                                                                        ))}
-                                                                    </div>
-                                                                </TooltipContent>
-                                                            )}
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-                                                </div>
-                                            ))
-                                        )}
-                                    </SelectContent>
-                                </Select>
-
-                                <span className="text-sm text-slate-400 font-medium px-2 border-l border-slate-200">
-                                    {requirement.req_id}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Owner and Technology Inline Editing */}
-                        <div className="flex items-center gap-4">
-                            {/* Owner Field */}
-                            <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 shadow-lg border border-slate-200/50 min-w-[160px] backdrop-blur-sm">
-                                <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
-                                    <User className="h-4 w-4 text-white" />
-                                </div>
-                                <div className="leading-tight flex-1">
-                                    <div className="text-[10px] uppercase text-slate-500 font-semibold tracking-wide">Responsabile</div>
-                                    {isEditingOwner ? (
-                                        <input
-                                            ref={ownerInputRef}
-                                            type="text"
-                                            value={tempOwner}
-                                            onChange={(e) => setTempOwner(e.target.value)}
-                                            className="text-sm font-bold text-slate-900 outline-none bg-transparent border-b border-blue-500 w-full px-0 py-0"
-                                            onBlur={handleSaveOwner}
-                                            onKeyDown={handleKeyDownOwner}
-                                        />
-                                    ) : (
-                                        <div
-                                            onClick={() => setIsEditingOwner(true)}
-                                            className="text-sm font-bold text-slate-900 cursor-pointer hover:bg-slate-50 rounded-lg px-1 -ml-1 transition-all duration-200 truncate"
-                                            title="Clicca per modificare il responsabile"
-                                        >
-                                            {requirement.business_owner || 'N/D'}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Technology Field */}
-                            <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 shadow-lg border border-slate-200/50 min-w-[180px] backdrop-blur-sm">
-                                <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-md">
-                                    <Settings className="h-4 w-4 text-white" />
-                                </div>
-                                <div className="leading-tight flex-1">
-                                    <div className="text-[10px] uppercase text-slate-500 font-semibold tracking-wide">Tecnologia</div>
-                                    <Select
-                                        value={currentTechId || 'none'}
-                                        onValueChange={handleTechnologyChange}
-                                    >
-                                        <SelectTrigger className="w-full h-auto p-0 border-0 bg-transparent hover:bg-slate-50 rounded-lg focus:ring-0 [&>svg]:hidden transition-all duration-200 px-1 -ml-1">
-                                            <div className="text-sm font-bold text-slate-900 truncate text-left">
-                                                {currentPreset?.name || 'Non impostato'}
-                                            </div>
-                                        </SelectTrigger>
-                                        <SelectContent className="rounded-xl">
-                                            <SelectItem value="none">Non impostato</SelectItem>
-                                            {presets.map((preset) => (
-                                                <SelectItem key={preset.id} value={preset.id}>
-                                                    {preset.name}
+                {/* State */}
+                <Select value={currentState} onValueChange={handleStateChange}>
+                    <SelectTrigger className="w-auto h-auto p-0 border-0 bg-transparent hover:bg-slate-100/70 rounded-md focus:ring-0 [&>svg]:hidden">
+                        <StateBadge state={currentState as any} />
+                    </SelectTrigger>
+                    <SelectContent className="min-w-[200px] rounded-xl">
+                        {uniqueStateOptions.length === 0 ? (
+                            <div className="px-2 py-1.5 text-xs text-slate-500">Nessuna transizione disponibile</div>
+                        ) : (
+                            uniqueStateOptions.map((opt) => (
+                                <div key={opt.value}>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <SelectItem
+                                                    value={opt.value}
+                                                    disabled={!opt.isAllowed && opt.value !== currentState}
+                                                    className="flex items-center justify-between w-full"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <span>{opt.label}</span>
+                                                        {(!opt.isAllowed && opt.value !== currentState) && (
+                                                            <Lock className="h-3 w-3 text-slate-400" />
+                                                        )}
+                                                    </div>
                                                 </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                            </TooltipTrigger>
+                                            {(!opt.isAllowed && opt.value !== currentState && (opt as any).reasons?.length > 0) && (
+                                                <TooltipContent side="right">
+                                                    <div className="text-xs">
+                                                        {/* @ts-ignore */}
+                                                        {(opt as any).reasons.map((r: string, i: number) => (
+                                                            <div key={i}>• {r}</div>
+                                                        ))}
+                                                    </div>
+                                                </TooltipContent>
+                                            )}
+                                        </Tooltip>
+                                    </TooltipProvider>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
+                            ))
+                        )}
+                    </SelectContent>
+                </Select>
+
+                {/* Req ID */}
+                <span className="text-xs text-slate-400 font-mono">{requirement.req_id}</span>
+
+                {/* Separator */}
+                <div className="w-px h-5 bg-slate-200" />
+
+                {/* Owner chip */}
+                <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                    <User className="h-3.5 w-3.5 text-slate-400" />
+                    {isEditingOwner ? (
+                        <input
+                            ref={ownerInputRef}
+                            type="text"
+                            value={tempOwner}
+                            onChange={(e) => setTempOwner(e.target.value)}
+                            className="text-xs font-medium text-slate-900 outline-none bg-white border-b border-blue-500 w-24"
+                            onBlur={handleSaveOwner}
+                            onKeyDown={handleKeyDownOwner}
+                        />
+                    ) : (
+                        <span
+                            onClick={() => setIsEditingOwner(true)}
+                            className="font-medium text-slate-700 cursor-pointer hover:text-blue-600 transition-colors truncate max-w-[100px]"
+                            title="Clicca per modificare"
+                        >
+                            {requirement.business_owner || 'N/D'}
+                        </span>
+                    )}
+                </div>
+
+                {/* Technology chip */}
+                <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                    <Settings className="h-3.5 w-3.5 text-slate-400" />
+                    <Select value={currentTechId || 'none'} onValueChange={handleTechnologyChange}>
+                        <SelectTrigger className="w-auto h-auto p-0 border-0 bg-transparent hover:text-blue-600 focus:ring-0 [&>svg]:hidden text-xs font-medium text-slate-700 cursor-pointer transition-colors">
+                            {currentPreset?.name || 'N/D'}
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                            <SelectItem value="none">Non impostato</SelectItem>
+                            {presets.map((preset) => (
+                                <SelectItem key={preset.id} value={preset.id}>
+                                    {preset.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
         </div>

@@ -125,6 +125,9 @@ export function useRequirementsList({ listId, userId }: UseRequirementsListProps
           estimations!requirement_id(
             id,
             total_days,
+            risk_score,
+            scenario_name,
+            blueprint_id,
             created_at
           )
         `)

@@ -267,10 +267,10 @@ export function InterviewLoading({
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.15 }}
                             className={`flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors duration-300 ${isActive
-                                    ? 'bg-indigo-50 border border-indigo-200'
-                                    : isDone
-                                        ? 'bg-emerald-50/60 border border-emerald-200/60'
-                                        : 'bg-slate-50 border border-slate-100'
+                                ? 'bg-indigo-50 border border-indigo-200'
+                                : isDone
+                                    ? 'bg-emerald-50/60 border border-emerald-200/60'
+                                    : 'bg-slate-50 border border-slate-100'
                                 }`}
                         >
                             {/* Status icon */}
@@ -293,10 +293,10 @@ export function InterviewLoading({
                             {/* Text */}
                             <div className="min-w-0 flex-1">
                                 <p className={`text-sm font-medium ${isDone
-                                        ? 'text-emerald-700'
-                                        : isActive
-                                            ? 'text-indigo-700'
-                                            : 'text-slate-400'
+                                    ? 'text-emerald-700'
+                                    : isActive
+                                        ? 'text-indigo-700'
+                                        : 'text-slate-400'
                                     }`}>
                                     {step.label}
                                 </p>
