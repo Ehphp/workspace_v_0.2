@@ -69,7 +69,7 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
     <div className="flex flex-col h-full gap-3">
       <div className="flex items-start justify-between gap-3 pb-2 border-b border-slate-200">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg ring-2 ring-blue-100">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
@@ -121,7 +121,7 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
                   <div className={`w-14 h-1 bg-slate-100 rounded-full overflow-hidden ${charPercentage > 90 ? 'ring-1 ring-amber-500' : ''
                     }`}>
                     <div
-                      className={`h-full transition-all duration-300 ${charPercentage > 90 ? 'bg-amber-500' : 'bg-gradient-to-r from-blue-500 to-cyan-500'
+                      className={`h-full transition-all duration-300 ${charPercentage > 90 ? 'bg-amber-500' : 'bg-gradient-to-r from-indigo-500 to-blue-600'
                         }`}
                       style={{ width: `${Math.min(charPercentage, 100)}%` }}
                     />
@@ -229,7 +229,7 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
         {/* Normalization Result Card */}
         {normalizationResult && (
           <div ref={normalizationCardRef} className="rounded-xl border-2 border-indigo-300 bg-gradient-to-br from-indigo-50 via-white to-purple-50 overflow-hidden shadow-md animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-between">
+            <div className="px-4 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Wand2 className="w-5 h-5 text-white" />
                 <span className="text-sm font-bold text-white">AI Analysis Complete</span>
@@ -324,7 +324,7 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
                 <Button
                   size="sm"
                   onClick={applyNormalization}
-                  className="h-8 text-xs bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md"
+                  className="h-8 text-xs bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-md"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
                   Use This
@@ -340,7 +340,7 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
           onClick={onNext}
           disabled={!canProceed}
           size="lg"
-          className="h-11 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed group"
+          className="h-10 px-6 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed group"
         >
           <span className="font-semibold text-sm">Next: Select Technology</span>
           <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">

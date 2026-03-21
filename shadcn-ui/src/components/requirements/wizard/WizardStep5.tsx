@@ -197,7 +197,7 @@ export function WizardStep5({ data, onUpdate, onBack, onReset, onSave }: WizardS
       requirement: {
         id: 'wizard-temp',
         reqId: data.reqId || 'NEW',
-        title: generatedTitle || data.title || 'Senza titolo',
+        title: generatedTitle || data.title || 'Untitled',
         description: data.description,
         priority: (data.priority as 'HIGH' | 'MEDIUM' | 'LOW') || 'MEDIUM',
         state: data.state || 'PROPOSED',
@@ -250,7 +250,7 @@ export function WizardStep5({ data, onUpdate, onBack, onReset, onSave }: WizardS
   if (loading || !result) {
     return (
       <div className="h-full flex flex-col items-center justify-center space-y-3">
-        <div className="w-10 h-10 border-4 border-green-200 border-t-green-600 rounded-full animate-spin"></div>
+        <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
         <p className="text-sm text-slate-600">Calculating estimation...</p>
       </div>
     );
@@ -260,7 +260,7 @@ export function WizardStep5({ data, onUpdate, onBack, onReset, onSave }: WizardS
     <div className="flex flex-col h-full gap-3">
       <div className="flex items-start justify-between gap-3 pb-2 border-b border-slate-200">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
@@ -280,7 +280,7 @@ export function WizardStep5({ data, onUpdate, onBack, onReset, onSave }: WizardS
         <div className="text-right min-w-[160px]">
           {titleLoading ? (
             <div className="flex items-center justify-end gap-2 text-xs text-slate-500 italic">
-              <div className="w-3 h-3 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+              <div className="w-3 h-3 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
               <span>Generating title...</span>
             </div>
           ) : (

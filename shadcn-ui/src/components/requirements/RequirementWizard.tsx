@@ -92,7 +92,7 @@ export function RequirementWizard({ listId, projectContext, onSuccess, onCancel,
             // 2. Try generatedTitle from normalizationResult (first GPT call - legacy)
             // 3. If not available, try generatedTitle from activitySuggestionResult (legacy)
             // 4. If still not available, use fallback "Requisito senza titolo"
-            let finalTitle = 'Requisito senza titolo';
+            let finalTitle = 'Untitled requirement';
 
             if (data.title) {
                 finalTitle = data.title;
@@ -220,7 +220,7 @@ export function RequirementWizard({ listId, projectContext, onSuccess, onCancel,
     if (saving) {
         return (
             <div className="h-[600px] flex flex-col items-center justify-center space-y-3 rounded-xl border border-slate-200 bg-white/80">
-                <Loader2 className="h-11 w-11 animate-spin text-blue-600" />
+                <Loader2 className="h-11 w-11 animate-spin text-indigo-600" />
                 <p className="text-sm text-slate-700 font-medium">Saving requirement and estimation...</p>
             </div>
         );
@@ -230,7 +230,7 @@ export function RequirementWizard({ listId, projectContext, onSuccess, onCancel,
         <div className="flex flex-col h-full gap-3">
             <div className="flex items-center gap-3 px-3 py-2 rounded-xl border border-slate-200 bg-white/90 shadow-sm">
                 <div className="flex items-center gap-2 min-w-[190px]">
-                    <span className="px-2 py-1 rounded-md bg-blue-50 text-[11px] font-semibold text-blue-700">
+                    <span className="px-2 py-1 rounded-md bg-indigo-50 text-xs font-semibold text-indigo-700">
                         Step {currentStep + 1} / {steps.length}
                     </span>
                     <span className="text-sm font-semibold text-slate-800">{steps[currentStep].title}</span>
@@ -238,7 +238,7 @@ export function RequirementWizard({ listId, projectContext, onSuccess, onCancel,
                 <div className="flex-1 flex items-center gap-2">
                     <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
                         <div
-                            className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-300"
+                            className="h-full bg-gradient-to-r from-indigo-600 to-blue-600 transition-all duration-300"
                             style={{ width: `${progress}%` }}
                         />
                     </div>
@@ -247,7 +247,7 @@ export function RequirementWizard({ listId, projectContext, onSuccess, onCancel,
                             <div
                                 key={step.title}
                                 className={`w-2.5 h-2.5 rounded-full border transition-all duration-200 ${index <= currentStep
-                                    ? 'bg-blue-600 border-blue-600 shadow-sm shadow-blue-100'
+                                    ? 'bg-indigo-600 border-indigo-600 shadow-sm shadow-indigo-100'
                                     : 'bg-white border-slate-300'
                                     }`}
                             />

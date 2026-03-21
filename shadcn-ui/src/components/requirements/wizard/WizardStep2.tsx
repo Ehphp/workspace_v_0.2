@@ -85,7 +85,7 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
     <div className="flex flex-col h-full gap-3">
       <div className="flex items-start justify-between gap-3 pb-2 border-b border-slate-200">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg">
             <svg
               className="w-5 h-5 text-white"
               fill="none"
@@ -137,7 +137,7 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
                   <div
                     key={preset.id}
                     className={`group relative p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${isSelected
-                      ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 via-purple-50 to-indigo-50 shadow-md ring-2 ring-indigo-100'
+                      ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 via-blue-50 to-indigo-50 shadow-md ring-2 ring-indigo-100'
                       : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm'
                       }`}
                     onClick={() => {
@@ -149,7 +149,7 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
                   >
                     <div className="flex items-start gap-3">
                       <div className={`flex-shrink-0 w-9 h-9 rounded-lg border-2 flex items-center justify-center ${isSelected
-                        ? 'border-indigo-500 bg-gradient-to-br from-indigo-600 to-purple-600 text-white'
+                        ? 'border-indigo-500 bg-gradient-to-br from-indigo-600 to-blue-600 text-white'
                         : 'border-slate-300 text-slate-500 bg-white'
                         }`}>
                         {isSelected ? (
@@ -185,7 +185,7 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
                       </div>
                     </div>
 
-                    <div className={`absolute inset-0 rounded-xl bg-gradient-to-br from-indigo-500/0 to-purple-500/0 transition-opacity duration-200 pointer-events-none ${!isSelected ? 'group-hover:from-indigo-500/5 group-hover:to-purple-500/5' : ''
+                    <div className={`absolute inset-0 rounded-xl bg-gradient-to-br from-indigo-500/0 to-blue-500/0 transition-opacity duration-200 pointer-events-none ${!isSelected ? 'group-hover:from-indigo-500/5 group-hover:to-blue-500/5' : ''
                       }`} />
 
                     <RadioGroupItem value={preset.id} id={preset.id} className="sr-only" />
@@ -203,7 +203,7 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
             variant="outline"
             onClick={onBack}
             size="lg"
-            className="h-11 hover:bg-slate-50 border-slate-300 group"
+            className="h-10 hover:bg-slate-50 border-slate-300 group"
           >
             <svg className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -215,7 +215,7 @@ export function WizardStep2({ data, onUpdate, onNext, onBack }: WizardStep2Props
             onClick={onNext}
             disabled={!canProceed}
             size="lg"
-            className="h-11 px-5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed group"
+            className="h-10 px-5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed group"
           >
             <span className="font-semibold text-sm">Next: Technical Interview</span>
             <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">

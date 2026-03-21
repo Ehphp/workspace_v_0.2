@@ -145,12 +145,12 @@ export function TechnicalQuestionCard({
                                 </Badge>
                                 {question.required && (
                                     <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50 text-xs">
-                                        Obbligatoria
+                                        Required
                                     </Badge>
                                 )}
                                 {hasAnswer && (
                                     <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 text-xs">
-                                        ✓ Risposta
+                                        ✓ Answered
                                     </Badge>
                                 )}
                             </div>
@@ -191,14 +191,14 @@ export function TechnicalQuestionCard({
                                 <div className="flex items-start gap-2">
                                     <Code2 className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
                                     <div>
-                                        <span className="font-medium text-slate-700">Contesto tecnico:</span>
+                                        <span className="font-medium text-slate-700">Technical context:</span>
                                         <p className="text-slate-600 mt-0.5">{question.technicalContext}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <TrendingUp className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
                                     <div>
-                                        <span className="font-medium text-slate-700">Impatto sulla stima:</span>
+                                        <span className="font-medium text-slate-700">Impact on estimate:</span>
                                         <p className="text-slate-600 mt-0.5">{question.impactOnEstimate}</p>
                                     </div>
                                 </div>
@@ -206,7 +206,7 @@ export function TechnicalQuestionCard({
                                     <div className="flex items-start gap-2 pt-2 border-t border-slate-200">
                                         <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
                                         <p className="text-amber-700 text-xs">
-                                            Se non conosci la risposta, chiedi al funzionale di riferimento.
+                                            If you don't know the answer, ask the relevant functional owner.
                                         </p>
                                     </div>
                                 )}
@@ -316,7 +316,7 @@ export function TechnicalQuestionCard({
                             <Textarea
                                 value={(value as string) || ''}
                                 onChange={(e) => onChange(e.target.value)}
-                                placeholder={question.placeholder || 'Inserisci la risposta...'}
+                                placeholder={question.placeholder || 'Enter your answer...'}
                                 maxLength={question.maxLength}
                                 className="min-h-[100px] resize-none"
                             />

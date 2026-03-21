@@ -5,27 +5,27 @@ import { ArrowLeft } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 interface WizardStepShellProps {
-    /** Icona Lucide per l'header */
+    /** Lucide icon for the header */
     icon: LucideIcon;
-    /** Gradiente per il box icona (es. "from-blue-500 to-cyan-500") */
+    /** Gradient for the icon box (e.g. "from-indigo-500 to-blue-600") */
     iconGradient: string;
-    /** Titolo dello step */
+    /** Step title */
     title: string;
-    /** Sottotitolo descrittivo */
+    /** Descriptive subtitle */
     subtitle: string;
-    /** Badge opzionale (es. "Confermato") a destra */
+    /** Optional badge (e.g. "Confirmed") on the right */
     badge?: React.ReactNode;
-    /** Contenuto scrollabile dello step */
+    /** Scrollable step content */
     children: React.ReactNode;
-    /** Pulsante Indietro handler */
+    /** Back button handler */
     onBack?: () => void;
-    /** Azioni nel footer (area destra) */
+    /** Footer actions (right area) */
     footerActions?: React.ReactNode;
-    /** Label per il pulsante Indietro. Default: "Indietro" */
+    /** Label for the Back button. Default: "Back" */
     backLabel?: string;
-    /** Disabilita il pulsante Indietro */
+    /** Disable the Back button */
     backDisabled?: boolean;
-    /** Classe aggiuntiva per il root */
+    /** Additional class for the root */
     className?: string;
 }
 
@@ -38,7 +38,7 @@ export function WizardStepShell({
     children,
     onBack,
     footerActions,
-    backLabel = 'Indietro',
+    backLabel = 'Back',
     backDisabled = false,
     className,
 }: WizardStepShellProps) {

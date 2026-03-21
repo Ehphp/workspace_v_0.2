@@ -49,29 +49,29 @@ const INTERVIEW_STEPS: PipelineStep[] = [
     {
         id: 'catalog',
         icon: Database,
-        label: 'Caricamento catalogo attività',
-        detail: 'Recupero attività dal database per lo stack selezionato',
+        label: 'Loading activity catalog',
+        detail: 'Fetching activities from the database for the selected stack',
         durationMs: 1800,
     },
     {
         id: 'rag',
         icon: Search,
-        label: 'Ricerca requisiti simili nello storico',
-        detail: 'Confronto con stime precedenti per maggiore accuratezza',
+        label: 'Searching similar requirements in history',
+        detail: 'Comparing with past estimates for better accuracy',
         durationMs: 2500,
     },
     {
         id: 'llm',
         icon: Brain,
-        label: 'Analisi AI del requisito',
-        detail: 'Pre-stima, valutazione complessità e generazione domande',
+        label: 'AI requirement analysis',
+        detail: 'Pre-estimate, complexity assessment, and question generation',
         durationMs: 8000,
     },
     {
         id: 'post',
         icon: Sparkles,
-        label: 'Finalizzazione',
-        detail: 'Filtro domande ad alto impatto informativo',
+        label: 'Finalizing',
+        detail: 'Filtering high-impact informational questions',
         durationMs: 1200,
     },
 ];
@@ -80,36 +80,36 @@ const ESTIMATE_STEPS: PipelineStep[] = [
     {
         id: 'catalog',
         icon: Database,
-        label: 'Caricamento catalogo attività',
-        detail: 'Recupero attività disponibili per lo stack',
+        label: 'Loading activity catalog',
+        detail: 'Fetching available activities for the stack',
         durationMs: 1800,
     },
     {
         id: 'vector',
         icon: Search,
-        label: 'Ricerca attività per similarità semantica',
-        detail: 'Matching delle attività più rilevanti al requisito',
+        label: 'Semantic similarity search',
+        detail: 'Matching the most relevant activities to the requirement',
         durationMs: 2200,
     },
     {
         id: 'rag',
         icon: Search,
-        label: 'Recupero stime storiche simili',
-        detail: 'Esempi precedenti per ancorare la stima',
+        label: 'Retrieving similar past estimates',
+        detail: 'Previous examples to anchor the estimate',
         durationMs: 2000,
     },
     {
         id: 'llm',
         icon: Brain,
-        label: 'Generazione stima dettagliata',
-        detail: 'Selezione attività, calcolo ore e analisi di coerenza',
+        label: 'Generating detailed estimate',
+        detail: 'Activity selection, hour calculation, and coherence analysis',
         durationMs: 12000,
     },
     {
         id: 'post',
         icon: Sparkles,
-        label: 'Verifica e rifinitura',
-        detail: 'Controllo totali e ordinamento per priorità',
+        label: 'Verification and refinement',
+        detail: 'Checking totals and sorting by priority',
         durationMs: 1500,
     },
 ];
@@ -117,25 +117,25 @@ const ESTIMATE_STEPS: PipelineStep[] = [
 // ── AI "thinking" thoughts ─────────────────────────────────────────────────
 
 const INTERVIEW_THOUGHTS = [
-    'Valutazione della complessità architetturale...',
-    'Identificazione delle aree di incertezza...',
-    'Confronto con pattern di requisiti noti...',
-    'Analisi delle dipendenze tecniche...',
-    'Stima del range di effort iniziale...',
-    'Selezione delle domande a maggior valore informativo...',
-    'Valutazione dell\'impatto sulle attività di sviluppo...',
-    'Verifica della copertura delle aree critiche...',
+    'Assessing architectural complexity...',
+    'Identifying areas of uncertainty...',
+    'Comparing with known requirement patterns...',
+    'Analyzing technical dependencies...',
+    'Estimating initial effort range...',
+    'Selecting highest-value questions...',
+    'Evaluating impact on development activities...',
+    'Verifying coverage of critical areas...',
 ];
 
 const ESTIMATE_THOUGHTS = [
-    'Analisi delle risposte tecniche fornite...',
-    'Calcolo dell\'impatto di ogni risposta sulla stima...',
-    'Selezione delle attività dal catalogo...',
-    'Stima delle ore per ogni attività...',
-    'Verifica della coerenza con la pre-stima...',
-    'Applicazione dei moltiplicatori di complessità...',
-    'Calcolo del confidence score...',
-    'Identificazione di driver e rischi suggeriti...',
+    'Analyzing technical answers provided...',
+    'Calculating each answer\'s impact on the estimate...',
+    'Selecting activities from catalog...',
+    'Estimating hours per activity...',
+    'Verifying coherence with pre-estimate...',
+    'Applying complexity multipliers...',
+    'Calculating confidence score...',
+    'Identifying suggested drivers and risks...',
 ];
 
 /** Extract short keyword tokens from a description for "thinking" display */
@@ -201,7 +201,7 @@ export function InterviewLoading({
                 allThoughts.splice(
                     Math.min(i * 2 + 1, allThoughts.length),
                     0,
-                    `Analisi: "${kw}"...`,
+                    `Analyzing: "${kw}"...`,
                 );
             });
         }
@@ -221,8 +221,8 @@ export function InterviewLoading({
     }, []);
 
     const title = variant === 'interview'
-        ? 'Preparazione Interview Tecnica'
-        : 'Generazione Stima Dettagliata';
+        ? 'Preparing Technical Interview'
+        : 'Generating Detailed Estimate';
 
     return (
         <div className="flex flex-col items-center justify-center py-10 space-y-7 max-w-md mx-auto">
@@ -357,8 +357,8 @@ export function InterviewLoading({
                 className="text-xs text-slate-400 text-center max-w-sm"
             >
                 {variant === 'interview'
-                    ? 'Le domande saranno specifiche per il tuo requisito e lo stack tecnologico selezionato.'
-                    : 'La stima include selezione attività, calcolo ore e analisi di coerenza.'}
+                    ? 'Questions will be specific to your requirement and the selected technology stack.'
+                    : 'The estimate includes activity selection, hour calculation, and coherence analysis.'}
             </motion.p>
         </div>
     );

@@ -209,20 +209,20 @@ export function WizardStepInterview({
                 </div>
                 <div className="text-center space-y-2">
                     <h3 className="text-lg font-semibold text-slate-900">
-                        Errore durante l'interview
+                        Interview Error
                     </h3>
                     <p className="text-slate-500 max-w-md">
-                        {localError || 'Si è verificato un errore. Riprova.'}
+                        {localError || 'An error occurred. Please try again.'}
                     </p>
                 </div>
                 <div className="flex gap-3 mt-4">
                     <Button variant="outline" onClick={onBack}>
                         <ArrowLeft className="w-4 h-4 mr-2" />
-                        Torna al Preset
+                        Back
                     </Button>
                     <Button onClick={handleRetry}>
                         <RefreshCw className="w-4 h-4 mr-2" />
-                        Riprova
+                        Retry
                     </Button>
                 </div>
             </div>

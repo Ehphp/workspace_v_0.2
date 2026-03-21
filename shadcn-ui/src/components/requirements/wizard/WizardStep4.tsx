@@ -98,7 +98,7 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
     <div className="flex flex-col h-full gap-3">
       <div className="flex-shrink-0 pb-2 border-b border-slate-200">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-lg">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg">
             <svg
               className="w-5 h-5 text-white"
               fill="none"
@@ -246,7 +246,7 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
 
       <div className="flex-shrink-0 border-t border-slate-200 pt-3 mt-1 bg-white">
         <div className="flex justify-between">
-          <Button variant="outline" onClick={onBack} className="h-11 hover:bg-slate-50">
+          <Button variant="outline" onClick={onBack} className="h-10 hover:bg-slate-50">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
@@ -254,7 +254,7 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
           </Button>
           <Button
             onClick={onNext}
-            className="h-11 px-5 bg-gradient-to-r from-rose-600 to-orange-600 hover:from-rose-700 hover:to-orange-700 shadow-md hover:shadow-lg transition-all duration-300"
+            className="h-10 px-5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 shadow-md hover:shadow-lg transition-all duration-300"
           >
             <span className="text-sm font-semibold">View Results</span>
             <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

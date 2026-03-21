@@ -41,21 +41,21 @@ interface EstimationResultStepProps {
 const CONFIDENCE_CONFIG = {
     high: {
         min: 0.8,
-        label: 'Alta',
+        label: 'High',
         color: 'text-green-700 bg-green-100',
-        description: 'Stima affidabile basata su risposte complete'
+        description: 'Reliable estimate based on complete answers'
     },
     medium: {
         min: 0.6,
-        label: 'Media',
+        label: 'Medium',
         color: 'text-yellow-700 bg-yellow-100',
-        description: 'Stima ragionevole, alcune incertezze'
+        description: 'Reasonable estimate, some uncertainty'
     },
     low: {
         min: 0,
-        label: 'Bassa',
+        label: 'Low',
         color: 'text-red-700 bg-red-100',
-        description: 'Stima approssimativa, consigliato approfondire'
+        description: 'Approximate estimate, further review recommended'
     },
 };
 
@@ -101,15 +101,15 @@ export function EstimationResultStep({
                 <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/25"
+                    className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg shadow-indigo-500/25"
                 >
                     <Calculator className="w-7 h-7 text-white" />
                 </motion.div>
                 <h2 className="text-2xl font-bold text-slate-900">
-                    Stima Completata
+                    Estimation Complete
                 </h2>
                 <p className="text-slate-500">
-                    Basata sulle tue risposte all'interview tecnica
+                    Based on your answers to the technical interview
                 </p>
             </div>
 
@@ -122,21 +122,21 @@ export function EstimationResultStep({
                 <Card className="p-6 bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-slate-500 font-medium">Stima Totale</p>
+                            <p className="text-sm text-slate-500 font-medium">Total Estimate</p>
                             <div className="flex items-baseline gap-2 mt-1">
                                 <span className="text-4xl font-bold text-slate-900">
                                     {result.totalBaseDays.toFixed(1)}
                                 </span>
-                                <span className="text-xl text-slate-500">giorni</span>
+                                <span className="text-xl text-slate-500">days</span>
                             </div>
                             <p className="text-sm text-slate-400 mt-1">
-                                = {totalHours.toFixed(0)} ore lavorative
+                                = {totalHours.toFixed(0)} work hours
                             </p>
                         </div>
 
                         <div className="text-right">
                             <div className="flex items-center gap-2 justify-end">
-                                <span className="text-sm text-slate-500">Confidenza:</span>
+                                <span className="text-sm text-slate-500">Confidence:</span>
                                 <Badge className={confidenceLevel.color}>
                                     {confidenceLevel.label} ({Math.round(result.confidenceScore * 100)}%)
                                 </Badge>
@@ -168,7 +168,7 @@ export function EstimationResultStep({
                         <div className="flex items-start gap-3">
                             <Sparkles className="w-5 h-5 text-indigo-600 mt-0.5 shrink-0" />
                             <div>
-                                <p className="font-medium text-indigo-900 text-sm">Analisi AI</p>
+                                <p className="font-medium text-indigo-900 text-sm">AI Analysis</p>
                                 <p className="text-indigo-700 text-sm mt-1">{result.reasoning}</p>
                             </div>
                         </div>
@@ -185,14 +185,14 @@ export function EstimationResultStep({
             >
                 <h3 className="font-semibold text-slate-900 flex items-center gap-2">
                     <Clock className="w-5 h-5 text-slate-400" />
-                    Attività Selezionate ({result.activities.length})
+                    Selected Activities ({result.activities.length})
                 </h3>
 
                 {/* Activities from Interview */}
                 {fromInterview.length > 0 && (
                     <div className="space-y-2">
                         <p className="text-xs text-slate-500 uppercase tracking-wide font-medium">
-                            Dalle risposte all'interview
+                            From interview answers
                         </p>
                         {fromInterview.map((activity, idx) => (
                             <ActivityCard key={activity.code} activity={activity} index={idx} />
@@ -204,7 +204,7 @@ export function EstimationResultStep({
                 {fromDescription.length > 0 && (
                     <div className="space-y-2">
                         <p className="text-xs text-slate-500 uppercase tracking-wide font-medium">
-                            Dalla descrizione del requisito
+                            From requirement description
                         </p>
                         {fromDescription.map((activity, idx) => (
                             <ActivityCard key={activity.code} activity={activity} index={idx + fromInterview.length} />
@@ -223,14 +223,14 @@ export function EstimationResultStep({
                 >
                     <h3 className="font-semibold text-slate-900 flex items-center gap-2">
                         <TrendingUp className="w-5 h-5 text-slate-400" />
-                        Driver Suggeriti
+                        Suggested Drivers
                     </h3>
                     <Card className="p-4 bg-amber-50 border-amber-100">
                         <div className="flex items-start gap-3">
                             <Info className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
                             <div className="space-y-2">
                                 <p className="text-sm text-amber-900">
-                                    In base alle risposte, ti suggeriamo di considerare questi driver di complessità:
+                                    Based on your answers, consider these complexity drivers:
                                 </p>
                                 <ul className="space-y-1">
                                     {result.suggestedDrivers.map((driver) => (
@@ -257,7 +257,7 @@ export function EstimationResultStep({
                 >
                     <h3 className="font-semibold text-slate-900 flex items-center gap-2">
                         <AlertTriangle className="w-5 h-5 text-slate-400" />
-                        Rischi Identificati
+                        Identified Risks
                     </h3>
                     <div className="flex flex-wrap gap-2">
                         {result.suggestedRisks.map((risk) => (
@@ -277,20 +277,20 @@ export function EstimationResultStep({
                 className="flex items-center justify-between pt-6 border-t border-slate-200"
             >
                 <Button variant="outline" onClick={onBack}>
-                    Modifica Risposte
+                    Edit Answers
                 </Button>
 
                 <div className="flex gap-3">
                     <Button variant="outline" onClick={onAdjust}>
                         <TrendingUp className="w-4 h-4 mr-2" />
-                        Affina con Driver/Rischi
+                        Refine with Drivers/Risks
                     </Button>
                     <Button
                         onClick={onConfirm}
                         className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
                     >
                         <CheckCircle2 className="w-4 h-4 mr-2" />
-                        Conferma Stima
+                        Confirm Estimate
                         <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
                 </div>
@@ -326,7 +326,7 @@ function ActivityCard({ activity, index }: { activity: SelectedActivityWithReaso
                         {activity.fromAnswer && (
                             <p className="text-xs text-indigo-500 mt-1 flex items-center gap-1">
                                 <Sparkles className="w-3 h-3" />
-                                Dalla risposta: "{activity.fromAnswer}"
+                                From answer: "{activity.fromAnswer}"
                             </p>
                         )}
                     </div>
