@@ -19,6 +19,13 @@ import { toast } from 'sonner';
 import { suggestActivities } from '@/lib/openai';
 import { getConsultantAnalysis } from '@/lib/consultant-api';
 import { getLatestRequirementUnderstanding, saveEstimationByIds } from '@/lib/api';
+import {
+    orchestrateWizardDomainSave,
+    finalizeWizardSnapshot,
+    resolveActivitiesById,
+    resolveDriversById,
+    resolveRisksById,
+} from '@/lib/domain-save';
 import { filterActivitiesByTechnology } from '@/lib/technology-helpers';
 import { PageShell } from '@/components/layout/PageShell';
 import type { EstimationWithDetails } from '@/types/database';
@@ -484,15 +491,50 @@ export default function RequirementDetail() {
 
         setIsSaving(true);
         try {
-            await saveEstimationByIds({
+            // 1. Resolve current UI selections into domain-ready objects
+            const resolvedActivities = resolveActivitiesById(
+                selectedActivityIds,
+                aiSuggestedIds,
+                activities,
+            );
+            const resolvedDrivers = resolveDriversById(
+                selectedDriverValues,
+                drivers,
+            );
+            const resolvedRisks = resolveRisksById(
+                selectedRiskIds,
+                risks,
+            );
+
+            // 2. Domain orchestration: Analysis → ImpactMap → CandidateSet → Decision
+            const domainResult = await orchestrateWizardDomainSave({
                 requirementId: requirement.id,
                 userId: user.id,
-                totalDays: estimationResult.totalDays,
-                baseHours: estimationResult.baseDays * 8,
-                driverMultiplier: estimationResult.driverMultiplier,
-                riskScore: estimationResult.riskScore,
-                contingencyPercent: estimationResult.contingencyPercent,
+                description: requirement.description || '',
+                techCategory: activeTechnology?.code ?? null,
+                technologyId: activeTechnologyId || null,
+                blueprintId: null,
+                understanding: requirementUnderstanding
+                    ? (requirementUnderstanding as unknown as Record<string, unknown>)
+                    : null,
+                impactMapData: null,
+                activities: resolvedActivities,
+                drivers: resolvedDrivers,
+                risks: resolvedRisks,
+            });
+
+            // 3. Save estimation via RPC — domain engine result is the canonical source
+            const estimationId = await saveEstimationByIds({
+                requirementId: requirement.id,
+                userId: user.id,
+                totalDays: domainResult.estimation.totalDays,
+                baseHours: domainResult.estimation.baseDays * 8,
+                driverMultiplier: domainResult.estimation.driverMultiplier,
+                riskScore: domainResult.estimation.riskScore,
+                contingencyPercent: domainResult.estimation.contingencyPercent,
                 scenarioName: 'Manual Edit',
+                analysisId: domainResult.analysisId,
+                decisionId: domainResult.decisionId,
                 activities: selectedActivityIds.map(id => ({
                     activity_id: id,
                     is_ai_suggested: aiSuggestedIds.includes(id),
@@ -507,6 +549,23 @@ export default function RequirementDetail() {
                 })),
                 seniorConsultantAnalysis: (consultantAnalysis as unknown as Record<string, unknown>) || null,
             });
+
+            // 4. Finalize snapshot (non-blocking — estimation is already saved)
+            try {
+                await finalizeWizardSnapshot({
+                    estimationId,
+                    userId: user.id,
+                    analysisId: domainResult.analysisId,
+                    decisionId: domainResult.decisionId,
+                    blueprintId: null,
+                    activities: resolvedActivities,
+                    drivers: resolvedDrivers,
+                    risks: resolvedRisks,
+                    estimation: domainResult.estimation,
+                });
+            } catch (snapshotErr) {
+                console.error('Failed to create estimation snapshot (non-blocking):', snapshotErr);
+            }
 
             toast.success('Estimation saved successfully');
             refetchHistory(); // Refresh history

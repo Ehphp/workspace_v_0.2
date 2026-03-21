@@ -27,7 +27,7 @@ import { createEstimationDecision } from './decision.service';
 import { computeEstimation, ENGINE_VERSION } from './estimation-engine';
 import { createEstimationSnapshot, buildSnapshotData } from './snapshot.service';
 
-import type { EstimationResult } from '../../../../../src/types/estimation';
+import type { EstimationResult } from '../types/estimation';
 
 // ─── Input from the existing save flow ───────────────────────────
 

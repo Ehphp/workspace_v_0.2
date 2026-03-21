@@ -8,7 +8,14 @@ import { WizardStepBlueprint } from './wizard/WizardStepBlueprint';
 import { WizardStepInterview } from './wizard/WizardStepInterview';
 import { WizardStep4 } from './wizard/WizardStep4';
 import { WizardStep5 } from './wizard/WizardStep5';
-import { createRequirement, saveEstimation, saveRequirementUnderstanding, saveImpactMap, saveEstimationBlueprint } from '@/lib/api';
+import { createRequirement, saveEstimation, saveRequirementUnderstanding, saveImpactMap, saveEstimationBlueprint, fetchEstimationMasterData } from '@/lib/api';
+import {
+    orchestrateWizardDomainSave,
+    finalizeWizardSnapshot,
+    resolveWizardActivities,
+    resolveWizardDrivers,
+    resolveWizardRisks,
+} from '@/lib/domain-save';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
@@ -82,7 +89,7 @@ export function RequirementWizard({ listId, projectContext, onSuccess, onCancel,
         }
     };
 
-    const handleSave = async (estimationResult: EstimationResult) => {
+    const handleSave = async (_estimationResult: EstimationResult) => {
         if (!user) return;
         setSaving(true);
 
@@ -168,17 +175,53 @@ export function RequirementWizard({ listId, projectContext, onSuccess, onCancel,
                 }
             }
 
-            // 3. Save Estimation
-            await saveEstimation({
+            // 2d. Domain orchestration — build traceability chain
+            const masterData = await fetchEstimationMasterData();
+            const resolvedActivities = resolveWizardActivities(
+                data.selectedActivityCodes,
+                data.aiSuggestedActivityCodes,
+                masterData.activities,
+            );
+            const resolvedDrivers = resolveWizardDrivers(
+                data.selectedDriverValues,
+                masterData.drivers,
+            );
+            const resolvedRisks = resolveWizardRisks(
+                data.selectedRiskCodes,
+                masterData.risks,
+            );
+
+            const domainResult = await orchestrateWizardDomainSave({
                 requirementId: requirement.id,
                 userId: user.id,
-                totalDays: estimationResult.totalDays,
-                baseDays: estimationResult.baseDays,
-                driverMultiplier: estimationResult.driverMultiplier,
-                riskScore: estimationResult.riskScore,
-                contingencyPercent: estimationResult.contingencyPercent,
-                aiReasoning: data.aiAnalysis, // Pass AI analysis text
+                description: data.description,
+                techCategory: data.techCategory || null,
+                technologyId: data.techPresetId || null,
+                blueprintId: savedBlueprintId || null,
+                understanding: data.requirementUnderstanding
+                    ? (data.requirementUnderstanding as Record<string, unknown>)
+                    : null,
+                impactMapData: data.impactMap
+                    ? (data.impactMap as Record<string, unknown>)
+                    : null,
+                activities: resolvedActivities,
+                drivers: resolvedDrivers,
+                risks: resolvedRisks,
+            });
+
+            // 3. Save Estimation — domain engine is the canonical source
+            const estimationId = await saveEstimation({
+                requirementId: requirement.id,
+                userId: user.id,
+                totalDays: domainResult.estimation.totalDays,
+                baseDays: domainResult.estimation.baseDays,
+                driverMultiplier: domainResult.estimation.driverMultiplier,
+                riskScore: domainResult.estimation.riskScore,
+                contingencyPercent: domainResult.estimation.contingencyPercent,
+                aiReasoning: data.aiAnalysis,
                 blueprintId: savedBlueprintId,
+                analysisId: domainResult.analysisId,
+                decisionId: domainResult.decisionId,
                 activities: data.selectedActivityCodes.map(code => ({
                     code,
                     isAiSuggested: data.aiSuggestedActivityCodes.includes(code)
@@ -189,6 +232,23 @@ export function RequirementWizard({ listId, projectContext, onSuccess, onCancel,
                 })),
                 risks: data.selectedRiskCodes.map(code => ({ code }))
             });
+
+            // 4. Finalize snapshot (non-blocking — estimation is already saved)
+            try {
+                await finalizeWizardSnapshot({
+                    estimationId,
+                    userId: user.id,
+                    analysisId: domainResult.analysisId,
+                    decisionId: domainResult.decisionId,
+                    blueprintId: savedBlueprintId || null,
+                    activities: resolvedActivities,
+                    drivers: resolvedDrivers,
+                    risks: resolvedRisks,
+                    estimation: domainResult.estimation,
+                });
+            } catch (err) {
+                console.error('Failed to create estimation snapshot (non-blocking):', err);
+            }
 
             toast({
                 title: 'Success',

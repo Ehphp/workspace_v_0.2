@@ -218,6 +218,7 @@ The system provides three distinct entry points for creating estimations, each u
 | `scenario_name` | `"AI Bulk Estimate"` | `"Wizard"` | `"Manual Edit"` |
 | User Interaction | Zero (automatic) | 8-step wizard | Full manual control |
 | Save Function | `saveEstimationByIds()` | `saveEstimationByIds()` | `saveEstimationByIds()` |
+| Domain Chain | No | Yes (orchestrate + snapshot) | Yes (orchestrate + snapshot) |
 | Persistence | RPC `save_estimation_atomic` | RPC `save_estimation_atomic` | RPC `save_estimation_atomic` |
 
 ### Flow Details
@@ -420,6 +421,34 @@ Located in `netlify/functions/lib/domain/estimation/`:
 ### Save Flow Integration
 
 The existing `save_estimation_atomic` RPC now accepts optional `p_analysis_id` and `p_decision_id` parameters. The `SaveEstimationInput` and `SaveEstimationByIdsInput` types carry `analysisId` and `decisionId`. The domain layer is **additive** — legacy saves without domain IDs continue to work.
+
+#### Wizard Path (active since 2026-03-21)
+
+The **RequirementWizard** is the first save path wired to the full domain chain via `src/lib/domain-save.ts`:
+
+1. Resolve wizard codes → full domain objects (`resolveWizardActivities`, `resolveWizardDrivers`, `resolveWizardRisks`)
+2. `orchestrateWizardDomainSave()` → creates `requirement_analyses`, `impact_maps` (optional), `candidate_sets`, `estimation_decisions`
+3. `saveEstimation()` with `analysisId` + `decisionId` → RPC `save_estimation_atomic`
+4. `finalizeWizardSnapshot()` → creates `estimation_snapshots`
+
+The domain engine (`calculateEstimation`) is the **canonical calculation source** for wizard saves. The UI-computed result is no longer used for persistence.
+
+#### RequirementDetail Manual Edit Path (active since 2026-03-21)
+
+The **RequirementDetail** `confirmSaveEstimation` now runs the same domain chain as the wizard:
+
+1. Resolve UI selections (IDs) → full domain objects (`resolveActivitiesById`, `resolveDriversById`, `resolveRisksById`)
+2. `orchestrateWizardDomainSave()` → creates/reuses `requirement_analyses`, `impact_maps` (optional), `candidate_sets`, `estimation_decisions`
+3. `saveEstimationByIds()` with `analysisId` + `decisionId` → RPC `save_estimation_atomic`
+4. `finalizeWizardSnapshot()` → creates `estimation_snapshots`
+
+Quick Estimate is automatically covered: it fires AI suggestions → user reviews in Estimation tab → clicks "Salva Stima" → same `confirmSaveEstimation` path.
+
+If a RequirementUnderstanding artifact exists for the requirement, it is passed into the domain orchestration for analysis reuse.
+
+#### Other Save Paths (not yet wired)
+
+BulkEstimateDialog and BulkInterviewDialog still call `saveEstimationByIds` without domain IDs. These will be wired in subsequent phases.
 
 ### Types
 

@@ -9,7 +9,7 @@
  * ALL calculation logic lives here — no UI concerns.
  */
 
-import type { EstimationInput, EstimationResult } from '../../../../../src/types/estimation';
+import type { EstimationInput, EstimationResult } from '../types/estimation';
 
 // ─── Re-export the core math from the SDK ────────────────────────
 // The SDK is a pure-function class; we re-expose for domain callers.
