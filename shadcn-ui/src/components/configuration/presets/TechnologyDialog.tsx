@@ -324,7 +324,7 @@ export function TechnologyDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-[95vw] h-[90vh] flex flex-col p-0 overflow-hidden bg-white/95 backdrop-blur-xl border-slate-200 shadow-2xl">
+            <DialogContent className="max-w-[95vw] h-[90vh] flex flex-col p-0 overflow-hidden border-slate-200">
                 <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full">
                     <DialogHeader className="px-5 py-3 border-b border-slate-100 shrink-0">
                         <DialogTitle className="text-slate-900 text-base">{isEditing ? 'Modifica Tecnologia' : 'Crea Nuova Tecnologia'}</DialogTitle>

@@ -21,14 +21,15 @@ import { DeleteRequirementDialog } from '@/components/requirements/DeleteRequire
 import { BulkEstimateDialog } from '@/components/requirements/BulkEstimateDialog';
 import { BulkInterviewDialog } from '@/components/requirements/BulkInterviewDialog';
 import { EditListDialog } from '@/components/lists/EditListDialog';
-import { Header } from '@/components/layout/Header';
+import { PageShell } from '@/components/layout/PageShell';
 import { useAuthStore } from '@/store/useAuthStore';
 import { RequirementsHeader } from '@/components/requirements/RequirementsHeader';
 import { RequirementsFilters, type ViewMode } from '@/components/requirements/RequirementsFilters';
 import { RequirementsStats } from '@/components/requirements/RequirementsStats';
 import { RequirementsDashboardView } from '@/components/requirements/RequirementsDashboardView';
 import { PriorityBadge, PRIORITY_CONFIGS } from '@/components/shared/RequirementBadges';
-import { Plus, Upload, MoreVertical, Loader2, Sparkles } from 'lucide-react';
+import { Plus, Upload, MoreVertical, Loader2, Sparkles, FileText, Search } from 'lucide-react';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { generateTitleFromDescription } from '@/lib/openai';
 import { supabase } from '@/lib/supabase';
 
@@ -303,43 +304,49 @@ export default function Requirements() {
     }
 
     return (
-        <div className="h-screen flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 relative">
-            {/* Background Pattern */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+        <PageShell
+            fullHeight
+            background="gradient"
+            noContainer
+            headerClassName="z-20 relative"
+            className="relative"
+            contentClassName="flex flex-col overflow-hidden"
+            backgroundSlot={
+                <>
+                    {/* Background Pattern */}
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
-            {/* Animated Background Blobs */}
-            <motion.div
-                animate={{
-                    x: [0, 100, 0],
-                    y: [0, -50, 0],
-                    scale: [1, 1.1, 1],
-                }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                className="absolute top-0 -left-20 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
-            />
-            <motion.div
-                animate={{
-                    x: [0, -100, 0],
-                    y: [0, 50, 0],
-                    scale: [1, 1.2, 1],
-                }}
-                transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-                className="absolute top-1/3 -right-20 w-[30rem] h-[30rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
-            />
-            <motion.div
-                animate={{
-                    x: [0, 50, 0],
-                    y: [0, 100, 0],
-                    scale: [1, 1.1, 1],
-                }}
-                transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
-                className="absolute bottom-0 left-1/3 w-[25rem] h-[25rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
-            />
-
-            {/* Header */}
-            <div className="flex-shrink-0 z-20 relative">
-                <Header />
-            </div>
+                    {/* Animated Background Blobs */}
+                    <motion.div
+                        animate={{
+                            x: [0, 100, 0],
+                            y: [0, -50, 0],
+                            scale: [1, 1.1, 1],
+                        }}
+                        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                        className="absolute top-0 -left-20 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+                    />
+                    <motion.div
+                        animate={{
+                            x: [0, -100, 0],
+                            y: [0, 50, 0],
+                            scale: [1, 1.2, 1],
+                        }}
+                        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+                        className="absolute top-1/3 -right-20 w-[30rem] h-[30rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+                    />
+                    <motion.div
+                        animate={{
+                            x: [0, 50, 0],
+                            y: [0, 100, 0],
+                            scale: [1, 1.1, 1],
+                        }}
+                        transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
+                        className="absolute bottom-0 left-1/3 w-[25rem] h-[25rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+                    />
+                </>
+            }
+        >
 
             {/* Page Header with Stats */}
             <RequirementsHeader
@@ -400,60 +407,55 @@ export default function Requirements() {
                                 <div className="max-w-4xl mx-auto">
                                     {requirements.length === 0 ? (
                                         <div className="rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-8">
-                                            <div className="flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-lg p-8">
-                                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-sm mb-4">
-                                                    <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                    </svg>
-                                                </div>
-                                                <h3 className="text-sm font-semibold text-slate-800 mb-1">Nessun Requisito</h3>
-                                                <p className="text-xs text-slate-500 text-center max-w-xs mb-4">
-                                                    Questo progetto è vuoto. Inizia aggiungendo il primo requisito.
-                                                </p>
-                                                <div className="flex gap-2">
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={() => setShowCreateDialog(true)}
-                                                        className="h-7 text-xs bg-blue-600 hover:bg-blue-700"
-                                                    >
-                                                        <Plus className="mr-1.5 h-3.5 w-3.5" />
-                                                        Crea
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => setShowImportDialog(true)}
-                                                        className="h-7 text-xs border-slate-200"
-                                                    >
-                                                        <Upload className="mr-1.5 h-3.5 w-3.5" />
-                                                        Importa
-                                                    </Button>
-                                                </div>
-                                            </div>
+                                            <EmptyState
+                                                icon={FileText}
+                                                title="Nessun Requisito"
+                                                description="Questo progetto è vuoto. Inizia aggiungendo il primo requisito."
+                                                action={
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={() => setShowCreateDialog(true)}
+                                                            className="h-7 text-xs bg-blue-600 hover:bg-blue-700"
+                                                        >
+                                                            <Plus className="mr-1.5 h-3.5 w-3.5" />
+                                                            Crea
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => setShowImportDialog(true)}
+                                                            className="h-7 text-xs border-slate-200"
+                                                        >
+                                                            <Upload className="mr-1.5 h-3.5 w-3.5" />
+                                                            Importa
+                                                        </Button>
+                                                    </div>
+                                                }
+                                            />
                                         </div>
                                     ) : (
                                         <div className="rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-8">
-                                            <div className="flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-lg p-6">
-                                                <svg className="w-8 h-8 opacity-30 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                                </svg>
-                                                <h3 className="text-sm font-semibold text-slate-800 mb-1">Nessun Risultato</h3>
-                                                <p className="text-xs text-slate-500 text-center mb-3">
-                                                    Prova a modificare i filtri.
-                                                </p>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        setSearchTerm('');
-                                                        setFilterPriority('all');
-                                                        setFilterState('all');
-                                                    }}
-                                                    className="h-7 text-xs"
-                                                >
-                                                    Resetta Filtri
-                                                </Button>
-                                            </div>
+                                            <EmptyState
+                                                icon={Search}
+                                                title="Nessun Risultato"
+                                                description="Prova a modificare i filtri."
+                                                className="p-6"
+                                                action={
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setSearchTerm('');
+                                                            setFilterPriority('all');
+                                                            setFilterState('all');
+                                                        }}
+                                                        className="h-7 text-xs"
+                                                    >
+                                                        Resetta Filtri
+                                                    </Button>
+                                                }
+                                            />
                                         </div>
                                     )}
                                 </div>
@@ -639,6 +641,6 @@ export default function Requirements() {
                     onSuccess={loadData}
                 />
             )}
-        </div>
+        </PageShell>
     );
 }

@@ -9,10 +9,10 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Info } from 'lucide-react';
+import { FormFieldBlock } from '@/components/shared/FormFieldBlock';
 import { supabase } from '@/lib/supabase';
 import { generateActivityCode } from '@/lib/codeGeneration';
 import { toast } from 'sonner';
@@ -275,10 +275,7 @@ export function ActivityDialog({
                         )}
 
                         {/* Nome */}
-                        <div className="space-y-2">
-                            <Label htmlFor="activity-name" className="text-slate-700">
-                                Nome attività <span className="text-red-500">*</span>
-                            </Label>
+                        <FormFieldBlock label="Nome attività" htmlFor="activity-name" required>
                             <Input
                                 id="activity-name"
                                 value={form.name}
@@ -287,14 +284,11 @@ export function ActivityDialog({
                                 className="bg-white border-slate-200"
                                 autoFocus
                             />
-                        </div>
+                        </FormFieldBlock>
 
                         {/* Descrizione (opzionale, toggle) */}
                         {showDescription ? (
-                            <div className="space-y-2">
-                                <Label htmlFor="activity-desc" className="text-slate-700">
-                                    Descrizione
-                                </Label>
+                            <FormFieldBlock label="Descrizione" htmlFor="activity-desc">
                                 <Textarea
                                     id="activity-desc"
                                     value={form.description}
@@ -303,7 +297,7 @@ export function ActivityDialog({
                                     className="bg-white border-slate-200 resize-none"
                                     rows={2}
                                 />
-                            </div>
+                            </FormFieldBlock>
                         ) : (
                             <Button
                                 type="button"
@@ -318,8 +312,7 @@ export function ActivityDialog({
 
                         {/* Riga: Tecnologia + Fase */}
                         <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-2">
-                                <Label className="text-slate-700">Tecnologia</Label>
+                            <FormFieldBlock label="Tecnologia">
                                 <Select
                                     value={form.techCategory}
                                     onValueChange={(value) => setForm(prev => ({ ...prev, techCategory: value }))}
@@ -338,10 +331,9 @@ export function ActivityDialog({
                                         <SelectItem value="USU">USU</SelectItem>
                                     </SelectContent>
                                 </Select>
-                            </div>
+                            </FormFieldBlock>
 
-                            <div className="space-y-2">
-                                <Label className="text-slate-700">Fase</Label>
+                            <FormFieldBlock label="Fase">
                                 <Select
                                     value={form.group}
                                     onValueChange={(value) => setForm(prev => ({ ...prev, group: value }))}
@@ -357,14 +349,11 @@ export function ActivityDialog({
                                         ))}
                                     </SelectContent>
                                 </Select>
-                            </div>
+                            </FormFieldBlock>
                         </div>
 
                         {/* Ore base */}
-                        <div className="space-y-2">
-                            <Label htmlFor="activity-hours" className="text-slate-700">
-                                Ore stimate base <span className="text-red-500">*</span>
-                            </Label>
+                        <FormFieldBlock label="Ore stimate base" htmlFor="activity-hours" required help="Tempo medio per completare l'attività in condizioni standard.">
                             <Input
                                 id="activity-hours"
                                 type="number"
@@ -374,10 +363,7 @@ export function ActivityDialog({
                                 onChange={(e) => setForm(prev => ({ ...prev, baseHours: e.target.value }))}
                                 className="bg-white border-slate-200 font-mono"
                             />
-                            <p className="text-xs text-slate-400">
-                                Tempo medio per completare l'attività in condizioni standard.
-                            </p>
-                        </div>
+                        </FormFieldBlock>
                     </div>
 
                     <DialogFooter>

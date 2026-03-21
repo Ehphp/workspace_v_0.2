@@ -242,7 +242,7 @@ export default function HowItWorks() {
                       </div>
 
                       {/* Card */}
-                      <div className={`p-5 rounded-2xl bg-gradient-to-br ${step.bgGradient} border border-white/60 shadow-lg hover:shadow-xl transition-all duration-300 group h-full`}>
+                      <div className={`p-5 rounded-2xl bg-gradient-to-br ${step.bgGradient} border border-white/60 shadow-sm hover:shadow-md transition-all duration-300 group h-full`}>
                         {/* Time Badge */}
                         <div className="flex justify-between items-start mb-3">
                           <span className="text-xs font-bold text-slate-400">STEP {index + 1}</span>
@@ -287,7 +287,7 @@ export default function HowItWorks() {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.4, delay: index * 0.08 }}
-                    className={`p-5 rounded-2xl bg-gradient-to-br ${step.bgGradient} border border-white/60 shadow-lg`}
+                    className={`p-5 rounded-2xl bg-gradient-to-br ${step.bgGradient} border border-white/60 shadow-sm`}
                   >
                     <div className="flex items-start gap-4">
                       <div className={`w-12 h-12 rounded-xl ${step.iconBg} flex items-center justify-center shadow-md flex-shrink-0`}>

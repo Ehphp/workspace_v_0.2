@@ -10,9 +10,9 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FormFieldBlock } from '@/components/shared/FormFieldBlock';
 import { toast } from 'sonner';
 import type { List, Technology } from '@/types/database';
 
@@ -98,8 +98,7 @@ export function EditListDialog({ open, onOpenChange, list, onSuccess }: EditList
                     </DialogHeader>
 
                     <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="name">Project Name *</Label>
+                        <FormFieldBlock label="Project Name" htmlFor="name" required>
                             <Input
                                 id="name"
                                 placeholder="e.g., Sprint Q4 - HR Module"
@@ -107,10 +106,9 @@ export function EditListDialog({ open, onOpenChange, list, onSuccess }: EditList
                                 onChange={(e) => setName(e.target.value)}
                                 required
                             />
-                        </div>
+                        </FormFieldBlock>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="description">Description</Label>
+                        <FormFieldBlock label="Description" htmlFor="description">
                             <Textarea
                                 id="description"
                                 placeholder="Brief description of this project..."
@@ -118,20 +116,18 @@ export function EditListDialog({ open, onOpenChange, list, onSuccess }: EditList
                                 onChange={(e) => setDescription(e.target.value)}
                                 rows={3}
                             />
-                        </div>
+                        </FormFieldBlock>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="owner">Owner</Label>
+                        <FormFieldBlock label="Owner" htmlFor="owner">
                             <Input
                                 id="owner"
                                 placeholder="Project owner name"
                                 value={owner}
                                 onChange={(e) => setOwner(e.target.value)}
                             />
-                        </div>
+                        </FormFieldBlock>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="techPreset">Default Technology</Label>
+                        <FormFieldBlock label="Default Technology" htmlFor="techPreset" help="All requirements without a specific technology will inherit this default">
                             <Select value={techPresetId} onValueChange={setTechPresetId}>
                                 <SelectTrigger id="techPreset">
                                     <SelectValue placeholder="Select technology..." />
@@ -145,13 +141,9 @@ export function EditListDialog({ open, onOpenChange, list, onSuccess }: EditList
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <p className="text-xs text-muted-foreground">
-                                All requirements without a specific technology will inherit this default
-                            </p>
-                        </div>
+                        </FormFieldBlock>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="status">Status</Label>
+                        <FormFieldBlock label="Status" htmlFor="status">
                             <Select value={status} onValueChange={(value: 'DRAFT' | 'ACTIVE' | 'ARCHIVED') => setStatus(value)}>
                                 <SelectTrigger id="status">
                                     <SelectValue />
@@ -162,7 +154,7 @@ export function EditListDialog({ open, onOpenChange, list, onSuccess }: EditList
                                     <SelectItem value="ARCHIVED">Archived</SelectItem>
                                 </SelectContent>
                             </Select>
-                        </div>
+                        </FormFieldBlock>
                     </div>
 
                     <DialogFooter>

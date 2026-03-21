@@ -25,5 +25,18 @@ export default tseslint.config(
       ],
       "@typescript-eslint/no-unused-vars": "off",
     },
-  }
+  },
+  // Style guardrails for pages — warn about patterns that should use shared components
+  {
+    files: ["src/pages/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "warn",
+        {
+          selector: "JSXAttribute[name.name='className'][value.value=/min-h-screen/]",
+          message: "Use <PageShell> instead of min-h-screen for page layout.",
+        },
+      ],
+    },
+  },
 );

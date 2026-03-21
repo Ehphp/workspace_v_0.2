@@ -52,7 +52,7 @@ export function TechnologySection({
             </div>
 
             {selectedPreset && selectedPreset.description && (
-                <p className="text-[10px] text-slate-500 leading-tight line-clamp-2">{selectedPreset.description}</p>
+                <p className="help-text leading-tight line-clamp-2">{selectedPreset.description}</p>
             )}
         </div>
     );

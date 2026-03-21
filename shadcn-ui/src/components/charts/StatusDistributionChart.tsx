@@ -1,4 +1,5 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { STATUS_CHART_COLORS } from '@/lib/constants';
 
 interface StatusData {
     name: string;
@@ -10,12 +11,7 @@ interface StatusDistributionChartProps {
     statusData: StatusData[];
 }
 
-const COLORS = {
-    PROPOSED: '#3b82f6',  // blue
-    APPROVED: '#10b981',  // emerald
-    ESTIMATED: '#8b5cf6', // purple
-    ARCHIVED: '#64748b',  // slate
-};
+const COLORS = STATUS_CHART_COLORS;
 
 export function StatusDistributionChart({ statusData }: StatusDistributionChartProps) {
     if (!statusData || statusData.length === 0) {

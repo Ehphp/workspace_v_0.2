@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Save, TrendingUp, Copy } from 'lucide-react';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { toast } from 'sonner';
 import type { EstimationResult } from '@/types/estimation';
 
@@ -20,14 +21,15 @@ export function CalculationSummary({
     if (!result) {
         return (
             <div className="rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-3">
-                <h3 className="font-semibold text-slate-800 flex items-center gap-2 text-xs mb-3">
+                <h3 className="heading-5 flex items-center gap-2 mb-3">
                     <span className="w-4 h-4 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">5</span>
                     Riepilogo
                 </h3>
-                <div className="text-center py-6 text-slate-400 border-2 border-dashed border-slate-200 rounded-lg">
-                    <TrendingUp className="h-6 w-6 mx-auto mb-2 opacity-30" />
-                    <p className="text-[10px]">Compila i parametri per vedere la stima</p>
-                </div>
+                <EmptyState
+                    icon={TrendingUp}
+                    title="Compila i parametri per vedere la stima"
+                    className="py-6"
+                />
             </div>
         );
     }
@@ -35,7 +37,7 @@ export function CalculationSummary({
     return (
         <div className="rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-3 space-y-3">
             <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-slate-800 flex items-center gap-2 text-xs">
+                <h3 className="heading-5 flex items-center gap-2">
                     <span className="w-4 h-4 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">5</span>
                     Riepilogo
                 </h3>

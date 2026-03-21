@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Pencil, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { SectionCard } from '@/components/shared/SectionCard';
 import { useRequirementActions } from '@/hooks/useRequirementActions';
 import type { Requirement } from '@/types/database';
 import { useAuth } from '@/hooks/useAuth';
@@ -28,7 +29,7 @@ export function RequirementDescription({ requirement, refetchRequirement }: Requ
     };
 
     return (
-        <Card className="shadow-sm border-slate-200">
+        <SectionCard padding="none">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
@@ -89,6 +90,6 @@ export function RequirementDescription({ requirement, refetchRequirement }: Requ
                     </div>
                 )}
             </CardContent>
-        </Card>
+        </SectionCard>
     );
 }

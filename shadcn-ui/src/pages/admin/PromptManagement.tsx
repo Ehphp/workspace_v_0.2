@@ -31,6 +31,7 @@ import { supabase } from '@/lib/supabase';
 import { ArrowLeft, Plus, Trophy, Edit2, Power, PowerOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { PageShell } from '@/components/layout/PageShell';
 
 // ── Types ──────────────────────────────────────────────
 
@@ -238,7 +239,7 @@ export default function PromptManagement() {
     }
 
     return (
-        <div className="container mx-auto py-8 px-4 max-w-5xl space-y-6">
+        <PageShell showHeader={false} maxWidth="5xl" contentClassName="space-y-6">
             {/* Header */}
             <div className="flex items-center gap-4">
                 <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
@@ -549,6 +550,6 @@ export default function PromptManagement() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </PageShell>
     );
 }

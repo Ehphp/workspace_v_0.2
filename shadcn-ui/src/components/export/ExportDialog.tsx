@@ -145,7 +145,7 @@ export function ExportDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-white/95 backdrop-blur-xl border-slate-200/60">
+            <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-slate-200/60">
                 <DialogHeader className="p-6 pb-4 bg-gradient-to-br from-slate-50 to-white border-b border-slate-100">
                     <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
                         <Sparkles className="w-5 h-5 text-blue-500" />

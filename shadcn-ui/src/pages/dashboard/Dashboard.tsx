@@ -19,12 +19,13 @@ import type { List } from '@/types/database';
 import { CreateListDialog } from '@/components/lists/CreateListDialog';
 import { EditListDialog } from '@/components/lists/EditListDialog';
 import { DeleteListDialog } from '@/components/lists/DeleteListDialog';
-import { Header } from '@/components/layout/Header';
+import { PageShell } from '@/components/layout/PageShell';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { RecentRequirements } from '@/components/dashboard/RecentRequirements';
 import { StatusDistributionChart } from '@/components/charts/StatusDistributionChart';
 import { TechStackUsageChart } from '@/components/charts/TechStackUsageChart';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Dashboard() {
@@ -184,227 +185,228 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 relative">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+    <PageShell
+      fullHeight
+      background="gradient"
+      noContainer
+      headerClassName="bg-white/80 backdrop-blur-md border-b border-white/20 shadow-sm z-20 relative"
+      className="relative"
+      contentClassName="flex flex-col overflow-hidden relative z-10"
+      backgroundSlot={
+        <>
+          {/* Background Pattern */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
-      {/* Animated Background Blobs */}
-      <motion.div
-        animate={{
-          x: [0, 100, 0],
-          y: [0, -50, 0],
-          scale: [1, 1.1, 1],
-        }}
-        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-        className="absolute top-0 -left-20 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
-      />
-      <motion.div
-        animate={{
-          x: [0, -100, 0],
-          y: [0, 50, 0],
-          scale: [1, 1.2, 1],
-        }}
-        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-        className="absolute top-1/3 -right-20 w-[30rem] h-[30rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
-      />
-      <motion.div
-        animate={{
-          x: [0, 50, 0],
-          y: [0, 100, 0],
-          scale: [1, 1.1, 1],
-        }}
-        transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
-        className="absolute bottom-0 left-1/3 w-[25rem] h-[25rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
-      />
+          {/* Animated Background Blobs */}
+          <motion.div
+            animate={{
+              x: [0, 100, 0],
+              y: [0, -50, 0],
+              scale: [1, 1.1, 1],
+            }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            className="absolute top-0 -left-20 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+          />
+          <motion.div
+            animate={{
+              x: [0, -100, 0],
+              y: [0, 50, 0],
+              scale: [1, 1.2, 1],
+            }}
+            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+            className="absolute top-1/3 -right-20 w-[30rem] h-[30rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+          />
+          <motion.div
+            animate={{
+              x: [0, 50, 0],
+              y: [0, 100, 0],
+              scale: [1, 1.1, 1],
+            }}
+            transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
+            className="absolute bottom-0 left-1/3 w-[25rem] h-[25rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+          />
+        </>
+      }
+    >
 
-      {/* Header - Fixed */}
-      <div className="flex-shrink-0 bg-white/80 backdrop-blur-md border-b border-white/20 shadow-sm z-20 relative">
-        <Header />
-      </div>
-
-      {/* Main Content Area - Flex 1 with no scroll on parent */}
-      <div className="flex-1 flex flex-col overflow-hidden relative z-10">
-
-        {/* Top Bar: KPIs & Actions - Fixed Height */}
-        {/* Top Bar: Headers - Fixed Height */}
-        <div className="flex-shrink-0 relative z-10 border-b border-white/50 bg-white/60 backdrop-blur-xl">
-          <div className="container mx-auto max-w-7xl px-6 py-5">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
-                <p className="text-slate-500 text-sm mt-1">Gestisci i tuoi progetti e requisiti</p>
+      {/* Top Bar: KPIs & Actions - Fixed Height */}
+      {/* Top Bar: Headers - Fixed Height */}
+      <div className="flex-shrink-0 relative z-10 border-b border-white/50 bg-white/60 backdrop-blur-xl">
+        <div className="container mx-auto max-w-7xl px-6 py-5">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="heading-1">Dashboard</h1>
+              <p className="text-slate-500 text-sm mt-1">Gestisci i tuoi progetti e requisiti</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Cerca progetti..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-10 bg-white/80 border-slate-200/80 rounded-xl focus:ring-2 focus:ring-blue-500/20"
+                />
               </div>
-              <div className="flex items-center gap-3">
-                <div className="relative w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <Input
-                    placeholder="Cerca progetti..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 h-10 bg-white/80 border-slate-200/80 rounded-xl focus:ring-2 focus:ring-blue-500/20"
-                  />
-                </div>
-                <Button
-                  onClick={() => setShowCreateDialog(true)}
-                  size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 h-10 px-5 rounded-xl"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Project
-                </Button>
-              </div>
+              <Button
+                onClick={() => setShowCreateDialog(true)}
+                size="lg"
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 h-10 px-5 rounded-xl"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                New Project
+              </Button>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Content Grid - Flex 1 with internal scrolling */}
-        <div className="flex-1 overflow-y-auto relative z-0">
-          <div className="container mx-auto max-w-7xl px-6 py-6 space-y-8">
+      {/* Content Grid - Flex 1 with internal scrolling */}
+      <div className="flex-1 overflow-y-auto relative z-0">
+        <div className="container mx-auto max-w-7xl px-6 py-6 space-y-8">
 
-            {/* KPI Cards - Larger and more prominent */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <KpiCard
-                icon={Layers}
-                label="Progetti"
-                value={stats.totalProjects}
-                gradient="from-white to-blue-50/80"
-                iconGradient="from-blue-500 to-indigo-600"
-                subtitle="totali"
-              />
-              <KpiCard
-                icon={ListChecks}
-                label="Requisiti"
-                value={stats.activeRequirements}
-                gradient="from-white to-emerald-50/80"
-                iconGradient="from-emerald-500 to-teal-600"
-                subtitle="attivi"
-              />
-              <KpiCard
-                icon={TrendingUp}
-                label="Giorni Stimati"
-                value={stats.totalEstimatedDays}
-                gradient="from-white to-purple-50/80"
-                iconGradient="from-purple-500 to-pink-600"
-                subtitle="totali"
-              />
-              <KpiCard
-                icon={BarChart3}
-                label="Media"
-                value={stats.averageDaysPerReq}
-                gradient="from-white to-amber-50/80"
-                iconGradient="from-amber-500 to-orange-600"
-                subtitle="giorni/requisito"
-              />
-            </div>
+          {/* KPI Cards - Larger and more prominent */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <KpiCard
+              icon={Layers}
+              label="Progetti"
+              value={stats.totalProjects}
+              gradient="from-white to-blue-50/80"
+              iconGradient="from-blue-500 to-indigo-600"
+              subtitle="totali"
+            />
+            <KpiCard
+              icon={ListChecks}
+              label="Requisiti"
+              value={stats.activeRequirements}
+              gradient="from-white to-emerald-50/80"
+              iconGradient="from-emerald-500 to-teal-600"
+              subtitle="attivi"
+            />
+            <KpiCard
+              icon={TrendingUp}
+              label="Giorni Stimati"
+              value={stats.totalEstimatedDays}
+              gradient="from-white to-purple-50/80"
+              iconGradient="from-purple-500 to-pink-600"
+              subtitle="totali"
+            />
+            <KpiCard
+              icon={BarChart3}
+              label="Media"
+              value={stats.averageDaysPerReq}
+              gradient="from-white to-amber-50/80"
+              iconGradient="from-amber-500 to-orange-600"
+              subtitle="giorni/requisito"
+            />
+          </div>
 
-            {/* Accuracy Analytics Link */}
-            <div className="flex justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate('/analytics/accuracy')}
-                className="rounded-xl"
-              >
-                <Target className="w-4 h-4 mr-2" />
-                Analisi Accuratezza
-              </Button>
-            </div>
+          {/* Accuracy Analytics Link */}
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/analytics/accuracy')}
+              className="rounded-xl"
+            >
+              <Target className="w-4 h-4 mr-2" />
+              Analisi Accuratezza
+            </Button>
+          </div>
 
-            <div className="grid grid-cols-12 gap-4">
+          <div className="grid grid-cols-12 gap-4">
 
-              {/* Left Column: Projects List */}
-              <div className="col-span-12 lg:col-span-8 flex flex-col rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white overflow-hidden">
-                <div className="flex-shrink-0 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-white flex items-center justify-center text-xs font-bold shadow-sm">
-                      <Layers className="w-3.5 h-3.5" />
-                    </span>
-                    <div>
-                      <h2 className="font-semibold text-slate-800 text-sm">I tuoi Progetti</h2>
-                      <p className="text-xs text-slate-500">{filteredLists.length} progetti</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger className="w-28 h-8 text-xs border-slate-200 bg-white/80 rounded-lg">
-                        <SelectValue placeholder="Ordina" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="updated-desc">Più recenti</SelectItem>
-                        <SelectItem value="name-asc">Nome A-Z</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="flex bg-slate-100/80 p-0.5 rounded-lg border border-slate-200">
-                      <button
-                        onClick={() => setViewMode('grid')}
-                        className={`p-1.5 rounded transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
-                      >
-                        <LayoutGrid className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setViewMode('list')}
-                        className={`p-1.5 rounded transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
-                      >
-                        <ListIcon className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+            {/* Left Column: Projects List */}
+            <div className="col-span-12 lg:col-span-8 flex flex-col rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white overflow-hidden">
+              <div className="flex-shrink-0 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                    <Layers className="w-3.5 h-3.5" />
+                  </span>
+                  <div>
+                    <h2 className="font-semibold text-slate-800 text-sm">I tuoi Progetti</h2>
+                    <p className="text-xs text-slate-500">{filteredLists.length} progetti</p>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="w-28 h-8 text-xs border-slate-200 bg-white/80 rounded-lg">
+                      <SelectValue placeholder="Ordina" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="updated-desc">Più recenti</SelectItem>
+                      <SelectItem value="name-asc">Nome A-Z</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="flex bg-slate-100/80 p-0.5 rounded-lg border border-slate-200">
+                    <button
+                      onClick={() => setViewMode('grid')}
+                      className={`p-1.5 rounded transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                      <LayoutGrid className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setViewMode('list')}
+                      className={`p-1.5 rounded transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                      <ListIcon className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-                <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
-                  {filteredLists.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-lg p-8">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-sm mb-4">
-                        <Layers className="h-6 w-6 text-white" />
-                      </div>
-                      <p className="font-semibold text-slate-800 text-sm">Nessun progetto trovato</p>
-                      <p className="text-xs text-slate-500 mt-1">Crea il tuo primo progetto per iniziare</p>
+              <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
+                {filteredLists.length === 0 ? (
+                  <EmptyState
+                    icon={Layers}
+                    title="Nessun progetto trovato"
+                    description="Crea il tuo primo progetto per iniziare"
+                    action={
                       <Button
                         onClick={() => setShowCreateDialog(true)}
-                        className="mt-4 h-8 text-xs bg-blue-600 hover:bg-blue-700"
+                        className="h-8 text-xs bg-blue-600 hover:bg-blue-700"
                         size="sm"
                       >
                         <Plus className="mr-1.5 h-3.5 w-3.5" />
                         Crea Progetto
                       </Button>
-                    </div>
-                  ) : (
-                    <div className={viewMode === 'grid' ? "grid grid-cols-2 xl:grid-cols-3 gap-3" : "flex flex-col gap-2"}>
-                      {filteredLists.map((list) => (
-                        <ProjectCard
-                          key={list.id}
-                          project={list}
-                          onEdit={setEditList}
-                          onDelete={setDeleteList}
-                          layout={viewMode}
-                        />
-                      ))}
-                    </div>
-                  )}
+                    }
+                  />
+                ) : (
+                  <div className={viewMode === 'grid' ? "grid grid-cols-2 xl:grid-cols-3 gap-3" : "flex flex-col gap-2"}>
+                    {filteredLists.map((list) => (
+                      <ProjectCard
+                        key={list.id}
+                        project={list}
+                        onEdit={setEditList}
+                        onDelete={setDeleteList}
+                        layout={viewMode}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Column: Sidebar */}
+            <div className="col-span-12 lg:col-span-4 flex flex-col">
+
+              {/* Recent Activity */}
+              <div className="rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white overflow-hidden flex-1">
+                <div className="px-4 py-3 border-b border-slate-200 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shadow-sm">
+                    <TrendingUp className="w-3.5 h-3.5" />
+                  </span>
+                  <h3 className="font-semibold text-slate-800 text-sm">Attività Recente</h3>
+                </div>
+                <div className="p-3 max-h-[450px] overflow-y-auto custom-scrollbar">
+                  <RecentRequirements />
                 </div>
               </div>
 
-              {/* Right Column: Sidebar */}
-              <div className="col-span-12 lg:col-span-4 flex flex-col">
-
-                {/* Recent Activity */}
-                <div className="rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white overflow-hidden flex-1">
-                  <div className="px-4 py-3 border-b border-slate-200 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shadow-sm">
-                      <TrendingUp className="w-3.5 h-3.5" />
-                    </span>
-                    <h3 className="font-semibold text-slate-800 text-sm">Attività Recente</h3>
-                  </div>
-                  <div className="p-3 max-h-[450px] overflow-y-auto custom-scrollbar">
-                    <RecentRequirements />
-                  </div>
-                </div>
-
-              </div>
             </div>
           </div>
         </div>
-
       </div>
 
       <CreateListDialog
@@ -435,6 +437,6 @@ export default function Dashboard() {
           }}
         />
       )}
-    </div>
+    </PageShell>
   );
 }

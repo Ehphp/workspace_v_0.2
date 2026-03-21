@@ -106,11 +106,11 @@ const AnimatedAiIcon = ({ isLoading = false, size = 'sm' }: { isLoading?: boolea
             transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
         >
             <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-violet-500 to-purple-500 rounded-lg blur-lg opacity-50"
+                className="absolute inset-0 bg-gradient-to-r from-violet-500 to-purple-500 rounded-xl blur-lg opacity-50"
                 animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
                 transition={{ duration: 2, repeat: Infinity }}
             />
-            <div className={cn("relative bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg", containerSize)}>
+            <div className={cn("relative bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl", containerSize)}>
                 <Sparkles className={cn(iconSize, "text-white")} />
             </div>
         </motion.div>
@@ -458,7 +458,7 @@ export function AiAssistPanel({
                     <div className="font-semibold text-xs text-slate-800">
                         Genera con AI
                     </div>
-                    <div className="text-[10px] text-slate-500">
+                    <div className="help-text">
                         {isReady ? 'Avvia wizard intelligente' : 'Descrizione troppo breve'}
                     </div>
                 </div>

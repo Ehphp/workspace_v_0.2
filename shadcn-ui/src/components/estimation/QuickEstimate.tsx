@@ -68,7 +68,7 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="sm:max-w-[700px] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-white/95 backdrop-blur-2xl border-white/40 shadow-2xl ring-1 ring-white/50"
+                className="sm:max-w-[700px] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden backdrop-blur-2xl border-white/40 shadow-2xl ring-1 ring-white/50"
                 onInteractOutside={(e) => e.preventDefault()}
             >
                 {/* Background Pattern */}
@@ -140,7 +140,7 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                             <Button
                                 onClick={handleCalculate}
                                 disabled={!canCalculate || loading || calculating}
-                                className="bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-600 hover:from-blue-700 hover:via-indigo-700 hover:to-fuchsia-700 text-white shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 transition-all px-8 h-11 rounded-xl font-medium"
+                                className="bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-600 hover:from-blue-700 hover:via-indigo-700 hover:to-fuchsia-700 text-white shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 transition-all px-8 h-11 rounded-lg font-medium"
                             >
                                 {calculating ? (
                                     <>
@@ -161,7 +161,7 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                                 <ArrowLeft className="w-4 h-4 mr-2" />
                                 New Estimate
                             </Button>
-                            <Button onClick={handleClose} className="bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/20 px-8 h-11 rounded-xl">
+                            <Button onClick={handleClose} className="bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/20 px-8 h-11 rounded-lg">
                                 Done
                             </Button>
                         </div>

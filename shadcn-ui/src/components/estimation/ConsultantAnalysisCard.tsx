@@ -160,10 +160,10 @@ export function ConsultantAnalysisCard({ analysis, isCompact = false }: Consulta
                             animate={{ width: `${analysis.estimatedConfidence}%` }}
                             transition={{ duration: 0.8, ease: 'easeOut' }}
                             className={`h-full rounded-full ${analysis.estimatedConfidence >= 80
-                                    ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                                    : analysis.estimatedConfidence >= 60
-                                        ? 'bg-gradient-to-r from-yellow-500 to-amber-500'
-                                        : 'bg-gradient-to-r from-red-500 to-orange-500'
+                                ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+                                : analysis.estimatedConfidence >= 60
+                                    ? 'bg-gradient-to-r from-yellow-500 to-amber-500'
+                                    : 'bg-gradient-to-r from-red-500 to-orange-500'
                                 }`}
                         />
                     </div>
@@ -180,7 +180,7 @@ export function ConsultantAnalysisCard({ analysis, isCompact = false }: Consulta
                     >
                         <div className="flex items-center gap-2">
                             <Sparkles className="w-4 h-4 text-blue-600" />
-                            <span className="text-sm font-semibold text-slate-700">Consigli Implementativi</span>
+                            <span className="heading-4">Consigli Implementativi</span>
                         </div>
                         {expandedSections.has('tips') ? (
                             <ChevronUp className="w-4 h-4 text-slate-400" />
@@ -201,7 +201,7 @@ export function ConsultantAnalysisCard({ analysis, isCompact = false }: Consulta
                                     <ReactMarkdown
                                         components={{
                                             h1: ({ children }) => <h3 className="text-base font-bold text-slate-800 mt-4 mb-2">{children}</h3>,
-                                            h2: ({ children }) => <h4 className="text-sm font-semibold text-slate-700 mt-3 mb-2">{children}</h4>,
+                                            h2: ({ children }) => <h4 className="heading-4 mt-3 mb-2">{children}</h4>,
                                             h3: ({ children }) => <h5 className="text-sm font-medium text-slate-600 mt-2 mb-1">{children}</h5>,
                                             p: ({ children }) => <p className="text-xs text-slate-600 leading-relaxed mb-2">{children}</p>,
                                             ul: ({ children }) => <ul className="text-xs text-slate-600 space-y-1 ml-4 list-disc">{children}</ul>,
@@ -226,7 +226,7 @@ export function ConsultantAnalysisCard({ analysis, isCompact = false }: Consulta
                         >
                             <div className="flex items-center gap-2">
                                 <AlertTriangle className="w-4 h-4 text-orange-600" />
-                                <span className="text-sm font-semibold text-slate-700">
+                                <span className="heading-4">
                                     Discrepanze ({analysis.discrepancies.length})
                                 </span>
                             </div>
@@ -283,7 +283,7 @@ export function ConsultantAnalysisCard({ analysis, isCompact = false }: Consulta
                         >
                             <div className="flex items-center gap-2">
                                 <Target className="w-4 h-4 text-red-600" />
-                                <span className="text-sm font-semibold text-slate-700">
+                                <span className="heading-4">
                                     Analisi Rischi ({analysis.riskAnalysis.length})
                                 </span>
                             </div>

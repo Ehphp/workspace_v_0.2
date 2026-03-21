@@ -10,16 +10,13 @@ import {
     Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
 import type { TechnologyAccuracy } from '@/hooks/useAccuracyData';
+import { CHART_COLORS } from '@/lib/constants';
 
 interface Props {
     data: TechnologyAccuracy[];
 }
 
-const PALETTE = [
-    '#6366f1', '#8b5cf6', '#a855f7', '#d946ef',
-    '#ec4899', '#f43f5e', '#f97316', '#eab308',
-    '#22c55e', '#14b8a6',
-];
+const PALETTE = CHART_COLORS;
 
 export function TechnologyAccuracyChart({ data }: Props) {
     if (!data || data.length === 0) {

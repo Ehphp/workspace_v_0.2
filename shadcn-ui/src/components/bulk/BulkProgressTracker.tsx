@@ -60,7 +60,7 @@ export function BulkProgressTracker({ progress }: BulkProgressTrackerProps) {
 
             {/* Partial results list */}
             {partialResults && partialResults.length > 0 && (
-                <div className="space-y-1 max-h-48 overflow-y-auto border rounded-md p-2">
+                <div className="space-y-1 max-h-48 overflow-y-auto border rounded-lg p-2">
                     {partialResults.map((r, i) => (
                         <div key={i} className="flex items-center gap-2 text-xs py-0.5">
                             {r.success

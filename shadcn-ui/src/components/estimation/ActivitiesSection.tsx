@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sparkles, Loader2, Layers, X, CheckCircle2 } from 'lucide-react';
+import { EmptyState } from '@/components/shared/EmptyState';
 import type { Activity } from '@/types/database';
 
 interface ActivitiesSectionProps {
@@ -140,10 +141,11 @@ export function ActivitiesSection({
             <ScrollArea className="flex-1 min-h-0">
                 <div className="space-y-3 pr-2">
                     {selectedActivities.length === 0 && remainingActivities.length === 0 && (
-                        <div className="flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-lg p-6">
-                            <Layers className="w-8 h-8 opacity-20 mb-2" />
-                            <p className="text-xs">Nessuna attività disponibile</p>
-                        </div>
+                        <EmptyState
+                            icon={Layers}
+                            title="Nessuna attività disponibile"
+                            className="p-6"
+                        />
                     )}
 
                     {groupOrder.map((group) => {

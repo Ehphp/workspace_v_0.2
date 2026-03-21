@@ -13,6 +13,7 @@ import {
     Tooltip, ResponsiveContainer, ReferenceLine, ZAxis,
 } from 'recharts';
 import type { ScatterDatum } from '@/hooks/useAccuracyData';
+import { CHART_COLORS } from '@/lib/constants';
 
 interface Props {
     data: ScatterDatum[];
@@ -82,7 +83,7 @@ export function AccuracyScatterChart({ data }: Props) {
                 />
                 <Scatter
                     data={data}
-                    fill="#6366f1"
+                    fill={CHART_COLORS[7]}
                     fillOpacity={0.7}
                     stroke="#4f46e5"
                     strokeWidth={1}

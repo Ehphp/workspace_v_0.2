@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type { RequirementWithEstimation } from '@/types/database';
 import { StateBadge } from '@/components/shared/RequirementBadges';
+import { STATUS_CHART_COLORS, PRIORITY_CHART_COLORS } from '@/lib/constants';
 
 interface RequirementsDashboardViewProps {
     requirements: RequirementWithEstimation[];
@@ -23,12 +24,7 @@ interface RequirementsDashboardViewProps {
     notEstimatedCount: number;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-    PROPOSED: '#3b82f6',
-    SELECTED: '#f59e0b',
-    SCHEDULED: '#8b5cf6',
-    DONE: '#10b981',
-};
+const STATUS_COLORS = STATUS_CHART_COLORS;
 
 const STATUS_LABELS: Record<string, string> = {
     PROPOSED: 'Proposti',
@@ -66,11 +62,7 @@ const renderActiveShape = (props: any) => {
     );
 };
 
-const PRIORITY_COLORS: Record<string, string> = {
-    HIGH: '#ef4444',
-    MEDIUM: '#f59e0b',
-    LOW: '#10b981',
-};
+const PRIORITY_COLORS = PRIORITY_CHART_COLORS;
 
 export function RequirementsDashboardView({
     requirements,
@@ -269,8 +261,8 @@ export function RequirementsDashboardView({
                                                 type="button"
                                                 onClick={() => setActiveStatusIndex(prev => prev === index ? undefined : index)}
                                                 className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-all text-[10px] ${isActive
-                                                        ? 'bg-slate-100 font-bold text-slate-800'
-                                                        : 'text-slate-500 hover:text-slate-700'
+                                                    ? 'bg-slate-100 font-bold text-slate-800'
+                                                    : 'text-slate-500 hover:text-slate-700'
                                                     }`}
                                             >
                                                 <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />

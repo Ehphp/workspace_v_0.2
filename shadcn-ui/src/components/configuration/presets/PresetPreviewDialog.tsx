@@ -16,7 +16,7 @@ interface PresetPreviewDialogProps {
 export function PresetPreviewDialog({ preset, onOpenChange }: PresetPreviewDialogProps) {
     return (
         <Dialog open={!!preset} onOpenChange={(open) => !open && onOpenChange(false)}>
-            <DialogContent className="max-w-2xl bg-white/95 backdrop-blur-xl border-slate-200 shadow-2xl">
+            <DialogContent className="max-w-2xl border-slate-200">
                 <DialogHeader>
                     <DialogTitle className="text-slate-900">{preset?.name}</DialogTitle>
                     <DialogDescription className="text-slate-500">{preset?.description}</DialogDescription>

@@ -12,7 +12,7 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { KpiCard } from '@/components/dashboard/KpiCard';
-import { Header } from '@/components/layout/Header';
+import { PageShell } from '@/components/layout/PageShell';
 import { AccuracyScatterChart } from '@/components/charts/AccuracyScatterChart';
 import { DeviationBarChart } from '@/components/charts/DeviationBarChart';
 import { TechnologyAccuracyChart } from '@/components/charts/TechnologyAccuracyChart';
@@ -44,8 +44,7 @@ export default function EstimationAccuracy() {
     } = useAccuracyData();
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 flex flex-col">
-            <Header />
+        <PageShell background="gradient" noContainer>
 
             {/* Page Header */}
             <div className="flex-shrink-0 border-b border-white/50 bg-white/60 backdrop-blur-xl">
@@ -220,6 +219,6 @@ export default function EstimationAccuracy() {
                     )}
                 </div>
             </div>
-        </div>
+        </PageShell>
     );
 }

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import type { Driver, RequirementDriverValue } from '@/types/database';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { SectionCard } from '@/components/shared/SectionCard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -97,7 +98,7 @@ export function RequirementDriversCard({
     const hasValues = Object.keys(values).length > 0;
 
     return (
-        <Card className="shadow-sm border-slate-200">
+        <SectionCard padding="none">
             <CardHeader className="pb-2">
                 <CardTitle className="text-lg font-semibold text-slate-800">Driver del requisito</CardTitle>
                 <CardDescription className="text-xs text-slate-600">
@@ -163,6 +164,6 @@ export function RequirementDriversCard({
                     </Button>
                 </div>
             </CardContent>
-        </Card>
+        </SectionCard>
     );
 }

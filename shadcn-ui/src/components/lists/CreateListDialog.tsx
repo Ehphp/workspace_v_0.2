@@ -97,9 +97,9 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] bg-white/95 backdrop-blur-xl border-white/20 shadow-2xl">
+      <DialogContent className="sm:max-w-[600px]">
         <form onSubmit={handleSubmit}>
-          <DialogHeader className="pb-4 border-b border-slate-100">
+          <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
               <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md">
                 <Layers className="w-5 h-5 text-white" />
@@ -193,13 +193,13 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-[10px] text-slate-500">
+              <p className="help-text">
                 All requirements in this project will inherit this technology by default
               </p>
             </div>
           </div>
 
-          <DialogFooter className="pt-2 border-t border-slate-100">
+          <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="hover:bg-slate-100">
               Cancel
             </Button>

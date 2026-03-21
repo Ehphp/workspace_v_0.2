@@ -3,7 +3,8 @@ import { Pencil, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { SectionCard } from '@/components/shared/SectionCard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRequirementActions, type EditedData } from '@/hooks/useRequirementActions';
 import type { Requirement, Technology } from '@/types/database';
@@ -41,7 +42,7 @@ export function RequirementInfo({ requirement, presets, refetchRequirement }: Re
     const selectedPresetName = presets.find(p => p.id === requirement.technology_id)?.name || 'None';
 
     return (
-        <Card className="shadow-sm border-slate-200 h-fit">
+        <SectionCard padding="none" className="h-fit">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <CardTitle className="text-lg font-semibold text-slate-800">Details</CardTitle>
@@ -150,6 +151,6 @@ export function RequirementInfo({ requirement, presets, refetchRequirement }: Re
                     </>
                 )}
             </CardContent>
-        </Card>
+        </SectionCard>
     );
 }

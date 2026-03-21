@@ -10,7 +10,7 @@ import {
     X,
     Wrench,
 } from 'lucide-react';
-import { Header } from '@/components/layout/Header';
+import { PageShell } from '@/components/layout/PageShell';
 import { generateActivityCode } from '@/lib/codeGeneration';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -283,29 +283,36 @@ export default function ConfigurationActivities() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 font-sans overflow-hidden relative">
-            {/* Background Pattern */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none z-[2]" />
-            {/* Animated Background Blobs */}
-            <motion.div
-                animate={{ x: [0, 100, 0], y: [0, -60, 0], scale: [1, 1.08, 1] }}
-                transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
-                className="absolute top-0 -left-24 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none z-[2]"
-            />
-            <motion.div
-                animate={{ x: [0, -90, 0], y: [0, 60, 0], scale: [1, 1.15, 1] }}
-                transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-                className="absolute top-1/3 -right-24 w-[28rem] h-[28rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none z-[2]"
-            />
-            <motion.div
-                animate={{ x: [0, 60, 0], y: [0, 90, 0], scale: [1, 1.1, 1] }}
-                transition={{ duration: 24, repeat: Infinity, ease: "linear" }}
-                className="absolute bottom-0 left-1/3 w-[24rem] h-[24rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none z-[2]"
-            />
+        <PageShell
+            fullHeight
+            noContainer
+            className="font-sans relative"
+            contentClassName="flex flex-col overflow-hidden"
+            backgroundSlot={
+                <>
+                    {/* Background Pattern */}
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none z-[2]" />
+                    {/* Animated Background Blobs */}
+                    <motion.div
+                        animate={{ x: [0, 100, 0], y: [0, -60, 0], scale: [1, 1.08, 1] }}
+                        transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
+                        className="absolute top-0 -left-24 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none z-[2]"
+                    />
+                    <motion.div
+                        animate={{ x: [0, -90, 0], y: [0, 60, 0], scale: [1, 1.15, 1] }}
+                        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+                        className="absolute top-1/3 -right-24 w-[28rem] h-[28rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none z-[2]"
+                    />
+                    <motion.div
+                        animate={{ x: [0, 60, 0], y: [0, 90, 0], scale: [1, 1.1, 1] }}
+                        transition={{ duration: 24, repeat: Infinity, ease: "linear" }}
+                        className="absolute bottom-0 left-1/3 w-[24rem] h-[24rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none z-[2]"
+                    />
+                </>
+            }
+        >
 
-            <Header />
-
-            <main className="container mx-auto px-4 pt-4 pb-4 max-w-6xl relative z-10 h-[calc(100vh-64px)] flex flex-col">
+            <div className="container mx-auto px-4 pt-4 pb-4 max-w-6xl relative z-10 flex-1 flex flex-col min-h-0">
                 {/* Main Content Card - Full Width */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -330,7 +337,7 @@ export default function ConfigurationActivities() {
                                     <ArrowLeft className="h-4 w-4" />
                                 </Button>
                                 <div>
-                                    <h1 className="text-base font-semibold text-slate-900">Catalogo Attività</h1>
+                                    <h1 className="heading-3">Catalogo Attività</h1>
                                     <p className="text-xs text-slate-500">Gestisci le attività base per le stime. Crea custom o duplica quelle di sistema.</p>
                                 </div>
                             </div>
@@ -683,7 +690,7 @@ export default function ConfigurationActivities() {
                         </div>
                     </div>
                 </motion.div>
-            </main>
-        </div>
+            </div>
+        </PageShell>
     );
 }

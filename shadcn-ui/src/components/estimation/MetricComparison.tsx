@@ -45,7 +45,7 @@ export function MetricComparison({ older, newer, activities }: MetricComparisonP
                     <div className="flex flex-col min-h-0 border-r border-slate-200 pr-3">
                         {/* Old Header */}
                         <div className="mb-2 pb-2 border-b border-slate-200">
-                            <div className="text-[10px] text-slate-500 mb-1">Previous Version</div>
+                            <div className="help-text mb-1">Previous Version</div>
                             <div className="flex items-center justify-between">
                                 <div className="text-xs font-bold text-slate-700">{older.total_days.toFixed(1)} days</div>
                                 <div className="text-[9px] text-slate-400">
@@ -111,7 +111,7 @@ export function MetricComparison({ older, newer, activities }: MetricComparisonP
                     <div className="flex flex-col min-h-0">
                         {/* New Header */}
                         <div className="mb-2 pb-2 border-b border-slate-200">
-                            <div className="text-[10px] text-slate-500 mb-1">Current Version</div>
+                            <div className="help-text mb-1">Current Version</div>
                             <div className="flex items-center justify-between">
                                 <div className={cn(
                                     "text-xs font-bold",

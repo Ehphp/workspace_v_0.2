@@ -227,7 +227,7 @@ export function Header() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent
                                     align="end"
-                                    className="w-56 bg-white/95 backdrop-blur-xl border-slate-200 shadow-xl rounded-xl p-1"
+                                    className="w-56 bg-white/95 backdrop-blur-xl border-slate-200 shadow-lg rounded-xl p-1"
                                     sideOffset={8}
                                 >
                                     <DropdownMenuLabel className="px-2 py-1.5">

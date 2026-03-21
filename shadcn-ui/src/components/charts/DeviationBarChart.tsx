@@ -10,6 +10,7 @@ import {
     Tooltip, ResponsiveContainer, Cell, ReferenceLine,
 } from 'recharts';
 import type { ScatterDatum } from '@/hooks/useAccuracyData';
+import { CHART_COLORS } from '@/lib/constants';
 
 interface Props {
     data: ScatterDatum[];
@@ -74,7 +75,7 @@ export function DeviationBarChart({ data, maxItems = 10 }: Props) {
                     {sorted.map((entry, index) => (
                         <Cell
                             key={`cell-${index}`}
-                            fill={entry.deviation > 0 ? '#ef4444' : '#10b981'}
+                            fill={entry.deviation > 0 ? CHART_COLORS[4] : CHART_COLORS[2]}
                             fillOpacity={0.8}
                         />
                     ))}

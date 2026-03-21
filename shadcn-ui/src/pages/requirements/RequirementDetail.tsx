@@ -20,7 +20,7 @@ import { suggestActivities } from '@/lib/openai';
 import { getConsultantAnalysis } from '@/lib/consultant-api';
 import { getLatestRequirementUnderstanding, saveEstimationByIds } from '@/lib/api';
 import { filterActivitiesByTechnology } from '@/lib/technology-helpers';
-import { Header } from '@/components/layout/Header';
+import { PageShell } from '@/components/layout/PageShell';
 import type { EstimationWithDetails } from '@/types/database';
 import type { SeniorConsultantAnalysis } from '@/types/estimation';
 import type { RequirementUnderstanding } from '@/types/requirement-understanding';
@@ -545,43 +545,48 @@ export default function RequirementDetail() {
     }
 
     return (
-        <div className="h-screen flex flex-col bg-slate-50 relative overflow-hidden">
-            {/* Background Pattern */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+        <PageShell
+            fullHeight
+            noContainer
+            headerClassName="relative z-20 bg-white/70 backdrop-blur-xl border-b border-white/50"
+            className="relative"
+            contentClassName="flex flex-col overflow-hidden"
+            backgroundSlot={
+                <>
+                    {/* Background Pattern */}
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
-            {/* Animated Background Blobs */}
-            <motion.div
-                animate={{
-                    x: [0, 100, 0],
-                    y: [0, -50, 0],
-                    scale: [1, 1.1, 1],
-                }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                className="absolute top-0 -left-20 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
-            />
-            <motion.div
-                animate={{
-                    x: [0, -100, 0],
-                    y: [0, 50, 0],
-                    scale: [1, 1.2, 1],
-                }}
-                transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-                className="absolute top-1/3 -right-20 w-[30rem] h-[30rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
-            />
-            <motion.div
-                animate={{
-                    x: [0, 50, 0],
-                    y: [0, 100, 0],
-                    scale: [1, 1.1, 1],
-                }}
-                transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
-                className="absolute bottom-0 left-1/3 w-[25rem] h-[25rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
-            />
-
-            {/* Header - flex-shrink-0 */}
-            <div className="flex-shrink-0 relative z-20 bg-white/70 backdrop-blur-xl border-b border-white/50">
-                <Header />
-            </div>
+                    {/* Animated Background Blobs */}
+                    <motion.div
+                        animate={{
+                            x: [0, 100, 0],
+                            y: [0, -50, 0],
+                            scale: [1, 1.1, 1],
+                        }}
+                        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                        className="absolute top-0 -left-20 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+                    />
+                    <motion.div
+                        animate={{
+                            x: [0, -100, 0],
+                            y: [0, 50, 0],
+                            scale: [1, 1.2, 1],
+                        }}
+                        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+                        className="absolute top-1/3 -right-20 w-[30rem] h-[30rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+                    />
+                    <motion.div
+                        animate={{
+                            x: [0, 50, 0],
+                            y: [0, 100, 0],
+                            scale: [1, 1.1, 1],
+                        }}
+                        transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
+                        className="absolute bottom-0 left-1/3 w-[25rem] h-[25rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
+                    />
+                </>
+            }
+        >
 
             {/* Page specific info bar - flex-shrink-0 */}
             <div className="flex-shrink-0 relative z-10 border-b border-white/50 bg-white/60 backdrop-blur-xl">
@@ -884,6 +889,6 @@ export default function RequirementDetail() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </div>
+        </PageShell>
     );
 }

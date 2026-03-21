@@ -47,6 +47,7 @@ import { getOrganizationMembers, addMemberByEmail, removeMember, updateMemberRol
 import { useToast } from '@/hooks/use-toast';
 import { MoreHorizontal, Trash, UserPlus, Shield, User, Eye, Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface Member {
@@ -173,10 +174,11 @@ export function MembersList() {
 
     if (!currentOrganization || currentOrganization.type === 'personal') {
         return (
-            <div className="text-center p-8 text-muted-foreground bg-slate-50 rounded-lg border border-dashed border-slate-200">
-                <User className="mx-auto h-10 w-10 text-slate-300 mb-2" />
-                <p>Members management is only available for Team Organizations.</p>
-            </div>
+            <EmptyState
+                icon={User}
+                title="Members management is only available for Team Organizations."
+                className="bg-slate-50"
+            />
         );
     }
 

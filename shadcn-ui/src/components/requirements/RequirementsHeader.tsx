@@ -47,7 +47,7 @@ export function RequirementsHeader({
                         </div>
 
                         <div className="flex-1 min-w-0">
-                            <h1 className="text-2xl font-bold text-slate-900 truncate">
+                            <h1 className="heading-1 truncate">
                                 {list?.name}
                             </h1>
                             {list?.description && (

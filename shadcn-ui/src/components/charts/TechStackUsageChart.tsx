@@ -1,4 +1,5 @@
 import { ResponsiveContainer, Treemap, Tooltip } from 'recharts';
+import { CHART_COLORS } from '@/lib/constants';
 
 interface TechData {
     name: string;
@@ -9,15 +10,7 @@ interface TechStackUsageChartProps {
     techData: TechData[];
 }
 
-const TECH_COLORS = [
-    '#3b82f6', // blue
-    '#8b5cf6', // purple
-    '#10b981', // emerald
-    '#f59e0b', // amber
-    '#ef4444', // red
-    '#06b6d4', // cyan
-    '#ec4899', // pink
-];
+const TECH_COLORS = CHART_COLORS;
 
 const CustomContent = (props: any) => {
     const { root, depth, x, y, width, height, index, name, value, colors } = props;

@@ -118,6 +118,18 @@
   }
 }
 
+@layer components {
+  /* Canonical heading hierarchy — use these instead of ad-hoc text-* combos */
+  .heading-1 { @apply text-2xl font-bold text-slate-900 leading-tight tracking-tight; }
+  .heading-2 { @apply text-lg font-bold text-slate-900 leading-tight; }
+  .heading-3 { @apply text-base font-semibold text-slate-800; }
+  .heading-4 { @apply text-sm font-semibold text-slate-700; }
+  .heading-5 { @apply text-xs font-semibold text-slate-600; }
+
+  /* Standard help text */
+  .help-text { @apply text-xs text-muted-foreground; }
+}
+
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {
     display: none;

@@ -35,7 +35,7 @@ export function SynteroMark({
         />
         <motion.div
           className={cn(
-            'relative overflow-hidden rounded-2xl border border-white/60 bg-white/90 shadow-lg ring-1 ring-blue-500/10',
+            'relative overflow-hidden rounded-2xl border border-white/60 bg-white/90 shadow-sm ring-1 ring-blue-500/10',
             sizeClasses
           )}
           initial={{ rotate: -2, scale: 0.96, y: 2 }}
