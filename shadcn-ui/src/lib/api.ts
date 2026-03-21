@@ -268,6 +268,8 @@ export interface SaveEstimationInput {
   contingencyPercent: number;
   aiReasoning?: string;
   blueprintId?: string;
+  analysisId?: string;
+  decisionId?: string;
   seniorConsultantAnalysis?: Record<string, unknown>;
   activities: {
     code: string;
@@ -282,7 +284,7 @@ export interface SaveEstimationInput {
   }[];
 }
 
-export async function saveEstimation(input: SaveEstimationInput): Promise<void> {
+export async function saveEstimation(input: SaveEstimationInput): Promise<string> {
   // 0. Validate input
   if (!input.activities || input.activities.length === 0) {
     throw new ApiError('Cannot save an estimation without activities', 400);
@@ -311,7 +313,7 @@ export async function saveEstimation(input: SaveEstimationInput): Promise<void> 
   }).filter((i): i is NonNullable<typeof i> => i !== null);
 
   // 3. Delegate to the unified RPC-based save
-  await saveEstimationByIds({
+  const estimationId = await saveEstimationByIds({
     requirementId: input.requirementId,
     userId: input.userId,
     totalDays: input.totalDays,
@@ -323,6 +325,8 @@ export async function saveEstimation(input: SaveEstimationInput): Promise<void> 
     aiReasoning: input.aiReasoning,
     seniorConsultantAnalysis: input.seniorConsultantAnalysis,
     blueprintId: input.blueprintId,
+    analysisId: input.analysisId,
+    decisionId: input.decisionId,
     activities,
     drivers: drivers.length > 0 ? drivers : null,
     risks: risks.length > 0 ? risks : null,
@@ -344,6 +348,8 @@ export async function saveEstimation(input: SaveEstimationInput): Promise<void> 
     await supabase.from('requirement_driver_values').delete().eq('requirement_id', input.requirementId);
     await supabase.from('requirement_driver_values').insert(reqDriverInserts);
   }
+
+  return estimationId;
 }
 
 /**
@@ -363,17 +369,19 @@ export interface SaveEstimationByIdsInput {
   aiReasoning?: string | null;
   seniorConsultantAnalysis?: Record<string, unknown> | null;
   blueprintId?: string | null;
+  analysisId?: string | null;
+  decisionId?: string | null;
   activities: { activity_id: string; is_ai_suggested: boolean; notes?: string | null }[];
   drivers?: { driver_id: string; selected_value: string }[] | null;
   risks?: { risk_id: string }[] | null;
 }
 
-export async function saveEstimationByIds(input: SaveEstimationByIdsInput): Promise<void> {
+export async function saveEstimationByIds(input: SaveEstimationByIdsInput): Promise<string> {
   if (!input.activities || input.activities.length === 0) {
     throw new ApiError('Cannot save an estimation without activities', 400);
   }
 
-  const { error } = await supabase.rpc('save_estimation_atomic', {
+  const { data, error } = await supabase.rpc('save_estimation_atomic', {
     p_requirement_id: input.requirementId,
     p_user_id: input.userId,
     p_total_days: input.totalDays,
@@ -392,11 +400,17 @@ export async function saveEstimationByIds(input: SaveEstimationByIdsInput): Prom
     p_ai_reasoning: input.aiReasoning || null,
     p_senior_consultant_analysis: input.seniorConsultantAnalysis || null,
     p_blueprint_id: input.blueprintId || null,
+    p_analysis_id: input.analysisId || null,
+    p_decision_id: input.decisionId || null,
   });
 
   if (error) {
     throw new ApiError(`Failed to save estimation: ${error.message}`, undefined, error);
   }
+
+  // RPC returns [{estimation_id, activities_count, ...}]
+  const row = Array.isArray(data) ? data[0] : data;
+  return row?.estimation_id ?? '';
 }
 
 // --- Organization Management ---

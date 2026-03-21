@@ -611,6 +611,114 @@ Stores structured AI-generated Estimation Blueprint artifacts for requirements. 
 
 ---
 
+### requirement_analyses
+
+Domain-model entity capturing a structured understanding of a requirement. Links to the full traceability chain.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `requirement_id` | UUID | FK → requirements (CASCADE) |
+| `understanding` | JSONB | Structured RequirementUnderstanding artifact |
+| `input_description` | TEXT | Description at analysis time |
+| `input_tech_category` | TEXT | Tech category at analysis time |
+| `confidence` | NUMERIC(3,2) | 0.00–1.00 |
+| `created_by` | UUID | FK → auth.users |
+| `created_at` | TIMESTAMPTZ | DEFAULT now() |
+
+**Migration**: [20260321_domain_model_tables.sql](../supabase/migrations/20260321_domain_model_tables.sql)
+
+---
+
+### impact_maps (domain model)
+
+Structured impact map linked to a `requirement_analyses` record. Distinct from the legacy `impact_map` table.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `analysis_id` | UUID | FK → requirement_analyses (CASCADE) |
+| `impact_data` | JSONB | Structured impact map payload |
+| `confidence` | NUMERIC(3,2) | 0.00–1.00 |
+| `created_by` | UUID | FK → auth.users |
+| `created_at` | TIMESTAMPTZ | DEFAULT now() |
+
+**Migration**: [20260321_domain_model_tables.sql](../supabase/migrations/20260321_domain_model_tables.sql)
+
+---
+
+### candidate_sets
+
+Ranked list of candidate activities for an estimation, with source and confidence metadata.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `analysis_id` | UUID | FK → requirement_analyses (CASCADE) |
+| `impact_map_id` | UUID | FK → impact_maps (SET NULL) |
+| `technology_id` | UUID | FK → technologies (SET NULL) |
+| `candidates` | JSONB | CandidateActivity[] — activity_id, source, score, confidence |
+| `created_by` | UUID | FK → auth.users |
+| `created_at` | TIMESTAMPTZ | DEFAULT now() |
+
+**Migration**: [20260321_domain_model_tables.sql](../supabase/migrations/20260321_domain_model_tables.sql)
+
+---
+
+### estimation_decisions
+
+Captures the final selection decisions made for an estimation — what was included, excluded, and why.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `candidate_set_id` | UUID | FK → candidate_sets (CASCADE) |
+| `selected_activity_ids` | UUID[] | Activities included in estimation |
+| `excluded_activity_ids` | UUID[] | Activities explicitly excluded |
+| `driver_values` | JSONB | [{driver_id, selected_value}] |
+| `risk_ids` | UUID[] | Selected risk UUIDs |
+| `warnings` | TEXT[] | System/AI warnings |
+| `assumptions` | TEXT[] | Stated assumptions |
+| `decision_confidence` | NUMERIC(3,2) | 0.00–1.00 |
+| `created_by` | UUID | FK → auth.users |
+| `created_at` | TIMESTAMPTZ | DEFAULT now() |
+
+**Migration**: [20260321_domain_model_tables.sql](../supabase/migrations/20260321_domain_model_tables.sql)
+
+---
+
+### estimation_snapshots
+
+Immutable snapshot of the full input and output for an estimation, enabling reproducibility and auditing.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `estimation_id` | UUID | FK → estimations (CASCADE) |
+| `snapshot_data` | JSONB | Full EstimationSnapshotData (activities, drivers, risks, totals, metadata) |
+| `engine_version` | TEXT | Version of the estimation engine used |
+| `created_by` | UUID | FK → auth.users |
+| `created_at` | TIMESTAMPTZ | DEFAULT now() |
+
+**Migration**: [20260321_domain_model_tables.sql](../supabase/migrations/20260321_domain_model_tables.sql)
+
+---
+
+### estimations (extended columns)
+
+Two new nullable FK columns added for domain-model traceability:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `analysis_id` | UUID | FK → requirement_analyses (SET NULL). Links estimation to its analysis. |
+| `decision_id` | UUID | FK → estimation_decisions (SET NULL). Links estimation to its decision. |
+
+**Traceability chain**: estimation → decision → candidate_set → analysis (→ impact_map)
+
+**Migration**: [20260321_domain_model_tables.sql](../supabase/migrations/20260321_domain_model_tables.sql), [20260321_domain_model_rpc.sql](../supabase/migrations/20260321_domain_model_rpc.sql)
+
+---
+
 ## Maintenance Notes
 
 - **Schema changes**: Run migration SQL in Supabase SQL Editor.
@@ -629,6 +737,7 @@ Stores structured AI-generated Estimation Blueprint artifacts for requirements. 
 - **Impact Map (2026-03-08)**: `impact_map` table added for Milestone 2. Stores structured AI architectural impact analysis artifacts with version history. JSONB `impact_map` column holds the full `ImpactMap` interface (summary, impacts[], overallConfidence). Boolean `has_requirement_understanding` tracks whether the understanding was available as input. Migration: `20260308_impact_map.sql`.
 - **Estimation Blueprint (2026-03-11)**: `estimation_blueprint` table added for Milestone 3. Stores structured AI estimation blueprint artifacts with technical component decomposition, integrations, data entities, testing scope, and confidence scoring. FKs to `requirement_understanding` and `impact_map` for provenance. Also adds `blueprint_id UUID` FK to `estimations` table for audit traceability. Migration: `20260311_estimation_blueprint.sql`.
 - **Persistence Convergence (2026-03-21)**: All estimation save paths now converge on `saveEstimationByIds()` → `save_estimation_atomic` RPC. Added `p_blueprint_id UUID DEFAULT NULL` parameter to the RPC. Dropped all 4 historical overloads (11-param NUMERIC/TEXT, 12-param DECIMAL/VARCHAR, 13-param +JSONB, 14-param +UUID) and created definitive 14-param version. Migration: `20260321_add_blueprint_id_to_rpc.sql`.
+- **Domain Model (2026-03-21)**: Five new tables introduced for structured estimation traceability: `requirement_analyses`, `impact_maps` (domain-level, separate from legacy `impact_map`), `candidate_sets`, `estimation_decisions`, `estimation_snapshots`. Two new nullable FK columns added to `estimations`: `analysis_id`, `decision_id`. RPC `save_estimation_atomic` extended with `p_analysis_id UUID` and `p_decision_id UUID`. Migrations: `20260321_domain_model_tables.sql`, `20260321_domain_model_rpc.sql`. Types: `src/types/domain-model.ts`. Domain services: `netlify/functions/lib/domain/estimation/`.
 
 ---
 

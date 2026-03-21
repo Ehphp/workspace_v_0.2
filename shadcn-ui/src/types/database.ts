@@ -151,6 +151,8 @@ export interface Estimation {
   ai_reasoning?: string | null;
   senior_consultant_analysis?: Record<string, unknown> | null;
   blueprint_id?: string | null;
+  analysis_id?: string | null;
+  decision_id?: string | null;
   created_at: string;
   // Consuntivo (actual) fields — Sprint 2
   actual_hours: number | null;

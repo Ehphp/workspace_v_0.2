@@ -387,6 +387,46 @@ The export system (PDF/Excel/CSV) now includes a **Consuntivo** section when `ac
 
 ---
 
+## Domain Model Layer (2026-03-21)
+
+The estimation system now has a **domain-driven architecture** layer alongside the existing UI-driven flow. This provides traceability without breaking backward compatibility.
+
+### Traceability Chain
+
+```
+RequirementAnalysis → ImpactMap → CandidateSet → EstimationDecision → Estimation → EstimationSnapshot
+```
+
+Every estimation can optionally be traced back through this chain.
+
+### Domain Engine
+
+A pure-function estimation engine lives at `netlify/functions/lib/domain/estimation/estimation-engine.ts`. It mirrors the SDK calculation logic (`computeEstimation()`) for use in backend domain services.
+
+### Domain Services
+
+Located in `netlify/functions/lib/domain/estimation/`:
+
+| Service | Purpose |
+|---------|---------|
+| `analysis.service.ts` | Create/retrieve RequirementAnalysis records |
+| `impact-map.service.ts` | Create/retrieve domain-level ImpactMaps |
+| `candidate-set.service.ts` | Build and persist CandidateSet with source/score metadata |
+| `decision.service.ts` | Persist EstimationDecisions (selected/excluded activities, drivers, risks) |
+| `estimation-engine.ts` | Pure `computeEstimation()` function (same formula as SDK) |
+| `snapshot.service.ts` | Create immutable snapshots for reproducibility |
+| `save-orchestrator.ts` | Orchestrates the full domain chain during save |
+
+### Save Flow Integration
+
+The existing `save_estimation_atomic` RPC now accepts optional `p_analysis_id` and `p_decision_id` parameters. The `SaveEstimationInput` and `SaveEstimationByIdsInput` types carry `analysisId` and `decisionId`. The domain layer is **additive** — legacy saves without domain IDs continue to work.
+
+### Types
+
+All domain entities are defined in `src/types/domain-model.ts`. The `Estimation` row type in `src/types/database.ts` now includes optional `analysis_id` and `decision_id` fields.
+
+---
+
 ## AI Pipeline Performance Optimizations (Quick Wins v2)
 
 The following optimizations reduce end-to-end latency for the AI estimation pipeline
