@@ -8,7 +8,6 @@ AI in Syntero provides **suggestions and interview-driven activity selection**. 
 
 | File | Purpose | Status |
 |------|---------|--------|
-| [ai-system-overview.md](ai-system-overview.md) | Technical implementation details | Reference |
 | [ai-input-validation.md](ai-input-validation.md) | 4-level validation pipeline | Reference |
 | [ai-variance-testing.md](ai-variance-testing.md) | Testing AI response consistency | Reference |
 | [KEY_POLICY.md](KEY_POLICY.md) | API key security policy | Active |

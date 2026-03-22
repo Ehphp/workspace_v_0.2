@@ -47,7 +47,7 @@
   - File: `src/lib/openai.ts`, `netlify/functions/ai-suggest.ts`, `src/types/ai-validation.ts`.
 
 - Wizard & UI: componenti per wizard 5-step e Quick Estimate, import CSV/Excel, dettaglio requisito e storico.
-  - File: `src/components/wizard/*`, `src/components/estimation/QuickEstimate.tsx`, `src/pages/RequirementDetail.tsx`.
+  - File: `src/components/requirements/wizard/*`, `src/components/estimation/QuickEstimate.tsx`, `src/pages/RequirementDetail.tsx`.
 
 - Calculation Engine: motore deterministico per calcolo giorni e percentuali di contingency.
   - File: `src/lib/estimationEngine.ts`.
@@ -158,7 +158,7 @@
 - Schema DB: `supabase_schema.sql` (cartella radice `workspace/shadcn-ui`)
 - AI function: `netlify/functions/ai-suggest.ts`
 - Calcolo: `src/lib/estimationEngine.ts`
-- Wizard: `src/components/wizard/*`
+- Wizard: `src/components/requirements/wizard/*`
 - Quick Estimate: `src/components/estimation/QuickEstimate.tsx`
 - Import/Parser: `src/lib/excelParser.ts`, `src/components/requirements/ImportRequirementsDialog.tsx`
 - Save Estimation RPC: `supabase_save_estimation_rpc.sql`

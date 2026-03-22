@@ -1,5 +1,7 @@
 # AI Integration
 
+> **Last Updated**: 2026-03-22
+
 ## Scope
 
 AI in Syntero provides **suggestions** and **interview-driven activity selection**. All AI outputs require user confirmation. The calculation engine remains deterministic.
@@ -1119,6 +1121,15 @@ Quick Estimate V2 runs the **same AI artifact chain** as the Wizard but with no 
 | Confidence | Not available | 0–1 score with escalation policy |
 | Provenance | None | Blueprint coverage + pipeline trace |
 | Finalizer | `quickFinalizeEstimation` | `interviewFinalizeEstimation` |
+
+---
+
+## Vector Search & RAG (Continued)
+
+### Phase 3: Semantic Deduplication
+
+1. Before creating a new custom activity, system searches for similar existing activities
+2. Uses pgvector cosine similarity on activity embeddings
 3. If match found, user sees suggestion to reuse existing activity
 4. Prevents "catalog bloat" from near-duplicate activities
 
@@ -1264,9 +1275,11 @@ Structured logs are also emitted as JSON on each call:
 
 ---
 
-## Phase 3: Agentic Evolution
+## Phase 3: Agentic Evolution (Planned — Not Yet Implemented)
 
 ### Overview
+
+> **Status**: This section describes a planned evolution. The agentic pipeline is not yet in production.
 
 Phase 3 transforms the estimation pipeline from a linear "Prompt → JSON" flow into an agentic system with self-reflection and active tool use.
 

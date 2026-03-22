@@ -217,8 +217,8 @@ export function validateAISuggestion(
 | `src/lib/openai.ts` | `generateTitleFromDescription()` | ✅ Client + Server | ✅ Schema |
 | `src/components/requirements/BulkEstimateDialog.tsx` | Direct fetch | ✅ Client + Server | ✅ 4 livelli |
 | `src/pages/RequirementDetail.tsx` | Usa `suggestActivities()` | ✅ Ereditato | ✅ Ereditato |
-| `src/components/wizard/WizardStep3.tsx` | Usa `suggestActivities()` | ✅ Ereditato | ✅ Ereditato |
-| `src/components/wizard/WizardStep5.tsx` | Usa `generateTitleFromDescription()` | ✅ Ereditato | ✅ Ereditato |
+| `src/components/requirements/wizard/WizardStep4.tsx` | Usa `suggestActivities()` | ✅ Ereditato | ✅ Ereditato |
+| `src/components/requirements/wizard/WizardStep5.tsx` | Usa `generateTitleFromDescription()` | ✅ Ereditato | ✅ Ereditato |
 
 **Status**: ✅ **Tutti uniformati e validati** (2025-11-21)
 

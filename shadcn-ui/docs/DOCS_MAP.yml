@@ -1,5 +1,13 @@
-version: 1
+version: 2
 canonical_docs_root: "shadcn-ui/docs"
+last_updated: "2026-03-22"
+
+# Document categories:
+#   reference: docs/*.md, docs/ai/, docs/api/, docs/architecture/, docs/data/,
+#              docs/setup/, docs/deployment/, docs/testing/, docs/components/
+#   plans:     docs/plans/   (implementation plans — may be stale)
+#   reports:   docs/reports/ (point-in-time audits)
+#   archive:   docs/archive/ (historical — do not edit)
 
 rules:
   - when_changed:
@@ -10,11 +18,13 @@ rules:
       - "shadcn-ui/docs/api/ai-endpoints.md"
 
   - when_changed:
+      - "shadcn-ui/src/components/requirements/wizard/**"
       - "shadcn-ui/src/components/estimation/**"
       - "shadcn-ui/src/components/configuration/presets/**"
       - "shadcn-ui/src/lib/**interview**"
       - "shadcn-ui/src/lib/**ai**"
       - "shadcn-ui/src/hooks/**interview**"
+      - "shadcn-ui/src/hooks/**estimation**"
     docs_should_update:
       - "shadcn-ui/docs/ai-integration.md"
       - "shadcn-ui/docs/architecture.md"
@@ -32,3 +42,9 @@ rules:
     docs_should_update:
       - "shadcn-ui/docs/data-model.md"
       - "shadcn-ui/docs/data/integrity-playbook.md"
+
+  - when_changed:
+      - "shadcn-ui/netlify/functions/lib/domain/**"
+    docs_should_update:
+      - "shadcn-ui/docs/architecture.md"
+      - "shadcn-ui/docs/data-model.md"

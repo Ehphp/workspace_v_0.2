@@ -1,208 +1,253 @@
 # Technology Presets
 
+> **Last Updated**: 2026-03-22
+
 ## Purpose
 
-Technology presets are pre-configured templates that accelerate estimation by:
-- Filtering activities to a specific technology stack
-- Setting default driver values
-- Pre-selecting common risks
+Technologies are configuration entities that control which activities are available during estimation. Each technology represents a distinct stack (Power Platform, Backend, Frontend) and determines the candidate activity pool via FK relationship.
+
+> **Historical note**: Before migration `20260228`, these were called `technology_presets` and carried `default_activity_codes`, `default_driver_values`, and `default_risks` columns. Those template fields have been removed — AI now generates activity selections dynamically rather than relying on preset defaults.
 
 ---
 
-## Preset Structure
+## Schema
 
-| Field | Description |
-|-------|-------------|
-| `code` | Unique identifier (e.g., `POWER_PLATFORM`) |
-| `name` | Display name (e.g., "Power Platform") |
-| `description` | Technology stack description |
-| `tech_category` | Category for activity filtering |
-| `default_activity_codes` | Activities to pre-select |
-| `default_driver_values` | Default driver settings |
-| `default_risks` | Risks to pre-select |
-
----
-
-## System Presets
-
-Defined in [supabase_seed.sql](../supabase_seed.sql):
-
-| Preset | tech_category | Description |
-|--------|---------------|-------------|
-| Power Platform | `POWER_PLATFORM` | Microsoft Power Apps, Power Automate, Dataverse |
-| Backend API | `BACKEND` | REST APIs, database, backend services |
-| Frontend React | `FRONTEND` | React web applications |
-| Multi-stack | `MULTI` | Full-stack projects spanning multiple technologies |
-
----
-
-## How Presets Affect Estimation
-
-### 1. Activity Filtering
-
-When a preset is selected, only the preset's specific activities are shown:
-
-```typescript
-// Primary filter: use preset's default_activity_codes
-const relevantActivities = preset.default_activity_codes?.length > 0
-  ? activities.filter(a => preset.default_activity_codes.includes(a.code))
-  // Fallback: filter by tech_category (legacy behavior)
-  : activities.filter(
-      a => a.tech_category === preset.tech_category || a.tech_category === 'MULTI'
-    );
-```
-
-**Key behaviors:**
-- If preset has specific `default_activity_codes` (via pivot table), only those activities are available
-- Fallback to `tech_category` matching only if no specific activities are defined
-- Activities are shown but **not pre-selected**—user must select manually or use AI suggestion
-
-### 2. AI Suggestions
-
-AI receives only filtered activities, ensuring suggestions are relevant to the technology stack.
-
-### 3. Default Selections
-
-When the user starts a new estimation:
-- `default_activity_codes` are pre-checked
-- `default_driver_values` populate driver dropdowns
-- `default_risks` are pre-selected
-
-The user can modify all of these before saving.
-
----
-
-## Custom Presets
-
-Authenticated users can create custom presets:
-
-### Creating a Custom Preset
-
-1. Navigate to `/presets` or `/configuration/presets`
-2. Click "Create New Preset"
-3. Configure:
-   - Name and description
-   - Technology category
-   - Default activities (select from catalog)
-   - Default driver values
-   - Default risks
-
-### Preset Ownership
-
-| Preset Type | `created_by` | Visibility | Editable |
-|-------------|--------------|------------|----------|
-| System | `NULL` | All users | No |
-| Custom | User UUID | Creator only | Yes |
-
-### RLS Policy
+### `technologies` table
 
 ```sql
-CREATE POLICY "Users can view system and own presets" ON technology_presets
-    FOR SELECT USING (created_by IS NULL OR created_by = auth.uid());
-
-CREATE POLICY "Users can update own presets" ON technology_presets
-    FOR UPDATE USING (created_by = auth.uid());
-```
-
----
-
-## Preset-Activity Relationship
-
-The `technology_preset_activities` table links presets to activities with ordering:
-
-| Column | Description |
-|--------|-------------|
-| `tech_preset_id` | FK to technology_presets |
-| `activity_id` | FK to activities |
-| `position` | Display order (lower = higher priority) |
-
-This allows custom presets to define which activities appear first in the UI.
-
----
-
-## Database Schema
-
-```sql
-CREATE TABLE technology_presets (
+CREATE TABLE technologies (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     code VARCHAR(50) NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     tech_category VARCHAR(50) NOT NULL,
-    default_driver_values JSONB,
-    default_risks JSONB,
-    default_activity_codes JSONB,
-    is_custom BOOLEAN DEFAULT false,
-    created_by UUID REFERENCES auth.users(id),
+    color VARCHAR(20),
+    icon VARCHAR(50),
+    sort_order INTEGER DEFAULT 0,
+    is_custom BOOLEAN DEFAULT FALSE,
+    created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(code, created_by)
 );
 ```
 
----
+### `technology_activities` junction table
 
-## Example Preset Data
+Links technologies to their candidate activities with optional overrides:
 
-```json
-{
-  "code": "BACKEND_API",
-  "name": "Backend API",
-  "description": "REST APIs, database, backend services",
-  "tech_category": "BACKEND",
-  "default_activity_codes": [
-    "BE_API_DESIGN",
-    "BE_DB_SCHEMA",
-    "BE_IMPL",
-    "BE_UNIT_TEST"
-  ],
-  "default_driver_values": {
-    "COMPLEXITY": "MEDIUM",
-    "INTEGRATION": "LOW"
-  },
-  "default_risks": [
-    "VAGUE_REQUIREMENTS"
-  ]
+```sql
+CREATE TABLE technology_activities (
+    technology_id UUID NOT NULL REFERENCES technologies(id) ON DELETE CASCADE,
+    activity_id UUID NOT NULL REFERENCES activities(id),
+    position INTEGER,
+    name_override VARCHAR(255),
+    description_override TEXT,
+    base_hours_override DECIMAL(5,2),
+    UNIQUE (technology_id, activity_id)
+);
+```
+
+| Column | Purpose |
+|--------|---------|
+| `position` | Display order (lower = higher priority) |
+| `name_override` | Custom name for this activity within this technology |
+| `description_override` | Custom description for this activity within this technology |
+| `base_hours_override` | Override base hours for this technology context |
+
+### `activities.technology_id` FK
+
+Activities have a canonical FK to `technologies.id`:
+
+```typescript
+export interface Activity {
+  technology_id: string | null;  // Canonical FK — preferred
+  tech_category: string;         // @deprecated — legacy fallback only
+  // ...
 }
 ```
 
 ---
 
-## Maintenance
+## System Technologies
 
-### Adding a New System Preset
+Four system technologies are defined (migration `20260228` + `20260301`):
 
-1. Add to [supabase_seed.sql](../supabase_seed.sql)
-2. Run SQL in production
-3. No code changes needed
+| Code | Name | Description | `tech_category` |
+|------|------|-------------|-----------------|
+| `POWER_PLATFORM` | Power Platform | Microsoft Power Platform: Power Apps, Power Automate, Dataverse | `POWER_PLATFORM` |
+| `BACKEND` | Backend | Backend API development: REST/GraphQL endpoints, database, business logic | `BACKEND` |
+| `FRONTEND` | Frontend | Frontend development: React/Angular/Vue components, SPA, responsive UI | `FRONTEND` |
+| `MULTI` | Multi-stack | Cross-cutting or full-stack activities | `MULTI` |
 
-### Adding Activities to a Preset
-
-1. Insert into `technology_preset_activities`:
-   ```sql
-   INSERT INTO technology_preset_activities 
-     (tech_preset_id, activity_id, position)
-   VALUES 
-     ('<preset-uuid>', '<activity-uuid>', 1);
-   ```
-
-### Deprecating a Preset
-
-Set `active = false` (if column exists) or remove from seed. Existing estimations using the preset remain valid.
+System technologies have `is_custom = false` and `created_by = NULL`.
 
 ---
 
-## Tech Categories
+## How Technologies Affect Estimation
 
-| Category | Description | Used By |
-|----------|-------------|---------|
-| `POWER_PLATFORM` | Microsoft Power Platform | Power Platform preset |
-| `BACKEND` | Server-side development | Backend API preset |
-| `FRONTEND` | Client-side development | Frontend React preset |
-| `MULTI` | Cross-cutting concerns | Multi-stack preset, shared activities |
+### 1. Activity Filtering (Canonical FK Path)
+
+When a technology is selected in the wizard, the server filters activities by `technology_id` FK:
+
+```typescript
+// netlify/functions/lib/activities.ts — fetchActivitiesByTechnologyId
+const { data } = await supabase
+    .from('activities')
+    .select('code, name, description, base_hours, group, tech_category, technology_id')
+    .eq('active', true)
+    .or(`technology_id.eq.${technologyId},technology_id.eq.${multiTechId}`);
+```
+
+**Key behaviors:**
+- Activities matching the selected technology's `id` are included
+- Activities with `technology_id = MULTI` are always included (cross-cutting)
+- No activities are pre-selected — user chooses manually or via AI suggestion
+- Emergency rollback: set `FORCE_LEGACY_ACTIVITY_FETCH=true` to revert to `tech_category` string matching
+
+### 2. AI Suggestions
+
+AI receives only the filtered activity pool, ensuring suggestions are relevant to the selected technology stack.
+
+### 3. Wizard Flow
+
+In `WizardStep2.tsx`, the user selects a technology. The selection stores:
+
+```typescript
+onUpdate({
+  techPresetId: technology.id,        // UUID — used for FK filtering
+  techCategory: technology.code,      // String code — used for display
+});
+```
+
+This `techPresetId` flows forward to all subsequent steps and AI endpoints.
 
 ---
 
-**Update this document when**:
-- Adding new system presets
-- Changing preset structure
-- Modifying how presets affect estimation flow
+## Custom Technologies
+
+### Manual Creation
+
+Authenticated users create custom technologies via `/configuration/presets`:
+
+1. Open Configuration → Technologies
+2. Click "Create New"
+3. Configure name, description, technology category
+4. Select activities from the catalog (via `technology_activities` junction)
+5. Save — stored with `is_custom = true`, `created_by = auth.uid()`
+
+**Components**: `ConfigurationPresets.tsx` → `TechnologyDialog.tsx` → `usePresetManagement.ts`
+
+### AI-Assisted Creation (Two-Stage Wizard)
+
+Users can generate custom technologies via an AI wizard:
+
+| Stage | Endpoint | Purpose |
+|-------|----------|---------|
+| 1 | `POST /ai-generate-questions` | AI generates context-aware questions from a technology description |
+| 2 | `POST /ai-generate-preset` | AI generates a complete technology (activities, drivers, risks) from description + answers |
+
+**Key characteristics:**
+- AI can select activities from the existing catalog OR create new ones (`isNew: true` flag)
+- Generated activities include custom titles and descriptions
+- User reviews and confirms before saving
+- Pipeline includes validation pass and retry-with-feedback for quality
+
+**Components**: `TechnologyDialog.tsx` → `AiAssistPanel.tsx` → `ai-preset-api.ts`
+
+### Ownership
+
+| Technology Type | `created_by` | Visibility | Editable |
+|-----------------|--------------|------------|----------|
+| System | `NULL` | All authenticated users | No |
+| Custom | User UUID | Creator only | Yes (update + delete) |
+
+---
+
+## RLS Policies
+
+```sql
+-- READ: All authenticated users can view all technologies
+CREATE POLICY "Anyone can view technologies" ON technologies
+    FOR SELECT USING (auth.uid() IS NOT NULL);
+
+-- INSERT: Only custom technologies
+CREATE POLICY "Users can insert custom technologies" ON technologies
+    FOR INSERT WITH CHECK (
+        auth.uid() IS NOT NULL AND is_custom = TRUE AND created_by = auth.uid()
+    );
+
+-- UPDATE: Only own custom technologies
+CREATE POLICY "Users can update their own custom technologies" ON technologies
+    FOR UPDATE USING (
+        auth.uid() IS NOT NULL AND is_custom = TRUE AND created_by = auth.uid()
+    );
+
+-- DELETE: Only own custom technologies
+CREATE POLICY "Users can delete their own custom technologies" ON technologies
+    FOR DELETE USING (
+        auth.uid() IS NOT NULL AND is_custom = TRUE AND created_by = auth.uid()
+    );
+
+-- Junction table: view all, manage only for own custom technologies
+CREATE POLICY "Anyone can view technology activities" ON technology_activities
+    FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Users can manage activities for custom technologies" ON technology_activities
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM technologies
+            WHERE technologies.id = technology_activities.technology_id
+            AND technologies.is_custom = TRUE
+            AND technologies.created_by = auth.uid()
+        )
+    );
+```
+
+---
+
+## TypeScript Interface
+
+```typescript
+// src/types/database.ts
+export interface Technology {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  tech_category: string;
+  color: string | null;
+  icon: string | null;
+  sort_order: number;
+  created_at: string;
+  is_custom?: boolean;
+  created_by?: string | null;
+}
+
+export interface TechnologyActivity {
+  technology_id: string;
+  activity_id: string;
+  position: number | null;
+  name_override: string | null;
+  description_override: string | null;
+  base_hours_override: number | null;
+}
+```
+
+> **Deprecated alias**: `TechnologyPreset` still exists as `Technology & { default_driver_values, default_risks, default_activity_codes }` for backward compatibility but should not be used in new code.
+
+---
+
+## File References
+
+| File | Purpose |
+|------|---------|
+| `src/types/database.ts` | `Technology` and `TechnologyActivity` interfaces |
+| `src/components/requirements/wizard/WizardStep2.tsx` | Technology selection in wizard |
+| `src/pages/configuration/ConfigurationPresets.tsx` | Technology management page |
+| `src/components/configuration/presets/TechnologyDialog.tsx` | Create/edit technology dialog |
+| `src/hooks/usePresetManagement.ts` | Technology CRUD hooks |
+| `netlify/functions/lib/activities.ts` | Server-side activity filtering by `technology_id` FK |
+| `netlify/functions/ai-generate-questions.ts` | Stage 1: AI interview for preset creation |
+| `netlify/functions/ai-generate-preset.ts` | Stage 2: AI preset generation |
+| `supabase/migrations/20260228_simplify_presets_to_technologies.sql` | Schema migration from presets to technologies |
+| `supabase/migrations/20260301_canonical_technology_model.sql` | `technology_id` FK on activities |
