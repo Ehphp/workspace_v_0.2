@@ -2,7 +2,7 @@ import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Wand2,
   Database,
@@ -10,8 +10,6 @@ import {
   Shield,
   Lock,
   CheckCircle2,
-  Code2,
-  Building2,
   ArrowRight,
   Sparkles,
   Brain,
@@ -21,7 +19,6 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useRef } from 'react';
 import { RingParticlesBackground } from '@/components/RingParticlesBackground';
 
 const steps = [
@@ -32,7 +29,6 @@ const steps = [
     example: '"Integrazione CRM con notifiche push"',
     time: '10 sec',
     gradient: 'from-blue-500 to-cyan-500',
-    bgGradient: 'from-blue-50 to-cyan-50',
     iconBg: 'bg-gradient-to-br from-blue-500 to-cyan-500',
   },
   {
@@ -42,7 +38,6 @@ const steps = [
     example: 'Power Platform • .NET • React • Multi-stack',
     time: '5 sec',
     gradient: 'from-indigo-500 to-purple-500',
-    bgGradient: 'from-indigo-50 to-purple-50',
     iconBg: 'bg-gradient-to-br from-indigo-500 to-purple-500',
   },
   {
@@ -52,7 +47,6 @@ const steps = [
     example: 'Obiettivo • Perimetro • Attori • Complessità',
     time: '~15 sec',
     gradient: 'from-cyan-500 to-blue-500',
-    bgGradient: 'from-cyan-50 to-blue-50',
     iconBg: 'bg-gradient-to-br from-cyan-500 to-blue-500',
   },
   {
@@ -62,7 +56,6 @@ const steps = [
     example: 'Frontend • Logic • Data • Integration',
     time: '~15 sec',
     gradient: 'from-violet-500 to-indigo-500',
-    bgGradient: 'from-violet-50 to-indigo-50',
     iconBg: 'bg-gradient-to-br from-violet-500 to-indigo-500',
   },
   {
@@ -72,7 +65,6 @@ const steps = [
     example: 'Componenti • API • Entità • Test',
     time: '~15 sec',
     gradient: 'from-purple-500 to-pink-500',
-    bgGradient: 'from-purple-50 to-pink-50',
     iconBg: 'bg-gradient-to-br from-purple-500 to-pink-500',
   },
   {
@@ -82,7 +74,6 @@ const steps = [
     example: 'Planner AI: SKIP o ASK?',
     time: '0-30 sec',
     gradient: 'from-pink-500 to-rose-500',
-    bgGradient: 'from-pink-50 to-rose-50',
     iconBg: 'bg-gradient-to-br from-pink-500 to-rose-500',
   },
   {
@@ -92,7 +83,6 @@ const steps = [
     example: 'Attività • Moltiplicatori • Buffer rischio',
     time: '~30 sec',
     gradient: 'from-amber-500 to-orange-500',
-    bgGradient: 'from-amber-50 to-orange-50',
     iconBg: 'bg-gradient-to-br from-amber-500 to-orange-500',
   },
   {
@@ -102,44 +92,21 @@ const steps = [
     example: 'Ore totali • Breakdown • Salvataggio',
     time: '~30 sec',
     gradient: 'from-emerald-500 to-teal-500',
-    bgGradient: 'from-emerald-50 to-teal-50',
     iconBg: 'bg-gradient-to-br from-emerald-500 to-teal-500',
   },
 ];
 
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.2
-    }
-  }
-};
-
-const item = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0 }
-};
-
 export default function HowItWorks() {
   const { user } = useAuth();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
-
-  const lineHeight = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 relative overflow-hidden">
       {/* Ring Particles Animated Background */}
       <RingParticlesBackground
         usePaintWorklet={false}
         enableMouseInteraction={true}
         config={{
-          shape: 'ring',
+          shape: 'disk',
           particleCount: 800,
           radius: 38,
           thickness: 18,
@@ -147,8 +114,8 @@ export default function HowItWorks() {
           alphaRange: [0.5, 1.0],
           color: { h: 120, s: 80 },
           drift: 0.1,
-          angularSpeed: 0.03,
-          noiseFrequency: 0.9,
+          angularSpeed: 0.13,
+          noiseFrequency: 1.9,
           noiseAmplitude: 6,
           seed: 42069,
           blendMode: 'normal' as GlobalCompositeOperation,
@@ -164,7 +131,7 @@ export default function HowItWorks() {
       />
 
       {/* Background Pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none z-[2]" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
       {/* Animated Background Blobs */}
       <motion.div
@@ -174,7 +141,7 @@ export default function HowItWorks() {
           scale: [1, 1.1, 1],
         }}
         transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-        className="absolute top-0 -left-20 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none z-[2]"
+        className="absolute top-0 -left-20 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
       />
       <motion.div
         animate={{
@@ -183,7 +150,7 @@ export default function HowItWorks() {
           scale: [1, 1.2, 1],
         }}
         transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-        className="absolute top-1/3 -right-20 w-[30rem] h-[30rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none z-[2]"
+        className="absolute top-1/3 -right-20 w-[30rem] h-[30rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
       />
       <motion.div
         animate={{
@@ -192,7 +159,7 @@ export default function HowItWorks() {
           scale: [1, 1.1, 1],
         }}
         transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
-        className="absolute bottom-0 left-1/3 w-[25rem] h-[25rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none z-[2]"
+        className="absolute bottom-0 left-1/3 w-[25rem] h-[25rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
       />
 
       <Header />
@@ -205,60 +172,64 @@ export default function HowItWorks() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <Badge variant="secondary" className="mb-6 px-5 py-2 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-0 shadow-lg shadow-blue-500/25">
-                <Sparkles className="w-4 h-4 mr-2 inline animate-pulse" />
-                Powered by GPT-4o
-              </Badge>
-              <h1 className="text-4xl md:text-7xl font-bold tracking-tight text-slate-900 mb-6 drop-shadow-sm">
-                Stop alle Stime "a Occhio" <br className="hidden md:block" />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 animate-gradient-x">
-                  Inizia a Guadagnare
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100/80 border border-blue-200/50 backdrop-blur-sm mb-6">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                </span>
+                <span className="text-xs font-medium text-blue-900">AI Estimation Pipeline</span>
+              </div>
+              <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-slate-900 mb-6">
+                Come funziona Syntero
+                <span className="block bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-500 bg-clip-text text-transparent">
+                  Dal requisito alla stima verificabile
                 </span>
               </h1>
-              <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed font-medium mb-6">
-                L'AI ti fa le domande giuste. Tu rispondi con un click. In 3 minuti hai una stima professionale che protegge i tuoi margini.
+              <p className="text-base md:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed mb-6">
+                Una pipeline AI strutturata produce artefatti intermedi — understanding, impact map, blueprint — che guidano un motore deterministico fino alla stima finale rivedibile.
               </p>
 
               {/* Stats Row */}
               <div className="flex flex-wrap justify-center gap-6 md:gap-10 mb-10">
-                <div className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">3 min</div>
-                  <div className="text-sm text-slate-500 font-medium">Per stima completa</div>
+                <div className="group bg-white/60 backdrop-blur-sm rounded-lg p-3 border border-slate-200/50 hover:border-blue-300/50 transition-all duration-300 text-center">
+                  <div className="text-2xl font-bold bg-gradient-to-br from-blue-600 to-indigo-600 bg-clip-text text-transparent">AI</div>
+                  <div className="text-xs font-semibold text-slate-900">Artifacts</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Understanding, impact map, blueprint</div>
                 </div>
-                <div className="w-px h-12 bg-slate-200 hidden md:block" />
-                <div className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">0%</div>
-                  <div className="text-sm text-slate-500 font-medium">Varianza tra stime</div>
+                <div className="group bg-white/60 backdrop-blur-sm rounded-lg p-3 border border-slate-200/50 hover:border-indigo-300/50 transition-all duration-300 text-center">
+                  <div className="text-2xl font-bold bg-gradient-to-br from-indigo-600 to-purple-600 bg-clip-text text-transparent">Σ</div>
+                  <div className="text-xs font-semibold text-slate-900">Deterministic</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Calcolo replicabile e verificabile</div>
                 </div>
-                <div className="w-px h-12 bg-slate-200 hidden md:block" />
-                <div className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">100%</div>
-                  <div className="text-sm text-slate-500 font-medium">Basato sul TUO catalogo</div>
+                <div className="group bg-white/60 backdrop-blur-sm rounded-lg p-3 border border-slate-200/50 hover:border-purple-300/50 transition-all duration-300 text-center">
+                  <div className="text-2xl font-bold bg-gradient-to-br from-purple-600 to-pink-600 bg-clip-text text-transparent">✓</div>
+                  <div className="text-xs font-semibold text-slate-900">Reviewable</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Storico, confronto e consuntivo</div>
                 </div>
               </div>
 
-              <TabsList className={`grid w-full max-w-md mx-auto ${user ? 'grid-cols-2' : 'grid-cols-1'} bg-white/50 backdrop-blur-sm border border-slate-200/60 p-1 rounded-full`}>
-                <TabsTrigger value="overview" className="rounded-full data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-sm">
-                  Panoramica
-                </TabsTrigger>
-                {user && (
+              {user && (
+                <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 bg-white/50 backdrop-blur-sm border border-slate-200/60 p-1 rounded-full">
+                  <TabsTrigger value="overview" className="rounded-full data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-sm">
+                    Panoramica
+                  </TabsTrigger>
                   <TabsTrigger value="workflow" className="rounded-full data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-sm">
                     Workflow Stati
                   </TabsTrigger>
-                )}
-              </TabsList>
+                </TabsList>
+              )}
             </motion.div>
           </div>
 
           <TabsContent value="overview" className="mt-0">
             {/* Modern Horizontal Flow */}
-            <div ref={containerRef} className="relative mb-24 pt-8">
+            <div className="relative mb-16 pt-8">
               {/* Desktop: Horizontal cards */}
               <div className="hidden lg:block">
                 {/* Connection Line */}
                 <div className="absolute top-[4.5rem] left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-500 rounded-full opacity-20" />
 
-                <div className="grid grid-cols-4 gap-3 lg:grid-cols-8">
+                <div className="grid grid-cols-4 gap-3">
                   {steps.map((step, index) => (
                     <motion.div
                       key={index}
@@ -276,7 +247,7 @@ export default function HowItWorks() {
                       </div>
 
                       {/* Card */}
-                      <div className={`p-3 rounded-xl bg-gradient-to-br ${step.bgGradient} border border-white/60 shadow-sm hover:shadow-md transition-all duration-300 group h-full`}>
+                      <div className="p-3 rounded-xl bg-white/60 backdrop-blur-sm border border-slate-200/50 shadow-sm hover:shadow-md transition-all duration-300 group h-full">
                         {/* Time Badge */}
                         <div className="flex justify-between items-start mb-2">
                           <span className="text-[10px] font-bold text-slate-400">STEP {index + 1}</span>
@@ -306,7 +277,7 @@ export default function HowItWorks() {
                 >
                   <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-slate-900 text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all cursor-default">
                     <Sparkles className="w-5 h-5 text-yellow-400" />
-                    <span className="font-semibold">Tempo totale: ~3 minuti</span>
+                    <span className="font-semibold">~3 minuti per un requisito tipico</span>
                     <ArrowRight className="w-4 h-4" />
                   </div>
                 </motion.div>
@@ -321,7 +292,7 @@ export default function HowItWorks() {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.4, delay: index * 0.08 }}
-                    className={`p-5 rounded-2xl bg-gradient-to-br ${step.bgGradient} border border-white/60 shadow-sm`}
+                    className="p-5 rounded-xl bg-white/60 backdrop-blur-sm border border-slate-200/50 shadow-sm"
                   >
                     <div className="flex items-start gap-4">
                       <div className={`w-12 h-12 rounded-xl ${step.iconBg} flex items-center justify-center shadow-md flex-shrink-0`}>
@@ -345,196 +316,12 @@ export default function HowItWorks() {
                 <div className="flex justify-center pt-4">
                   <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-900 text-white shadow-lg text-sm">
                     <Sparkles className="w-4 h-4 text-yellow-400" />
-                    <span className="font-semibold">~3 minuti totali</span>
+                    <span className="font-semibold">~3 min per requisito tipico</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* AI-Powered Estimation Flow Section */}
-            <div className="mb-24">
-              <div className="text-center mb-12">
-                <Badge variant="secondary" className="mb-4 px-4 py-1.5 text-sm font-medium bg-gradient-to-r from-blue-100 to-indigo-100 border-blue-200 text-blue-700">
-                  <Sparkles className="w-3 h-3 mr-2 inline" />
-                  La Differenza
-                </Badge>
-                <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Perché Questa AI è Diversa</h2>
-                <p className="text-lg text-slate-600 max-w-3xl mx-auto">
-                  Non è ChatGPT che "inventa" numeri. È una pipeline strutturata: <strong>Understanding → Impact Map → Blueprint → Interview</strong>. Ogni artefatto AI guida il successivo. Le ore escono solo dal <strong>tuo catalogo</strong>.
-                </p>
-              </div>
-
-              {/* AI Flow Cards */}
-              <div className="space-y-8">
-                {/* Step 1: Technical Interview */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  className="relative p-8 rounded-3xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl"
-                >
-                  <div className="flex items-start gap-6">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">
-                      1
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-slate-900 mb-3">3 Artefatti AI Prima della Stima</h3>
-                      <p className="text-slate-600 mb-4 leading-relaxed">
-                        Prima di stimare, l'AI costruisce 3 artefatti strutturati che puoi revisionare e confermare. Ogni artefatto guida il successivo, eliminando ambiguità e imprecisioni.
-                      </p>
-                      <div className="grid md:grid-cols-3 gap-4 mt-6">
-                        <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
-                          <div className="text-sm font-semibold text-blue-700 mb-1">Understanding</div>
-                          <div className="text-xs text-blue-600">Obiettivo, perimetro, attori, complessità</div>
-                        </div>
-                        <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-100">
-                          <div className="text-sm font-semibold text-indigo-700 mb-1">Impact Map</div>
-                          <div className="text-xs text-indigo-600">Layer architetturali impattati</div>
-                        </div>
-                        <div className="p-4 rounded-xl bg-purple-50 border border-purple-100">
-                          <div className="text-sm font-semibold text-purple-700 mb-1">Blueprint Tecnico</div>
-                          <div className="text-xs text-purple-600">Componenti, integrazioni, testing</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Step 2: Activity Selection */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.1 }}
-                  className="relative p-8 rounded-3xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl"
-                >
-                  <div className="flex items-start gap-6">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">
-                      2
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-slate-900 mb-3">Planner Decisionale + TUO Catalogo</h3>
-                      <p className="text-slate-600 mb-4 leading-relaxed">
-                        Un planner AI valuta se la confidenza è sufficiente. Se sì, <strong>salta le domande</strong> (SKIP). Se serve chiarezza, fa <strong>1-3 domande mirate</strong> (ASK). Le attività escono sempre <strong>dal tuo catalogo configurato</strong>, mai inventate.
-                      </p>
-                      <div className="bg-slate-900 rounded-xl p-5 text-sm mt-4">
-                        <div className="text-slate-400 mb-3 text-xs uppercase tracking-wide">Esempio di output generato</div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <span className="text-slate-300">📋 Analisi requisiti</span>
-                            <span className="text-emerald-400 font-semibold">4h</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-slate-300">⚙️ Sviluppo backend API</span>
-                            <span className="text-emerald-400 font-semibold">16h</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-slate-300">🎨 Interfaccia utente</span>
-                            <span className="text-emerald-400 font-semibold">8h</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-slate-300">🧪 Testing e QA</span>
-                            <span className="text-emerald-400 font-semibold">4h</span>
-                          </div>
-                          <div className="border-t border-slate-700 pt-2 mt-3 flex justify-between items-center">
-                            <span className="text-white font-semibold">Totale stimato</span>
-                            <span className="text-yellow-400 font-bold text-lg">32h → 4 giorni</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Step 3: Deterministic Estimation */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.2 }}
-                  className="relative p-8 rounded-3xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl"
-                >
-                  <div className="flex items-start gap-6">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">
-                      3
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-slate-900 mb-3">Stesse Domande = Stessa Stima. Sempre.</h3>
-                      <p className="text-slate-600 mb-4 leading-relaxed">
-                        Non è magia, è ingegneria. <strong>Stesso requisito + stesse risposte = stessa stima</strong>. Oggi, domani, tra un anno. Puoi fidarti dei numeri che presenti al cliente.
-                      </p>
-                      <div className="grid md:grid-cols-2 gap-4 mt-6">
-                        <div className="p-5 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200">
-                          <div className="flex items-center gap-3 mb-3">
-                            <CheckCircle2 className="w-6 h-6 text-green-600" />
-                            <span className="font-bold text-green-800">Testato: 0% Varianza</span>
-                          </div>
-                          <p className="text-sm text-green-700">
-                            Abbiamo eseguito 5 stime identiche. Risultato: 5 output identici. Verificabile.
-                          </p>
-                        </div>
-                        <div className="p-5 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200">
-                          <div className="flex items-center gap-3 mb-3">
-                            <Shield className="w-6 h-6 text-blue-600" />
-                            <span className="font-bold text-blue-800">Niente Invenzioni</span>
-                          </div>
-                          <p className="text-sm text-blue-700">
-                            L'AI non può "inventare" attività. Può solo scegliere tra quelle nel tuo catalogo.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Why It Works */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.3 }}
-                  className="relative p-8 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-2xl"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-purple-900/20 rounded-3xl" />
-                  <div className="relative z-10">
-                    <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                      <Sparkles className="w-6 h-6 text-yellow-400" />
-                      La Tecnologia Dietro le Quinte
-                    </h3>
-                    <div className="grid md:grid-cols-3 gap-6">
-                      <div>
-                        <div className="text-lg font-semibold text-blue-300 mb-2">Pipeline Strutturata</div>
-                        <p className="text-slate-300 text-sm leading-relaxed">
-                          Understanding → Impact Map → Blueprint → Interview. Ogni artefatto alimenta il successivo.
-                        </p>
-                      </div>
-                      <div>
-                        <div className="text-lg font-semibold text-indigo-300 mb-2">Planner SKIP/ASK</div>
-                        <p className="text-slate-300 text-sm leading-relaxed">
-                          L'AI valuta confidenza e range: se ≥90% e range ≤16h, salta le domande. Altrimenti chiede solo ciò che serve.
-                        </p>
-                      </div>
-                      <div>
-                        <div className="text-lg font-semibold text-purple-300 mb-2">Codici Vincolati</div>
-                        <p className="text-slate-300 text-sm leading-relaxed">
-                          L'AI risponde SOLO con codici attività del tuo catalogo. Blueprint e Impact Map guidano il ranking.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-
-              {/* CTA */}
-              <div className="text-center mt-12">
-                <Link to={user ? "/dashboard" : "/register"}>
-                  <Button size="lg" className="h-14 px-8 text-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-xl shadow-blue-500/25">
-                    {user ? "Prova ora nella Dashboard" : "Inizia Gratuitamente"}
-                    <ArrowRight className="ml-2 w-5 h-5" />
-                  </Button>
-                </Link>
-              </div>
-            </div>
           </TabsContent>
 
           {user && (
@@ -544,10 +331,10 @@ export default function HowItWorks() {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="p-8 rounded-3xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl"
+                  className="p-8 rounded-2xl bg-white/60 backdrop-blur-sm border border-slate-200/50 shadow-lg"
                 >
                   <div className="flex items-center gap-4 mb-6">
-                    <div className="p-3 rounded-2xl bg-green-100 text-green-600">
+                    <div className="p-3 rounded-xl bg-green-100 text-green-600">
                       <Sparkles className="w-6 h-6" />
                     </div>
                     <h2 className="text-2xl font-bold text-slate-900">Spazio Personale</h2>
@@ -572,10 +359,10 @@ export default function HowItWorks() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="p-8 rounded-3xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl"
+                  className="p-8 rounded-2xl bg-white/60 backdrop-blur-sm border border-slate-200/50 shadow-lg"
                 >
                   <div className="flex items-center gap-4 mb-6">
-                    <div className="p-3 rounded-2xl bg-blue-100 text-blue-600">
+                    <div className="p-3 rounded-xl bg-blue-100 text-blue-600">
                       <Shield className="w-6 h-6" />
                     </div>
                     <h2 className="text-2xl font-bold text-slate-900">Organizzazione Team</h2>
@@ -599,7 +386,7 @@ export default function HowItWorks() {
               </div>
 
               {/* Transition Table */}
-              <div className="bg-white/60 backdrop-blur-md rounded-3xl border border-white/50 overflow-hidden shadow-lg">
+              <div className="bg-white/60 backdrop-blur-sm rounded-2xl border border-slate-200/50 overflow-hidden shadow-lg">
                 <div className="p-8 border-b border-slate-100">
                   <h3 className="text-xl font-bold text-slate-900">Regole di Transizione (Team)</h3>
                   <p className="text-slate-500 mt-1">Dettaglio di chi può fare cosa e quando.</p>
@@ -684,11 +471,11 @@ export default function HowItWorks() {
           viewport={{ once: true }}
           className="text-center space-y-8 py-12 border-t border-slate-200/60 mt-24"
         >
-          <h2 className="text-3xl md:text-4xl font-bold text-slate-900">
-            {user ? "La tua prossima stima ti aspetta" : "Smetti di perdere margini sulle stime"}
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-900">
+            {user ? "La tua prossima stima ti aspetta" : "Prova Syntero con un requisito reale"}
           </h2>
-          <p className="text-lg text-slate-600 max-w-xl mx-auto">
-            {user ? "Prova subito con un requisito reale." : "Inizia gratis. Nessuna carta richiesta. Prima stima in 3 minuti."}
+          <p className="text-base text-slate-600 max-w-xl mx-auto">
+            {user ? "Crea una stima dalla dashboard." : "Crea un account e lancia la tua prima stima."}
           </p>
           <Link to={user ? "/dashboard" : "/register"}>
             <Button size="lg" className="rounded-full px-10 h-14 text-lg bg-slate-900 hover:bg-slate-800 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">

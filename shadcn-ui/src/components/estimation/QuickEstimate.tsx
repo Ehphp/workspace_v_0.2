@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { useQuickEstimation } from '@/hooks/useQuickEstimation';
+import { useQuickEstimationV2 } from '@/hooks/useQuickEstimationV2';
 import { QuickEstimateInput } from '@/components/estimation/quick-estimate/QuickEstimateInput';
-import { QuickEstimateResult } from '@/components/estimation/quick-estimate/QuickEstimateResult';
+import { QuickEstimateResultV2 } from '@/components/estimation/quick-estimate/QuickEstimateResultV2';
+import { QuickEstimateProgress } from '@/components/estimation/quick-estimate/QuickEstimateProgress';
 import { Zap, Sparkles, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -12,7 +13,7 @@ interface QuickEstimateProps {
     onOpenChange: (open: boolean) => void;
 }
 
-type ViewState = 'input' | 'result';
+type ViewState = 'input' | 'running' | 'result';
 
 export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
     const [view, setView] = useState<ViewState>('input');
@@ -20,22 +21,23 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
     const [techPresetId, setTechPresetId] = useState('');
 
     const {
-        loading,
-        calculating,
+        currentStep,
+        stepLabel,
+        isRunning,
         result,
-        isDemoMode,
         error,
-        selectedActivities,
-        aiReasoning,
-        presets,
-        loadPresets,
+        isDemoMode,
+        liveInsights,
+        technologies: presets,
+        loadMasterData,
         calculate,
         reset,
-    } = useQuickEstimation();
+        abort,
+    } = useQuickEstimationV2();
 
     useEffect(() => {
         if (open) {
-            loadPresets();
+            loadMasterData();
             if (!result) {
                 setView('input');
                 setDescription('');
@@ -45,15 +47,19 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
     }, [open]);
 
     const handleCalculate = async () => {
+        setView('running');
         const success = await calculate(description, techPresetId);
         if (success) {
             setView('result');
+        } else {
+            setView('input');
         }
     };
 
     const handleReset = () => {
         setDescription('');
         setTechPresetId('');
+        abort();
         reset();
         setView('input');
     };
@@ -109,9 +115,23 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                                     techPresetId={techPresetId}
                                     onPresetChange={setTechPresetId}
                                     presets={presets}
-                                    calculating={calculating}
+                                    calculating={isRunning}
                                     isDemoMode={isDemoMode}
                                     error={error}
+                                />
+                            </motion.div>
+                        ) : view === 'running' ? (
+                            <motion.div
+                                key="running"
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                <QuickEstimateProgress
+                                    currentStep={currentStep}
+                                    stepLabel={stepLabel}
+                                    liveInsights={liveInsights}
                                 />
                             </motion.div>
                         ) : (
@@ -122,11 +142,9 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                                 exit={{ opacity: 0, x: -20 }}
                                 transition={{ duration: 0.2 }}
                             >
-                                <QuickEstimateResult
-                                    result={result}
-                                    selectedActivities={selectedActivities}
-                                    aiReasoning={aiReasoning}
-                                />
+                                {result && (
+                                    <QuickEstimateResultV2 result={result} />
+                                )}
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -139,22 +157,19 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
                             <Button variant="ghost" onClick={handleClose} className="text-slate-500 hover:text-slate-900 hover:bg-slate-100/80">Cancel</Button>
                             <Button
                                 onClick={handleCalculate}
-                                disabled={!canCalculate || loading || calculating}
+                                disabled={!canCalculate || isRunning}
                                 className="bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-600 hover:from-blue-700 hover:via-indigo-700 hover:to-fuchsia-700 text-white shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 transition-all px-8 h-11 rounded-lg font-medium"
                             >
-                                {calculating ? (
-                                    <>
-                                        <Sparkles className="w-4 h-4 mr-2 animate-spin" />
-                                        Thinking...
-                                    </>
-                                ) : (
-                                    <>
-                                        Calculate Estimate
-                                        <ArrowLeft className="w-4 h-4 ml-2 rotate-180" />
-                                    </>
-                                )}
+                                Calculate Estimate
+                                <ArrowLeft className="w-4 h-4 ml-2 rotate-180" />
                             </Button>
                         </>
+                    ) : view === 'running' ? (
+                        <div className="flex w-full justify-center">
+                            <Button variant="ghost" onClick={handleReset} className="text-slate-500 hover:text-slate-900 hover:bg-slate-100/80">
+                                Cancel
+                            </Button>
+                        </div>
                     ) : (
                         <div className="flex gap-3 w-full justify-end">
                             <Button variant="ghost" onClick={handleReset} className="text-slate-500 hover:text-slate-900 hover:bg-slate-100/80">

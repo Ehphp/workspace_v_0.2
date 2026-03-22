@@ -23,16 +23,16 @@ AI functionality is distributed across multiple serverless functions:
 
 | Endpoint | Purpose | Context |
 |----------|---------|--------|
-| `ai-suggest.ts` | Activity suggestions, title generation | Quick estimation flow |
-| `ai-requirement-interview.ts` | Generate technical questions | Single-requirement interview |
-| `ai-estimate-from-interview.ts` | Select activities from answers | Single-requirement interview |
+| `ai-suggest.ts` | Activity suggestions, title generation | ~~Quick estimation flow~~ Legacy (V1 Quick Estimate only) |
+| `ai-requirement-interview.ts` | Generate technical questions | Single-requirement interview, Quick Estimate V2 |
+| `ai-estimate-from-interview.ts` | Select activities from answers | Single-requirement interview, Quick Estimate V2 |
 | `ai-bulk-interview.ts` | Aggregated questions for N requirements | Bulk estimation |
 | `ai-bulk-estimate-with-answers.ts` | Batch activity selection | Bulk estimation |
 | `ai-generate-questions.ts` | Stage 1: preset wizard questions | Custom preset creation |
 | `ai-generate-preset.ts` | Stage 2: generate preset from answers | Custom preset creation |
-| `ai-requirement-understanding.ts` | Generate structured Requirement Understanding artifact | Wizard step 3 (Milestone 1) |
-| `ai-impact-map.ts` | Generate structured Impact Map artifact | Wizard step 4 (Milestone 2) |
-| `ai-estimation-blueprint.ts` | Generate structured Estimation Blueprint artifact | Wizard step 5 (Milestone 3) |
+| `ai-requirement-understanding.ts` | Generate structured Requirement Understanding artifact | Wizard step 3 (Milestone 1), Quick Estimate V2 |
+| `ai-impact-map.ts` | Generate structured Impact Map artifact | Wizard step 4 (Milestone 2), Quick Estimate V2 |
+| `ai-estimation-blueprint.ts` | Generate structured Estimation Blueprint artifact | Wizard step 5 (Milestone 3), Quick Estimate V2 |
 | `ai-consultant.ts` | Senior consultant analysis | Post-estimation review |
 | `ai-generate-embeddings.ts` | Generate vector embeddings | Background/admin job (Phase 1) |
 | `ai-check-duplicates.ts` | Semantic activity deduplication | AI Technology Wizard (Phase 3) |
@@ -1055,6 +1055,70 @@ When creating new custom activities:
 
 1. `ai-check-duplicates` endpoint called with activity name/description
 2. System searches for activities with >80% similarity
+
+---
+
+## Quick Estimate V2: Unified AI Pipeline
+
+Quick Estimate V2 runs the **same AI artifact chain** as the Wizard but with no intermediate UI steps. Artifacts are auto-confirmed and the interview is skipped unless critical.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  useQuickEstimationV2 (client-side orchestrator)                │
+│                                                                 │
+│  Step 1: ai-requirement-understanding  → auto-confirm (soft)    │
+│  Step 2: ai-impact-map                 → auto-confirm (soft)    │
+│  Step 3: ai-estimation-blueprint       → auto-confirm (soft)    │
+│  Step 4: ai-requirement-interview      → planner ASK/SKIP       │
+│  Step 5: ai-estimate-from-interview    → full estimation        │
+│  Step 6: interviewFinalizeEstimation() → deterministic engine   │
+│                                                                 │
+│  Each step is a separate Netlify function (independent timeout) │
+│  Artifacts cascade: each feeds into the next                    │
+│  Any artifact failure → pipeline continues with degraded context│
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Client-side orchestration (not single endpoint) | Respects per-function Netlify timeout (26s prod) |
+| Soft artifact dependencies | Understanding/ImpactMap/Blueprint are all optional inputs |
+| Always runs estimation (even if planner says ASK) | Quick mode prioritizes speed; escalation badge shown |
+| `interviewFinalizeEstimation` (not `quickFinalizeEstimation`) | Uses AI-suggested drivers/risks instead of neutral defaults |
+| traceId across all steps | Links pipeline execution for logging/debugging |
+
+### Escalation Policy
+
+| Condition | Behavior |
+|-----------|----------|
+| `confidence >= 0.80` AND `SKIP` | Fully automatic, no warnings |
+| `confidence 0.60–0.79` OR `ASK` | Auto estimate + escalation banner |
+| `confidence < 0.60` | Auto estimate + strong escalation recommendation |
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `src/hooks/useQuickEstimationV2.ts` | Client-side pipeline orchestrator |
+| `src/components/estimation/QuickEstimate.tsx` | Dialog (updated to use V2) |
+| `src/components/estimation/quick-estimate/QuickEstimateResultV2.tsx` | Enriched result with drivers, risks, AI details |
+| `src/components/estimation/quick-estimate/QuickEstimateProgress.tsx` | Step-by-step progress indicator |
+
+### Comparison: V1 vs V2
+
+| Aspect | V1 (`useQuickEstimation`) | V2 (`useQuickEstimationV2`) |
+|--------|--------------------------|----------------------------|
+| AI endpoint | `ai-suggest` (1 LLM call) | Full pipeline (5 LLM calls) |
+| Artifacts | None | Understanding + Impact Map + Blueprint |
+| Drivers | Neutral (multiplier 1.0) | AI-suggested from interview pipeline |
+| Risks | None | AI-suggested |
+| Confidence | Not available | 0–1 score with escalation policy |
+| Provenance | None | Blueprint coverage + pipeline trace |
+| Finalizer | `quickFinalizeEstimation` | `interviewFinalizeEstimation` |
 3. If match found, user sees suggestion to reuse existing activity
 4. Prevents "catalog bloat" from near-duplicate activities
 
