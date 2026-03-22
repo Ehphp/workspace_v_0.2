@@ -11,6 +11,7 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
+    "guard:legacy": "node scripts/guard-legacy-patterns.mjs",
     "docs:check": "node scripts/docs-check.mjs",
     "docs:update": "node scripts/docs-update.mjs"
   },

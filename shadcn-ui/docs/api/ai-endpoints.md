@@ -278,7 +278,7 @@ Endpoints that select activities based on gathered information.
 {
   description: string;
   techPresetId: string;
-  techCategory: string;          // Required — used for server-side activity filtering
+  techCategory: string;          // Required — used as fallback for activity filtering (canonical: techPresetId → technology_id FK)
   answers: Record<string, {
     questionId: string;
     category: string;
@@ -305,10 +305,17 @@ Endpoints that select activities based on gathered information.
 }
 ```
 
-> **v2 Change**: `activities` is now **optional**. The server fetches activities from Supabase
-> using `techCategory`, ranks them by keyword relevance to the requirement description,
+> **v2 Change**: `activities` is now **optional**. The server fetches activities from Supabase,
+> ranks them by keyword relevance to the requirement description,
 > and sends only the top-20 to the LLM prompt. Client-provided activities are used only as
 > a fallback if the server-side fetch fails.
+>
+> **v4 Change (Canonical FK filtering — Step 3)**: `fetchActivitiesServerSide()` now
+> resolves `techPresetId` → `technology_id` FK and filters activities exclusively by FK.
+> No legacy `tech_category` string matching in the main path. If `techPresetId` cannot
+> be resolved to a technology row, the call **throws** (hard error). An empty candidate
+> set is also a hard error. Emergency rollback: set `FORCE_LEGACY_ACTIVITY_FETCH=true`
+> env var to revert to `tech_category` string matching without a deploy change.
 >
 > **v3 Change (Blueprint-first, consolidated)**: When `estimationBlueprint` is present and mappable,
 > `mapBlueprintToActivities()` deterministically maps blueprint components to candidate
@@ -970,7 +977,7 @@ These endpoints support the pgvector-based semantic search infrastructure.
 When `USE_VECTOR_SEARCH=false`:
 - `ai-suggest` falls back to category-based activity filtering
 - `ai-generate-preset` uses standard catalog fetch (history lookup + validation pass skipped)
-- `ai-estimate-from-interview` uses server-fetched activities filtered by techCategory (no semantic retrieval)
+- `ai-estimate-from-interview` uses server-fetched activities filtered by `technology_id` FK only (no `tech_category` fallback; emergency: `FORCE_LEGACY_ACTIVITY_FETCH=true`)
 - `ai-bulk-estimate-with-answers` uses frontend-provided activities (no semantic retrieval)
 - `ai-check-duplicates` returns `hasDuplicates: false`
 - RAG (historical learning) is skipped in all endpoints

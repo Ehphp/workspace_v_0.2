@@ -168,11 +168,13 @@ export async function generateEstimateFromInterview(
         };
     }
 
-    // Allow empty answers when preEstimate is present (SKIP path — planner
-    // decided the requirement is clear enough to estimate without questions).
+    // Allow empty answers when upstream context is available:
+    // - preEstimate (SKIP path — planner decided requirement is clear enough)
+    // - requirementUnderstanding (artifact-enriched path — bulk/quick mode)
     if (
         (!request.answers || Object.keys(request.answers).length === 0) &&
-        !request.preEstimate
+        !request.preEstimate &&
+        !request.requirementUnderstanding
     ) {
         return {
             success: false,

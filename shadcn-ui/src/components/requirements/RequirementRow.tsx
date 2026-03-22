@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -6,8 +7,9 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreVertical, Loader2, CheckCircle2, Clock, ShieldAlert, Brain } from 'lucide-react';
+import { MoreVertical, Loader2, CheckCircle2, Clock, ShieldAlert, Brain, Sparkles, XCircle } from 'lucide-react';
 import type { RequirementWithEstimation } from '@/types/database';
+import type { BulkItemState } from '@/hooks/useBulkEstimation';
 import { PRIORITY_CONFIGS } from '@/components/shared/RequirementBadges';
 import { STATE_LABELS, PRIORITY_LABELS } from '@/types/export';
 
@@ -15,6 +17,7 @@ interface RequirementRowProps {
     req: RequirementWithEstimation;
     listId: string;
     onDelete: (req: RequirementWithEstimation) => void;
+    bulkStatus?: BulkItemState;
 }
 
 const stateColors: Record<string, { bg: string; text: string; dot: string }> = {
@@ -30,7 +33,7 @@ const priorityAccents: Record<string, string> = {
     LOW: 'bg-emerald-400',
 };
 
-export function RequirementRow({ req, listId, onDelete }: RequirementRowProps) {
+export function RequirementRow({ req, listId, onDelete, bulkStatus }: RequirementRowProps) {
     const navigate = useNavigate();
     const estimation = req.latest_estimation;
     const hasEstimation = !!estimation;
@@ -39,13 +42,31 @@ export function RequirementRow({ req, listId, onDelete }: RequirementRowProps) {
     const stateStyle = stateColors[req.state] || stateColors.PROPOSED;
     const priorityAccent = priorityAccents[req.priority] || 'bg-slate-300';
 
+    // Flash green briefly when estimation completes successfully
+    const [showFlash, setShowFlash] = useState(false);
+    useEffect(() => {
+        if (bulkStatus?.status === 'success') {
+            setShowFlash(true);
+            const timer = setTimeout(() => setShowFlash(false), 1500);
+            return () => clearTimeout(timer);
+        }
+    }, [bulkStatus?.status]);
+
+    const isProcessing = bulkStatus?.status === 'processing';
+    const isPending = bulkStatus?.status === 'pending';
+    const isBulkError = bulkStatus?.status === 'error';
+
     // AI signals derived from estimation data
     const isHighRisk = estimation && estimation.risk_score > 0.6;
     const hasBlueprintId = estimation && estimation.blueprint_id;
 
     return (
         <div
-            className="group flex items-center gap-0 hover:bg-slate-50/80 transition-colors cursor-pointer"
+            className={`group flex items-center gap-0 transition-all duration-500 cursor-pointer
+                ${showFlash ? 'bg-emerald-50/80 ring-1 ring-emerald-200' : 'hover:bg-slate-50/80'}
+                ${isProcessing ? 'bg-indigo-50/40' : ''}
+                ${isPending ? 'opacity-60' : ''}
+            `}
             onClick={() => navigate(`/dashboard/${listId}/requirements/${req.id}`)}
             role="button"
             tabIndex={0}
@@ -121,7 +142,25 @@ export function RequirementRow({ req, listId, onDelete }: RequirementRowProps) {
 
                 {/* Right: Estimation + Actions */}
                 <div className="flex items-center gap-2 shrink-0">
-                    {hasEstimation ? (
+                    {isProcessing ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-lg">
+                            <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+                            <span className="inline-block h-3 w-12 rounded bg-gradient-to-r from-indigo-100 via-indigo-200 to-indigo-100 bg-[length:200%_100%] animate-[shimmer_1.8s_ease-in-out_infinite]" />
+                        </span>
+                    ) : isBulkError ? (
+                        <span
+                            className="inline-flex items-center gap-1 text-xs font-medium text-red-600 bg-red-50 border border-red-100 px-2.5 py-1 rounded-lg"
+                            title={bulkStatus?.error}
+                        >
+                            <XCircle className="h-3.5 w-3.5" />
+                            Errore
+                        </span>
+                    ) : showFlash && bulkStatus?.totalDays != null ? (
+                        <span className="inline-flex items-center gap-1 text-sm font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg animate-[pop_0.3s_ease-out]">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                            {bulkStatus.totalDays.toFixed(1)} gg
+                        </span>
+                    ) : hasEstimation ? (
                         <span className="inline-flex items-center gap-1 text-sm font-bold text-blue-600 bg-blue-50/80 px-2.5 py-1 rounded-lg">
                             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                             {estimation.total_days.toFixed(1)} gg

@@ -52,12 +52,120 @@ export function getServerSupabase() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Server-side Activity Fetch
+// Technology resolution (adapter: techPresetId → technology_id)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface TechnologyRecord {
+    id: string;
+    code: string;
+    tech_category: string;
+}
+
+/**
+ * Resolve the MULTI technology id (cached after first call).
+ */
+let _cachedMultiTechId: string | null | undefined;
+
+async function resolveMultiTechId(
+    supabase: ReturnType<typeof createClient>,
+): Promise<string | null> {
+    if (_cachedMultiTechId !== undefined) return _cachedMultiTechId;
+    const { data } = await supabase
+        .from('technologies')
+        .select('id')
+        .eq('code', 'MULTI')
+        .limit(1);
+    _cachedMultiTechId = data?.[0]?.id ?? null;
+    return _cachedMultiTechId;
+}
+
+/**
+ * Resolve techPresetId → technology row.
+ * techPresetId is a technologies.id UUID — this is a simple lookup,
+ * not a translation.
+ */
+async function resolveTechnology(
+    supabase: ReturnType<typeof createClient>,
+    techPresetId: string,
+): Promise<TechnologyRecord | null> {
+    const { data, error } = await supabase
+        .from('technologies')
+        .select('id, code, tech_category')
+        .eq('id', techPresetId)
+        .limit(1);
+
+    if (error || !data || data.length === 0) return null;
+    return data[0];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Canonical activity fetch by technology_id FK
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch activities filtered by technology_id FK.
+ * Returns all active activities whose technology_id matches
+ * the given technology or the MULTI technology.
+ */
+async function fetchActivitiesByTechnologyId(
+    supabase: ReturnType<typeof createClient>,
+    technologyId: string,
+    multiTechId: string | null,
+): Promise<Activity[]> {
+    const filterParts = [`technology_id.eq.${technologyId}`];
+    if (multiTechId) {
+        filterParts.push(`technology_id.eq.${multiTechId}`);
+    }
+
+    const { data, error } = await supabase
+        .from('activities')
+        .select('code, name, description, base_hours, group, tech_category, technology_id')
+        .eq('active', true)
+        .or(filterParts.join(','));
+
+    if (error) {
+        console.error('[fetch-by-fk] Supabase error:', error.message);
+        return [];
+    }
+    return (data ?? []) as Activity[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Legacy fallback (emergency only — FORCE_LEGACY_ACTIVITY_FETCH=true)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Legacy fetch using tech_category string matching.
+ * Only invoked when FORCE_LEGACY_ACTIVITY_FETCH=true.
+ */
+async function fetchActivitiesLegacy(
+    supabase: ReturnType<typeof createClient>,
+    techCategory: string,
+): Promise<Activity[]> {
+    console.warn('[LEGACY-FETCH] Using tech_category string filter — this path is deprecated');
+    const { data, error } = await supabase
+        .from('activities')
+        .select('code, name, description, base_hours, group, tech_category, technology_id')
+        .eq('active', true)
+        .or(`tech_category.eq.${techCategory},tech_category.eq.MULTI`);
+
+    if (error) {
+        console.error('[LEGACY-FETCH] Supabase error:', error.message);
+        return [];
+    }
+    return (data ?? []) as Activity[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Server-side Activity Fetch (public API — signature unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Fetch activities from Supabase server-side, filtered by technology.
- * Falls back to client-provided activities if DB is unavailable.
+ *
+ * Canonical path: resolves techPresetId → technology_id FK → filters by FK.
+ * Emergency rollback: set FORCE_LEGACY_ACTIVITY_FETCH=true to revert to
+ * tech_category string matching (does NOT require a deploy change).
  */
 export async function fetchActivitiesServerSide(
     techCategory: string,
@@ -67,31 +175,78 @@ export async function fetchActivitiesServerSide(
     const start = Date.now();
     const supabase = getServerSupabase();
 
-    if (supabase) {
-        try {
-            const { data, error } = await supabase
-                .from('activities')
-                .select('code, name, description, base_hours, group, tech_category')
-                .eq('active', true)
-                .or(`tech_category.eq.${techCategory},tech_category.eq.MULTI`);
-
-            if (!error && data && data.length > 0) {
-                console.log(`[server-fetch] Loaded ${data.length} activities from DB in ${Date.now() - start}ms`);
-                return { activities: data as Activity[], source: 'server', fetchMs: Date.now() - start };
-            }
-            console.warn('[server-fetch] DB returned empty/error, falling back:', error?.message);
-        } catch (err) {
-            console.warn('[server-fetch] DB query failed:', err);
+    if (!supabase) {
+        // DB unavailable — client-provided fallback
+        if (clientActivities && clientActivities.length > 0) {
+            console.warn(`[server-fetch] No Supabase client — using ${clientActivities.length} client-provided activities`);
+            return { activities: clientActivities, source: 'client', fetchMs: Date.now() - start };
         }
+        console.error('[server-fetch] CRITICAL: No Supabase client and no client activities');
+        return { activities: [], source: 'fallback', fetchMs: Date.now() - start };
     }
 
-    // Fallback to client-provided activities
-    if (clientActivities && clientActivities.length > 0) {
-        console.log(`[server-fetch] Using ${clientActivities.length} client-provided activities (fallback)`);
-        return { activities: clientActivities, source: 'client', fetchMs: Date.now() - start };
-    }
+    try {
+        // ── Emergency rollback gate ──────────────────────────────────
+        if (process.env.FORCE_LEGACY_ACTIVITY_FETCH === 'true') {
+            const activities = await fetchActivitiesLegacy(supabase, techCategory);
+            console.log(`[server-fetch] LEGACY path: ${activities.length} activities in ${Date.now() - start}ms`, {
+                techCategory,
+                techPresetId,
+                candidateCount: activities.length,
+            });
+            if (activities.length === 0) {
+                console.error('[server-fetch] CRITICAL: Empty candidate set from LEGACY path', { techCategory, techPresetId });
+                throw new Error(`Empty candidate set — no activities found for tech_category="${techCategory}"`);
+            }
+            return { activities, source: 'server', fetchMs: Date.now() - start };
+        }
 
-    return { activities: [], source: 'fallback', fetchMs: Date.now() - start };
+        // ── Canonical path: technology_id FK ─────────────────────────
+        const technology = await resolveTechnology(supabase, techPresetId);
+        if (!technology) {
+            console.error('[server-fetch] CRITICAL: Cannot resolve technology', { techPresetId, techCategory });
+            throw new Error(`Cannot resolve techPresetId="${techPresetId}" to a technology row`);
+        }
+
+        const multiTechId = await resolveMultiTechId(supabase);
+        const activities = await fetchActivitiesByTechnologyId(supabase, technology.id, multiTechId);
+
+        // ── Aggressive logging ───────────────────────────────────────
+        console.log('[server-fetch] Canonical FK fetch complete', {
+            technologyId: technology.id,
+            technologyCode: technology.code,
+            multiTechId,
+            candidateCount: activities.length,
+            fetchMs: Date.now() - start,
+        });
+
+        // ── Guardrail: empty candidate set is a hard error ──────────
+        if (activities.length === 0) {
+            console.error('[server-fetch] CRITICAL: Empty candidate set', {
+                technologyId: technology.id,
+                technologyCode: technology.code,
+                techPresetId,
+            });
+            throw new Error(`Empty candidate set — no activities found for technology "${technology.code}" (id=${technology.id})`);
+        }
+
+        return { activities, source: 'server', fetchMs: Date.now() - start };
+
+    } catch (err) {
+        // Re-throw guardrail errors — they must surface to the caller
+        if (err instanceof Error && err.message.startsWith('Empty candidate set')) throw err;
+        if (err instanceof Error && err.message.startsWith('Cannot resolve techPresetId')) throw err;
+
+        console.error('[server-fetch] Unexpected DB failure:', err);
+
+        // Last resort: client-provided activities
+        if (clientActivities && clientActivities.length > 0) {
+            console.warn(`[server-fetch] Using ${clientActivities.length} client-provided activities after DB failure`);
+            return { activities: clientActivities, source: 'client', fetchMs: Date.now() - start };
+        }
+
+        throw new Error('Activity fetch failed — no DB, no client fallback');
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

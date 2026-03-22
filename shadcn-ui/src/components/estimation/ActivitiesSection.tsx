@@ -10,8 +10,9 @@ interface ActivitiesSectionProps {
     selectedActivityIds: string[];
     aiSuggestedIds: string[];
     onActivityToggle: (activityId: string) => void;
-    onAiRecalculate: () => void;
-    isAiLoading: boolean;
+    /** @deprecated STEP 4 — Legacy AI suggest removed. Button hidden when undefined. */
+    onAiRecalculate?: () => void;
+    isAiLoading?: boolean;
     requirementDescription: string;
     isExpanded?: boolean;
     onToggle?: () => void;
@@ -23,7 +24,7 @@ export function ActivitiesSection({
     aiSuggestedIds,
     onActivityToggle,
     onAiRecalculate,
-    isAiLoading,
+    isAiLoading = false,
     requirementDescription,
 }: ActivitiesSectionProps) {
     const selectedSet = new Set(selectedActivityIds);
@@ -67,7 +68,8 @@ export function ActivitiesSection({
                 </div>
             </div>
 
-            {/* AI Button */}
+            {/* AI Button — hidden when legacy AI suggest is not available */}
+            {onAiRecalculate && (
             <div className="shrink-0 rounded-lg border-2 border-dashed border-purple-200 bg-purple-50/30 p-2">
                 <Button
                     onClick={onAiRecalculate}
@@ -88,6 +90,7 @@ export function ActivitiesSection({
                     )}
                 </Button>
             </div>
+            )}
 
             {/* Selected Activities */}
             {selectedActivities.length > 0 && (

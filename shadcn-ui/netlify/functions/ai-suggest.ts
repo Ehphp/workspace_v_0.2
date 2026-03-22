@@ -1,53 +1,24 @@
 /**
- * Netlify Function: AI Suggestions
- * 
+ * Netlify Function: AI Suggestions (Utility actions only)
+ *
  * Multi-action endpoint for:
- * - suggest-activities: Suggest activities for a requirement
  * - generate-title: Generate a title from description
  * - normalize-requirement: Normalize and validate requirement text
- * 
+ *
+ * NOTE (STEP 4): The suggest-activities action has been removed.
+ * Activity selection now happens exclusively via the pipeline
+ * (ai-requirement-interview + ai-estimate-from-interview).
+ *
  * POST /.netlify/functions/ai-suggest
  */
 
-import { createAIHandler, AIHandlerContext } from './lib/handler';
-import { suggestActivities } from './lib/ai/actions/suggest-activities';
+import { createAIHandler } from './lib/handler';
 import { generateTitle } from './lib/ai/actions/generate-title';
 import { normalizeRequirement } from './lib/ai/actions/normalize-requirement';
 
-interface ProjectContext {
-    name: string;
-    description: string;
-    owner?: string;
-}
-
 interface RequestBody {
-    action?: 'suggest-activities' | 'generate-title' | 'normalize-requirement';
+    action: 'generate-title' | 'normalize-requirement';
     description: string;
-    preset?: {
-        id: string;
-        name: string;
-        description: string;
-        tech_category: string;
-        /** Canonical FK to technologies.id */
-        technology_id?: string;
-        /** @deprecated Not used — AI decides freely */
-        default_activity_codes?: string[];
-        /** @deprecated Removed */
-        default_driver_values?: Record<string, string>;
-        /** @deprecated Removed */
-        default_risks?: string[];
-    };
-    activities?: Array<{
-        code: string;
-        name: string;
-        description: string;
-        base_hours: number;
-        group: string;
-        tech_category: string;
-        /** Canonical FK to technologies.id */
-        technology_id?: string | null;
-    }>;
-    projectContext?: ProjectContext;
     testMode?: boolean;
 }
 
@@ -60,43 +31,22 @@ export const handler = createAIHandler<RequestBody>({
         if (!body.description) {
             return 'Missing required field: description';
         }
-
-        const action = body.action || 'suggest-activities';
-        if (action === 'suggest-activities') {
-            if (!body.preset) return 'Missing required field: preset';
-            if (!body.activities) return 'Missing required field: activities';
+        if (!body.action || !['generate-title', 'normalize-requirement'].includes(body.action)) {
+            return 'Invalid or missing action. Allowed: generate-title, normalize-requirement';
         }
-
         return null;
     },
 
     handler: async (body, ctx) => {
-        const action = body.action || 'suggest-activities';
         const sanitizedDescription = ctx.sanitize(body.description);
+        console.log(`[ai-suggest] Action: ${body.action}, Description length: ${sanitizedDescription.length}`);
 
-        console.log(`[ai-suggest] Action: ${action}, Description length: ${sanitizedDescription.length}`);
-
-        // Handle title generation
-        if (action === 'generate-title') {
+        if (body.action === 'generate-title') {
             return generateTitle({ description: sanitizedDescription });
         }
 
-        // Handle requirement normalization
-        if (action === 'normalize-requirement') {
-            return normalizeRequirement({
-                description: sanitizedDescription,
-                testMode: body.testMode
-            });
-        }
-
-        // Handle activity suggestions (default)
-        console.log(`[ai-suggest] Preset: ${body.preset!.name}, Activities: ${body.activities!.length}, HasProjectContext: ${!!body.projectContext}`);
-
-        return suggestActivities({
+        return normalizeRequirement({
             description: sanitizedDescription,
-            preset: body.preset!,
-            activities: body.activities!,
-            projectContext: body.projectContext,
             testMode: body.testMode
         });
     }

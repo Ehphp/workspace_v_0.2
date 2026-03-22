@@ -18,8 +18,9 @@ interface RequirementEstimationProps {
     onSave: () => void;
     isSaving: boolean;
     hasUnsavedChanges: boolean;
-    onAiSuggest: () => void;
-    isAiLoading: boolean;
+    /** @deprecated STEP 4 — Legacy AI suggest removed */
+    onAiSuggest?: () => void;
+    isAiLoading?: boolean;
     requirementDescription: string;
 }
 

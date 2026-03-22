@@ -463,11 +463,14 @@ The following optimizations reduce end-to-end latency for the AI estimation pipe
 
 ### Server-Side Activity Fetch & Ranking
 
-Activities are now fetched **server-side** from Supabase (instead of being sent by the client),
-then ranked by keyword relevance and trimmed to the **top 20**. This reduces:
+Activities are fetched **server-side** from Supabase, filtered by `technology_id` FK (canonical), then ranked by keyword relevance and trimmed to the **top 20**. This reduces:
 - Request payload size (no more sending 100+ activities from the browser)
 - LLM prompt tokens (compact format: code, name, base_hours, truncated description)
-- Client-provided activities are used only as a fallback
+- Client-provided activities are used only as a last-resort fallback on DB failure
+
+**Canonical FK filtering (STEP 3)**: `fetchActivitiesServerSide()` resolves `techPresetId` → `technology_id` via the `technologies` table and filters activities using the FK. No `tech_category` string matching in the main path. An unresolvable `techPresetId` or empty candidate set throws a hard error. Emergency rollback: set `FORCE_LEGACY_ACTIVITY_FETCH=true` env var to revert to `tech_category` string matching without a deploy change.
+
+**Architectural guard (STEP 2)**: Client-side activity filtering by `tech_category` is blocked in new code via ESLint (`no-restricted-syntax`) and a CI guard script (`pnpm guard:legacy`). Known legacy files are in an allowlist — to be cleaned in STEP 4.
 
 **Blueprint-first candidate generation** (Milestone 3 v2, consolidated): When a confirmed Estimation Blueprint is available and mappable (`isBlueprintMappable()`), the system uses `mapBlueprintToActivities()` from `blueprint-activity-mapper.ts` to deterministically derive candidate activities from the blueprint's structural components. Each component is mapped via `LAYER_TECH_PATTERNS` (a static lookup table of layer × techCategory → activity code prefixes), with complexity driving variant selection (`_SM` for LOW, `_LG` for HIGH, base for MEDIUM).
 

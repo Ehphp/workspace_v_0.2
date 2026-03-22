@@ -10,13 +10,12 @@ import { useEstimationHistory } from '@/hooks/useEstimationHistory';
 import { useConsultantHistory } from '@/hooks/useConsultantHistory';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { FileText, Calculator, History, AlertTriangle, ClipboardCheck } from 'lucide-react';
+import { FileText, Calculator, History, ClipboardCheck } from 'lucide-react';
 import { toast } from 'sonner';
-import { suggestActivities } from '@/lib/openai';
 import { getConsultantAnalysis } from '@/lib/consultant-api';
 import { getLatestRequirementUnderstanding, saveEstimationByIds } from '@/lib/api';
 import {
@@ -83,7 +82,6 @@ export default function RequirementDetail() {
         selectedRiskIds,
         setSelectedPresetId,
         applyPresetDefaults,
-        applyAiSuggestions,
         setDriverValues,
         estimationResult,
         hasSelections,
@@ -107,7 +105,6 @@ export default function RequirementDetail() {
 
     // UI State
     const [activeTab, setActiveTab] = useState('info');
-    const [isAiLoading, setIsAiLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     // Scenario naming handled automatically (no dialog)
     const [drawerOpen, setDrawerOpen] = useState(false);
@@ -145,10 +142,6 @@ export default function RequirementDetail() {
         }
     }, [consultantHistory, consultantAnalysis]);
 
-    // Quick Estimate State
-    const [isQuickEstimating, setIsQuickEstimating] = useState(false);
-    const [showQuickEstimateError, setShowQuickEstimateError] = useState(false);
-    const [quickEstimateErrorData, setQuickEstimateErrorData] = useState<{ title: string; message: string; reasoning?: string } | null>(null);
 
     const fallbackTechnologyId = requirement?.technology_id || requirement?.tech_preset_id || list?.technology_id || list?.tech_preset_id || '';
     const activeTechnologyId = selectedPresetId || fallbackTechnologyId;
@@ -212,67 +205,6 @@ export default function RequirementDetail() {
 
         return false;
     }, [estimationResult, estimationHistory, selectedActivityIds, selectedRiskIds]);
-
-    // AI Suggestion Handler
-    const handleAiSuggest = async () => {
-        if (!requirement?.description) return;
-        if (!activeTechnology) {
-            toast.error('Seleziona una tecnologia per richiedere suggerimenti AI');
-            return;
-        }
-
-        setIsAiLoading(true);
-        try {
-            // Send ALL compatible activities for the technology
-            const techCategoryActivities = filterActivitiesByTechnology(activities, activeTechnology, presets);
-
-            const suggestion = await suggestActivities({
-                description: requirement.description,
-                preset: activeTechnology,
-                activities: techCategoryActivities,
-                projectContext: list ? {
-                    name: list.name,
-                    description: list.description,
-                    owner: list.owner || undefined,
-                } : undefined,
-            });
-
-            if (!selectedPresetId && activeTechnology.id) {
-                setSelectedPresetId(activeTechnology.id);
-            }
-
-            if (suggestion.isValidRequirement) {
-                const suggestedCodes = suggestion.activityCodes || [];
-                const suggestedActivityIds = suggestedCodes
-                    .map((code) => activities.find((a) => a.code === code)?.id)
-                    .filter((id): id is string => Boolean(id));
-
-                if (suggestedCodes.length > 0 && suggestedActivityIds.length === 0) {
-                    console.warn('[AI Suggest] None of the AI-suggested codes matched any activity.',
-                        'Suggested:', suggestedCodes);
-                }
-
-                if (suggestedActivityIds.length === 0) {
-                    toast.error('Nessuna attivita compatibile trovata per la tecnologia selezionata.');
-                    return;
-                }
-
-                applyAiSuggestions(suggestedActivityIds, undefined, undefined);
-                toast.success('AI suggestions applied', {
-                    description: `Added ${suggestedActivityIds.length} activities based on description.`
-                });
-            } else {
-                toast.warning('AI Suggestion', {
-                    description: suggestion.reasoning || 'Could not generate suggestions.'
-                });
-            }
-        } catch (error) {
-            console.error('AI Suggest error:', error);
-            toast.error('Failed to get AI suggestions');
-        } finally {
-            setIsAiLoading(false);
-        }
-    };
 
     // Senior Consultant Analysis Handler
     // Reads activities & drivers from the saved (assigned) estimation, NOT from the Estimation tab state
@@ -390,89 +322,6 @@ export default function RequirementDetail() {
             });
         } finally {
             setIsConsultantLoading(false);
-        }
-    };
-
-    // Quick Estimate Handler
-    const handleQuickEstimate = async () => {
-        if (!requirement?.description) return;
-
-        setIsQuickEstimating(true);
-        try {
-            // 1. Determine Preset (use selected or requirement's or list's default)
-            let presetIdToUse = selectedPresetId;
-            if (!presetIdToUse) {
-                presetIdToUse = requirement.technology_id || requirement.tech_preset_id || list?.technology_id || list?.tech_preset_id || '';
-            }
-
-            // If still no preset, try to find a "General" or "Multi" one, or just pick the first one
-            if (!presetIdToUse && presets.length > 0) {
-                const defaultPreset = presets.find(p => p.code === 'MULTI' || p.code === 'GENERAL') || presets[0];
-                presetIdToUse = defaultPreset.id;
-            }
-
-            if (!presetIdToUse) {
-                throw new Error('No technology available for estimation.');
-            }
-
-            const selectedPreset = presets.find(p => p.id === presetIdToUse);
-            if (!selectedPreset) throw new Error('Invalid technology selected.');
-
-            // Filter by technology (canonical FK)
-            const activitiesForTech = filterActivitiesByTechnology(activities, selectedPreset, presets);
-            if (activitiesForTech.length === 0) {
-                throw new Error('No activities available for the selected technology.');
-            }
-
-            // 2. Call AI
-            const suggestion = await suggestActivities({
-                description: requirement.description,
-                preset: selectedPreset,
-                activities: activitiesForTech,
-                projectContext: list ? {
-                    name: list.name,
-                    description: list.description,
-                    owner: list.owner || undefined,
-                } : undefined,
-            });
-
-            if (!suggestion.isValidRequirement) {
-                setQuickEstimateErrorData({
-                    title: 'Estimation Not Possible',
-                    message: 'The AI determined that this requirement description is not sufficient or valid for estimation.',
-                    reasoning: suggestion.reasoning
-                });
-                setShowQuickEstimateError(true);
-                return;
-            }
-
-            // 3. Apply selections
-            setSelectedPresetId(presetIdToUse);
-            const suggestedActivityIds = (suggestion.activityCodes || [])
-                .map((code) => activities.find((a) => a.code === code)?.id)
-                .filter((id): id is string => Boolean(id));
-
-            const activityIdsToApply = suggestedActivityIds;
-
-            if (activityIdsToApply.length === 0) {
-                throw new Error('No compatible activities found for the selected technology.');
-            }
-
-            applyAiSuggestions(activityIdsToApply); // This triggers calculation via useEffect/useMemo in hook
-
-            // 4. Switch to Estimation tab
-            setActiveTab('estimation');
-            toast.success('Quick Estimate Generated', {
-                description: 'Review the suggested activities and save the estimation.'
-            });
-
-        } catch (error) {
-            console.error('Quick Estimate error:', error);
-            toast.error('Quick Estimate Failed', {
-                description: error instanceof Error ? error.message : 'An unexpected error occurred.'
-            });
-        } finally {
-            setIsQuickEstimating(false);
         }
     };
 
@@ -689,8 +538,6 @@ export default function RequirementDetail() {
                             onSave={handleSaveEstimation}
                             isSaving={isSaving}
                             hasUnsavedChanges={hasUnsavedChanges}
-                            onAiSuggest={handleAiSuggest}
-                            isAiLoading={isAiLoading}
                             requirementDescription={requirement.description || ''}
                         />
                     </TabsContent>
@@ -871,49 +718,7 @@ export default function RequirementDetail() {
                 </SheetContent>
             </Sheet>
 
-            {/* Scenario Name Dialog */}
-            {/* Quick Estimate Error Dialog */}
-            <AlertDialog open={showQuickEstimateError} onOpenChange={setShowQuickEstimateError}>
-                <AlertDialogContent className="bg-white/95 backdrop-blur-lg border-white/50 shadow-2xl max-w-lg">
-                    <AlertDialogHeader>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0 shadow-lg">
-                                <AlertTriangle className="h-6 w-6 text-white" />
-                            </div>
-                            <AlertDialogTitle className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                                {quickEstimateErrorData?.title || 'Quick Estimate Failed'}
-                            </AlertDialogTitle>
-                        </div>
-                        <AlertDialogDescription className="text-slate-700 text-base leading-relaxed">
-                            {quickEstimateErrorData?.message}
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
 
-                    {/* AI Reasoning Box */}
-                    {quickEstimateErrorData?.reasoning && (
-                        <div className="my-4 p-4 rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200">
-                            <div className="flex items-start gap-2">
-                                <div className="w-1 h-full bg-gradient-to-b from-purple-500 to-pink-500 rounded-full flex-shrink-0 mt-1"></div>
-                                <div>
-                                    <h4 className="text-sm font-semibold text-purple-900 mb-1">AI Analysis:</h4>
-                                    <p className="text-sm text-purple-800 leading-relaxed">
-                                        {quickEstimateErrorData.reasoning}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    <AlertDialogFooter>
-                        <AlertDialogAction
-                            onClick={() => setShowQuickEstimateError(false)}
-                            className="bg-purple-600 hover:bg-purple-700 text-white"
-                        >
-                            Close
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </PageShell>
     );
 }

@@ -1,12 +1,6 @@
 import type React from 'react';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { FileText, Zap, Plus, Settings, ChevronDown, MessageSquareCode } from 'lucide-react';
+import { FileText, Zap, Plus, Settings, Loader2 } from 'lucide-react';
 import type { List } from '@/types/database';
 
 interface RequirementsHeaderProps {
@@ -17,7 +11,7 @@ interface RequirementsHeaderProps {
     errorMessage: string | null;
     filteredRequirementsCount: number;
     onBulkEstimate: () => void;
-    onBulkInterview: () => void;
+    isBulkRunning?: boolean;
     onCreateRequirement: () => void;
     onRetry: () => void;
     onEditList: () => void;
@@ -31,7 +25,7 @@ export function RequirementsHeader({
     errorMessage,
     filteredRequirementsCount,
     onBulkEstimate,
-    onBulkInterview,
+    isBulkRunning,
     onCreateRequirement,
     onRetry,
     onEditList,
@@ -75,36 +69,20 @@ export function RequirementsHeader({
 
                     {/* Right side: Actions */}
                     <div className="flex items-center gap-2">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    disabled={filteredRequirementsCount === 0}
-                                    variant="outline"
-                                    size="sm"
-                                    className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300 rounded-xl h-9 px-3 text-sm"
-                                >
-                                    <Zap className="mr-1.5 h-3.5 w-3.5" />
-                                    Stima Tutti
-                                    <ChevronDown className="ml-1.5 h-3.5 w-3.5" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56">
-                                <DropdownMenuItem onClick={onBulkEstimate} className="cursor-pointer">
-                                    <Zap className="mr-2 h-4 w-4 text-indigo-600" />
-                                    <div className="flex flex-col">
-                                        <span className="font-medium">Stima Rapida</span>
-                                        <span className="text-xs text-muted-foreground">Stima diretta senza domande</span>
-                                    </div>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={onBulkInterview} className="cursor-pointer">
-                                    <MessageSquareCode className="mr-2 h-4 w-4 text-purple-600" />
-                                    <div className="flex flex-col">
-                                        <span className="font-medium">Stima con Interview</span>
-                                        <span className="text-xs text-muted-foreground">Domande aggregate per stime precise</span>
-                                    </div>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Button
+                            disabled={filteredRequirementsCount === 0 || isBulkRunning}
+                            onClick={onBulkEstimate}
+                            variant="outline"
+                            size="sm"
+                            className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300 rounded-xl h-9 px-3 text-sm"
+                        >
+                            {isBulkRunning ? (
+                                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                                <Zap className="mr-1.5 h-3.5 w-3.5" />
+                            )}
+                            {isBulkRunning ? 'Stimando...' : 'Stima Tutti'}
+                        </Button>
                         <Button
                             onClick={onCreateRequirement}
                             size="sm"

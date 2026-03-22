@@ -28,11 +28,8 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
     loadData();
   }, []);
 
-  useEffect(() => {
-    if (!loading && !aiUsed && !aiLoading && preset && data.description && data.selectedActivityCodes.length === 0) {
-      handleAISuggest();
-    }
-  }, [loading, preset]);
+  // Auto-suggest disabled — activity selection now handled by pipeline
+  // (ai-requirement-interview + ai-estimate-from-interview)
 
   const loadData = async () => {
     try {
@@ -110,57 +107,10 @@ export function WizardStep3({ data, onUpdate, onNext, onBack }: WizardStep3Props
     setLoading(false);
   };
 
+  // STEP 4 — suggestActivities removed; AI suggest via client is dead.
+  // Activity selection is manual here; pipeline handles AI-driven selection.
   const handleAISuggest = async () => {
-    if (!preset) return;
-
-    setAiLoading(true);
-    setAiStatus('analyzing');
-    setAiUsed(false);
-    // Clear previous AI selections to avoid showing stale results
-    onUpdate({ selectedActivityCodes: [], aiSuggestedActivityCodes: [] });
-    try {
-      const { suggestActivities } = await import('@/lib/openai');
-
-      const suggestion = await suggestActivities({
-        description: data.description,
-        preset,
-        activities,
-        projectContext: data.projectContext,
-      });
-      console.log('AI activity suggestion response:', suggestion);
-
-      if (!suggestion.isValidRequirement) {
-        console.warn('AI determined requirement is not valid:', suggestion.reasoning);
-        setAiUsed(true);
-        setAiStatus('error');
-        setAiLoading(false);
-        throw new Error(suggestion.reasoning || 'Requirement description is not valid for AI estimation.');
-      }
-
-      const suggestedCodes = suggestion.activityCodes;
-
-      if (!suggestedCodes || suggestedCodes.length === 0) {
-        console.warn('AI returned no activities');
-        setAiUsed(true);
-        setAiStatus('error');
-        setAiLoading(false);
-        return;
-      }
-
-      onUpdate({
-        selectedActivityCodes: suggestedCodes,
-        aiSuggestedActivityCodes: suggestedCodes,
-        activitySuggestionResult: suggestion,
-      });
-
-      setAiUsed(true);
-      setAiStatus('success');
-    } catch (error) {
-      console.error('AI suggestion failed:', error);
-      setAiUsed(true);
-      setAiStatus('error');
-    }
-    setAiLoading(false);
+    console.warn('[WizardStep3] handleAISuggest is deprecated — suggestActivities removed in STEP 4');
   };
 
   const toggleActivity = (code: string) => {

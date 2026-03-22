@@ -34,20 +34,6 @@ export function parseAIError(response: Response, errorData: any): AIServiceError
   };
 }
 
-interface SuggestActivitiesInput {
-  description: string;
-  preset: Technology;
-  activities: Activity[];
-  drivers?: Driver[];
-  risks?: Risk[];
-  projectContext?: {
-    name: string;
-    description: string;
-    owner?: string;
-  };
-  baseUrl?: string; // Optional base URL for testing
-  testMode?: boolean; // Disable cache and increase temperature for variance testing
-}
 
 export interface NormalizationResult {
   isValidRequirement: boolean;
@@ -57,80 +43,6 @@ export interface NormalizationResult {
   validationIssues: string[];
   transformNotes: string[];
   generatedTitle?: string;
-}
-
-/**
- * Call the Netlify serverless function to get AI activity suggestions.
- * This keeps the OpenAI API key secure on the server side.
- */
-
-export async function suggestActivities(
-  input: SuggestActivitiesInput
-): Promise<AIActivitySuggestion> {
-  const { description, preset, activities, drivers, risks, projectContext, baseUrl = '', testMode = false } = input;
-
-  try {
-    // Fetch current session token (if available) to authenticate serverless call
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const authHeader = session?.access_token
-      ? { Authorization: `Bearer ${session.access_token}` }
-      : {};
-
-    // Sanitize input to prevent injection attacks
-    const sanitizedDescription = sanitizePromptInput(description);
-
-    // Call Netlify function instead of OpenAI directly
-    const apiUrl = buildFunctionUrl('ai-suggest', baseUrl);
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeader,
-      },
-      body: JSON.stringify({
-        description: sanitizedDescription,
-        preset,
-        activities,
-        drivers,
-        risks,
-        projectContext,
-        testMode, // Pass test mode to function
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const aiError = parseAIError(response, errorData);
-
-      // Graceful degradation: AI unavailable → let the user proceed manually
-      if (aiError.code === 'AI_UNAVAILABLE' || aiError.code === 'AI_RATE_LIMITED') {
-        return {
-          isValidRequirement: false,
-          activityCodes: [],
-          reasoning: aiError.code === 'AI_UNAVAILABLE'
-            ? 'Il servizio AI è temporaneamente non disponibile. Puoi selezionare le attività manualmente.'
-            : 'Limite di utilizzo AI raggiunto. Riprova tra qualche minuto.',
-          _serviceError: aiError,
-        } as AIActivitySuggestion;
-      }
-
-      throw new Error(aiError.message);
-    }
-
-    const suggestion = await response.json() as AIActivitySuggestion;
-    return suggestion;
-  } catch (error) {
-    console.error('Error calling AI suggestion API:', error);
-
-    // Fallback: return empty (no template defaults available)
-    return {
-      isValidRequirement: false,
-      activityCodes: [],
-      reasoning: 'AI service error. Please try again.',
-    };
-  }
 }
 
 /**

@@ -11,7 +11,7 @@ import { ImportRequirementsDialog } from '@/components/requirements/ImportRequir
 import { ClearListDialog } from '@/components/lists/ClearListDialog';
 import { DeleteRequirementDialog } from '@/components/requirements/DeleteRequirementDialog';
 import { BulkEstimateDialog } from '@/components/requirements/BulkEstimateDialog';
-import { BulkInterviewDialog } from '@/components/requirements/BulkInterviewDialog';
+import { useBulkEstimation } from '@/hooks/useBulkEstimation';
 import { EditListDialog } from '@/components/lists/EditListDialog';
 import { PageShell } from '@/components/layout/PageShell';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -124,30 +124,18 @@ export default function Requirements() {
     const [showListEditDialog, setShowListEditDialog] = useState(false);
     const [showClearDialog, setShowClearDialog] = useState(false);
     const [showBulkEstimate, setShowBulkEstimate] = useState(false);
-    const [showBulkInterview, setShowBulkInterview] = useState(false);
     const [deleteRequirement, setDeleteRequirement] = useState<Requirement | null>(null);
-    const [listTechCategory, setListTechCategory] = useState<string>('MULTI');
     const [viewMode, setViewMode] = useState<ViewMode>('list');
 
-    // Fetch technology code from technology when list changes
+    // Bulk estimation — live row updates
+    const bulkEstimation = useBulkEstimation();
+
+    // When bulk estimation finishes, reload data to get fresh estimations from DB
     useEffect(() => {
-        async function fetchTechCategory() {
-            const techId = list?.technology_id || list?.tech_preset_id;
-            if (techId) {
-                const { data: preset } = await supabase
-                    .from('technologies')
-                    .select('code')
-                    .eq('id', techId)
-                    .single();
-                if (preset?.code) {
-                    setListTechCategory(preset.code);
-                }
-            } else {
-                setListTechCategory('MULTI');
-            }
+        if (!bulkEstimation.isRunning && bulkEstimation.statusMap.size > 0) {
+            loadData();
         }
-        fetchTechCategory();
-    }, [list?.technology_id, list?.tech_preset_id]);
+    }, [bulkEstimation.isRunning]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleImportRequirements = async (parsedRequirements: any[]) => {
         if (!user || !listId) return;
@@ -359,7 +347,7 @@ export default function Requirements() {
                 errorMessage={errorMessage}
                 filteredRequirementsCount={filteredRequirements.length}
                 onBulkEstimate={() => setShowBulkEstimate(true)}
-                onBulkInterview={() => setShowBulkInterview(true)}
+                isBulkRunning={bulkEstimation.isRunning}
                 onCreateRequirement={() => setShowCreateDialog(true)}
                 onRetry={() => loadData()}
                 onEditList={() => setShowListEditDialog(true)}
@@ -477,6 +465,7 @@ export default function Requirements() {
                                                 req={req}
                                                 listId={listId || ''}
                                                 onDelete={setDeleteRequirement}
+                                                bulkStatus={bulkEstimation.statusMap.get(req.id)}
                                             />
                                         ))}
                                     </div>
@@ -513,20 +502,14 @@ export default function Requirements() {
                     <BulkEstimateDialog
                         open={showBulkEstimate}
                         onOpenChange={setShowBulkEstimate}
-                        listId={listId}
                         requirements={filteredRequirements}
                         listTechPresetId={list?.technology_id || list?.tech_preset_id}
-                        onSuccess={loadData}
+                        onConfirm={() => bulkEstimation.start(
+                            filteredRequirements,
+                            list?.technology_id || list?.tech_preset_id || null,
+                        )}
                     />
-                    <BulkInterviewDialog
-                        open={showBulkInterview}
-                        onOpenChange={setShowBulkInterview}
-                        listId={listId}
-                        requirements={filteredRequirements}
-                        listTechPresetId={list?.technology_id || list?.tech_preset_id}
-                        techCategory={listTechCategory}
-                        onSuccess={loadData}
-                    />
+
                     <EditListDialog
                         open={showListEditDialog}
                         onOpenChange={setShowListEditDialog}
