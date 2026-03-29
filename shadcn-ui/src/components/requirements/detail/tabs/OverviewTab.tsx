@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Calculator, FileText, ChevronDown, ChevronUp, Sparkles, ShieldCheck, Brain, ArrowRight, Clock } from 'lucide-react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { Calculator, FileText, ChevronDown, ChevronUp, Sparkles, ShieldCheck, Brain, ArrowRight, Clock, Save, RotateCcw, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { Requirement, Technology, EstimationWithDetails, Activity } from '@/types/database';
@@ -23,14 +23,54 @@ interface OverviewTabProps {
     consultantHistory?: ConsultantAnalysisRecord[];
     consultantHistoryLoading?: boolean;
     requirementUnderstanding?: RequirementUnderstanding | null;
+    onUnderstandingSave?: (updated: RequirementUnderstanding) => Promise<void>;
     onNavigateToTab?: (tab: string) => void;
 }
 
-export function OverviewTab({ requirement, presets, refetchRequirement, latestEstimation, activities = [], onRequestConsultant, isConsultantLoading, consultantAnalysis, consultantHistory = [], consultantHistoryLoading = false, requirementUnderstanding, onNavigateToTab }: OverviewTabProps) {
+export function OverviewTab({ requirement, presets, refetchRequirement, latestEstimation, activities = [], onRequestConsultant, isConsultantLoading, consultantAnalysis, consultantHistory = [], consultantHistoryLoading = false, requirementUnderstanding, onUnderstandingSave, onNavigateToTab }: OverviewTabProps) {
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(true);
     const [isUnderstandingExpanded, setIsUnderstandingExpanded] = useState(true);
     const [isAiAnalysisExpanded, setIsAiAnalysisExpanded] = useState(true);
     const [isConsultantExpanded, setIsConsultantExpanded] = useState(true);
+
+    // Always-editable understanding: working copy + original snapshot
+    const [editedUnderstanding, setEditedUnderstanding] = useState<RequirementUnderstanding | null>(null);
+    const [isSavingUnderstanding, setIsSavingUnderstanding] = useState(false);
+    const originalUnderstandingRef = useRef<RequirementUnderstanding | null>(null);
+
+    // Sync working copy when upstream understanding changes (initial load / after save)
+    useEffect(() => {
+        if (requirementUnderstanding) {
+            originalUnderstandingRef.current = structuredClone(requirementUnderstanding);
+            setEditedUnderstanding(structuredClone(requirementUnderstanding));
+        }
+    }, [requirementUnderstanding]);
+
+    const isDirty = useMemo(() => {
+        if (!editedUnderstanding || !originalUnderstandingRef.current) return false;
+        return JSON.stringify(editedUnderstanding) !== JSON.stringify(originalUnderstandingRef.current);
+    }, [editedUnderstanding]);
+
+    const handleResetEditing = useCallback(() => {
+        if (originalUnderstandingRef.current) {
+            setEditedUnderstanding(structuredClone(originalUnderstandingRef.current));
+        }
+    }, []);
+
+    const handleSaveUnderstanding = useCallback(async () => {
+        if (!editedUnderstanding || !onUnderstandingSave) return;
+        setIsSavingUnderstanding(true);
+        try {
+            await onUnderstandingSave(editedUnderstanding);
+            // After save, upstream will update requirementUnderstanding → useEffect resets original
+        } finally {
+            setIsSavingUnderstanding(false);
+        }
+    }, [editedUnderstanding, onUnderstandingSave]);
+
+    const handleCardUpdate = useCallback((updated: RequirementUnderstanding) => {
+        setEditedUnderstanding(updated);
+    }, []);
 
     const hasAiAnalysis = latestEstimation?.ai_reasoning && latestEstimation.ai_reasoning.trim().length > 0;
 
@@ -83,9 +123,29 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
                                                 : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                                             }
                                         </button>
+                                        {isUnderstandingExpanded && isDirty && onUnderstandingSave && (
+                                            <div className="flex items-center gap-1.5">
+                                                <Button variant="ghost" size="sm" onClick={handleResetEditing} className="h-7 text-xs text-slate-500" disabled={isSavingUnderstanding}>
+                                                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                                                    Ripristina
+                                                </Button>
+                                                <Button size="sm" onClick={handleSaveUnderstanding} className="h-7 text-xs" disabled={isSavingUnderstanding}>
+                                                    {isSavingUnderstanding ? (
+                                                        <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                                                    ) : (
+                                                        <Save className="w-3.5 h-3.5 mr-1" />
+                                                    )}
+                                                    Salva
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
                                     {isUnderstandingExpanded && (
-                                        <RequirementUnderstandingCard understanding={requirementUnderstanding} />
+                                        <RequirementUnderstandingCard
+                                            understanding={editedUnderstanding || requirementUnderstanding}
+                                            originalUnderstanding={isDirty ? originalUnderstandingRef.current || undefined : undefined}
+                                            onUpdate={onUnderstandingSave ? handleCardUpdate : undefined}
+                                        />
                                     )}
                                 </section>
                             )}
@@ -151,133 +211,136 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
                                 </section>
                             )}
 
-                            {/* Progress */}
-                            {latestEstimation && (
-                                <section className="border-t border-slate-100 pt-4">
-                                    <RequirementProgress
-                                        estimation={latestEstimation}
-                                        activities={activities}
-                                        onUpdate={refetchRequirement}
-                                    />
-                                </section>
-                            )}
                         </div>
 
-                        {/* ═══ Right column — Estimation Summary Panel ═══ */}
+                        {/* ═══ Right column — Estimation + Progress ═══ */}
                         <div className="lg:col-span-3">
-                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm sticky top-0">
-                                <div className="px-4 py-3 border-b border-slate-100">
-                                    <div className="flex items-center gap-2">
-                                        <Calculator className="w-4 h-4 text-blue-600" />
-                                        <h3 className="text-sm font-semibold text-slate-900">Stima corrente</h3>
+                            <div className="lg:sticky lg:top-0 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-1 space-y-4 no-scrollbar">
+                                <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+                                    <div className="px-4 py-3 border-b border-slate-100">
+                                        <div className="flex items-center gap-2">
+                                            <Calculator className="w-4 h-4 text-blue-600" />
+                                            <h3 className="text-sm font-semibold text-slate-900">Stima corrente</h3>
+                                        </div>
                                     </div>
-                                </div>
 
-                                {latestEstimation ? (
-                                    <div className="p-4 space-y-4">
-                                        {/* Hero number */}
-                                        <div className="text-center py-3 bg-slate-50 rounded-lg">
-                                            <div className="text-4xl font-bold text-blue-700">
-                                                {latestEstimation.total_days.toFixed(1)}
-                                            </div>
-                                            <div className="text-[11px] text-slate-500 font-medium uppercase tracking-wider mt-0.5">
-                                                giorni totali
-                                            </div>
-                                        </div>
-
-                                        {/* Breakdown table */}
-                                        <div className="space-y-1 text-sm">
-                                            <div className="flex justify-between py-1.5 px-2">
-                                                <span className="text-slate-500">Base</span>
-                                                <span className="font-medium text-slate-800">{(latestEstimation.base_hours / 8).toFixed(1)} gg</span>
-                                            </div>
-                                            <div className="flex justify-between py-1.5 px-2">
-                                                <span className="text-slate-500">Moltiplicatore</span>
-                                                <span className="font-medium text-slate-800">{latestEstimation.driver_multiplier.toFixed(2)}x</span>
-                                            </div>
-                                            <div className="flex justify-between py-1.5 px-2 bg-slate-50 rounded">
-                                                <span className="text-slate-600 font-medium">Subtotale</span>
-                                                <span className="font-semibold text-slate-900">
-                                                    {((latestEstimation.base_hours / 8) * latestEstimation.driver_multiplier).toFixed(1)} gg
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between py-1.5 px-2">
-                                                <span className="text-slate-500">Contingenza</span>
-                                                <span className="font-medium text-orange-600">{latestEstimation.contingency_percent}%</span>
-                                            </div>
-                                            {latestEstimation.risk_score > 0 && (
-                                                <div className="flex justify-between py-1.5 px-2">
-                                                    <span className="text-slate-500">Rischio</span>
-                                                    <span className="font-medium text-slate-800">{latestEstimation.risk_score}</span>
+                                    {latestEstimation ? (
+                                        <div className="p-4 space-y-4">
+                                            {/* Hero number */}
+                                            <div className="text-center py-3 bg-slate-50 rounded-lg">
+                                                <div className="text-4xl font-bold text-blue-700">
+                                                    {latestEstimation.total_days.toFixed(1)}
                                                 </div>
-                                            )}
-                                        </div>
+                                                <div className="text-[11px] text-slate-500 font-medium uppercase tracking-wider mt-0.5">
+                                                    giorni totali
+                                                </div>
+                                            </div>
 
-                                        {/* Last update */}
-                                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 px-2">
-                                            <Clock className="w-3 h-3" />
-                                            Aggiornata {new Date(latestEstimation.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
-                                        </div>
+                                            {/* Breakdown table */}
+                                            <div className="space-y-1 text-sm">
+                                                <div className="flex justify-between py-1.5 px-2">
+                                                    <span className="text-slate-500">Base</span>
+                                                    <span className="font-medium text-slate-800">{(latestEstimation.base_hours / 8).toFixed(1)} gg</span>
+                                                </div>
+                                                <div className="flex justify-between py-1.5 px-2">
+                                                    <span className="text-slate-500">Moltiplicatore</span>
+                                                    <span className="font-medium text-slate-800">{latestEstimation.driver_multiplier.toFixed(2)}x</span>
+                                                </div>
+                                                <div className="flex justify-between py-1.5 px-2 bg-slate-50 rounded">
+                                                    <span className="text-slate-600 font-medium">Subtotale</span>
+                                                    <span className="font-semibold text-slate-900">
+                                                        {((latestEstimation.base_hours / 8) * latestEstimation.driver_multiplier).toFixed(1)} gg
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between py-1.5 px-2">
+                                                    <span className="text-slate-500">Contingenza</span>
+                                                    <span className="font-medium text-orange-600">{latestEstimation.contingency_percent}%</span>
+                                                </div>
+                                                {latestEstimation.risk_score > 0 && (
+                                                    <div className="flex justify-between py-1.5 px-2">
+                                                        <span className="text-slate-500">Rischio</span>
+                                                        <span className="font-medium text-slate-800">{latestEstimation.risk_score}</span>
+                                                    </div>
+                                                )}
+                                            </div>
 
-                                        {/* Action buttons */}
-                                        <div className="space-y-2 pt-2 border-t border-slate-100">
-                                            <Button
-                                                size="sm"
-                                                className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700"
-                                                onClick={() => onNavigateToTab?.('estimation')}
-                                            >
-                                                <ArrowRight className="h-3.5 w-3.5 mr-1.5" />
-                                                Rivedi stima
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="w-full h-8 text-xs"
-                                                onClick={() => onNavigateToTab?.('history')}
-                                            >
-                                                Timeline
-                                            </Button>
+                                            {/* Last update */}
+                                            <div className="flex items-center gap-1.5 text-[11px] text-slate-400 px-2">
+                                                <Clock className="w-3 h-3" />
+                                                Aggiornata {new Date(latestEstimation.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
+                                            </div>
 
-                                            {/* Consultant CTA */}
-                                            {onRequestConsultant && (
+                                            {/* Action buttons */}
+                                            <div className="space-y-2 pt-2 border-t border-slate-100">
+                                                <Button
+                                                    size="sm"
+                                                    className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700"
+                                                    onClick={() => onNavigateToTab?.('estimation')}
+                                                >
+                                                    <ArrowRight className="h-3.5 w-3.5 mr-1.5" />
+                                                    Rivedi stima
+                                                </Button>
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    onClick={onRequestConsultant}
-                                                    disabled={isConsultantLoading}
-                                                    className={`w-full h-8 text-xs ${consultantAnalysis
-                                                        ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
-                                                        : 'hover:border-emerald-200 hover:text-emerald-700 hover:bg-emerald-50'
-                                                        } transition-colors`}
+                                                    className="w-full h-8 text-xs"
+                                                    onClick={() => onNavigateToTab?.('history')}
                                                 >
-                                                    {isConsultantLoading ? (
-                                                        <>
-                                                            <div className="h-3 w-3 mr-1.5 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
-                                                            Analisi...
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
-                                                            {consultantAnalysis ? 'Aggiorna Consultant' : 'Richiedi Consultant'}
-                                                        </>
-                                                    )}
+                                                    Timeline
                                                 </Button>
-                                            )}
+
+                                                {/* Consultant CTA */}
+                                                {onRequestConsultant && (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={onRequestConsultant}
+                                                        disabled={isConsultantLoading}
+                                                        className={`w-full h-8 text-xs ${consultantAnalysis
+                                                            ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                                                            : 'hover:border-emerald-200 hover:text-emerald-700 hover:bg-emerald-50'
+                                                            } transition-colors`}
+                                                    >
+                                                        {isConsultantLoading ? (
+                                                            <>
+                                                                <div className="h-3 w-3 mr-1.5 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+                                                                Analisi...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
+                                                                {consultantAnalysis ? 'Aggiorna Consultant' : 'Richiedi Consultant'}
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                ) : (
-                                    <div className="p-6 text-center">
-                                        <Calculator className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                                        <p className="text-sm text-slate-500 font-medium">Nessuna stima</p>
-                                        <p className="text-xs text-slate-400 mt-1 mb-3">Avvia una stima per questo requisito</p>
-                                        <Button
-                                            size="sm"
-                                            className="h-8 text-xs bg-blue-600 hover:bg-blue-700"
-                                            onClick={() => onNavigateToTab?.('estimation')}
-                                        >
-                                            <ArrowRight className="h-3.5 w-3.5 mr-1.5" />
-                                            Vai alla Stima
-                                        </Button>
+                                    ) : (
+                                        <div className="p-6 text-center">
+                                            <Calculator className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                                            <p className="text-sm text-slate-500 font-medium">Nessuna stima</p>
+                                            <p className="text-xs text-slate-400 mt-1 mb-3">Avvia una stima per questo requisito</p>
+                                            <Button
+                                                size="sm"
+                                                className="h-8 text-xs bg-blue-600 hover:bg-blue-700"
+                                                onClick={() => onNavigateToTab?.('estimation')}
+                                            >
+                                                <ArrowRight className="h-3.5 w-3.5 mr-1.5" />
+                                                Vai alla Stima
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Progress — under estimation card */}
+                                {latestEstimation && (
+                                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                                        <RequirementProgress
+                                            estimation={latestEstimation}
+                                            activities={activities}
+                                            onUpdate={refetchRequirement}
+                                        />
                                     </div>
                                 )}
                             </div>

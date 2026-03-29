@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { NormalizationResult } from '@/lib/openai';
 import type { AIActivitySuggestion } from '@/types/estimation';
 import type {
   TechnicalQuestion,
@@ -11,6 +10,7 @@ import type {
 import type { RequirementUnderstanding } from '@/types/requirement-understanding';
 import type { ImpactMap } from '@/types/impact-map';
 import type { EstimationBlueprint } from '@/types/estimation-blueprint';
+import type { RequirementValidationResult } from '@/types/ai-validation';
 
 /** Project context for AI to avoid redundant questions */
 export interface ProjectContext {
@@ -34,7 +34,6 @@ export interface WizardData {
   business_owner?: string;
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
   state: 'PROPOSED' | 'SELECTED' | 'SCHEDULED' | 'DONE';
-  normalizationResult?: NormalizationResult | null;
   activitySuggestionResult?: AIActivitySuggestion | null;
   // Project context
   projectContext?: ProjectContext;
@@ -52,6 +51,8 @@ export interface WizardData {
   // Information-gain planner fields
   preEstimate?: PreEstimate;
   plannerDecision?: 'ASK' | 'SKIP';
+  // Requirement Validation Gate
+  requirementValidation?: RequirementValidationResult;
   // Requirement Understanding artifact (Phase 1c)
   requirementUnderstanding?: RequirementUnderstanding;
   requirementUnderstandingConfirmed?: boolean;
@@ -106,7 +107,6 @@ function getInitialData(): WizardData {
     priority: 'MEDIUM',
     state: 'PROPOSED',
     business_owner: '',
-    normalizationResult: null,
     activitySuggestionResult: null,
     // Project context
     projectContext: undefined,
@@ -122,6 +122,8 @@ function getInitialData(): WizardData {
     aiAnalysis: undefined,
     preEstimate: undefined,
     plannerDecision: undefined,
+    // Requirement Validation Gate
+    requirementValidation: undefined,
     // Requirement Understanding
     requirementUnderstanding: undefined,
     requirementUnderstandingConfirmed: undefined,

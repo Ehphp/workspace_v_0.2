@@ -24,6 +24,7 @@ import { generateRequirementUnderstanding } from '@/lib/requirement-understandin
 import { generateImpactMap } from '@/lib/impact-map-api';
 import { generateEstimationBlueprint } from '@/lib/estimation-blueprint-api';
 import { generateInterviewQuestions, generateEstimateFromInterview } from '@/lib/requirement-interview-api';
+import { validateRequirementDescription } from '@/lib/requirement-validation-api';
 import type { Technology } from '@/types/database';
 import type { RequirementUnderstanding } from '@/types/requirement-understanding';
 import type { ImpactMap } from '@/types/impact-map';
@@ -41,6 +42,7 @@ import type {
 export type PipelineStep =
     | 'idle'
     | 'loading-data'
+    | 'validation'
     | 'understanding'
     | 'impact-map'
     | 'blueprint'
@@ -113,6 +115,7 @@ export interface PipelineInsight {
 export const STEP_LABELS: Record<PipelineStep, string> = {
     'idle': '',
     'loading-data': 'Caricamento dati...',
+    'validation': 'Validazione requisito...',
     'understanding': 'Analisi requisito...',
     'impact-map': 'Mappa impatto architetturale...',
     'blueprint': 'Decomposizione tecnica...',
@@ -238,6 +241,20 @@ export function useQuickEstimationV2() {
 
             const techCategory = preset.tech_category;
             const artifacts: PipelineArtifacts = {};
+
+            // ─── Step 0.5: Requirement Validation Gate ─────────────────
+            const { result: validationResult } = await timed(
+                'validation',
+                () => validateRequirementDescription(description),
+                steps,
+            );
+            if (validationResult && !validationResult.isValid && validationResult.confidence >= 0.7) {
+                setError(`Requisito non valido: ${validationResult.reason}`);
+                setCurrentStep('error');
+                return false;
+            }
+
+            if (abortRef.current) return false;
 
             // ─── Step 1: Requirement Understanding (soft) ──────────────
             const { result: understandingRes } = await timed(

@@ -110,14 +110,7 @@ AI receives only the filtered activity pool, ensuring suggestions are relevant t
 
 ### 3. Wizard Flow
 
-In `WizardStep2.tsx`, the user selects a technology. The selection stores:
-
-```typescript
-onUpdate({
-  techPresetId: technology.id,        // UUID — used for FK filtering
-  techCategory: technology.code,      // String code — used for display
-});
-```
+Technology is automatically inherited from the project (`lists.technology_id`) when a new requirement is created. The wizard no longer includes a manual technology selection step — `RequirementWizard.tsx` resolves the project's `defaultTechPresetId` via `fetchTechnology()` and sets `techPresetId` + `techCategory` in wizard state on mount.
 
 This `techPresetId` flows forward to all subsequent steps and AI endpoints.
 
@@ -242,7 +235,7 @@ export interface TechnologyActivity {
 | File | Purpose |
 |------|---------|
 | `src/types/database.ts` | `Technology` and `TechnologyActivity` interfaces |
-| `src/components/requirements/wizard/WizardStep2.tsx` | Technology selection in wizard |
+| `src/components/requirements/RequirementWizard.tsx` | Technology inheritance from project |
 | `src/pages/configuration/ConfigurationPresets.tsx` | Technology management page |
 | `src/components/configuration/presets/TechnologyDialog.tsx` | Create/edit technology dialog |
 | `src/hooks/usePresetManagement.ts` | Technology CRUD hooks |

@@ -89,35 +89,6 @@ FORMATO OUTPUT:
 }
 
 // ============================================================================
-// REQUIREMENT NORMALIZATION
-// ============================================================================
-
-export const NORMALIZATION_PROMPT = `Sei un esperto Business Analyst. Il tuo obiettivo è normalizzare e validare una descrizione di requisito.
-
-INPUT: Una descrizione grezza del requisito (che può essere disordinata, vaga, o strutturata come coppie chiave-valore da Excel).
-
-OUTPUT: Un oggetto JSON strutturato con i seguenti campi:
-- isValidRequirement: boolean (true se è un requisito tecnico valido, false se gibberish/test/domanda)
-- confidence: number (0.0 a 1.0, quanto sei sicuro dell'interpretazione)
-- originalDescription: string (il testo input)
-- normalizedDescription: string (versione pulita, strutturata, non ambigua)
-- validationIssues: string[] (problemi trovati nella descrizione originale)
-- transformNotes: string[] (cosa hai cambiato e perché)
-- generatedTitle: string (titolo conciso per il requisito)
-
-REGOLE NORMALIZZAZIONE:
-1. Rimuovi ambiguità e linguaggio vago
-2. Struttura in punti chiari quando possibile
-3. Preserva tutti i dettagli tecnici
-4. Espandi acronimi se il significato è chiaro dal contesto
-5. Correggi errori grammaticali ovvi
-6. Mantieni la stessa lingua dell'input
-
-REGOLE VALIDAZIONE:
-- Requisito valido: ha un obiettivo chiaro, target tecnico, azione da compiere
-- Requisito non valido: troppo vago, testo di test, domanda senza contesto, gibberish`;
-
-// ============================================================================
 // INTERVIEW QUESTION GENERATION
 // ============================================================================
 

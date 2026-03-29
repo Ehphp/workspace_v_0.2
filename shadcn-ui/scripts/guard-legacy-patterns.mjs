@@ -25,7 +25,6 @@ const ALLOWED_FILES = new Set([
   'src/hooks/usePresetManagement.ts',
   // Canonical pipeline — reads tech_category to build API payload, not for filtering
   'src/hooks/useQuickEstimationV2.ts',
-  'src/components/requirements/wizard/WizardStep2.tsx',
   // Canonical helper — ALLOWED to use tech_category as fallback
   'src/lib/technology-helpers.ts',
   // Types — structural definitions, not logic

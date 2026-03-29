@@ -15,7 +15,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 // Local fallback imports
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { NORMALIZATION_PROMPT, ESTIMATE_FROM_INTERVIEW_PROMPT } from './prompt-templates';
+import { ESTIMATE_FROM_INTERVIEW_PROMPT } from './prompt-templates';
 import { QUESTION_GENERATION_SYSTEM_PROMPT } from './prompts/question-generation';
 import { PRESET_GENERATION_SYSTEM_PROMPT } from './prompts/preset-generation';
 
@@ -31,7 +31,6 @@ import { PRESET_GENERATION_SYSTEM_PROMPT } from './prompts/preset-generation';
  */
 const LOCAL_FALLBACKS: Record<string, string> = {
     // prompt-templates.ts — static constants
-    normalization: NORMALIZATION_PROMPT,
     estimate_from_interview: ESTIMATE_FROM_INTERVIEW_PROMPT,
 
     // prompts/question-generation.ts

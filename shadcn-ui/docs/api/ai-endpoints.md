@@ -1001,6 +1001,64 @@ The following estimation endpoints automatically use vector search when enabled:
 
 ---
 
+## Requirement Validation Gate Endpoint
+
+### POST `/.netlify/functions/ai-validate-requirement`
+
+**Purpose**: Lightweight gate that checks whether user input is a legitimate software requirement before the expensive estimation pipeline runs. Uses dual-layer validation: client-side heuristic (free) + AI classification (~100 tokens).
+
+**When Used**: 
+- **Wizard**: Triggered when user clicks "Next" in WizardStep1, before proceeding to Understanding step.
+- **Quick Estimate V2**: First pipeline step after loading master data, before Understanding.
+
+**Auth**: Required (`requireAuth: true`)
+
+**Input**:
+```typescript
+{
+  description: string;   // Requirement text (1–2000 chars)
+  testMode?: boolean;     // Skip cache
+}
+```
+
+**Output**:
+```typescript
+{
+  success: boolean;
+  validation: {
+    isValid: boolean;           // Gate pass/fail
+    confidence: number;         // 0.0–1.0
+    reason: string;             // Explanation in input language
+    category: 'valid' | 'nonsense' | 'too_vague' | 'not_software' | 'off_topic';
+    suggestions?: string[];     // Improvement tips (max 3, only for too_vague)
+  };
+  durationMs: number;
+}
+```
+
+**Categories**:
+
+| Category | Description | Gate Behavior |
+|----------|-------------|---------------|
+| `valid` | Legitimate software requirement | Pass |
+| `nonsense` | Random text, test input, placeholder | Block (confidence ≥ 0.7) |
+| `too_vague` | Software concept but too generic | Warning (user can dismiss) |
+| `not_software` | Real concept but not a software req | Block (confidence ≥ 0.7) |
+| `off_topic` | Completely unrelated | Block (confidence ≥ 0.7) |
+
+**Client-side heuristic (Layer 1)** — runs before API call:
+- Text < 30 chars → rejected as `too_vague`
+- < 3 distinct words → rejected as `too_vague`
+- All words identical → rejected as `nonsense`
+- Only numbers/symbols → rejected as `nonsense`
+
+**Fail-open**: If the validation service is unavailable, the user proceeds (no blocking on network errors).
+
+**Model**: `gpt-4o-mini`, temperature `0`, max tokens `200`  
+**Cache**: 24h TTL, prefix `ai:validate-req`
+
+---
+
 ## Requirement Understanding Endpoint
 
 ### POST `/.netlify/functions/ai-requirement-understanding`

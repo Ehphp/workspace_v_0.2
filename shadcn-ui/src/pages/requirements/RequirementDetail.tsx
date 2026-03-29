@@ -17,7 +17,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { FileText, Calculator, History, ClipboardCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { getConsultantAnalysis } from '@/lib/consultant-api';
-import { getLatestRequirementUnderstanding, saveEstimationByIds } from '@/lib/api';
+import { getLatestRequirementUnderstanding, saveRequirementUnderstanding, saveEstimationByIds } from '@/lib/api';
 import {
     orchestrateWizardDomainSave,
     finalizeWizardSnapshot,
@@ -134,6 +134,25 @@ export default function RequirementDetail() {
             })
             .catch((err) => console.warn('Failed to load requirement understanding:', err));
     }, [requirement?.id]);
+
+    // Save edited understanding (new version) and refresh local state
+    const handleUnderstandingSave = useCallback(async (updated: RequirementUnderstanding) => {
+        if (!requirement?.id) return;
+        try {
+            await saveRequirementUnderstanding({
+                requirementId: requirement.id,
+                understanding: updated as unknown as Record<string, unknown>,
+                inputDescription: requirement.description || '',
+                inputTechCategory: requirement.tech_category || undefined,
+            });
+            setRequirementUnderstanding(updated);
+            toast.success('Analisi AI aggiornata');
+        } catch (err) {
+            console.error('Failed to save understanding:', err);
+            toast.error('Errore nel salvataggio dell\'analisi');
+            throw err; // re-throw so OverviewTab keeps edit mode open
+        }
+    }, [requirement?.id, requirement?.description, requirement?.tech_category]);
 
     // Initialize consultantAnalysis from latest history record if available
     useEffect(() => {
@@ -526,6 +545,7 @@ export default function RequirementDetail() {
                             consultantHistory={consultantHistory}
                             consultantHistoryLoading={consultantHistoryLoading}
                             requirementUnderstanding={requirementUnderstanding}
+                            onUnderstandingSave={handleUnderstandingSave}
                             onNavigateToTab={setActiveTab}
                         />
                     </TabsContent>

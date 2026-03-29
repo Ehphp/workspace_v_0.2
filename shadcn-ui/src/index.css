@@ -116,6 +116,19 @@
     border-style: solid !important;
     border-width: 1px !important;
   }
+
+  /* Inline-editable fields that must look like plain text */
+  input.editable-inline,
+  textarea.editable-inline {
+    border-width: 0 !important;
+    border-style: none !important;
+    box-shadow: none !important;
+  }
+  input.editable-inline:focus-visible,
+  textarea.editable-inline:focus-visible {
+    box-shadow: none !important;
+    outline: none !important;
+  }
 }
 
 @layer components {

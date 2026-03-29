@@ -33,7 +33,6 @@ export default tseslint.config(
       // Known legacy (STEP 4 cleanup)
       // Known legacy (STEP 4 cleanup)
       "src/hooks/usePresetManagement.ts",
-      "src/components/requirements/wizard/WizardStep2.tsx",
       // Canonical pipeline — reads tech_category to build API request payload, not for filtering
       "src/hooks/useQuickEstimationV2.ts",
       // Canonical helper — allowed

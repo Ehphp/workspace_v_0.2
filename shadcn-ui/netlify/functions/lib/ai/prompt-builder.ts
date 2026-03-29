@@ -79,40 +79,6 @@ export function createActivitySchema(validActivityCodes: string[]) {
     };
 }
 
-/**
- * Create normalization JSON schema for structured outputs
- * @returns JSON schema object for requirement normalization
- */
-export function createNormalizationSchema() {
-    return {
-        type: "json_schema" as const,
-        json_schema: {
-            name: "normalization_response",
-            strict: true,
-            schema: {
-                type: "object",
-                properties: {
-                    isValidRequirement: { type: "boolean" },
-                    confidence: { type: "number" },
-                    originalDescription: { type: "string" },
-                    normalizedDescription: { type: "string" },
-                    validationIssues: {
-                        type: "array",
-                        items: { type: "string" }
-                    },
-                    transformNotes: {
-                        type: "array",
-                        items: { type: "string" }
-                    },
-                    generatedTitle: { type: "string" }
-                },
-                required: ["isValidRequirement", "confidence", "originalDescription", "normalizedDescription", "validationIssues", "transformNotes", "generatedTitle"],
-                additionalProperties: false
-            }
-        }
-    };
-}
-
 import { createActivitySuggestionPrompt as createActivitySuggestionPromptIT } from './prompt-templates';
 
 /**
@@ -128,16 +94,6 @@ export function createActivitySuggestionSystemPrompt(
     descriptiveData: string
 ): string {
     return createActivitySuggestionPromptIT(presetName, techCategory, descriptiveData);
-}
-
-import { NORMALIZATION_PROMPT } from './prompt-templates';
-
-/**
- * Create system prompt for requirement normalization (Italian)
- * @returns System prompt string in Italian
- */
-export function createNormalizationSystemPrompt(): string {
-    return NORMALIZATION_PROMPT;
 }
 
 /**

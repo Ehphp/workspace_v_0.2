@@ -35,15 +35,6 @@ export function parseAIError(response: Response, errorData: any): AIServiceError
 }
 
 
-export interface NormalizationResult {
-  isValidRequirement: boolean;
-  confidence: number;
-  originalDescription: string;
-  normalizedDescription: string;
-  validationIssues: string[];
-  transformNotes: string[];
-  generatedTitle?: string;
-}
 
 /**
  * Generate a concise title from a requirement description using AI
@@ -87,42 +78,3 @@ export async function generateTitleFromDescription(description: string): Promise
   }
 }
 
-
-/**
- * Normalize and validate a requirement description using AI
- */
-export async function normalizeRequirement(description: string): Promise<NormalizationResult> {
-  try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const authHeader = session?.access_token
-      ? { Authorization: `Bearer ${session.access_token}` }
-      : {};
-
-    const sanitizedDescription = sanitizePromptInput(description);
-
-    const response = await fetch(buildFunctionUrl('ai-suggest'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeader,
-      },
-      body: JSON.stringify({
-        action: 'normalize-requirement',
-        description: sanitizedDescription,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const aiError = parseAIError(response, errorData);
-      throw new Error(aiError.message);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error normalizing requirement:', error);
-    throw error;
-  }
-}

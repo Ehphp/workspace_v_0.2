@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
-import { useRequirementNormalization } from '@/hooks/useRequirementNormalization';
-import { Loader2, Wand2, CheckCircle2, AlertTriangle, ArrowRight, FileText } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { useRequirementValidation, VALIDATION_BLOCK_THRESHOLD } from '@/hooks/useRequirementValidation';
+import { Loader2, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,44 +21,55 @@ interface WizardStep1Props {
 
 export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
   const [isFocused, setIsFocused] = useState(false);
-  const { normalize, isNormalizing, normalizationResult, resetNormalization } = useRequirementNormalization();
-  const normalizationCardRef = useRef<HTMLDivElement>(null);
-  const [editedNormalizedDescription, setEditedNormalizedDescription] = useState<string>('');
+  const { validate, validationResult, isValidating, resetValidation } = useRequirementValidation();
+  const [validationDismissed, setValidationDismissed] = useState(false);
 
-  const handleNormalize = async () => {
-    if (!data.description) return;
-    console.log('Starting normalization for description:', data.description.substring(0, 50));
-    const result = await normalize(data.description);
-    console.log('Normalization result:', result);
-    if (result?.normalizedDescription) {
-      setEditedNormalizedDescription(result.normalizedDescription);
+  // Reset validation when description changes significantly
+  const handleDescriptionChange = (value: string) => {
+    onUpdate({ description: value });
+    if (validationResult) {
+      resetValidation();
+      setValidationDismissed(false);
     }
   };
 
-  // Auto-scroll to normalization result when it appears
-  useEffect(() => {
-    if (normalizationResult && normalizationCardRef.current) {
-      normalizationCardRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest'
-      });
-      // Initialize edited version with AI result
-      if (normalizationResult.normalizedDescription) {
-        setEditedNormalizedDescription(normalizationResult.normalizedDescription);
-      }
+  // Validation gate: run validation before proceeding to next step
+  const handleNextWithValidation = async () => {
+    // If already validated and passed (or user dismissed warning), proceed
+    if (validationResult?.isValid) {
+      onNext();
+      return;
     }
-  }, [normalizationResult]);
+    if (validationResult && !validationResult.isValid && validationDismissed) {
+      onNext();
+      return;
+    }
 
-  const applyNormalization = () => {
-    if (editedNormalizedDescription) {
-      onUpdate({
-        description: editedNormalizedDescription,
-        normalizationResult: normalizationResult
-      });
-      resetNormalization();
-      setEditedNormalizedDescription('');
+    // Run validation
+    const result = await validate(data.description);
+    if (result.isValid) {
+      onUpdate({ requirementValidation: result });
+      onNext();
+      return;
     }
+
+    // Block or warn based on confidence
+    onUpdate({ requirementValidation: result });
+    // If blocked (high confidence invalid), user must fix — we don't call onNext
+    // If warning (low confidence), user can dismiss and proceed
   };
+
+  /** Whether the validation gate is hard-blocking */
+  const isValidationBlocking = validationResult
+    && !validationResult.isValid
+    && validationResult.confidence >= VALIDATION_BLOCK_THRESHOLD
+    && !validationDismissed;
+
+  /** Whether the validation gate shows a dismissible warning */
+  const isValidationWarning = validationResult
+    && !validationResult.isValid
+    && validationResult.confidence < VALIDATION_BLOCK_THRESHOLD
+    && !validationDismissed;
 
   const canProceed = Boolean(data.description); // Title is now optional
   const charCount = data.description.length;
@@ -106,7 +117,7 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
               <textarea
                 id="description"
                 value={data.description}
-                onChange={(e) => onUpdate({ description: e.target.value })}
+                onChange={(e) => handleDescriptionChange(e.target.value)}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
                 rows={4}
@@ -130,224 +141,159 @@ export function WizardStep1({ data, onUpdate, onNext }: WizardStep1Props) {
                     {charCount}/{maxChars}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleNormalize}
-                    disabled={isNormalizing || !data.description || data.description.length < 10}
-                    className="h-5 px-1.5 text-[9px] font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 disabled:opacity-50"
-                  >
-                    {isNormalizing ? (
-                      <>
-                        <Loader2 className="w-2.5 h-2.5 mr-1 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <Wand2 className="w-2.5 h-2.5 mr-1" />
-                        Analyze & Improve
-                      </>
-                    )}
-                  </Button>
-                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="priority" className="text-[10px]">Priority</Label>
+                <Select
+                  value={data.priority}
+                  onValueChange={(value: WizardData['priority']) => onUpdate({ priority: value })}
+                >
+                  <SelectTrigger id="priority" className="h-8 text-xs bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="LOW">Low</SelectItem>
+                    <SelectItem value="MEDIUM">Medium</SelectItem>
+                    <SelectItem value="HIGH">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="state" className="text-[10px]">State</Label>
+                <Select
+                  value={data.state}
+                  onValueChange={(value: WizardData['state']) => onUpdate({ state: value })}
+                >
+                  <SelectTrigger id="state" className="h-8 text-xs bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PROPOSED">Proposed</SelectItem>
+                    <SelectItem value="SELECTED">Selected</SelectItem>
+                    <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+                    <SelectItem value="DONE">Done</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
 
-          <div className="space-y-2.5">
-            <div className="p-2.5 rounded-xl border border-slate-200 bg-white/80 space-y-2.5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                <div className="space-y-1">
-                  <Label htmlFor="business_owner" className="text-[10px]">Business Owner</Label>
-                  <Input
-                    id="business_owner"
-                    placeholder="John Doe"
-                    value={data.business_owner || ''}
-                    onChange={(e) => onUpdate({ business_owner: e.target.value })}
-                    className="bg-white h-8 text-xs"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <Label htmlFor="priority" className="text-[10px]">Priority</Label>
-                  <Select
-                    value={data.priority}
-                    onValueChange={(value: WizardData['priority']) => onUpdate({ priority: value })}
-                  >
-                    <SelectTrigger id="priority" className="h-8 text-xs bg-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="LOW">Low</SelectItem>
-                      <SelectItem value="MEDIUM">Medium</SelectItem>
-                      <SelectItem value="HIGH">High</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1">
-                  <Label htmlFor="state" className="text-[10px]">State</Label>
-                  <Select
-                    value={data.state}
-                    onValueChange={(value: WizardData['state']) => onUpdate({ state: value })}
-                  >
-                    <SelectTrigger id="state" className="h-8 text-xs bg-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PROPOSED">Proposed</SelectItem>
-                      <SelectItem value="SELECTED">Selected</SelectItem>
-                      <SelectItem value="SCHEDULED">Scheduled</SelectItem>
-                      <SelectItem value="DONE">Done</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+          <div className="p-2.5 rounded-xl border border-blue-200 bg-blue-50/80">
+            <div className="flex items-start gap-2.5">
+              <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
               </div>
-            </div>
-
-            <div className="p-2.5 rounded-xl border border-blue-200 bg-blue-50/80">
-              <div className="flex items-start gap-2.5">
-                <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center">
-                  <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="flex-1 space-y-0.5">
-                  <p className="text-xs font-semibold text-blue-900">Tips for better AI suggestions</p>
-                  <ul className="text-[10px] text-blue-800 space-y-0.5 leading-relaxed">
-                    <li>Explain what needs to be built and why it matters</li>
-                    <li>Mention integrations, data sources, or technical constraints</li>
-                    <li>List key user flows or acceptance criteria</li>
-                  </ul>
-                </div>
+              <div className="flex-1 space-y-0.5">
+                <p className="text-xs font-semibold text-blue-900">Tips for better AI suggestions</p>
+                <ul className="text-[10px] text-blue-800 space-y-0.5 leading-relaxed">
+                  <li>Explain what needs to be built and why it matters</li>
+                  <li>Mention integrations, data sources, or technical constraints</li>
+                  <li>List key user flows or acceptance criteria</li>
+                </ul>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Normalization Result Card */}
-        {normalizationResult && (
-          <div ref={normalizationCardRef} className="rounded-xl border-2 border-indigo-300 bg-gradient-to-br from-indigo-50 via-white to-purple-50 overflow-hidden shadow-md animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="px-4 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Wand2 className="w-5 h-5 text-white" />
-                <span className="text-sm font-bold text-white">AI Analysis Complete</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`text-[11px] px-2.5 py-1 rounded-full font-semibold ${normalizationResult.isValidRequirement
-                  ? 'bg-green-500 text-white'
-                  : 'bg-red-500 text-white'
-                  }`}>
-                  {normalizationResult.isValidRequirement ? '✓ Valid' : '⚠ Needs Work'}
-                </span>
-                <span className="text-[11px] px-2.5 py-1 rounded-full bg-white/20 text-white font-semibold">
-                  {(normalizationResult.confidence * 100).toFixed(0)}% confidence
-                </span>
-              </div>
+      {/* Validation Gate Feedback */ }
+  {
+    validationResult && !validationResult.isValid && !validationDismissed && (
+      <div className={`rounded-xl border-2 p-3 animate-in fade-in slide-in-from-top-2 duration-300 ${isValidationBlocking
+        ? 'border-red-300 bg-gradient-to-br from-red-50 via-white to-red-50'
+        : 'border-amber-300 bg-gradient-to-br from-amber-50 via-white to-amber-50'
+        }`}>
+        <div className="flex items-start gap-3">
+          <div className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${isValidationBlocking
+            ? 'bg-gradient-to-br from-red-500 to-red-600'
+            : 'bg-gradient-to-br from-amber-500 to-amber-600'
+            }`}>
+            <ShieldAlert className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <h4 className={`text-sm font-semibold ${isValidationBlocking ? 'text-red-900' : 'text-amber-900'
+                }`}>
+                {isValidationBlocking ? 'Requisito non valido' : 'Attenzione'}
+              </h4>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${isValidationBlocking
+                ? 'bg-red-100 text-red-700'
+                : 'bg-amber-100 text-amber-700'
+                }`}>
+                {validationResult.category === 'nonsense' && 'Testo non sensato'}
+                {validationResult.category === 'too_vague' && 'Troppo generico'}
+                {validationResult.category === 'not_software' && 'Non è software'}
+                {validationResult.category === 'off_topic' && 'Fuori contesto'}
+              </span>
             </div>
-
-            <div className="p-4 space-y-3">
-              {/* Compact comparison - stacked on small screens */}
-              <div className="grid gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] text-slate-600 font-semibold flex items-center gap-1">
-                    <FileText className="w-3 h-3" />
-                    Original
-                  </Label>
-                  <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-xs text-slate-600 leading-relaxed max-h-24 overflow-y-auto">
-                    {normalizationResult.originalDescription}
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] text-indigo-700 font-semibold flex items-center gap-1">
-                    <Wand2 className="w-3 h-3" />
-                    AI-Improved (Editable)
-                  </Label>
-                  <textarea
-                    value={editedNormalizedDescription}
-                    onChange={(e) => setEditedNormalizedDescription(e.target.value)}
-                    className="w-full bg-gradient-to-br from-indigo-50 to-purple-50 p-2.5 rounded-lg border-2 border-indigo-200 text-xs text-slate-800 leading-relaxed font-medium max-h-24 overflow-y-auto shadow-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:border-indigo-400 transition-all duration-200"
-                    rows={3}
-                  />
-                </div>
-              </div>
-
-              {(normalizationResult.validationIssues?.length > 0 || normalizationResult.transformNotes?.length > 0) && (
-                <div className="grid gap-2">
-                  {normalizationResult.validationIssues?.length > 0 && (
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-amber-700 font-semibold flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" />
-                        Issues ({normalizationResult.validationIssues.length})
-                      </Label>
-                      <ul className="bg-amber-50/80 rounded border border-amber-200 p-2 text-[10px] text-amber-900 space-y-1 max-h-20 overflow-y-auto">
-                        {normalizationResult.validationIssues.map((issue, i) => (
-                          <li key={i} className="flex items-start gap-1.5">
-                            <span className="mt-1 w-1 h-1 rounded-full bg-amber-500 flex-shrink-0" />
-                            <span className="flex-1">{issue}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {normalizationResult.transformNotes?.length > 0 && (
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-blue-700 font-semibold flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" />
-                        Improvements ({normalizationResult.transformNotes.length})
-                      </Label>
-                      <ul className="bg-blue-50/80 rounded border border-blue-200 p-2 text-[10px] text-blue-900 space-y-1 max-h-20 overflow-y-auto">
-                        {normalizationResult.transformNotes.map((note, i) => (
-                          <li key={i} className="flex items-start gap-1.5">
-                            <span className="mt-1 w-1 h-1 rounded-full bg-blue-500 flex-shrink-0" />
-                            <span className="flex-1">{note}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-indigo-100">
+            <p className={`text-xs leading-relaxed ${isValidationBlocking ? 'text-red-800' : 'text-amber-800'
+              }`}>
+              {validationResult.reason}
+            </p>
+            {validationResult.suggestions && validationResult.suggestions.length > 0 && (
+              <ul className="text-[10px] text-slate-600 space-y-0.5 mt-1">
+                {validationResult.suggestions.map((s, i) => (
+                  <li key={i} className="flex items-start gap-1.5">
+                    <span className="mt-1 w-1 h-1 rounded-full bg-slate-400 flex-shrink-0" />
+                    <span>{s}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {isValidationWarning && (
+              <div className="flex justify-end pt-1">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={resetNormalization}
-                  className="h-8 text-xs text-slate-600 hover:text-slate-800 hover:bg-slate-100"
+                  onClick={() => setValidationDismissed(true)}
+                  className="h-7 text-[11px] text-amber-700 hover:text-amber-900 hover:bg-amber-100"
                 >
-                  Keep Original
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={applyNormalization}
-                  className="h-8 text-xs bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-md"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                  Use This
+                  Procedi comunque
                 </Button>
               </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
+    )
+  }
 
-      <div className="flex justify-end pt-3 border-t border-slate-200">
-        <Button
-          onClick={onNext}
-          disabled={!canProceed}
-          size="lg"
-          className="h-10 px-6 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed group"
-        >
-          <span className="font-semibold text-sm">Next: Select Technology</span>
+  {/* Validation passed indicator */ }
+  {
+    validationResult?.isValid && (
+      <div className="flex items-center gap-2 text-[11px] text-emerald-700 px-1">
+        <ShieldCheck className="w-3.5 h-3.5" />
+        <span className="font-medium">Requisito validato</span>
+      </div>
+    )
+  }
+
+  <div className="flex justify-end pt-3 border-t border-slate-200">
+    <Button
+      onClick={handleNextWithValidation}
+      disabled={!canProceed || isValidating || !!isValidationBlocking}
+      size="lg"
+      className="h-10 px-6 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed group"
+    >
+      {isValidating ? (
+        <>
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          <span className="font-semibold text-sm">Validazione in corso...</span>
+        </>
+      ) : (
+        <>
+          <span className="font-semibold text-sm">Next: AI Understanding</span>
           <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
           </svg>
-        </Button>
-      </div>
-    </div>
+        </>
+      )}
+    </Button>
+  </div>
+    </div >
   );
 }

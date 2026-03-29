@@ -8,12 +8,13 @@ AI in Syntero provides **suggestions** and **interview-driven activity selection
 
 | AI Does | AI Does NOT |
 |---------|-------------|
-| Propose activity codes based on description | Calculate estimates (engine does this) |
-| Select activities based on interview answers | Make final decisions without user confirmation |
-| Generate technical interview questions | Choose driver multiplier values |
-| Generate concise titles | Store or modify data directly |
-| Validate if requirement text makes sense | Access user data from database |
-| Suggest drivers/risks (interview flow only) | Override user selections |
+| Validate if input is a real software requirement (gate) | Calculate estimates (engine does this) |
+| Propose activity codes based on description | Make final decisions without user confirmation |
+| Select activities based on interview answers | Choose driver multiplier values |
+| Generate technical interview questions | Store or modify data directly |
+| Generate concise titles | Access user data from database |
+| Validate if requirement text makes sense | Override user selections |
+| Suggest drivers/risks (interview flow only) | |
 
 ---
 
@@ -32,6 +33,7 @@ AI functionality is distributed across multiple serverless functions:
 | `ai-bulk-estimate-with-answers.ts` | Batch activity selection | Bulk estimation |
 | `ai-generate-questions.ts` | Stage 1: preset wizard questions | Custom preset creation |
 | `ai-generate-preset.ts` | Stage 2: generate preset from answers | Custom preset creation |
+| `ai-validate-requirement.ts` | Lightweight requirement validation gate | Wizard step 1 (before Understanding), Quick Estimate V2 |
 | `ai-requirement-understanding.ts` | Generate structured Requirement Understanding artifact | Wizard step 3 (Milestone 1), Quick Estimate V2 |
 | `ai-impact-map.ts` | Generate structured Impact Map artifact | Wizard step 4 (Milestone 2), Quick Estimate V2 |
 | `ai-estimation-blueprint.ts` | Generate structured Estimation Blueprint artifact | Wizard step 5 (Milestone 3), Quick Estimate V2 |
@@ -236,8 +238,10 @@ Before the technical interview, the wizard generates a structured **Requirement 
 
 ```
 ┌────────────────────┐
-│  WizardStep2       │
-│  (Technology)      │
+│  WizardStep1       │
+│  (Description)     │
+│  tech inherited    │
+│  from project      │
 └────────┬───────────┘
          │ onNext()
          ▼

@@ -63,9 +63,8 @@ Syntero is a requirements estimation system with four distinct layers:
 
 | Component | Responsibility | Key Files |
 |-----------|----------------|-----------|
-| **Requirement Wizard** | 8-step estimation flow | `src/components/requirements/RequirementWizard.tsx` |
+| **Requirement Wizard** | 7-step estimation flow | `src/components/requirements/RequirementWizard.tsx` |
 | **WizardStep1** | Requirement description + metadata | `src/components/requirements/wizard/WizardStep1.tsx` |
-| **WizardStep2** | Technology selection | `src/components/requirements/wizard/WizardStep2.tsx` |
 | **WizardStepUnderstanding** | AI Requirement Understanding review | `src/components/requirements/wizard/WizardStepUnderstanding.tsx` |
 | **WizardStepImpactMap** | AI Impact Map review | `src/components/requirements/wizard/WizardStepImpactMap.tsx` |
 | **WizardStepBlueprint** | AI Estimation Blueprint review | `src/components/requirements/wizard/WizardStepBlueprint.tsx` |

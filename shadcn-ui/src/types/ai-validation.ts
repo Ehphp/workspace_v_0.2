@@ -92,6 +92,79 @@ export function validateAITitle(rawData: unknown): ValidatedAITitle {
     return AITitleGenerationSchema.parse(rawData);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Requirement Validation Gate
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type RequirementValidationCategory =
+    | 'valid'
+    | 'nonsense'
+    | 'too_vague'
+    | 'not_software'
+    | 'off_topic';
+
+export const RequirementValidationSchema = z.object({
+    isValid: z.boolean(),
+    confidence: z.number().min(0).max(1),
+    reason: z.string().max(500),
+    category: z.enum(['valid', 'nonsense', 'too_vague', 'not_software', 'off_topic']),
+    suggestions: z.array(z.string().max(200)).max(3).optional(),
+});
+
+export type RequirementValidationResult = z.infer<typeof RequirementValidationSchema>;
+
+/**
+ * Client-side heuristic pre-check (Layer 1, zero cost).
+ * Returns a validation result if the input clearly fails, or null if it passes.
+ */
+export function heuristicRequirementCheck(text: string): RequirementValidationResult | null {
+    const trimmed = text.trim();
+
+    if (trimmed.length < 30) {
+        return {
+            isValid: false,
+            confidence: 1.0,
+            reason: 'La descrizione è troppo breve per essere un requisito software (minimo 30 caratteri).',
+            category: 'too_vague',
+            suggestions: ['Descrivi cosa deve fare il sistema, per chi, e quali vincoli ha.'],
+        };
+    }
+
+    const words = trimmed.split(/\s+/).filter(w => w.length > 1);
+    if (words.length < 3) {
+        return {
+            isValid: false,
+            confidence: 1.0,
+            reason: 'Il testo contiene troppo poche parole per descrivere un requisito.',
+            category: 'too_vague',
+            suggestions: ['Scrivi almeno una frase completa che descriva la funzionalità desiderata.'],
+        };
+    }
+
+    // Check if all words are the same (e.g. "test test test test test")
+    const uniqueWords = new Set(words.map(w => w.toLowerCase()));
+    if (uniqueWords.size === 1) {
+        return {
+            isValid: false,
+            confidence: 1.0,
+            reason: 'Il testo sembra un test — contiene solo la stessa parola ripetuta.',
+            category: 'nonsense',
+        };
+    }
+
+    // Check if only numbers/symbols
+    if (/^[\d\s\W]+$/.test(trimmed)) {
+        return {
+            isValid: false,
+            confidence: 1.0,
+            reason: 'Il testo contiene solo numeri o simboli, non un requisito software.',
+            category: 'nonsense',
+        };
+    }
+
+    return null; // passes heuristic — proceed to AI check
+}
+
 /**
  * Completeness score for an activity
  */

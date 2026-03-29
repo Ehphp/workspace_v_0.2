@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useWizardState } from '@/hooks/useWizardState';
 import { WizardStep1 } from './wizard/WizardStep1';
-import { WizardStep2 } from './wizard/WizardStep2';
 import { WizardStepUnderstanding } from './wizard/WizardStepUnderstanding';
 import { WizardStepImpactMap } from './wizard/WizardStepImpactMap';
 import { WizardStepBlueprint } from './wizard/WizardStepBlueprint';
 import { WizardStepInterview } from './wizard/WizardStepInterview';
 import { WizardStep4 } from './wizard/WizardStep4';
 import { WizardStep5 } from './wizard/WizardStep5';
-import { createRequirement, saveEstimation, saveRequirementUnderstanding, saveImpactMap, saveEstimationBlueprint, fetchEstimationMasterData } from '@/lib/api';
+import { createRequirement, saveEstimation, saveRequirementUnderstanding, saveImpactMap, saveEstimationBlueprint, fetchEstimationMasterData, fetchTechnology } from '@/lib/api';
 import {
     orchestrateWizardDomainSave,
     finalizeWizardSnapshot,
@@ -52,9 +51,20 @@ export function RequirementWizard({ listId, projectContext, onSuccess, onCancel,
         }
     }, [projectContext, data.projectContext, updateData]);
 
+    // Inherit technology from project — resolve code from id
+    useEffect(() => {
+        const techId = projectContext?.defaultTechPresetId;
+        if (techId && !data.techPresetId) {
+            fetchTechnology(techId).then((tech) => {
+                if (tech) {
+                    updateData({ techPresetId: tech.id, techCategory: tech.code || '' });
+                }
+            }).catch((err) => console.warn('Failed to resolve project technology:', err));
+        }
+    }, [projectContext?.defaultTechPresetId, data.techPresetId, updateData]);
+
     const steps = [
         { title: 'Requirement', component: WizardStep1 },
-        { title: 'Technology', component: WizardStep2 },
         { title: 'Understanding', component: WizardStepUnderstanding },
         { title: 'Impact Map', component: WizardStepImpactMap },
         { title: 'Blueprint', component: WizardStepBlueprint },
