@@ -15,6 +15,12 @@ export const listSchema = z.object({
   owner: trimmedString(255).optional().or(z.literal('')),
   techPresetId: z.string().uuid().optional().nullable(),
   status: z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']),
+  projectType: z.enum(['NEW_DEVELOPMENT', 'MAINTENANCE', 'MIGRATION', 'INTEGRATION', 'REFACTORING']).optional().nullable(),
+  domain: trimmedString(50).optional().nullable().or(z.literal('')),
+  scope: z.enum(['SMALL', 'MEDIUM', 'LARGE', 'ENTERPRISE']).optional().nullable(),
+  teamSize: z.number().int().min(1).max(100).optional().nullable(),
+  deadlinePressure: z.enum(['RELAXED', 'NORMAL', 'TIGHT', 'CRITICAL']).optional().nullable(),
+  methodology: z.enum(['AGILE', 'WATERFALL', 'HYBRID']).optional().nullable(),
 });
 
 export type ListFormValues = z.infer<typeof listSchema>;

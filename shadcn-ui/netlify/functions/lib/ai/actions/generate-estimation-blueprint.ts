@@ -26,6 +26,7 @@ import {
     setCachedResponse,
 } from '../ai-cache';
 import type { CacheConfig } from '../ai-cache';
+import { formatProjectContextBlock } from '../prompt-builder';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cache profile — 12 h (same TTL as understanding / impact map)
@@ -50,6 +51,12 @@ export interface GenerateBlueprintRequest {
         name: string;
         description: string;
         owner?: string;
+        projectType?: string;
+        domain?: string;
+        scope?: string;
+        teamSize?: number;
+        deadlinePressure?: string;
+        methodology?: string;
     };
     /** Confirmed Requirement Understanding from previous step */
     requirementUnderstanding?: Record<string, unknown>;
@@ -274,10 +281,7 @@ export async function generateEstimationBlueprint(
         userPromptParts.push(`\nCATEGORIA TECNOLOGICA: ${techCategory}`);
     }
     if (projectContext) {
-        userPromptParts.push(
-            `\nCONTESTO PROGETTO:\n- Nome: ${projectContext.name}\n- Descrizione: ${projectContext.description}` +
-            (projectContext.owner ? `\n- Owner: ${projectContext.owner}` : ''),
-        );
+        userPromptParts.push(formatProjectContextBlock(projectContext));
     }
 
     const userPrompt = userPromptParts.join('\n');

@@ -36,6 +36,7 @@ import {
 } from './lib/blueprint-activity-mapper';
 import { retrieveRAGContext, getRAGSystemPromptAddition } from './lib/ai/rag';
 import { isVectorSearchEnabled } from './lib/ai/vector-search';
+import { formatProjectContextBlock } from './lib/ai/prompt-builder';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration (tunable via env)
@@ -68,6 +69,12 @@ interface ProjectContext {
     name: string;
     description: string;
     owner?: string;
+    projectType?: string;
+    domain?: string;
+    scope?: string;
+    teamSize?: number;
+    deadlinePressure?: string;
+    methodology?: string;
 }
 
 interface RequestBody {
@@ -538,12 +545,8 @@ export const handler = createAIHandler<RequestBody>({
 
         let projectContextSection = '';
         if (body.projectContext) {
-            projectContextSection = `
-CONTESTO PROGETTO (informazioni già note, NON chiedere domande su questi aspetti):
-- Nome progetto: ${body.projectContext.name}
-- Descrizione progetto: ${body.projectContext.description}
-${body.projectContext.owner ? `- Responsabile: ${body.projectContext.owner}` : ''}
-`;
+            projectContextSection = formatProjectContextBlock(body.projectContext) +
+                '\n(informazioni già note, NON chiedere domande su questi aspetti)\n';
         }
 
         const userPrompt = `${projectContextSection}${formatUnderstandingBlock(body.requirementUnderstanding)}${formatImpactMapBlock(body.impactMap)}${formatBlueprintBlock(body.estimationBlueprint)}

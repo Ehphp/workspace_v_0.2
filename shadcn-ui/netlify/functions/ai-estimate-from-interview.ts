@@ -33,6 +33,7 @@ import {
     type ActivityProvenance,
 } from './lib/blueprint-activity-mapper';
 import { buildProvenanceMap, attachProvenance, provenanceBreakdown } from './lib/provenance-map';
+import { formatProjectContextBlock } from './lib/ai/prompt-builder';
 
 // Model configuration - use env variable AI_ESTIMATION_MODEL or default to gpt-4o
 // NOTE: gpt-5 has limitations (no custom temperature, no json_schema response_format)
@@ -111,6 +112,12 @@ interface ProjectContext {
     name: string;
     description: string;
     owner?: string;
+    projectType?: string;
+    domain?: string;
+    scope?: string;
+    teamSize?: number;
+    deadlinePressure?: string;
+    methodology?: string;
 }
 
 /** Pre-estimate from the interview planner (Round 0), used as anchor for coherence */
@@ -748,11 +755,8 @@ export const handler = createAIHandler<RequestBody>({
         // Build project context section if available
         let projectContextSection = '';
         if (body.projectContext) {
-            projectContextSection = `\nCONTESTO PROGETTO:
-- Nome: ${body.projectContext.name}
-- Descrizione: ${body.projectContext.description}${body.projectContext.owner ? `\n- Responsabile: ${body.projectContext.owner}` : ''}
-
-NOTA: Usa il contesto del progetto per capire meglio lo scope e le convenzioni già stabilite.\n`;
+            projectContextSection = formatProjectContextBlock(body.projectContext) +
+                '\n\nNOTA: Usa il contesto del progetto per capire meglio lo scope e le convenzioni già stabilite.\n';
         }
 
         // Build user prompt with optional RAG context

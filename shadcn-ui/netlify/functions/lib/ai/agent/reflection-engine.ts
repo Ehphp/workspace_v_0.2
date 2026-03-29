@@ -22,6 +22,7 @@ import type {
     AgentInput,
     AgentFlags
 } from './agent-types';
+import { formatProjectContextBlock } from '../prompt-builder';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Zod Schema for Reflection Response
@@ -185,7 +186,7 @@ function buildReflectionUserPrompt(
     return `REQUISITO ORIGINALE:
 ${input.description}
 
-${input.projectContext ? `CONTESTO PROGETTO: ${input.projectContext.name} — ${input.projectContext.description}` : ''}
+${input.projectContext ? formatProjectContextBlock(input.projectContext) : ''}
 
 TECNOLOGIA: ${input.technologyName || input.techCategory}
 

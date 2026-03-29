@@ -20,8 +20,8 @@ export function DriversSection({
     return (
         <div className="flex-1 min-h-0 flex flex-col gap-1.5">
             <div className="flex items-center justify-between shrink-0">
-                <h3 className="font-semibold text-slate-800 flex items-center gap-1.5 text-xs">
-                    <span className="w-4 h-4 rounded-full bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">2</span>
+                <h3 className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <span className="w-4 h-4 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-[9px] font-bold">2</span>
                     Driver Complessità
                 </h3>
                 <div className="text-right flex items-center gap-1.5">
@@ -31,14 +31,14 @@ export function DriversSection({
                     </span>
                 </div>
             </div>
-            <ScrollArea className="flex-1 min-h-0 rounded-lg border-2 border-slate-200 bg-slate-50/30 p-1.5">
+            <ScrollArea className="flex-1 min-h-0 rounded-lg border border-slate-200 bg-slate-50 p-1.5">
                 <div className="space-y-1">
                     {drivers.map((driver) => {
                         const selectedValue = selectedDriverValues[driver.id] || '';
                         const selectedOption = driver.options.find((opt) => opt.value === selectedValue);
 
                         return (
-                            <div key={driver.id} className="bg-white/80 p-1.5 rounded border border-slate-200 flex items-center gap-2">
+                            <div key={driver.id} className="bg-white p-1.5 rounded border border-slate-200 flex items-center gap-2">
                                 <span className="text-[10px] font-medium text-slate-600 w-24 truncate shrink-0" title={driver.name}>
                                     {driver.name}
                                 </span>
@@ -46,7 +46,7 @@ export function DriversSection({
                                     value={selectedValue || '_NONE_'}
                                     onValueChange={(v) => onDriverChange(driver.id, v === '_NONE_' ? '' : v)}
                                 >
-                                    <SelectTrigger className="flex-1 h-6 text-[10px] bg-slate-50/80 border-slate-200">
+                                    <SelectTrigger className="flex-1 h-6 text-[10px] bg-slate-50 border-slate-200">
                                         <SelectValue placeholder="--" />
                                     </SelectTrigger>
                                     <SelectContent>

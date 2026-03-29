@@ -195,7 +195,7 @@ export function useQuickEstimationV2() {
     const calculate = useCallback(async (
         description: string,
         techPresetId: string,
-        projectContext?: { name: string; description: string; owner?: string },
+        projectContext?: { name: string; description: string; owner?: string; projectType?: string; domain?: string; scope?: string; teamSize?: number; deadlinePressure?: string; methodology?: string },
     ): Promise<boolean> => {
         // Validation
         if (!description.trim() || description.trim().length < 10) {

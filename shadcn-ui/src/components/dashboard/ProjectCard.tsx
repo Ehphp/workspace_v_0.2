@@ -152,9 +152,26 @@ export function ProjectCard({ project, onEdit, onDelete, layout = 'grid' }: Proj
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <Calendar className="w-3 h-3" />
-                    <span>{new Date(project.updated_at).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}</span>
+                <div className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
+                    {project.project_type && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-medium">
+                            {project.project_type.replace('_', ' ')}
+                        </span>
+                    )}
+                    {project.domain && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 font-medium">
+                            {project.domain}
+                        </span>
+                    )}
+                    {project.scope && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-teal-50 text-teal-600 font-medium">
+                            {project.scope}
+                        </span>
+                    )}
+                    <span className="flex items-center gap-1 ml-auto">
+                        <Calendar className="w-3 h-3" />
+                        {new Date(project.updated_at).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}
+                    </span>
                 </div>
             </div>
         </div>

@@ -47,6 +47,7 @@ import type {
 import { DEFAULT_AGENT_FLAGS } from './agent-types';
 import { AGENT_TOOL_DEFINITIONS, executeTool, ToolExecutionContext } from './agent-tools';
 import { reflectOnDraft, buildRefinementPrompt } from './reflection-engine';
+import { formatProjectContextBlock } from '../prompt-builder';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration
@@ -223,33 +224,31 @@ function buildUserPrompt(input: AgentInput, refinementPrompt?: string): string {
     // Format project context
     let projectCtxStr = '';
     if (input.projectContext) {
-        projectCtxStr = `\nCONTESTO PROGETTO:
-- Nome: ${input.projectContext.name}
-- Descrizione: ${input.projectContext.description}${input.projectContext.owner ? `\n- Responsabile: ${input.projectContext.owner}` : ''}
-`;
+        projectCtxStr = formatProjectContextBlock(input.projectContext);
+        `;
     }
 
     // Format activities catalog (first 40 for context window)
     const catalogStr = input.activities
         .slice(0, 40)
-        .map(a => `- ${a.code}: ${a.name} (${a.base_hours}h) [${a.group} | ${a.tech_category}]`)
+        .map(a => `- ${ a.code }: ${ a.name } (${ a.base_hours }h)[${ a.group } | ${ a.tech_category }]`)
         .join('\n');
 
     let prompt = `REQUISITO:
-${input.description}
-${projectCtxStr}
-TECNOLOGIA: ${input.technologyName || input.techCategory}
+${ input.description }
+${ projectCtxStr }
+        TECNOLOGIA: ${ input.technologyName || input.techCategory }
 
 RISPOSTE INTERVIEW TECNICA:
-${answersStr}
+${ answersStr }
 
-CATALOGO ATTIVITÀ DISPONIBILI (usa SOLO questi codici):
-${catalogStr}
-${input.activities.length > 40 ? `\n... e altre ${input.activities.length - 40} attività (usa search_catalog per cercare quelle specifiche)` : ''}
+CATALOGO ATTIVITÀ DISPONIBILI(usa SOLO questi codici):
+${ catalogStr }
+${ input.activities.length > 40 ? `\n... e altre ${input.activities.length - 40} attività (usa search_catalog per cercare quelle specifiche)` : '' }
 
-IMPORTANTE: Puoi usare ESCLUSIVAMENTE i codici attività elencati sopra o trovati tramite search_catalog.
+        IMPORTANTE: Puoi usare ESCLUSIVAMENTE i codici attività elencati sopra o trovati tramite search_catalog.
 
-Analizza le risposte e seleziona le attività necessarie. Se hai bisogno di più informazioni su specifiche attività o vuoi calibrare con stime storiche, usa gli strumenti disponibili.`;
+Analizza le risposte e seleziona le attività necessarie.Se hai bisogno di più informazioni su specifiche attività o vuoi calibrare con stime storiche, usa gli strumenti disponibili.`;
 
     // Append refinement instructions if this is a REFINE pass
     if (refinementPrompt) {
@@ -355,7 +354,7 @@ async function llmWithTools(
 
     // Tool-call loop: model can request tools iteratively
     for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
-        console.log(`\n[agent] ── Tool Iteration ${iteration + 1}/${MAX_TOOL_ITERATIONS} ──`);
+        console.log(`\n[agent] ── Tool Iteration ${ iteration + 1 }/${MAX_TOOL_ITERATIONS} ──`);
         console.log(`[agent]    Elapsed: ${Date.now() - ctx.startedAt}ms, Messages: ${messages.length}`);
 
         if (isTimedOut(ctx)) {

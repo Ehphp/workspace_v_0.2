@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { HistorySection } from '../HistorySection';
 import { MetricComparison } from '@/components/estimation/MetricComparison';
@@ -90,15 +89,13 @@ export function HistoryTab({
 
     return (
         <div className="h-full flex flex-col overflow-hidden">
-            <div className="flex-1 min-h-0 container mx-auto px-6 py-4">
+            <div className="flex-1 min-h-0 container mx-auto px-6 py-5">
                 <div className="grid grid-cols-2 gap-5 h-full">
                     {/* Left: History List */}
                     <div className="flex flex-col min-h-0">
-                        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-3 mb-3 shrink-0">
-                            <div className="p-2 bg-gradient-to-br from-slate-600 to-slate-800 rounded-xl shadow-md">
-                                <History className="w-4 h-4 text-white" />
-                            </div>
-                            Storico Stime
+                        <h3 className="flex items-center gap-2 mb-3 shrink-0">
+                            <History className="w-4 h-4 text-slate-400" />
+                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Storico Stime</span>
                         </h3>
                         <div className="flex-1 min-h-0 overflow-hidden pr-2">
                             <HistorySection
@@ -119,28 +116,26 @@ export function HistoryTab({
 
                     {/* Right: Comparison Chart */}
                     <div className="flex flex-col min-h-0">
-                        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-3 mb-3 shrink-0">
-                            <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
-                                <Calculator className="w-4 h-4 text-white" />
-                            </div>
-                            Confronta Scenari
+                        <h3 className="flex items-center gap-2 mb-3 shrink-0">
+                            <Calculator className="w-4 h-4 text-blue-500" />
+                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Confronta Scenari</span>
                         </h3>
                         <div className="flex-1 min-h-0">
                             {selectedEstimations ? (
                                 'single' in selectedEstimations ? (
                                     // Single estimation view
-                                    <Card className="h-full rounded-2xl shadow-lg border-slate-200/50 bg-white/90 backdrop-blur-xl flex flex-col">
+                                    <div className="h-full rounded-xl border border-slate-200 shadow-sm bg-white flex flex-col">
                                         {/* Estimation Details Header */}
-                                        <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/50 p-3 flex items-center justify-between flex-shrink-0 rounded-t-2xl">
-                                            <div className="text-sm font-bold text-slate-700">Dettagli Stima</div>
-                                            <div className="flex items-center gap-1.5 font-bold px-3 py-1 bg-blue-100 rounded-full text-xs text-blue-700 shadow-sm">
-                                                <Calculator className="w-3.5 h-3.5" />
+                                        <div className="bg-slate-50 border-b border-slate-100 px-4 py-3 flex items-center justify-between flex-shrink-0 rounded-t-xl">
+                                            <div className="text-sm font-semibold text-slate-700">Dettagli Stima</div>
+                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-blue-200 text-blue-600 bg-blue-50">
+                                                <Calculator className="w-3 h-3 mr-1" />
                                                 Selezionato
-                                            </div>
+                                            </Badge>
                                         </div>
 
                                         {/* Single Column Layout (Full Width) */}
-                                        <CardContent className="p-4 flex-1 overflow-hidden flex flex-col min-h-0">
+                                        <div className="p-4 flex-1 overflow-hidden flex flex-col min-h-0">
                                             <div className="flex flex-col min-h-0 h-full">
                                                 {/* Header Info */}
                                                 <div className="mb-3 pb-3 border-b border-slate-200">
@@ -152,14 +147,14 @@ export function HistoryTab({
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
-                                                        <span className="bg-slate-100 px-2 py-0.5 rounded-lg">{selectedEstimations.single.base_hours}h base</span>
-                                                        <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded-lg">Rischio {selectedEstimations.single.risk_score}</span>
+                                                        <span className="bg-slate-100 px-2 py-0.5 rounded">{selectedEstimations.single.base_hours}h base</span>
+                                                        <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded">Rischio {selectedEstimations.single.risk_score}</span>
                                                     </div>
                                                 </div>
 
                                                 {/* Activities */}
                                                 <div className="flex-1 overflow-y-auto min-h-0">
-                                                    <div className="text-xs font-bold text-slate-600 mb-2">
+                                                    <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
                                                         Attività ({selectedEstimations.single.estimation_activities?.length || 0})
                                                     </div>
                                                     <div className="space-y-1.5">
@@ -170,10 +165,10 @@ export function HistoryTab({
                                                             return (
                                                                 <div
                                                                     key={estAct.id}
-                                                                    className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-200/50 text-sm hover:bg-slate-100 transition-colors"
+                                                                    className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-200 text-sm hover:bg-slate-100 transition-colors"
                                                                 >
                                                                     <span className="text-slate-700 truncate flex-1">{activity.name}</span>
-                                                                    <span className="text-xs text-slate-500 ml-2 bg-white px-2 py-0.5 rounded-lg">{activity.base_hours}h</span>
+                                                                    <span className="text-xs text-slate-500 ml-2 bg-white px-2 py-0.5 rounded">{activity.base_hours}h</span>
                                                                 </div>
                                                             );
                                                         })}
@@ -181,15 +176,15 @@ export function HistoryTab({
                                                 </div>
 
                                                 {/* Scenario Footer */}
-                                                <div className="mt-3 pt-3 border-t border-slate-200">
+                                                <div className="mt-3 pt-3 border-t border-slate-100">
                                                     <div className="text-xs text-slate-500">
-                                                        Scenario: <span className="font-bold text-slate-700">{selectedEstimations.single.scenario_name}</span>
+                                                        Scenario: <span className="font-semibold text-slate-700">{selectedEstimations.single.scenario_name}</span>
                                                     </div>
                                                 </div>
 
                                                 {/* Consultant Analysis Section */}
                                                 {selectedEstimations.single.senior_consultant_analysis && (
-                                                    <div className="mt-3 pt-3 border-t border-slate-200">
+                                                    <div className="mt-3 pt-3 border-t border-slate-100">
                                                         <button
                                                             onClick={() => setShowConsultantAnalysis(!showConsultantAnalysis)}
                                                             className="w-full flex items-center justify-between text-xs text-emerald-700 hover:text-emerald-800"
@@ -215,24 +210,22 @@ export function HistoryTab({
                                                     </div>
                                                 )}
                                             </div>
-                                        </CardContent>
-                                    </Card>
+                                        </div>
+                                    </div>
                                 ) : (
                                     // Comparison view (2 estimations)
                                     <MetricComparison older={selectedEstimations.older} newer={selectedEstimations.newer} activities={activities} />
                                 )
                             ) : (
-                                <Card className="h-full rounded-2xl shadow-lg border-slate-200/50 bg-white/80 backdrop-blur-xl flex items-center justify-center">
-                                    <CardContent>
+                                <div className="h-full rounded-xl border border-slate-200 shadow-sm bg-white flex items-center justify-center">
+                                    <div className="p-6">
                                         <div className="text-center text-slate-400 text-sm">
-                                            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-                                                <Calculator className="w-8 h-8 text-slate-400" />
-                                            </div>
-                                            <p className="font-medium">Seleziona una stima per vedere i dettagli</p>
-                                            <p className="text-xs mt-1 text-slate-300">oppure due per confrontarle</p>
+                                            <Calculator className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+                                            <p className="font-medium text-slate-500">Seleziona una stima per vedere i dettagli</p>
+                                            <p className="text-xs mt-1 text-slate-400">oppure due per confrontarle</p>
                                         </div>
-                                    </CardContent>
-                                </Card>
+                                    </div>
+                                </div>
                             )}
                         </div>
                     </div>

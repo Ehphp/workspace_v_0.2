@@ -118,6 +118,12 @@ export interface RequirementInterviewRequest {
         name: string;
         description: string;
         owner?: string;
+        projectType?: string;
+        domain?: string;
+        scope?: string;
+        teamSize?: number;
+        deadlinePressure?: string;
+        methodology?: string;
     };
     /** Optional structured understanding from Phase 1 — enriches AI context */
     requirementUnderstanding?: RequirementUnderstanding;
@@ -188,6 +194,12 @@ export interface EstimationFromInterviewRequest {
         name: string;
         description: string;
         owner?: string;
+        projectType?: string;
+        domain?: string;
+        scope?: string;
+        teamSize?: number;
+        deadlinePressure?: string;
+        methodology?: string;
     };
     /** Optional pre-estimate from Round 0 planner — used as anchoring context */
     preEstimate?: PreEstimate;

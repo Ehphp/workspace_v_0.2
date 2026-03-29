@@ -509,6 +509,39 @@ All endpoints remain backward-compatible: if `estimationBlueprint` is absent or 
 
 ---
 
+## ProjectContext
+
+All AI endpoints accept an optional `projectContext` object that provides structured metadata about the project being estimated. This context is injected into every LLM prompt as a **"CONTESTO PROGETTO"** block via the shared helper `formatProjectContextBlock()` in `prompt-builder.ts`.
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `projectName` | `string` | Project/list name |
+| `projectDescription` | `string?` | Project description |
+| `projectType` | `"greenfield" \| "brownfield" \| "migration" \| "maintenance" \| "poc"` | Type of project |
+| `domain` | `string?` | Business domain (e.g. "fintech", "healthcare") |
+| `scope` | `"small" \| "medium" \| "large" \| "enterprise"` | Project scope tier |
+| `teamSize` | `number?` | Expected team size |
+| `deadlinePressure` | `"relaxed" \| "normal" \| "tight" \| "critical"` | Delivery urgency |
+| `methodology` | `"agile" \| "waterfall" \| "hybrid" \| "kanban"` | Development methodology |
+
+### Impact on AI Estimation
+
+When project context is provided, the LLM uses it to:
+- Adjust complexity assumptions (e.g. brownfield ≠ greenfield)
+- Calibrate activity selection based on domain constraints
+- Scale estimates considering team size and deadline pressure
+- Align recommendations with methodology expectations
+
+### Persistence
+
+All ProjectContext fields are persisted as nullable columns on the `lists` table (see [data-model.md](data-model.md#lists)). The wizard reads them from the list and propagates them through `CreateRequirementDialog → RequirementWizard → AI endpoints`.
+
+**Migration**: `20260329_project_context_enrichment.sql`
+
+---
+
 ## AI Interview System
 
 The interview system enables more accurate activity selection by gathering technical context through targeted questions. It uses an **information-gain planner** to minimize unnecessary questions.

@@ -38,6 +38,12 @@ export function CreateRequirementDialog({
                             description: list.description,
                             owner: list.owner,
                             defaultTechPresetId: list.technology_id || undefined,
+                            projectType: list.project_type || undefined,
+                            domain: list.domain || undefined,
+                            scope: list.scope || undefined,
+                            teamSize: list.team_size || undefined,
+                            deadlinePressure: list.deadline_pressure || undefined,
+                            methodology: list.methodology || undefined,
                         } : undefined}
                         onSuccess={() => {
                             onSuccess();

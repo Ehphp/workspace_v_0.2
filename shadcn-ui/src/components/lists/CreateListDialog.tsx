@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import type { Technology } from '@/types/database';
 import { createList, fetchPresets } from '@/lib/api';
 import { listSchema } from '@/lib/validation';
-import { Layers, Sparkles, User, FileText, Cpu, Activity } from 'lucide-react';
+import { Layers, Sparkles, User, FileText, Cpu, Activity, Target, Globe, Gauge, Users, Clock, GitBranch } from 'lucide-react';
 
 interface CreateListDialogProps {
   open: boolean;
@@ -32,6 +32,12 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
   const [owner, setOwner] = useState('');
   const [techPresetId, setTechPresetId] = useState<string>('__NONE__');
   const [status, setStatus] = useState<'DRAFT' | 'ACTIVE'>('DRAFT');
+  const [projectType, setProjectType] = useState<string>('__NONE__');
+  const [domain, setDomain] = useState('');
+  const [scope, setScope] = useState<string>('__NONE__');
+  const [teamSize, setTeamSize] = useState<string>('');
+  const [deadlinePressure, setDeadlinePressure] = useState<string>('__NONE__');
+  const [methodology, setMethodology] = useState<string>('__NONE__');
   const [loading, setLoading] = useState(false);
   const [presets, setPresets] = useState<Technology[]>([]);
 
@@ -63,6 +69,12 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
       owner: owner || user.email || '',
       techPresetId: techPresetId === '__NONE__' ? null : techPresetId,
       status,
+      projectType: projectType === '__NONE__' ? null : projectType,
+      domain: domain || null,
+      scope: scope === '__NONE__' ? null : scope,
+      teamSize: teamSize ? parseInt(teamSize, 10) : null,
+      deadlinePressure: deadlinePressure === '__NONE__' ? null : deadlinePressure,
+      methodology: methodology === '__NONE__' ? null : methodology,
     });
 
     if (!parsed.success) {
@@ -85,6 +97,12 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
       setOwner('');
       setTechPresetId('__NONE__');
       setStatus('DRAFT');
+      setProjectType('__NONE__');
+      setDomain('');
+      setScope('__NONE__');
+      setTeamSize('');
+      setDeadlinePressure('__NONE__');
+      setMethodology('__NONE__');
       onOpenChange(false);
       onSuccess();
     } catch (error) {
@@ -97,7 +115,7 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
@@ -196,6 +214,124 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
               <p className="help-text">
                 All requirements in this project will inherit this technology by default
               </p>
+            </div>
+
+            {/* Project Context Section */}
+            <div className="border-t border-slate-200 pt-4">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-4">Project Context (optional — improves AI estimation accuracy)</p>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="projectType" className="text-slate-700 font-medium flex items-center gap-2">
+                    <Target className="w-3.5 h-3.5 text-slate-400" />
+                    Project Type
+                  </Label>
+                  <Select value={projectType} onValueChange={setProjectType}>
+                    <SelectTrigger className="bg-slate-50/50 border-slate-200 focus:bg-white transition-all">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__NONE__">Not specified</SelectItem>
+                      <SelectItem value="NEW_DEVELOPMENT">New Development</SelectItem>
+                      <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                      <SelectItem value="MIGRATION">Migration</SelectItem>
+                      <SelectItem value="INTEGRATION">Integration</SelectItem>
+                      <SelectItem value="REFACTORING">Refactoring</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="domain" className="text-slate-700 font-medium flex items-center gap-2">
+                    <Globe className="w-3.5 h-3.5 text-slate-400" />
+                    Domain
+                  </Label>
+                  <Input
+                    id="domain"
+                    value={domain}
+                    onChange={(e) => setDomain(e.target.value)}
+                    placeholder="e.g., HR, Finance, E-commerce"
+                    className="bg-slate-50/50 border-slate-200 focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="scope" className="text-slate-700 font-medium flex items-center gap-2">
+                    <Gauge className="w-3.5 h-3.5 text-slate-400" />
+                    Scope
+                  </Label>
+                  <Select value={scope} onValueChange={setScope}>
+                    <SelectTrigger className="bg-slate-50/50 border-slate-200 focus:bg-white transition-all">
+                      <SelectValue placeholder="Select scope" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__NONE__">Not specified</SelectItem>
+                      <SelectItem value="SMALL">Small</SelectItem>
+                      <SelectItem value="MEDIUM">Medium</SelectItem>
+                      <SelectItem value="LARGE">Large</SelectItem>
+                      <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="teamSize" className="text-slate-700 font-medium flex items-center gap-2">
+                    <Users className="w-3.5 h-3.5 text-slate-400" />
+                    Team Size
+                  </Label>
+                  <Input
+                    id="teamSize"
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={teamSize}
+                    onChange={(e) => setTeamSize(e.target.value)}
+                    placeholder="e.g., 5"
+                    className="bg-slate-50/50 border-slate-200 focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="deadlinePressure" className="text-slate-700 font-medium flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                    Deadline Pressure
+                  </Label>
+                  <Select value={deadlinePressure} onValueChange={setDeadlinePressure}>
+                    <SelectTrigger className="bg-slate-50/50 border-slate-200 focus:bg-white transition-all">
+                      <SelectValue placeholder="Select pressure" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__NONE__">Not specified</SelectItem>
+                      <SelectItem value="RELAXED">Relaxed</SelectItem>
+                      <SelectItem value="NORMAL">Normal</SelectItem>
+                      <SelectItem value="TIGHT">Tight</SelectItem>
+                      <SelectItem value="CRITICAL">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="methodology" className="text-slate-700 font-medium flex items-center gap-2">
+                    <GitBranch className="w-3.5 h-3.5 text-slate-400" />
+                    Methodology
+                  </Label>
+                  <Select value={methodology} onValueChange={setMethodology}>
+                    <SelectTrigger className="bg-slate-50/50 border-slate-200 focus:bg-white transition-all">
+                      <SelectValue placeholder="Select methodology" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__NONE__">Not specified</SelectItem>
+                      <SelectItem value="AGILE">Agile</SelectItem>
+                      <SelectItem value="WATERFALL">Waterfall</SelectItem>
+                      <SelectItem value="HYBRID">Hybrid</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           </div>
 

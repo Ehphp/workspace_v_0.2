@@ -20,9 +20,9 @@ export function CalculationSummary({
 }: CalculationSummaryProps) {
     if (!result) {
         return (
-            <div className="rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-3">
+            <div className="rounded-xl border border-slate-200 bg-white p-3">
                 <h3 className="heading-5 flex items-center gap-2 mb-3">
-                    <span className="w-4 h-4 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">5</span>
+                    <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[9px] font-bold">5</span>
                     Riepilogo
                 </h3>
                 <EmptyState
@@ -35,10 +35,10 @@ export function CalculationSummary({
     }
 
     return (
-        <div className="rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-3 space-y-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-3">
             <div className="flex items-center justify-between">
                 <h3 className="heading-5 flex items-center gap-2">
-                    <span className="w-4 h-4 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">5</span>
+                    <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[9px] font-bold">5</span>
                     Riepilogo
                 </h3>
                 {hasUnsavedChanges && (
@@ -47,7 +47,7 @@ export function CalculationSummary({
             </div>
 
             {/* Calculation Breakdown */}
-            <div className="space-y-1.5 bg-white/80 rounded-lg border border-slate-200 p-2">
+            <div className="space-y-1.5 bg-slate-50 rounded-lg border border-slate-200 p-2">
                 <div className="flex justify-between text-[10px]">
                     <span className="text-slate-500">Giorni Base</span>
                     <span className="font-mono font-medium text-slate-700">{result.baseDays.toFixed(1)}g</span>
@@ -81,7 +81,7 @@ export function CalculationSummary({
             </div>
 
             {/* Total */}
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-2 border-green-200 p-3">
+            <div className="bg-emerald-50 rounded-lg border border-emerald-200 p-3">
                 <div className="flex justify-between items-center">
                     <span className="text-[10px] font-semibold text-green-800">STIMA TOTALE</span>
                     <div className="text-right">

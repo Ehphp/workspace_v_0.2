@@ -66,9 +66,9 @@ export function RequirementEstimation({
             {requirementDescription && (
                 <div className="shrink-0 mb-4 p-3 bg-slate-50 border border-slate-200 rounded-lg">
                     <div className="flex items-start gap-2">
-                        <FileText className="h-4 w-4 text-slate-500 mt-0.5 shrink-0" />
+                        <FileText className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
                         <div className="min-w-0">
-                            <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Requisito</span>
+                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Requisito</span>
                             <p className="text-sm text-slate-700 mt-0.5 line-clamp-2">{requirementDescription}</p>
                         </div>
                     </div>

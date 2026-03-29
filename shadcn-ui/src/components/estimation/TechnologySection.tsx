@@ -21,14 +21,14 @@ export function TechnologySection({
     const selectedPreset = presets.find((p) => p.id === selectedPresetId);
 
     return (
-        <div className="rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-3 space-y-2.5">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-2.5">
             <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-slate-800 flex items-center gap-2 text-xs">
-                    <span className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">1</span>
+                <h3 className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <span className="w-4 h-4 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[9px] font-bold">1</span>
                     Tecnologia
                 </h3>
                 {selectedPreset && (
-                    <Badge className="bg-blue-100 text-blue-700 border-0 text-[10px] font-medium px-1.5 py-0">
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-blue-200 text-blue-600 bg-blue-50">
                         {selectedPreset.tech_category}
                     </Badge>
                 )}
@@ -37,7 +37,7 @@ export function TechnologySection({
             <div className="grid grid-cols-2 gap-2">
                 <div className="col-span-2">
                     <Select value={selectedPresetId} onValueChange={onPresetChange}>
-                        <SelectTrigger className="h-7 text-xs bg-white/80 border-slate-200">
+                        <SelectTrigger className="h-7 text-xs bg-white border-slate-200">
                             <SelectValue placeholder="Seleziona tecnologia..." />
                         </SelectTrigger>
                         <SelectContent>

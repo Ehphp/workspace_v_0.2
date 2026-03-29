@@ -23,6 +23,12 @@ interface ProjectContext {
     name: string;
     description: string;
     owner?: string;
+    projectType?: string;
+    domain?: string;
+    scope?: string;
+    teamSize?: number;
+    deadlinePressure?: string;
+    methodology?: string;
 }
 
 interface RequestBody {

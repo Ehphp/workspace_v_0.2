@@ -142,6 +142,14 @@ Project containers owned by users.
 | `owner` | VARCHAR(255) | Business owner label |
 | `technology_id` | UUID | Default technology for requirements |
 | `status` | VARCHAR(20) | `DRAFT`, `ACTIVE`, `ARCHIVED` |
+| `project_type` | VARCHAR(30) | `NEW_DEVELOPMENT`, `MAINTENANCE`, `MIGRATION`, `INTEGRATION`, `REFACTORING` (nullable) |
+| `domain` | VARCHAR(50) | Business domain (e.g., HR, Finance, E-commerce) (nullable) |
+| `scope` | VARCHAR(20) | `SMALL`, `MEDIUM`, `LARGE`, `ENTERPRISE` (nullable) |
+| `team_size` | INTEGER | Team members count, 1-100 (nullable) |
+| `deadline_pressure` | VARCHAR(20) | `RELAXED`, `NORMAL`, `TIGHT`, `CRITICAL` (nullable) |
+| `methodology` | VARCHAR(20) | `AGILE`, `WATERFALL`, `HYBRID` (nullable) |
+
+**Migration**: `20260329_project_context_enrichment.sql` — added project context fields for AI enrichment.
 
 ### requirements
 

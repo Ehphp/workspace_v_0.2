@@ -56,12 +56,12 @@ export function ActivitiesSection({
         <div className="h-full flex flex-col gap-2">
             {/* Header */}
             <div className="flex items-center justify-between shrink-0">
-                <h3 className="font-semibold text-slate-800 flex items-center gap-1.5 text-xs">
-                    <span className="w-4 h-4 rounded-full bg-gradient-to-br from-purple-500 to-violet-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">4</span>
+                <h3 className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <span className="w-4 h-4 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-[9px] font-bold">4</span>
                     Attività Selezionate
                 </h3>
                 <div className="flex items-center gap-2">
-                    <Badge className="bg-purple-100 text-purple-700 border-0 text-[10px] font-medium px-1.5 py-0">
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-purple-200 text-purple-600 bg-purple-50">
                         {selectedActivityIds.length} sel.
                     </Badge>
                     <span className="text-[10px] text-slate-500 font-mono">{totalHours}h</span>
@@ -70,31 +70,31 @@ export function ActivitiesSection({
 
             {/* AI Button — hidden when legacy AI suggest is not available */}
             {onAiRecalculate && (
-            <div className="shrink-0 rounded-lg border-2 border-dashed border-purple-200 bg-purple-50/30 p-2">
-                <Button
-                    onClick={onAiRecalculate}
-                    disabled={isAiLoading || !requirementDescription}
-                    size="sm"
-                    className="w-full h-7 text-[10px] bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white shadow-sm"
-                >
-                    {isAiLoading ? (
-                        <>
-                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                            Analisi in corso...
-                        </>
-                    ) : (
-                        <>
-                            <Sparkles className="h-3 w-3 mr-1" />
-                            Suggerisci con AI
-                        </>
-                    )}
-                </Button>
-            </div>
+                <div className="shrink-0 rounded-lg border border-dashed border-purple-200 bg-purple-50/30 p-2">
+                    <Button
+                        onClick={onAiRecalculate}
+                        disabled={isAiLoading || !requirementDescription}
+                        size="sm"
+                        className="w-full h-7 text-[10px] bg-purple-600 hover:bg-purple-700 text-white"
+                    >
+                        {isAiLoading ? (
+                            <>
+                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                Analisi in corso...
+                            </>
+                        ) : (
+                            <>
+                                <Sparkles className="h-3 w-3 mr-1" />
+                                Suggerisci con AI
+                            </>
+                        )}
+                    </Button>
+                </div>
             )}
 
             {/* Selected Activities */}
             {selectedActivities.length > 0 && (
-                <div className="shrink-0 rounded-lg border-2 border-purple-200 bg-purple-50/50 p-2">
+                <div className="shrink-0 rounded-lg border border-purple-200 bg-purple-50/50 p-2">
                     <div className="text-[9px] font-semibold uppercase text-purple-600 mb-1.5">Selezionate</div>
                     <div className="space-y-1 max-h-[200px] overflow-y-auto pr-1">
                         {selectedActivities.map((activity, idx) => {
@@ -156,7 +156,7 @@ export function ActivitiesSection({
                         if (groupActivities.length === 0) return null;
 
                         return (
-                            <div key={group} className="rounded-lg border-2 border-slate-200 bg-slate-50/30 p-2">
+                            <div key={group} className="rounded-lg border border-slate-200 bg-slate-50/30 p-2">
                                 <div className="text-[9px] font-semibold uppercase text-slate-500 mb-1.5">{groupLabels[group]}</div>
                                 <div className="space-y-1">
                                     {groupActivities.map((activity) => {
@@ -164,7 +164,7 @@ export function ActivitiesSection({
                                         return (
                                             <div
                                                 key={activity.id}
-                                                className="cursor-pointer rounded p-1.5 text-[10px] flex items-center gap-1.5 transition-all bg-white/80 border border-slate-200 hover:border-purple-300 hover:bg-purple-50/50"
+                                                className="cursor-pointer rounded p-1.5 text-[10px] flex items-center gap-1.5 transition-all bg-white border border-slate-200 hover:border-purple-300 hover:bg-purple-50/50"
                                                 onClick={() => onActivityToggle(activity.id)}
                                             >
                                                 <div className="w-3 h-3 shrink-0 rounded border border-slate-300 bg-white flex items-center justify-center" />

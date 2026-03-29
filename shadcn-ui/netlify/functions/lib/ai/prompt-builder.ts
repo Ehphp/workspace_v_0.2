@@ -120,3 +120,59 @@ export function createCompactPrompt(activities: Activity[], drivers: Driver[], r
 
     return `Activities: ${activitiesStr}\nDrivers: ${driversStr}\nRisks: ${risksStr}`;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Project Context → prompt block (enriched with structured fields)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ProjectContextForPrompt {
+    name: string;
+    description: string;
+    owner?: string;
+    projectType?: string;
+    domain?: string;
+    scope?: string;
+    teamSize?: number;
+    deadlinePressure?: string;
+    methodology?: string;
+}
+
+const PROJECT_TYPE_LABELS: Record<string, string> = {
+    NEW_DEVELOPMENT: 'Nuovo Sviluppo',
+    MAINTENANCE: 'Manutenzione',
+    MIGRATION: 'Migrazione',
+    INTEGRATION: 'Integrazione',
+    REFACTORING: 'Refactoring',
+};
+
+const DEADLINE_LABELS: Record<string, string> = {
+    RELAXED: 'Rilassata',
+    NORMAL: 'Normale',
+    TIGHT: 'Stretta',
+    CRITICAL: 'Critica',
+};
+
+/**
+ * Format project context into a prompt block for AI consumption.
+ * Returns an empty string if no context is provided.
+ * New fields are appended only if present (backward-compatible).
+ */
+export function formatProjectContextBlock(ctx: ProjectContextForPrompt | undefined | null): string {
+    if (!ctx) return '';
+
+    const lines: string[] = [
+        `\nCONTESTO PROGETTO:`,
+        `- Nome: ${ctx.name}`,
+        `- Descrizione: ${ctx.description}`,
+    ];
+
+    if (ctx.owner) lines.push(`- Responsabile: ${ctx.owner}`);
+    if (ctx.projectType) lines.push(`- Tipo progetto: ${PROJECT_TYPE_LABELS[ctx.projectType] || ctx.projectType}`);
+    if (ctx.domain) lines.push(`- Dominio: ${ctx.domain}`);
+    if (ctx.scope) lines.push(`- Scope: ${ctx.scope}`);
+    if (ctx.teamSize) lines.push(`- Team: ${ctx.teamSize} persone`);
+    if (ctx.deadlinePressure) lines.push(`- Pressione deadline: ${DEADLINE_LABELS[ctx.deadlinePressure] || ctx.deadlinePressure}`);
+    if (ctx.methodology) lines.push(`- Metodologia: ${ctx.methodology}`);
+
+    return lines.join('\n');
+}

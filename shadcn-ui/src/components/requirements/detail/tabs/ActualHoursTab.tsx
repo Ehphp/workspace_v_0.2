@@ -8,7 +8,6 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -125,36 +124,35 @@ export function ActualHoursTab({
     // ── Empty state ─────────────────────────────────────────────
     if (availableEstimations.length === 0) {
         return (
-            <div className="flex-1 overflow-y-auto">
-                <div className="container mx-auto px-6 py-8">
-                    <Card className="border-dashed">
-                        <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                            <ClipboardCheck className="w-12 h-12 text-slate-300 mb-4" />
-                            <h3 className="text-lg font-semibold text-slate-700 mb-2">
+            <div className="h-full flex flex-col overflow-hidden">
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                    <div className="container mx-auto px-6 py-5">
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <ClipboardCheck className="w-8 h-8 text-slate-300 mb-3" />
+                            <p className="text-sm font-medium text-slate-500 mb-1">
                                 Nessuna stima disponibile
-                            </h3>
-                            <p className="text-sm text-slate-500 max-w-md">
+                            </p>
+                            <p className="text-xs text-slate-400 max-w-md">
                                 Crea prima una stima nella tab "Stima" per poter registrare il consuntivo.
                             </p>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </div>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="flex-1 overflow-y-auto">
-            <div className="container mx-auto px-6 py-8 space-y-6">
-                {/* Estimation selector (if multiple) */}
-                {availableEstimations.length > 1 && (
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium text-slate-600">
-                                Seleziona Stima
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
+        <div className="h-full flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto">
+                <div className="container mx-auto px-6 py-5 space-y-6">
+                    {/* Estimation selector (if multiple) */}
+                    {availableEstimations.length > 1 && (
+                        <section>
+                            <div className="flex items-center gap-2 mb-2">
+                                <ClipboardCheck className="w-4 h-4 text-slate-400" />
+                                <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Seleziona Stima</h2>
+                            </div>
                             <Select
                                 value={selectedEstimationId || ''}
                                 onValueChange={setSelectedEstimationId}
@@ -173,171 +171,165 @@ export function ActualHoursTab({
                                     ))}
                                 </SelectContent>
                             </Select>
-                        </CardContent>
-                    </Card>
-                )}
+                        </section>
+                    )}
 
-                {selectedEstimation && (
-                    <>
-                        {/* Summary card (read-only) */}
-                        <Card className="bg-gradient-to-br from-blue-50/80 to-indigo-50/80">
-                            <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium text-slate-600 flex items-center gap-2">
-                                    <Info className="w-4 h-4" />
-                                    Riepilogo Stima
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div>
-                                        <p className="text-xs text-slate-500 uppercase tracking-wider">Giorni totali</p>
-                                        <p className="text-2xl font-bold text-blue-700">
-                                            {selectedEstimation.total_days.toFixed(1)}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-slate-500 uppercase tracking-wider">Ore base</p>
-                                        <p className="text-2xl font-bold text-indigo-700">
-                                            {selectedEstimation.base_hours.toFixed(1)}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-slate-500 uppercase tracking-wider">Scenario</p>
-                                        <p className="text-lg font-semibold text-slate-800">
-                                            {selectedEstimation.scenario_name}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-slate-500 uppercase tracking-wider">Data stima</p>
-                                        <p className="text-lg font-semibold text-slate-800">
-                                            {new Date(selectedEstimation.created_at).toLocaleDateString('it-IT')}
-                                        </p>
+                    {selectedEstimation && (
+                        <>
+                            {/* Summary (read-only) */}
+                            <section className="border-t border-slate-100 pt-4">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Info className="w-4 h-4 text-slate-400" />
+                                    <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Riepilogo Stima</h2>
+                                </div>
+                                <div className="bg-slate-50 rounded-lg p-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div>
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Giorni totali</p>
+                                            <p className="text-2xl font-bold text-blue-700">
+                                                {selectedEstimation.total_days.toFixed(1)}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Ore base</p>
+                                            <p className="text-2xl font-bold text-blue-700">
+                                                {selectedEstimation.base_hours.toFixed(1)}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Scenario</p>
+                                            <p className="text-lg font-semibold text-slate-800">
+                                                {selectedEstimation.scenario_name}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Data stima</p>
+                                            <p className="text-lg font-semibold text-slate-800">
+                                                {new Date(selectedEstimation.created_at).toLocaleDateString('it-IT')}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
-                            </CardContent>
-                        </Card>
+                            </section>
 
-                        {/* Actual hours form */}
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <CardTitle className="text-base font-semibold text-slate-800 flex items-center gap-2">
-                                    <ClipboardCheck className="w-5 h-5 text-emerald-600" />
-                                    Dati Consuntivo
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-5">
-                                {/* Actual hours (required) */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="actual-hours" className="flex items-center gap-2">
-                                        <Clock className="w-4 h-4 text-slate-400" />
-                                        Ore Effettive *
-                                    </Label>
-                                    <div className="flex items-center gap-3">
-                                        <Input
-                                            id="actual-hours"
-                                            type="number"
-                                            step="0.5"
-                                            min="0"
-                                            value={actualHours}
-                                            onChange={e => setActualHours(e.target.value)}
-                                            placeholder="es. 40"
-                                            className="max-w-[200px]"
-                                        />
-                                        {deviation !== null && (
-                                            <Badge
-                                                variant={deviationColor as any}
-                                                className={`text-sm px-3 py-1 ${deviationBadgeClass}`}
-                                            >
-                                                {deviation > 0 ? '+' : ''}{deviation}% scostamento
-                                            </Badge>
-                                        )}
-                                    </div>
-                                    <p className="text-xs text-slate-400">
-                                        Il numero totale di ore realmente impiegate per completare il requisito.
-                                    </p>
+                            {/* Actual hours form */}
+                            <section className="border-t border-slate-100 pt-4">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <ClipboardCheck className="w-4 h-4 text-emerald-500" />
+                                    <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Dati Consuntivo</h2>
                                 </div>
-
-                                {/* Dates (optional) */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-5">
+                                    {/* Actual hours (required) */}
                                     <div className="space-y-2">
-                                        <Label htmlFor="actual-start" className="flex items-center gap-2">
-                                            <CalendarDays className="w-4 h-4 text-slate-400" />
-                                            Data Inizio Reale
+                                        <Label htmlFor="actual-hours" className="flex items-center gap-2">
+                                            <Clock className="w-4 h-4 text-slate-400" />
+                                            Ore Effettive *
                                         </Label>
-                                        <Input
-                                            id="actual-start"
-                                            type="date"
-                                            value={actualStartDate}
-                                            onChange={e => setActualStartDate(e.target.value)}
-                                        />
+                                        <div className="flex items-center gap-3">
+                                            <Input
+                                                id="actual-hours"
+                                                type="number"
+                                                step="0.5"
+                                                min="0"
+                                                value={actualHours}
+                                                onChange={e => setActualHours(e.target.value)}
+                                                placeholder="es. 40"
+                                                className="max-w-[200px]"
+                                            />
+                                            {deviation !== null && (
+                                                <Badge
+                                                    variant={deviationColor as any}
+                                                    className={`text-sm px-3 py-1 ${deviationBadgeClass}`}
+                                                >
+                                                    {deviation > 0 ? '+' : ''}{deviation}% scostamento
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-slate-400">
+                                            Il numero totale di ore realmente impiegate per completare il requisito.
+                                        </p>
                                     </div>
+
+                                    {/* Dates (optional) */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="actual-start" className="flex items-center gap-2">
+                                                <CalendarDays className="w-4 h-4 text-slate-400" />
+                                                Data Inizio Reale
+                                            </Label>
+                                            <Input
+                                                id="actual-start"
+                                                type="date"
+                                                value={actualStartDate}
+                                                onChange={e => setActualStartDate(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="actual-end" className="flex items-center gap-2">
+                                                <CalendarDays className="w-4 h-4 text-slate-400" />
+                                                Data Fine Reale
+                                            </Label>
+                                            <Input
+                                                id="actual-end"
+                                                type="date"
+                                                value={actualEndDate}
+                                                onChange={e => setActualEndDate(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Notes */}
                                     <div className="space-y-2">
-                                        <Label htmlFor="actual-end" className="flex items-center gap-2">
-                                            <CalendarDays className="w-4 h-4 text-slate-400" />
-                                            Data Fine Reale
-                                        </Label>
-                                        <Input
-                                            id="actual-end"
-                                            type="date"
-                                            value={actualEndDate}
-                                            onChange={e => setActualEndDate(e.target.value)}
+                                        <Label htmlFor="actual-notes">Note Consuntivo</Label>
+                                        <Textarea
+                                            id="actual-notes"
+                                            value={actualNotes}
+                                            onChange={e => setActualNotes(e.target.value)}
+                                            placeholder="Eventuali note sulla lavorazione reale..."
+                                            rows={3}
                                         />
                                     </div>
-                                </div>
 
-                                {/* Notes */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="actual-notes">Note Consuntivo</Label>
-                                    <Textarea
-                                        id="actual-notes"
-                                        value={actualNotes}
-                                        onChange={e => setActualNotes(e.target.value)}
-                                        placeholder="Eventuali note sulla lavorazione reale..."
-                                        rows={3}
-                                    />
-                                </div>
+                                    {/* Last update info */}
+                                    {selectedEstimation.actual_recorded_at && (
+                                        <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
+                                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                            Ultimo aggiornamento:{' '}
+                                            {new Date(selectedEstimation.actual_recorded_at).toLocaleString('it-IT')}
+                                        </div>
+                                    )}
 
-                                {/* Last update info */}
-                                {selectedEstimation.actual_recorded_at && (
-                                    <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
-                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                                        Ultimo aggiornamento:{' '}
-                                        {new Date(selectedEstimation.actual_recorded_at).toLocaleString('it-IT')}
+                                    {/* Save button */}
+                                    <div className="flex justify-end pt-2">
+                                        <Button
+                                            onClick={handleSave}
+                                            disabled={saving || !actualHours}
+                                            className="min-w-[160px]"
+                                        >
+                                            {saving ? (
+                                                <>
+                                                    <span className="animate-spin mr-2">⏳</span>
+                                                    Salvataggio...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Save className="w-4 h-4 mr-2" />
+                                                    Salva Consuntivo
+                                                </>
+                                            )}
+                                        </Button>
                                     </div>
-                                )}
-
-                                {/* Save button */}
-                                <div className="flex justify-end pt-2">
-                                    <Button
-                                        onClick={handleSave}
-                                        disabled={saving || !actualHours}
-                                        className="min-w-[160px]"
-                                    >
-                                        {saving ? (
-                                            <>
-                                                <span className="animate-spin mr-2">⏳</span>
-                                                Salvataggio...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Save className="w-4 h-4 mr-2" />
-                                                Salva Consuntivo
-                                            </>
-                                        )}
-                                    </Button>
                                 </div>
-                            </CardContent>
-                        </Card>
+                            </section>
 
-                        {/* Deviation summary card */}
-                        {deviation !== null && (
-                            <Card className={`border-l-4 ${Math.abs(deviation) <= 10
+                            {/* Deviation summary */}
+                            {deviation !== null && (
+                                <div className={`border-l-4 rounded-lg p-4 ${Math.abs(deviation) <= 10
                                     ? 'border-l-emerald-500 bg-emerald-50/50'
                                     : Math.abs(deviation) <= 25
                                         ? 'border-l-amber-500 bg-amber-50/50'
                                         : 'border-l-red-500 bg-red-50/50'
-                                }`}>
-                                <CardContent className="py-4">
+                                    }`}>
                                     <div className="flex items-start gap-3">
                                         {Math.abs(deviation) <= 10 ? (
                                             <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5" />
@@ -362,11 +354,11 @@ export function ActualHoursTab({
                                             </p>
                                         </div>
                                     </div>
-                                </CardContent>
-                            </Card>
-                        )}
-                    </>
-                )}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
             </div>
         </div>
     );

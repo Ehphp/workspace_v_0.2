@@ -109,7 +109,7 @@ export function EstimationTab({
     return (
         <div className="h-full flex flex-col overflow-hidden">
             {/* Toolbar */}
-            <div className="flex-shrink-0 bg-white/60 backdrop-blur-xl border-b border-slate-200/50">
+            <div className="flex-shrink-0 bg-white border-b border-slate-200">
                 <div className="container mx-auto px-6 py-3 flex justify-end">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -145,8 +145,8 @@ export function EstimationTab({
 
             {/* Main Workspace - Full height */}
             <div className="flex-1 min-h-0">
-                <div className="container mx-auto px-6 py-4 h-full">
-                    <div className="h-full overflow-y-auto space-y-4">
+                <div className="container mx-auto px-6 py-5 h-full">
+                    <div className="h-full overflow-y-auto space-y-6">
                         <RequirementEstimation
                             estimationState={estimationState}
                             data={data}

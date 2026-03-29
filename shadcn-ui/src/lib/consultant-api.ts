@@ -30,6 +30,12 @@ export interface ConsultantAnalysisRequest {
         name: string;
         description: string;
         owner?: string;
+        projectType?: string;
+        domain?: string;
+        scope?: string;
+        teamSize?: number;
+        deadlinePressure?: string;
+        methodology?: string;
     };
     technologyName: string;
     technologyCategory: string;
@@ -73,6 +79,12 @@ export async function getConsultantAnalysis(
             owner: request.projectContext.owner
                 ? sanitizePromptInput(request.projectContext.owner)
                 : undefined,
+            projectType: request.projectContext.projectType,
+            domain: request.projectContext.domain,
+            scope: request.projectContext.scope,
+            teamSize: request.projectContext.teamSize,
+            deadlinePressure: request.projectContext.deadlinePressure,
+            methodology: request.projectContext.methodology,
         },
         technologyName: sanitizePromptInput(request.technologyName),
         technologyCategory: request.technologyCategory,

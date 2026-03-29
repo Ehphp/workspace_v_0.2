@@ -129,6 +129,12 @@ export interface CreateListInput {
   techPresetId?: string | null; // legacy alias
   technologyId?: string | null;
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  projectType?: string | null;
+  domain?: string | null;
+  scope?: string | null;
+  teamSize?: number | null;
+  deadlinePressure?: string | null;
+  methodology?: string | null;
 }
 
 export async function createList(input: CreateListInput): Promise<List> {
@@ -140,6 +146,12 @@ export async function createList(input: CreateListInput): Promise<List> {
     owner: input.owner || '',
     technology_id: input.technologyId ?? input.techPresetId ?? null,
     status: input.status,
+    project_type: input.projectType || null,
+    domain: input.domain || null,
+    scope: input.scope || null,
+    team_size: input.teamSize || null,
+    deadline_pressure: input.deadlinePressure || null,
+    methodology: input.methodology || null,
   };
 
   return requireSingle(

@@ -105,6 +105,11 @@ export type TechnologyPreset = Technology & {
   default_activity_codes: string[];
 };
 
+export type ProjectType = 'NEW_DEVELOPMENT' | 'MAINTENANCE' | 'MIGRATION' | 'INTEGRATION' | 'REFACTORING';
+export type ProjectScope = 'SMALL' | 'MEDIUM' | 'LARGE' | 'ENTERPRISE';
+export type DeadlinePressure = 'RELAXED' | 'NORMAL' | 'TIGHT' | 'CRITICAL';
+export type Methodology = 'AGILE' | 'WATERFALL' | 'HYBRID';
+
 export interface List {
   id: string;
   user_id: string; // Now acts as "created_by"
@@ -116,6 +121,13 @@ export interface List {
   /** @deprecated Use technology_id */
   tech_preset_id?: string | null;
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  // Project context enrichment fields (all optional)
+  project_type?: ProjectType | null;
+  domain?: string | null;
+  scope?: ProjectScope | null;
+  team_size?: number | null;
+  deadline_pressure?: DeadlinePressure | null;
+  methodology?: Methodology | null;
   created_at: string;
   updated_at: string;
 }

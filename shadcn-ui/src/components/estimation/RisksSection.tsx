@@ -30,8 +30,8 @@ export function RisksSection({
     return (
         <div className="flex-1 min-h-0 flex flex-col gap-1.5">
             <div className="flex items-center justify-between shrink-0">
-                <h3 className="font-semibold text-slate-800 flex items-center gap-1.5 text-xs">
-                    <span className="w-4 h-4 rounded-full bg-gradient-to-br from-red-500 to-rose-500 text-white flex items-center justify-center text-[9px] font-bold shadow-sm">3</span>
+                <h3 className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <span className="w-4 h-4 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-[9px] font-bold">3</span>
                     Fattori di Rischio
                 </h3>
                 <div className="text-right flex items-center gap-1.5">
@@ -41,14 +41,14 @@ export function RisksSection({
                     </span>
                 </div>
             </div>
-            <ScrollArea className="flex-1 min-h-0 rounded-lg border-2 border-slate-200 bg-slate-50/30 p-1.5">
+            <ScrollArea className="flex-1 min-h-0 rounded-lg border border-slate-200 bg-slate-50 p-1.5">
                 <div className="grid grid-cols-2 gap-1">
                     {risks.map((risk) => {
                         const isSelected = selectedRiskIds.includes(risk.id);
                         return (
                             <div
                                 key={risk.id}
-                                className={`cursor-pointer rounded p-1.5 text-[10px] flex items-center gap-1.5 transition-all ${isSelected ? 'bg-red-50 border border-red-200' : 'bg-white/80 border border-slate-200 hover:border-red-200'}`}
+                                className={`cursor-pointer rounded p-1.5 text-[10px] flex items-center gap-1.5 transition-all ${isSelected ? 'bg-red-50 border border-red-200' : 'bg-white border border-slate-200 hover:border-red-200'}`}
                                 onClick={() => onRiskToggle(risk.id)}
                             >
                                 <div className={`w-3 h-3 shrink-0 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-red-500 border-red-500' : 'border-slate-300 bg-white'}`}>

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { getDefaultProvider, LLM_PRESETS } from '../openai-client';
 import { sanitizePromptInput } from '../../../../../src/types/ai-validation';
+import { formatProjectContextBlock } from '../prompt-builder';
 
 /**
  * Activity information for consultant analysis
@@ -30,6 +31,12 @@ export interface ProjectContext {
     name: string;
     description: string;
     owner?: string;
+    projectType?: string;
+    domain?: string;
+    scope?: string;
+    teamSize?: number;
+    deadlinePressure?: string;
+    methodology?: string;
 }
 
 /**
@@ -251,10 +258,7 @@ function buildUserPrompt(request: ConsultantAnalysisRequest): string {
         `- ${d.name}: ${d.selectedValue} (×${d.multiplier})`
     ).join('\n');
 
-    return `CONTESTO PROGETTO:
-Nome: ${request.projectContext.name}
-Descrizione: ${request.projectContext.description}
-${request.projectContext.owner ? `Responsabile: ${request.projectContext.owner}` : ''}
+    return `${formatProjectContextBlock(request.projectContext)}
 
 TECNOLOGIA: ${request.technologyName} (${request.technologyCategory})
 
