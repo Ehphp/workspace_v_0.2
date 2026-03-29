@@ -106,7 +106,7 @@ export function ProjectCard({ project, onEdit, onDelete, layout = 'grid' }: Proj
 
     return (
         <div
-            className={`group bg-white rounded-xl border border-slate-200 border-t-4 ${getStatusBorder(project.status)} shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-pointer overflow-hidden`}
+            className={`group bg-white rounded-xl border border-slate-200 border-t-4 ${getStatusBorder(project.status)} shadow-sm hover:shadow-sm hover:border-slate-300 transition-all cursor-pointer overflow-hidden`}
             onClick={() => navigate(`/dashboard/${project.id}/requirements`)}
         >
             <div className="p-4">

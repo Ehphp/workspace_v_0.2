@@ -8,6 +8,9 @@
 
 import { createClient } from '@supabase/supabase-js';
 
+import type { ActivityBiases } from './domain/estimation/project-context-rules';
+import { applyActivityBiases } from './domain/estimation/project-context-integration';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -262,13 +265,18 @@ export async function fetchActivitiesServerSide(
  * data entities are extracted as additional keywords and each match gets a
  * boosted weight (+2 per keyword) so that structurally relevant activities
  * rank higher.
+ *
+ * When activityBiases are provided (from project-context rules), additional
+ * scoring adjustments are applied: variant preference (_SM/_LG), group boost,
+ * and keyword boost. These are additive and never exclude activities.
  */
 export function selectTopActivities(
     activities: Activity[],
     description: string,
     answers: Record<string, InterviewAnswerRecord> | undefined,
     topN: number = 20,
-    blueprint?: Record<string, unknown>
+    blueprint?: Record<string, unknown>,
+    activityBiases?: ActivityBiases,
 ): Activity[] {
     if (activities.length <= topN) return activities;
 
@@ -345,11 +353,16 @@ export function selectTopActivities(
         return { activity: a, score };
     });
 
-    // Sort by score descending, take top N
-    scored.sort((a, b) => b.score - a.score);
-    const selected = scored.slice(0, topN).map(s => s.activity);
+    // Apply project-context biases (additive, never excludes)
+    const finalScored = activityBiases
+        ? applyActivityBiases(scored, activityBiases)
+        : scored;
 
-    console.log(`[ranking] Selected ${selected.length}/${activities.length} activities (top scores: ${scored.slice(0, 5).map(s => `${s.activity.code}=${s.score}`).join(', ')})`);
+    // Sort by score descending, take top N
+    finalScored.sort((a, b) => b.score - a.score);
+    const selected = finalScored.slice(0, topN).map(s => s.activity);
+
+    console.log(`[ranking] Selected ${selected.length}/${activities.length} activities (top scores: ${finalScored.slice(0, 5).map(s => `${s.activity.code}=${s.score}`).join(', ')})${activityBiases ? ' [project-context biases applied]' : ''}`);
     return selected;
 }
 

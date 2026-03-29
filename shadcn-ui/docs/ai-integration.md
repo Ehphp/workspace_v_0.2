@@ -540,6 +540,16 @@ All ProjectContext fields are persisted as nullable columns on the `lists` table
 
 **Migration**: `20260329_project_context_enrichment.sql`
 
+### Deterministic Rules Layer (2026-03-29)
+
+In addition to LLM prompt injection, project context now drives **deterministic estimation decisions** via a pure-function rules engine (`project-context-rules.ts`). This runs *before* the AI pipeline and produces:
+
+- **Activity biases**: Variant preference (`_SM`/`_LG`), group boosts, keyword boosts applied to `selectTopActivities()` scoring
+- **Suggested drivers/risks**: Rule-based suggestions merged with AI output (deduplicating by code; AI wins on conflicts)
+- **Traceability notes**: Every rule-generated suggestion carries `source: 'project_context_rule'` and a `rule` identifier
+
+This layer ensures deterministic behavior even when AI output varies. See [estimation-engine.md](estimation-engine.md#project-context-rules-engine-2026-03-29) for the full rules specification.
+
 ---
 
 ## AI Interview System

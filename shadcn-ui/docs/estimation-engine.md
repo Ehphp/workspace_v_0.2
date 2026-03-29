@@ -454,6 +454,51 @@ BulkEstimateDialog and BulkInterviewDialog still call `saveEstimationByIds` with
 
 All domain entities are defined in `src/types/domain-model.ts`. The `Estimation` row type in `src/types/database.ts` now includes optional `analysis_id` and `decision_id` fields.
 
+### Project Context Rules Engine (2026-03-29)
+
+The domain layer now includes a **deterministic rules engine** that translates project context into concrete estimation decisions, separate from the AI prompt layer.
+
+**Source**: `netlify/functions/lib/domain/estimation/project-context-rules.ts`
+**Integration**: `netlify/functions/lib/domain/estimation/project-context-integration.ts`
+**Types**: `netlify/functions/lib/domain/types/estimation.ts` (`EstimationProjectContext`, `EstimationContext`)
+
+#### Canonical Domain Enums
+
+| Type | Values |
+|------|--------|
+| `ProjectType` | `NEW_DEVELOPMENT`, `MAINTENANCE`, `MIGRATION`, `INTEGRATION`, `REFACTORING` |
+| `ProjectScope` | `SMALL`, `MEDIUM`, `LARGE`, `ENTERPRISE` |
+| `DeadlinePressure` | `RELAXED`, `NORMAL`, `TIGHT`, `CRITICAL` |
+| `Methodology` | `AGILE`, `WATERFALL`, `HYBRID` |
+
+#### Rules Summary
+
+| Field | Condition | Effect |
+|-------|-----------|--------|
+| `scope` | LARGE/ENTERPRISE | `preferLargeVariants` → boosts `_LG` activity variants |
+| `scope` | SMALL | `preferSmallVariants` → boosts `_SM` activity variants |
+| `deadlinePressure` | CRITICAL | Suggests `TIMELINE_PRESSURE` driver + `TIMELINE_RISK` |
+| `deadlinePressure` | TIGHT | Suggests `TIMELINE_RISK` |
+| `teamSize` | 1 | Suggests `SINGLE_RESOURCE_RISK` (SPOF) |
+| `teamSize` | ≥ 8 | Suggests `TEAM_COORDINATION` driver |
+| `projectType` | MIGRATION | Boosts migration/validation/regression keywords + groups |
+| `projectType` | INTEGRATION | Boosts api/interface/integration keywords + groups |
+| `projectType` | MAINTENANCE | Boosts analysis/bugfix keywords + groups |
+| `projectType` | REFACTORING | Boosts testing/cleanup keywords + groups |
+| `methodology` | WATERFALL | Mild bias toward analysis/documentation keywords |
+| `methodology` | AGILE | Mild bias toward iterative/testing keywords |
+| `domain` | any | Domain tokens added as activity boost keywords |
+
+#### Integration Points
+
+1. **Activity ranking**: `selectTopActivities()` in `activities.ts` accepts optional `ActivityBiases`. Biases adjust scoring (variant preference, group/keyword boosts) before the top-N selection.
+2. **Driver/risk merge**: After AI output, `mergeDriverSuggestions()` and `mergeRiskSuggestions()` combine AI suggestions with rule-based suggestions, deduplicating by code (AI wins on conflicts).
+3. **Provenance**: Every rule-generated suggestion carries `source: 'project_context_rule'` and a `rule` identifier for traceability.
+
+#### Backward Compatibility
+
+If `projectContext` is absent/null, `evaluateProjectContextRules()` returns a neutral result (empty biases, no suggestions). Existing behavior is unchanged.
+
 ---
 
 ## AI Pipeline Performance Optimizations (Quick Wins v2)

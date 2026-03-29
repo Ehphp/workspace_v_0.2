@@ -21,29 +21,40 @@ export function MetricCard({
     subtitle,
     className,
 }: MetricCardProps) {
+    // Derive flat icon colors from the gradient prop
+    const getIconColors = (gradient: string) => {
+        if (gradient.includes('blue') || gradient.includes('indigo')) return 'bg-blue-50 text-blue-600';
+        if (gradient.includes('emerald') || gradient.includes('teal')) return 'bg-emerald-50 text-emerald-600';
+        if (gradient.includes('purple') || gradient.includes('pink')) return 'bg-purple-50 text-purple-600';
+        if (gradient.includes('amber') || gradient.includes('orange')) return 'bg-amber-50 text-amber-600';
+        if (gradient.includes('red') || gradient.includes('rose')) return 'bg-red-50 text-red-600';
+        return 'bg-slate-100 text-slate-500';
+    };
+
+    const iconColors = getIconColors(iconGradient);
+
     return (
         <div
             className={cn(
-                'rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-4',
-                'flex items-center gap-4 hover:shadow-md hover:border-slate-300 transition-all',
+                'rounded-lg border border-slate-200 bg-white px-3 py-2.5',
+                'flex items-center gap-3 hover:shadow-sm transition-all',
                 className,
             )}
         >
             <div
                 className={cn(
-                    'w-12 h-12 rounded-xl flex items-center justify-center shadow-md',
-                    'bg-gradient-to-br',
-                    iconGradient,
+                    'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
+                    iconColors,
                 )}
             >
-                <Icon className="w-6 h-6 text-white" />
+                <Icon className="w-4 h-4" />
             </div>
             <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-0.5">
                     {label}
                 </p>
                 <div className="flex items-baseline gap-2">
-                    <p className="text-2xl font-bold text-slate-900 leading-none">{value}</p>
+                    <p className="text-xl font-bold text-slate-900 leading-none">{value}</p>
                     {trend && (
                         <span
                             className={cn(

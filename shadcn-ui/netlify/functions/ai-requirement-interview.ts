@@ -37,6 +37,8 @@ import {
 import { retrieveRAGContext, getRAGSystemPromptAddition } from './lib/ai/rag';
 import { isVectorSearchEnabled } from './lib/ai/vector-search';
 import { formatProjectContextBlock } from './lib/ai/prompt-builder';
+import { evaluateProjectContextRules } from './lib/domain/estimation/project-context-rules';
+import type { EstimationContext } from './lib/domain/types/estimation';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration (tunable via env)
@@ -460,6 +462,27 @@ export const handler = createAIHandler<RequestBody>({
             body.techPresetId,
         );
 
+        // ─── Project Context Rules (deterministic, pre-AI) ──────────
+        const interviewEstCtx: EstimationContext = {
+            technologyId: body.techPresetId ?? null,
+            techCategory: body.techCategory ?? null,
+            project: body.projectContext ? {
+                name: body.projectContext.name,
+                description: body.projectContext.description,
+                owner: body.projectContext.owner,
+                projectType: body.projectContext.projectType as any,
+                domain: body.projectContext.domain,
+                scope: body.projectContext.scope as any,
+                teamSize: body.projectContext.teamSize,
+                deadlinePressure: body.projectContext.deadlinePressure as any,
+                methodology: body.projectContext.methodology as any,
+            } : null,
+        };
+        const interviewContextRules = evaluateProjectContextRules(interviewEstCtx);
+        if (interviewContextRules.notes.length > 0) {
+            console.log('[ai-requirement-interview] Project context rules:', interviewContextRules.notes);
+        }
+
         // ─── Candidate generation: blueprint-first, keyword-fallback ─────
         let rankedActivities;
         if (isBlueprintMappable(body.estimationBlueprint)) {
@@ -470,7 +493,7 @@ export const handler = createAIHandler<RequestBody>({
                 body.techCategory,
                 (catalog, excludeCodes) => {
                     const remaining = catalog.filter(a => !excludeCodes.has(a.code));
-                    return selectTopActivities(remaining, sanitizedDescription, undefined, 10);
+                    return selectTopActivities(remaining, sanitizedDescription, undefined, 10, undefined, interviewContextRules.activityBiases);
                 },
             );
             rankedActivities = mappingResult.allActivities.map(m => m.activity);
@@ -484,7 +507,8 @@ export const handler = createAIHandler<RequestBody>({
                 sanitizedDescription,
                 undefined,
                 20,
-                body.estimationBlueprint
+                body.estimationBlueprint,
+                interviewContextRules.activityBiases,
             );
         }
 

@@ -34,6 +34,9 @@ import {
 } from './lib/blueprint-activity-mapper';
 import { buildProvenanceMap, attachProvenance, provenanceBreakdown } from './lib/provenance-map';
 import { formatProjectContextBlock } from './lib/ai/prompt-builder';
+import { evaluateProjectContextRules } from './lib/domain/estimation/project-context-rules';
+import { mergeDriverSuggestions, mergeRiskSuggestions } from './lib/domain/estimation/project-context-integration';
+import type { EstimationContext } from './lib/domain/types/estimation';
 
 // Model configuration - use env variable AI_ESTIMATION_MODEL or default to gpt-4o
 // NOTE: gpt-5 has limitations (no custom temperature, no json_schema response_format)
@@ -470,12 +473,34 @@ export const handler = createAIHandler<RequestBody>({
             throw new Error('Nessuna attività disponibile per questa tecnologia.');
         }
 
+        // ─── Project Context Rules (deterministic, pre-AI) ──────────
+        const estimationCtx: EstimationContext = {
+            technologyId: body.techPresetId ?? null,
+            techCategory: body.techCategory ?? null,
+            project: body.projectContext ? {
+                name: body.projectContext.name,
+                description: body.projectContext.description,
+                owner: body.projectContext.owner,
+                projectType: body.projectContext.projectType as any,
+                domain: body.projectContext.domain,
+                scope: body.projectContext.scope as any,
+                teamSize: body.projectContext.teamSize,
+                deadlinePressure: body.projectContext.deadlinePressure as any,
+                methodology: body.projectContext.methodology as any,
+            } : null,
+        };
+        const contextRules = evaluateProjectContextRules(estimationCtx);
+        if (contextRules.notes.length > 0) {
+            console.log('[ai-estimate-from-interview] Project context rules:', contextRules.notes);
+        }
+
         // ─── Candidate Generation: Blueprint-first, keyword-fallback ───
         //
         // Strategy:
         //   1. If a confirmed Blueprint is available → mapBlueprintToActivities (structural)
         //   2. selectTopActivities fills coverage gaps (keyword-based fallback)
         //   3. If no Blueprint → selectTopActivities alone (legacy path)
+        //   4. Project-context biases applied to keyword ranking (additive)
         //
         let rankedActivities: Activity[];
         let blueprintMappingResult: BlueprintMappingResult | undefined;
@@ -496,6 +521,8 @@ export const handler = createAIHandler<RequestBody>({
                         sanitizedDescription,
                         body.answers,
                         10, // fill up to 10 gap activities
+                        undefined,
+                        contextRules.activityBiases,
                     );
                 },
             );
@@ -522,7 +549,8 @@ export const handler = createAIHandler<RequestBody>({
                 sanitizedDescription,
                 body.answers,
                 20,
-                body.estimationBlueprint
+                body.estimationBlueprint,
+                contextRules.activityBiases,
             );
             metrics.candidateSource = 'keyword-ranking';
         }
@@ -611,6 +639,24 @@ export const handler = createAIHandler<RequestBody>({
                 // Provenance breakdown for observability
                 console.log('[ai-estimate-from-interview] Provenance breakdown:', provenanceBreakdown(enrichedActivities));
 
+                // ─── Merge project-context rule suggestions with AI output ──
+                const mergedDrivers = mergeDriverSuggestions(
+                    agentResult.suggestedDrivers,
+                    contextRules.suggestedDrivers,
+                );
+                const mergedRisks = mergeRiskSuggestions(
+                    agentResult.suggestedRisks,
+                    contextRules.suggestedRisks,
+                );
+                if (contextRules.suggestedDrivers.length > 0 || contextRules.suggestedRisks.length > 0) {
+                    console.log('[ai-estimate-from-interview] Project-context rules merged:', {
+                        ruleDrivers: contextRules.suggestedDrivers.map(d => d.code),
+                        ruleRisks: contextRules.suggestedRisks.map(r => r.code),
+                        finalDriverCount: mergedDrivers.length,
+                        finalRiskCount: mergedRisks.length,
+                    });
+                }
+
                 console.log('[ai-estimate-from-interview] METRICS:', JSON.stringify(metrics));
 
                 return {
@@ -620,8 +666,9 @@ export const handler = createAIHandler<RequestBody>({
                     totalBaseDays: agentResult.totalBaseDays,
                     reasoning: agentResult.reasoning,
                     confidenceScore: agentResult.confidenceScore,
-                    suggestedDrivers: agentResult.suggestedDrivers,
-                    suggestedRisks: agentResult.suggestedRisks,
+                    suggestedDrivers: mergedDrivers,
+                    suggestedRisks: mergedRisks.map(r => r.code),
+                    projectContextNotes: contextRules.notes.length > 0 ? contextRules.notes : undefined,
                     // Phase 3 metadata
                     agentMetadata: {
                         executionId: agentResult.agentMetadata.executionId,
@@ -861,6 +908,16 @@ Collega ogni attività alla risposta che l'ha motivata.`;
 
         console.log('[ai-estimate-from-interview] Legacy provenance breakdown:', provenanceBreakdown(enrichedLegacyActivities));
 
+        // ─── Merge project-context rule suggestions (legacy pipeline) ──
+        const mergedLegacyDrivers = mergeDriverSuggestions(
+            result.suggestedDrivers || [],
+            contextRules.suggestedDrivers,
+        );
+        const mergedLegacyRisks = mergeRiskSuggestions(
+            result.suggestedRisks || [],
+            contextRules.suggestedRisks,
+        );
+
         console.log('[ai-estimate-from-interview] METRICS:', JSON.stringify(metrics));
 
         // Return successful response (createAIHandler wraps with statusCode/headers)
@@ -871,8 +928,9 @@ Collega ogni attività alla risposta che l'ha motivata.`;
             totalBaseDays: Number(totalBaseDays.toFixed(2)),
             reasoning: result.reasoning,
             confidenceScore: Number(confidenceScore.toFixed(2)),
-            suggestedDrivers: result.suggestedDrivers || [],
-            suggestedRisks: result.suggestedRisks || [],
+            suggestedDrivers: mergedLegacyDrivers,
+            suggestedRisks: mergedLegacyRisks.map(r => r.code),
+            projectContextNotes: contextRules.notes.length > 0 ? contextRules.notes : undefined,
             metrics,
         };
     }

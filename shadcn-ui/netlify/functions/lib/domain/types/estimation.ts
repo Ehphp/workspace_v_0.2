@@ -8,6 +8,56 @@
  * which re-exports everything from here.
  */
 
+// ─── Project Context (canonical domain enums) ───────────────────
+
+export type ProjectType =
+    | 'NEW_DEVELOPMENT'
+    | 'MAINTENANCE'
+    | 'MIGRATION'
+    | 'INTEGRATION'
+    | 'REFACTORING';
+
+export type ProjectScope =
+    | 'SMALL'
+    | 'MEDIUM'
+    | 'LARGE'
+    | 'ENTERPRISE';
+
+export type DeadlinePressure =
+    | 'RELAXED'
+    | 'NORMAL'
+    | 'TIGHT'
+    | 'CRITICAL';
+
+export type Methodology =
+    | 'AGILE'
+    | 'WATERFALL'
+    | 'HYBRID';
+
+export interface EstimationProjectContext {
+    name?: string;
+    description?: string;
+    owner?: string;
+    projectType?: ProjectType | null;
+    domain?: string | null;
+    scope?: ProjectScope | null;
+    teamSize?: number | null;
+    deadlinePressure?: DeadlinePressure | null;
+    methodology?: Methodology | null;
+}
+
+/**
+ * Unified context for deterministic estimation decisions.
+ * Wraps technology info + project context for the rules engine.
+ */
+export interface EstimationContext {
+    technologyId?: string | null;
+    techCategory?: string | null;
+    project?: EstimationProjectContext | null;
+}
+
+// ─── Core estimation types ──────────────────────────────────────
+
 export interface SelectedActivity {
     code: string;
     baseHours: number;

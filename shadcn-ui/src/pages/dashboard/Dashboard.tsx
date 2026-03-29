@@ -1,7 +1,6 @@
 import type React from 'react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardData } from '@/hooks/useDashboardData';
@@ -187,71 +186,36 @@ export default function Dashboard() {
   return (
     <PageShell
       fullHeight
-      background="gradient"
+      background="default"
       noContainer
-      headerClassName="bg-white/80 backdrop-blur-md border-b border-white/20 shadow-sm z-20 relative"
+      headerClassName="bg-white border-b border-slate-200 shadow-sm z-20 relative"
       className="relative"
       contentClassName="flex flex-col overflow-hidden relative z-10"
-      backgroundSlot={
-        <>
-          {/* Background Pattern */}
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
-
-          {/* Animated Background Blobs */}
-          <motion.div
-            animate={{
-              x: [0, 100, 0],
-              y: [0, -50, 0],
-              scale: [1, 1.1, 1],
-            }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            className="absolute top-0 -left-20 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
-          />
-          <motion.div
-            animate={{
-              x: [0, -100, 0],
-              y: [0, 50, 0],
-              scale: [1, 1.2, 1],
-            }}
-            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-            className="absolute top-1/3 -right-20 w-[30rem] h-[30rem] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
-          />
-          <motion.div
-            animate={{
-              x: [0, 50, 0],
-              y: [0, 100, 0],
-              scale: [1, 1.1, 1],
-            }}
-            transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
-            className="absolute bottom-0 left-1/3 w-[25rem] h-[25rem] bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"
-          />
-        </>
-      }
     >
 
       {/* Top Bar: KPIs & Actions - Fixed Height */}
       {/* Top Bar: Headers - Fixed Height */}
-      <div className="flex-shrink-0 relative z-10 border-b border-white/50 bg-white/60 backdrop-blur-xl">
-        <div className="container mx-auto max-w-7xl px-6 py-5">
+      <div className="flex-shrink-0 relative z-10 border-b border-slate-200 bg-white">
+        <div className="container mx-auto max-w-7xl px-6 py-3">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="heading-1">Dashboard</h1>
-              <p className="text-slate-500 text-sm mt-1">Gestisci i tuoi progetti e requisiti</p>
+              <h1 className="text-lg font-bold text-slate-900">Dashboard</h1>
+              <p className="text-slate-500 text-xs mt-0.5">Gestisci i tuoi progetti e requisiti</p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="relative w-64">
+              <div className="relative w-56">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   placeholder="Cerca progetti..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-10 bg-white/80 border-slate-200/80 rounded-xl focus:ring-2 focus:ring-blue-500/20"
+                  className="pl-10 h-9 bg-white border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
               <Button
                 onClick={() => setShowCreateDialog(true)}
-                size="lg"
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 h-10 px-5 rounded-xl"
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 shadow-sm h-9 px-4 rounded-lg"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 New Project
@@ -261,12 +225,12 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Content Grid - Flex 1 with internal scrolling */}
-      <div className="flex-1 overflow-y-auto relative z-0">
-        <div className="container mx-auto max-w-7xl px-6 py-6 space-y-8">
+      {/* Content - Flex column, no outer scroll */}
+      <div className="flex-1 flex flex-col overflow-hidden relative z-0">
+        <div className="container mx-auto max-w-7xl px-6 flex flex-col flex-1 min-h-0 py-3 gap-3">
 
-          {/* KPI Cards - Larger and more prominent */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* KPI Cards - Fixed height */}
+          <div className="flex-shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-3">
             <KpiCard
               icon={Layers}
               label="Progetti"
@@ -301,36 +265,31 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Accuracy Analytics Link */}
-          <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/analytics/accuracy')}
-              className="rounded-xl"
-            >
-              <Target className="w-4 h-4 mr-2" />
-              Analisi Accuratezza
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-12 gap-4">
+          {/* Main Grid - fills remaining viewport */}
+          <div className="flex-1 min-h-0 grid grid-cols-12 gap-3">
 
             {/* Left Column: Projects List */}
-            <div className="col-span-12 lg:col-span-8 flex flex-col rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white overflow-hidden">
-              <div className="flex-shrink-0 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
+            <div className="col-span-12 lg:col-span-8 flex flex-col rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="flex-shrink-0 px-4 py-2.5 border-b border-slate-100 flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-white flex items-center justify-center text-xs font-bold shadow-sm">
-                    <Layers className="w-3.5 h-3.5" />
-                  </span>
+                  <Layers className="w-4 h-4 text-slate-400" />
                   <div>
-                    <h2 className="font-semibold text-slate-800 text-sm">I tuoi Progetti</h2>
-                    <p className="text-xs text-slate-500">{filteredLists.length} progetti</p>
+                    <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">I tuoi Progetti</h2>
+                    <p className="text-xs text-slate-400">{filteredLists.length} progetti</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/analytics/accuracy')}
+                    className="h-7 text-xs rounded-lg"
+                  >
+                    <Target className="w-3.5 h-3.5 mr-1.5" />
+                    Accuratezza
+                  </Button>
                   <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-28 h-8 text-xs border-slate-200 bg-white/80 rounded-lg">
+                    <SelectTrigger className="w-28 h-8 text-xs border-slate-200 bg-white rounded-lg">
                       <SelectValue placeholder="Ordina" />
                     </SelectTrigger>
                     <SelectContent>
@@ -338,7 +297,7 @@ export default function Dashboard() {
                       <SelectItem value="name-asc">Nome A-Z</SelectItem>
                     </SelectContent>
                   </Select>
-                  <div className="flex bg-slate-100/80 p-0.5 rounded-lg border border-slate-200">
+                  <div className="flex bg-slate-50 p-0.5 rounded-lg border border-slate-200">
                     <button
                       onClick={() => setViewMode('grid')}
                       className={`p-1.5 rounded transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
@@ -389,17 +348,15 @@ export default function Dashboard() {
             </div>
 
             {/* Right Column: Sidebar */}
-            <div className="col-span-12 lg:col-span-4 flex flex-col">
+            <div className="col-span-12 lg:col-span-4 flex flex-col min-h-0">
 
               {/* Recent Activity */}
-              <div className="rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50/80 to-white overflow-hidden flex-1">
-                <div className="px-4 py-3 border-b border-slate-200 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shadow-sm">
-                    <TrendingUp className="w-3.5 h-3.5" />
-                  </span>
-                  <h3 className="font-semibold text-slate-800 text-sm">Attività Recente</h3>
+              <div className="rounded-xl border border-slate-200 bg-white overflow-hidden flex flex-col flex-1 min-h-0">
+                <div className="flex-shrink-0 px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-emerald-500" />
+                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Attività Recente</h3>
                 </div>
-                <div className="p-3 max-h-[450px] overflow-y-auto custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
                   <RecentRequirements />
                 </div>
               </div>
