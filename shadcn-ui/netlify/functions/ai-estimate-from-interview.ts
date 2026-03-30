@@ -146,6 +146,8 @@ interface RequestBody {
     impactMap?: Record<string, unknown>;
     /** Optional estimation blueprint — structured technical work model */
     estimationBlueprint?: Record<string, unknown>;
+    /** Optional project technical blueprint — architectural baseline from project creation */
+    projectTechnicalBlueprint?: Record<string, unknown>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -424,6 +426,38 @@ function formatBlueprintBlock(bp: Record<string, unknown> | undefined): string {
             lines.push('Incertezze: ' + bp.uncertainties.join('; '));
         }
         return lines.length > 1 ? lines.join('\n') : '';
+    } catch {
+        return '';
+    }
+}
+
+function formatProjectTechnicalBlueprintBlock(ptb: Record<string, unknown> | undefined): string {
+    if (!ptb || typeof ptb !== 'object') return '';
+    try {
+        const lines: string[] = [];
+        lines.push('\nBASELINE ARCHITETTURA PROGETTO (dal blueprint tecnico del progetto — usa per contestualizzare il requisito rispetto ai componenti esistenti):');
+        if (ptb.summary && typeof ptb.summary === 'string') {
+            lines.push(`Sintesi progetto: ${ptb.summary}`);
+        }
+        if (Array.isArray(ptb.components) && ptb.components.length > 0) {
+            lines.push('Componenti progetto: ' + ptb.components.map((c: any) => `${c?.name ?? '?'} (${c?.type ?? '?'})`).join(', '));
+        }
+        if (Array.isArray(ptb.integrations) && ptb.integrations.length > 0) {
+            lines.push('Integrazioni progetto: ' + ptb.integrations.map((i: any) => `${i?.systemName ?? i?.system ?? '?'} [${i?.direction ?? '?'}]`).join(', '));
+        }
+        if (Array.isArray(ptb.dataDomains) && ptb.dataDomains.length > 0) {
+            lines.push('Domini dati: ' + ptb.dataDomains.map((d: any) => d?.name ?? '?').join(', '));
+        }
+        if (Array.isArray(ptb.architecturalNotes) && ptb.architecturalNotes.length > 0) {
+            lines.push(`Note architetturali: ${ptb.architecturalNotes.join('; ')}`);
+        } else if (ptb.architecturalNotes && typeof ptb.architecturalNotes === 'string') {
+            lines.push(`Note architetturali: ${ptb.architecturalNotes}`);
+        }
+        lines.push('ISTRUZIONE: Questa baseline descrive il progetto esistente. La stima deve riguardare solo il lavoro aggiuntivo del NUOVO requisito, non il progetto già in essere.');
+        const result = lines.length > 1 ? lines.join('\n') : '';
+        // Truncate to avoid prompt weight imbalance with small requirements
+        const MAX_PTB_CHARS = 2000;
+        return result.length > MAX_PTB_CHARS ? result.slice(0, MAX_PTB_CHARS) + '\n[…baseline troncata]' : result;
     } catch {
         return '';
     }
@@ -819,7 +853,7 @@ PRE-STIMA (dal planner, Round 0 — usala come ancora, puoi discostartene se le 
 
         let userPrompt = `REQUISITO:
 ${sanitizedDescription}
-${projectContextSection}${preEstimateSection}${formatUnderstandingBlock(body.requirementUnderstanding)}${formatImpactMapBlock(body.impactMap)}${formatBlueprintBlock(body.estimationBlueprint)}${provenanceHint}
+${projectContextSection}${preEstimateSection}${formatUnderstandingBlock(body.requirementUnderstanding)}${formatImpactMapBlock(body.impactMap)}${formatBlueprintBlock(body.estimationBlueprint)}${formatProjectTechnicalBlueprintBlock(body.projectTechnicalBlueprint)}${provenanceHint}
 RISPOSTE INTERVIEW TECNICA:
 ${interviewAnswers}
 

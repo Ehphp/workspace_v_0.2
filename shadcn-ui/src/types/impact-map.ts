@@ -144,6 +144,8 @@ export interface ImpactMapRequest {
     };
     /** Optional confirmed Requirement Understanding (from previous step) */
     requirementUnderstanding?: RequirementUnderstanding;
+    /** Optional project technical blueprint (architectural baseline) */
+    projectTechnicalBlueprint?: Record<string, unknown>;
 }
 
 /**

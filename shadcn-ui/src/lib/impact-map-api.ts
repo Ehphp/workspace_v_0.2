@@ -62,6 +62,7 @@ export async function generateImpactMap(
                 techCategory: request.techCategory,
                 techPresetId: request.techPresetId,
                 requirementUnderstanding: request.requirementUnderstanding,
+                ...(request.projectTechnicalBlueprint ? { projectTechnicalBlueprint: request.projectTechnicalBlueprint } : {}),
             }),
         });
 

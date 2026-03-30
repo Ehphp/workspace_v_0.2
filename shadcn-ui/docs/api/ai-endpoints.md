@@ -771,6 +771,7 @@ This maximizes reuse of validated activities while allowing AI to fill gaps.
 | `ai-generate-preset` | 50s | Complex preset generation |
 | `ai-impact-map` | 55s | Architectural impact analysis |
 | `ai-estimation-blueprint` | 55s | Technical blueprint generation |
+| `ai-generate-project-from-documentation` | 55s | 2-pass project extraction + technical blueprint |
 
 ---
 
@@ -778,8 +779,9 @@ This maximizes reuse of validated activities while allowing AI to fill gaps.
 
 - **ai-suggest**: 24h TTL cache keyed by `hash(description + presetId + activityCodes)`
 - **ai-requirement-understanding**: 12h TTL cache, prefix `ai:understand`, keyed by `hash(description[0:300] + techCategory)`
-- **ai-impact-map**: 12h TTL cache, prefix `ai:impactmap`, keyed by `hash(description[0:300] + techCategory + ru:1/ru:0)`
+- **ai-impact-map**: 12h TTL cache, prefix `ai:impactmap`, keyed by `hash(description[0:300] + techCategory + ru:1/ru:0 + ptb:1/ptb:0)`
 - **ai-estimation-blueprint**: 12h TTL cache, prefix `ai:blueprint`, keyed by `hash(description[0:300] + techCategory + ru:1/ru:0 + im:1/im:0)`
+- **ai-generate-project-from-documentation**: No caching (unique per source document)
 - **Other endpoints**: No caching (interview/estimation responses depend on user-specific context)
 
 Cache implementation: `lib/ai/ai-cache.ts`
@@ -1330,6 +1332,88 @@ The following estimation endpoints automatically use vector search when enabled:
 If no blueprint is available (or `isBlueprintMappable()` returns false), the legacy path runs: `selectTopActivities()` alone with 20 slots.
 
 **Persistence**: The confirmed blueprint is saved to `estimation_blueprint` table via `saveEstimationBlueprint()` in `src/lib/api.ts`. The `estimations.blueprint_id` FK links each estimation to the blueprint that informed it.
+
+---
+
+## Project From Documentation Endpoint
+
+### POST `/.netlify/functions/ai-generate-project-from-documentation`
+
+**Purpose**: 2-pass AI pipeline that extracts a Project Draft and a Project Technical Blueprint from free-form project documentation. The Project Draft captures metadata (name, description, owner, type, domain, scope, etc.) while the Technical Blueprint captures the project's architectural baseline (components, integrations, data domains, architectural notes, assumptions, missing information).
+
+**When Used**: "Create Project → From Documentation" flow in `CreateProjectDialog`. This is a project-level operation, not a requirement-level one.
+
+**Auth**: Required (`requireAuth: true`)
+
+**Input**:
+```typescript
+{
+  sourceText: string;   // Project documentation (50–20000 chars)
+}
+```
+
+**Output**:
+```typescript
+{
+  success: boolean;
+  result?: {
+    projectDraft: {
+      name: string;
+      description: string;
+      owner: string;
+      projectType?: string;
+      domain?: string;
+      scope?: string;
+      teamSize?: number;
+      deadlinePressure?: string;
+      methodology?: string;
+      technologyId?: string;
+    };
+    technicalBlueprint: {
+      summary: string;
+      components: Array<{
+        name: string;
+        type: "frontend" | "backend" | "database" | "integration" | "infrastructure" | "shared" | "mobile" | "ai_ml";
+        description: string;
+        technologies: string[];
+      }>;
+      dataDomains: Array<{ name: string; description: string }>;
+      integrations: Array<{
+        system: string;
+        direction: "inbound" | "outbound" | "bidirectional";
+        description: string;
+      }>;
+      architecturalNotes: string;
+      assumptions: string[];
+      missingInformation: string[];
+      confidence: number;
+    };
+  };
+  metadata?: {
+    generatedAt: string;
+    model: string;
+    sourceTextLength: number;
+  };
+  metrics?: {
+    totalMs: number;
+    pass1Ms: number;
+    pass2Ms: number;
+    model: string;
+  };
+}
+```
+
+**Model Configuration**:
+- Model: `gpt-4o-mini` (both passes)
+- Temperature: `0.1` (Pass 1), `0.2` (Pass 2)
+- Max tokens: `2000` (Pass 1), `3000` (Pass 2)
+- Structured output via strict JSON schema (both passes)
+
+**Caching**: None (each source document is unique).
+
+**AI does NOT persist**: The endpoint only returns the extracted data. Persistence is handled client-side: `createProject()` creates the project, then `createProjectTechnicalBlueprint()` stores the blueprint in `project_technical_blueprints`.
+
+**Downstream enrichment**: When a project has a linked technical blueprint, the wizard automatically loads it via `getLatestProjectTechnicalBlueprint(projectId)` and injects it as `projectTechnicalBlueprint` into Impact Map, Interview, and Estimation prompts via `formatProjectTechnicalBlueprintBlock()` / `formatProjectBlueprintBlock()`. This provides architectural context that helps the AI distinguish new requirement impacts from existing project structure.
 
 ---
 

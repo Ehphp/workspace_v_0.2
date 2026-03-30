@@ -131,6 +131,8 @@ export interface RequirementInterviewRequest {
     impactMap?: ImpactMap;
     /** Optional estimation blueprint — structured technical work model */
     estimationBlueprint?: EstimationBlueprint;
+    /** Optional project technical blueprint — architectural baseline from project creation */
+    projectTechnicalBlueprint?: Record<string, unknown>;
 }
 export interface RequirementInterviewResponse {
     /** Whether generation was successful */
@@ -209,6 +211,8 @@ export interface EstimationFromInterviewRequest {
     impactMap?: ImpactMap;
     /** Optional estimation blueprint — structured technical work model */
     estimationBlueprint?: EstimationBlueprint;
+    /** Optional project technical blueprint — architectural baseline from project creation */
+    projectTechnicalBlueprint?: Record<string, unknown>;
 }
 
 /**

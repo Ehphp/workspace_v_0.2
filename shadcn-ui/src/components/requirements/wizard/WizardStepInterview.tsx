@@ -64,7 +64,8 @@ export function WizardStepInterview({
             data.projectContext,
             data.requirementUnderstanding,
             data.impactMap,
-            data.estimationBlueprint
+            data.estimationBlueprint,
+            data.projectTechnicalBlueprint
         );
 
         if (result.success) {
@@ -101,7 +102,8 @@ export function WizardStepInterview({
             data.projectContext,
             data.requirementUnderstanding,
             data.impactMap,
-            data.estimationBlueprint
+            data.estimationBlueprint,
+            data.projectTechnicalBlueprint
         );
 
         if (result && result.success) {
@@ -144,7 +146,8 @@ export function WizardStepInterview({
             data.projectContext,
             data.requirementUnderstanding,
             data.impactMap,
-            data.estimationBlueprint
+            data.estimationBlueprint,
+            data.projectTechnicalBlueprint
         );
 
         if (result && result.success) {

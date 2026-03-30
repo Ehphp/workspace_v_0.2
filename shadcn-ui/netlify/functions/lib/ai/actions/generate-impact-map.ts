@@ -60,6 +60,8 @@ export interface GenerateImpactMapRequest {
     };
     /** Confirmed Requirement Understanding from previous step */
     requirementUnderstanding?: Record<string, unknown>;
+    /** Project Technical Blueprint — architectural baseline from project creation */
+    projectTechnicalBlueprint?: Record<string, unknown>;
     /** Skip cache for testing */
     testMode?: boolean;
 }
@@ -155,6 +157,58 @@ function formatUnderstandingBlock(ru: Record<string, unknown> | undefined): stri
     }
 }
 
+/**
+ * Format a Project Technical Blueprint as an Italian-language block
+ * for prompt injection. Provides architectural baseline context so the
+ * AI can distinguish new-requirement impacts from existing project structure.
+ */
+function formatProjectBlueprintBlock(blueprint: Record<string, unknown> | undefined): string {
+    if (!blueprint) return '';
+
+    try {
+        const parts: string[] = [];
+        parts.push('\nBASELINE ARCHITETTURA PROGETTO (dal blueprint tecnico del progetto):');
+
+        if (blueprint.summary && typeof blueprint.summary === 'string') {
+            parts.push(`- Sintesi: ${blueprint.summary}`);
+        }
+
+        if (Array.isArray(blueprint.components) && blueprint.components.length > 0) {
+            const compList = blueprint.components
+                .map((c: any) => `${c?.name ?? '?'} (${c?.type ?? '?'})`)
+                .join(', ');
+            parts.push(`- Componenti esistenti: ${compList}`);
+        }
+
+        if (Array.isArray(blueprint.integrations) && blueprint.integrations.length > 0) {
+            const intList = blueprint.integrations
+                .map((i: any) => `${i?.systemName ?? i?.system ?? '?'} [${i?.direction ?? '?'}]`)
+                .join(', ');
+            parts.push(`- Integrazioni esistenti: ${intList}`);
+        }
+
+        if (Array.isArray(blueprint.dataDomains) && blueprint.dataDomains.length > 0) {
+            parts.push(`- Domini dati: ${blueprint.dataDomains.map((d: any) => d?.name ?? '?').join(', ')}`);
+        }
+
+        if (Array.isArray(blueprint.architecturalNotes) && blueprint.architecturalNotes.length > 0) {
+            parts.push(`- Note architetturali: ${blueprint.architecturalNotes.join('; ')}`);
+        } else if (blueprint.architecturalNotes && typeof blueprint.architecturalNotes === 'string') {
+            parts.push(`- Note architetturali: ${blueprint.architecturalNotes}`);
+        }
+
+        parts.push('ISTRUZIONE: Distingui gli impatti relativi al NUOVO requisito dai componenti già esistenti nel progetto. Segnala solo ciò che il requisito aggiunge o modifica.');
+
+        const result = parts.join('\n');
+        // Truncate to avoid prompt weight imbalance with small requirements
+        const MAX_PTB_CHARS = 2000;
+        return result.length > MAX_PTB_CHARS ? result.slice(0, MAX_PTB_CHARS) + '\n[…baseline troncata]' : result;
+    } catch {
+        console.warn('[generate-impact-map] Failed to format blueprint block, skipping');
+        return '';
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────────────────────────────────────
@@ -168,7 +222,7 @@ function formatUnderstandingBlock(ru: Record<string, unknown> | undefined): stri
 export async function generateImpactMap(
     request: GenerateImpactMapRequest
 ): Promise<GenerateImpactMapResponse> {
-    const { description, techCategory, projectContext, requirementUnderstanding, testMode } = request;
+    const { description, techCategory, projectContext, requirementUnderstanding, projectTechnicalBlueprint, testMode } = request;
 
     console.log('[generate-impact-map] Starting, description length:', description.length);
 
@@ -177,6 +231,7 @@ export async function generateImpactMap(
         description.slice(0, 300),
         techCategory ?? '',
         requirementUnderstanding ? 'ru:1' : 'ru:0',
+        projectTechnicalBlueprint ? 'ptb:1' : 'ptb:0',
     ];
 
     if (!testMode) {
@@ -203,6 +258,12 @@ export async function generateImpactMap(
     const understandingBlock = formatUnderstandingBlock(requirementUnderstanding);
     if (understandingBlock) {
         userPromptParts.push(understandingBlock);
+    }
+
+    // Inject project technical blueprint (if available)
+    const blueprintBlock = formatProjectBlueprintBlock(projectTechnicalBlueprint);
+    if (blueprintBlock) {
+        userPromptParts.push(blueprintBlock);
     }
 
     if (techCategory) {

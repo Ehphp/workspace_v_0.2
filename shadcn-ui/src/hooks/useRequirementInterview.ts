@@ -25,6 +25,7 @@ import type {
 import type { RequirementUnderstanding } from '@/types/requirement-understanding';
 import type { ImpactMap } from '@/types/impact-map';
 import type { EstimationBlueprint } from '@/types/estimation-blueprint';
+import type { ProjectTechnicalBlueprint } from '@/types/project-technical-blueprint';
 
 /** Result returned by generateQuestions so callers get data synchronously */
 export interface GenerateQuestionsResult {
@@ -71,7 +72,8 @@ interface UseRequirementInterviewReturn {
         projectContext?: { name: string; description: string; owner?: string },
         requirementUnderstanding?: RequirementUnderstanding,
         impactMap?: ImpactMap,
-        estimationBlueprint?: EstimationBlueprint
+        estimationBlueprint?: EstimationBlueprint,
+        projectTechnicalBlueprint?: ProjectTechnicalBlueprint
     ) => Promise<GenerateQuestionsResult>;
     answerQuestion: (questionId: string, value: string | string[] | number) => void;
     nextQuestion: () => void;
@@ -84,7 +86,8 @@ interface UseRequirementInterviewReturn {
         projectContext?: { name: string; description: string; owner?: string },
         requirementUnderstanding?: RequirementUnderstanding,
         impactMap?: ImpactMap,
-        estimationBlueprint?: EstimationBlueprint
+        estimationBlueprint?: EstimationBlueprint,
+        projectTechnicalBlueprint?: ProjectTechnicalBlueprint
     ) => Promise<EstimationFromInterviewResponse | null>;
     reset: () => void;
 }
@@ -153,7 +156,8 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
         projectContext?: { name: string; description: string; owner?: string },
         requirementUnderstanding?: RequirementUnderstanding,
         impactMap?: ImpactMap,
-        estimationBlueprint?: EstimationBlueprint
+        estimationBlueprint?: EstimationBlueprint,
+        projectTechnicalBlueprint?: ProjectTechnicalBlueprint
     ): Promise<GenerateQuestionsResult> => {
         setPhase('loading-questions');
         setError(null);
@@ -167,6 +171,9 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
                 requirementUnderstanding,
                 impactMap,
                 estimationBlueprint,
+                projectTechnicalBlueprint: projectTechnicalBlueprint
+                    ? (projectTechnicalBlueprint as unknown as Record<string, unknown>)
+                    : undefined,
             });
 
             if (response.success && (response.decision === 'SKIP' || response.questions.length > 0)) {
@@ -248,7 +255,8 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
         projectContext?: { name: string; description: string; owner?: string },
         requirementUnderstanding?: RequirementUnderstanding,
         impactMap?: ImpactMap,
-        estimationBlueprint?: EstimationBlueprint
+        estimationBlueprint?: EstimationBlueprint,
+        projectTechnicalBlueprint?: ProjectTechnicalBlueprint
     ): Promise<EstimationFromInterviewResponse | null> => {
         setPhase('generating-estimate');
         setError(null);
@@ -269,6 +277,9 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
                 requirementUnderstanding,
                 impactMap,
                 estimationBlueprint,
+                projectTechnicalBlueprint: projectTechnicalBlueprint
+                    ? (projectTechnicalBlueprint as unknown as Record<string, unknown>)
+                    : undefined,
             });
 
             if (response.success) {

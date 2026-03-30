@@ -623,6 +623,42 @@ Stores structured AI-generated Estimation Blueprint artifacts for requirements. 
 
 ---
 
+### project_technical_blueprints
+
+Stores structured AI-generated Project Technical Blueprint artifacts. This is a **project-level** artifact (not requirement-level) created via the "Create Project from Documentation" flow. It captures the architectural baseline of a project: existing components, integrations, data domains, and architectural notes. When present, it is injected into requirement-level AI prompts (Impact Map, Interview, Estimation) to help the AI distinguish new requirement impacts from existing project structure.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key (DEFAULT gen_random_uuid()) |
+| `project_id` | UUID | FK → projects(id) ON DELETE CASCADE |
+| `version` | INTEGER | Monotonically increasing per project_id (DEFAULT 1) |
+| `source_text` | TEXT | Original documentation used to generate the blueprint |
+| `summary` | TEXT | AI-generated project summary |
+| `components` | JSONB | Array of `{ name, type, description, technologies[] }` |
+| `data_domains` | JSONB | Array of `{ name, description }` |
+| `integrations` | JSONB | Array of `{ system, direction, description }` |
+| `architectural_notes` | TEXT | Free-form architectural notes |
+| `assumptions` | TEXT[] | Array of assumptions made during extraction |
+| `missing_information` | TEXT[] | Array of information gaps identified |
+| `confidence` | NUMERIC | Overall confidence score (0.0–1.0) |
+| `user_id` | UUID | FK → auth.users. Who triggered the generation. |
+| `created_at` | TIMESTAMPTZ | DEFAULT now() |
+| `updated_at` | TIMESTAMPTZ | DEFAULT now() (auto-updated via trigger) |
+
+**Indexes**:
+- `idx_ptb_project` — `(project_id)` for lookups
+- `idx_ptb_project_version` — `(project_id, version DESC)` for fast latest-version lookup
+
+**RLS Policies** (organization-scoped via projects join):
+- **SELECT**: User can read blueprints for projects in their organization
+- **INSERT**: User can insert for projects in their organization
+- **UPDATE**: User can update blueprints for projects in their organization
+- **DELETE**: User can delete blueprints for projects in their organization
+
+**Migration**: [20260401_project_technical_blueprints.sql](../supabase/migrations/20260401_project_technical_blueprints.sql)
+
+---
+
 ### requirement_analyses
 
 Domain-model entity capturing a structured understanding of a requirement. Links to the full traceability chain.
@@ -750,6 +786,7 @@ Two new nullable FK columns added for domain-model traceability:
 - **Estimation Blueprint (2026-03-11)**: `estimation_blueprint` table added for Milestone 3. Stores structured AI estimation blueprint artifacts with technical component decomposition, integrations, data entities, testing scope, and confidence scoring. FKs to `requirement_understanding` and `impact_map` for provenance. Also adds `blueprint_id UUID` FK to `estimations` table for audit traceability. Migration: `20260311_estimation_blueprint.sql`.
 - **Persistence Convergence (2026-03-21)**: All estimation save paths now converge on `saveEstimationByIds()` → `save_estimation_atomic` RPC. Added `p_blueprint_id UUID DEFAULT NULL` parameter to the RPC. Dropped all 4 historical overloads (11-param NUMERIC/TEXT, 12-param DECIMAL/VARCHAR, 13-param +JSONB, 14-param +UUID) and created definitive 14-param version. Migration: `20260321_add_blueprint_id_to_rpc.sql`.
 - **Domain Model (2026-03-21)**: Five new tables introduced for structured estimation traceability: `requirement_analyses`, `impact_maps` (domain-level, separate from legacy `impact_map`), `candidate_sets`, `estimation_decisions`, `estimation_snapshots`. Two new nullable FK columns added to `estimations`: `analysis_id`, `decision_id`. RPC `save_estimation_atomic` extended with `p_analysis_id UUID` and `p_decision_id UUID`. Migrations: `20260321_domain_model_tables.sql`, `20260321_domain_model_rpc.sql`. Types: `src/types/domain-model.ts`. Domain services: `netlify/functions/lib/domain/estimation/`.
+- **Project Technical Blueprint (2026-04-01)**: `project_technical_blueprints` table added. Stores project-level architectural baseline extracted via "Create Project from Documentation" AI flow. JSONB columns for `components`, `data_domains`, `integrations`. TEXT[] for `assumptions`, `missing_information`. Version-tracked per project. Organization-scoped RLS via projects join. New AI endpoint `ai-generate-project-from-documentation` (2-pass pipeline: project draft extraction + technical blueprint). Blueprint data is injected into requirement-level AI prompts (Impact Map, Interview, Estimation) when available. Migration: `20260401_project_technical_blueprints.sql`.
 
 ---
 

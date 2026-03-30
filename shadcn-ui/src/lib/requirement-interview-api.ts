@@ -85,6 +85,7 @@ export async function generateInterviewQuestions(
                 ...(request.requirementUnderstanding ? { requirementUnderstanding: request.requirementUnderstanding } : {}),
                 ...(request.impactMap ? { impactMap: request.impactMap } : {}),
                 ...(request.estimationBlueprint ? { estimationBlueprint: request.estimationBlueprint } : {}),
+                ...(request.projectTechnicalBlueprint ? { projectTechnicalBlueprint: request.projectTechnicalBlueprint } : {}),
             }),
         });
 
@@ -213,6 +214,7 @@ export async function generateEstimateFromInterview(
                 ...(request.requirementUnderstanding ? { requirementUnderstanding: request.requirementUnderstanding } : {}),
                 ...(request.impactMap ? { impactMap: request.impactMap } : {}),
                 ...(request.estimationBlueprint ? { estimationBlueprint: request.estimationBlueprint } : {}),
+                ...(request.projectTechnicalBlueprint ? { projectTechnicalBlueprint: request.projectTechnicalBlueprint } : {}),
             }),
         });
 

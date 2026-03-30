@@ -8,6 +8,7 @@ import { WizardStepInterview } from './wizard/WizardStepInterview';
 import { WizardStep4 } from './wizard/WizardStep4';
 import { WizardStep5 } from './wizard/WizardStep5';
 import { createRequirement, saveEstimation, saveRequirementUnderstanding, saveImpactMap, saveEstimationBlueprint, fetchEstimationMasterData, fetchTechnology } from '@/lib/api';
+import { getLatestProjectTechnicalBlueprint } from '@/lib/project-technical-blueprint-repository';
 import {
     orchestrateWizardDomainSave,
     finalizeWizardSnapshot,
@@ -68,6 +69,17 @@ export function RequirementWizard({ projectId, projectContext, onSuccess, onCanc
             }).catch((err) => console.warn('Failed to resolve project technology:', err));
         }
     }, [projectContext?.defaultTechPresetId, data.techPresetId, updateData]);
+
+    // Load project technical blueprint (if available) for architectural context
+    useEffect(() => {
+        if (projectId && !data.projectTechnicalBlueprint) {
+            getLatestProjectTechnicalBlueprint(projectId).then((blueprint) => {
+                if (blueprint) {
+                    updateData({ projectTechnicalBlueprint: blueprint });
+                }
+            }).catch((err) => console.warn('Failed to load project technical blueprint:', err));
+        }
+    }, [projectId, data.projectTechnicalBlueprint, updateData]);
 
     const steps = [
         { title: 'Requirement', component: WizardStep1 },

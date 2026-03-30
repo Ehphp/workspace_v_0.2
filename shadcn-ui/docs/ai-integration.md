@@ -37,6 +37,7 @@ AI functionality is distributed across multiple serverless functions:
 | `ai-requirement-understanding.ts` | Generate structured Requirement Understanding artifact | Wizard step 3 (Milestone 1), Quick Estimate V2 |
 | `ai-impact-map.ts` | Generate structured Impact Map artifact | Wizard step 4 (Milestone 2), Quick Estimate V2 |
 | `ai-estimation-blueprint.ts` | Generate structured Estimation Blueprint artifact | Wizard step 5 (Milestone 3), Quick Estimate V2 |
+| `ai-generate-project-from-documentation.ts` | 2-pass project extraction + technical blueprint | Create Project → From Documentation |
 | `ai-consultant.ts` | Senior consultant analysis | Post-estimation review |
 | `ai-generate-embeddings.ts` | Generate vector embeddings | Background/admin job (Phase 1) |
 | `ai-check-duplicates.ts` | Semantic activity deduplication | AI Technology Wizard (Phase 3) |
@@ -506,6 +507,68 @@ All endpoints remain backward-compatible: if `estimationBlueprint` is absent or 
 | `src/components/requirements/wizard/WizardStepBlueprint.tsx` | Wizard step (loading/review/error) |
 | `src/components/requirements/wizard/EstimationBlueprintCard.tsx` | Presentational card |
 | `supabase/migrations/20260311_estimation_blueprint.sql` | Table + RLS + blueprint_id FK migration |
+
+---
+
+## Project Technical Blueprint (Project-Level Artifact)
+
+The Project Technical Blueprint is a **project-level** artifact (distinct from the requirement-level Estimation Blueprint above) that captures the architectural baseline of a project. It is generated via the "Create Project → From Documentation" flow, where the AI extracts project metadata and technical architecture from free-form documentation.
+
+### Generation Flow
+
+```
+┌─────────────────────────────┐
+│  CreateProjectDialog        │
+│  (mode: from-documentation) │
+└─────────┬───────────────────┘
+          │
+          ▼
+┌─────────────────────────────────┐
+│  CreateProjectFromDocumentation │
+│  (input → generating → review)  │
+└─────────┬───────────────────────┘
+          │ generateProjectFromDocumentation()
+          │ POST /ai-generate-project-from-documentation
+          ▼
+┌─────────────────────────────────┐      ┌────────────────────────────┐
+│  Pass 1: Extract ProjectDraft   │ ───▶ │  Pass 2: Extract Blueprint │
+│  (name, type, domain, etc.)     │      │  (components, integrations)│
+└─────────────────────────────────┘      └────────────┬───────────────┘
+                                                      │ User reviews & edits
+                                                      ▼
+                                         ┌────────────────────────────┐
+                                         │  createProject() +         │
+                                         │  createProjectTechnical-   │
+                                         │  Blueprint()               │
+                                         └────────────────────────────┘
+```
+
+### Downstream Enrichment in Wizard
+
+When a project has a linked technical blueprint, the requirement wizard automatically loads it:
+
+1. `RequirementWizard.tsx` calls `getLatestProjectTechnicalBlueprint(projectId)` on mount
+2. The blueprint is stored in `WizardData.projectTechnicalBlueprint`
+3. It is passed as optional `projectTechnicalBlueprint` to:
+   - `POST /ai-impact-map` — injected via `formatProjectBlueprintBlock()` with instruction to distinguish new requirement impacts from existing project components
+   - `POST /ai-requirement-interview` — injected via `formatProjectTechnicalBlueprintBlock()` to provide architectural context for question focus
+   - `POST /ai-estimate-from-interview` — injected via `formatProjectTechnicalBlueprintBlock()` to improve activity selection with knowledge of existing project architecture
+
+All endpoints remain backward-compatible: if `projectTechnicalBlueprint` is absent, prompts proceed unchanged.
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `netlify/functions/lib/domain/project/project-technical-blueprint.types.ts` | Domain types |
+| `src/types/project-technical-blueprint.ts` | Frontend type re-exports + API types |
+| `src/lib/project-technical-blueprint-repository.ts` | Repository (CRUD, version tracking) |
+| `src/lib/project-documentation-api.ts` | Frontend API client |
+| `netlify/functions/ai-generate-project-from-documentation.ts` | Endpoint (createAIHandler, 2-pass) |
+| `netlify/functions/lib/ai/actions/generate-project-from-documentation.ts` | AI action (dual LLM pass) |
+| `netlify/functions/lib/ai/prompts/project-from-documentation.ts` | System prompts + JSON schemas |
+| `src/components/projects/CreateProjectFromDocumentation.tsx` | Multi-step UI (input/generate/review/save) |
+| `supabase/migrations/20260401_project_technical_blueprints.sql` | Table + indexes + RLS migration |
 
 ---
 

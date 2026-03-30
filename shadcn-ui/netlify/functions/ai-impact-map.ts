@@ -37,6 +37,7 @@ interface RequestBody {
     techPresetId?: string;
     projectContext?: ProjectContext;
     requirementUnderstanding?: Record<string, unknown>;
+    projectTechnicalBlueprint?: Record<string, unknown>;
     testMode?: boolean;
 }
 
@@ -80,6 +81,7 @@ export const handler = createAIHandler<RequestBody>({
             techCategory: body.techCategory,
             projectContext: body.projectContext,
             requirementUnderstanding: body.requirementUnderstanding,
+            projectTechnicalBlueprint: body.projectTechnicalBlueprint,
             testMode: body.testMode,
         });
 

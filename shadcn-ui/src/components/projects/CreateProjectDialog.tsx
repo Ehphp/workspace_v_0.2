@@ -17,7 +17,10 @@ import { toast } from 'sonner';
 import type { Technology } from '@/types/database';
 import { createProject, fetchPresets } from '@/lib/api';
 import { projectSchema } from '@/lib/validation';
-import { Layers, Sparkles, User, FileText, Cpu, Activity, Target, Globe, Gauge, Users, Clock, GitBranch } from 'lucide-react';
+import { Layers, Sparkles, User, FileText, Cpu, Activity, Target, Globe, Gauge, Users, Clock, GitBranch, PenLine } from 'lucide-react';
+import { CreateProjectFromSources } from './CreateProjectFromSources';
+
+type CreationMode = 'select' | 'manual' | 'from-documentation';
 
 interface CreateProjectDialogProps {
     open: boolean;
@@ -27,6 +30,7 @@ interface CreateProjectDialogProps {
 
 export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreateProjectDialogProps) {
     const { user, currentOrganization } = useAuthStore();
+    const [creationMode, setCreationMode] = useState<CreationMode>('select');
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [owner, setOwner] = useState('');
@@ -44,6 +48,7 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
     useEffect(() => {
         if (open) {
             loadPresets();
+            setCreationMode('select');
         }
     }, [open]);
 
@@ -115,7 +120,67 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className={`${creationMode === 'from-documentation' ? 'sm:max-w-[800px]' : 'sm:max-w-[600px]'} max-h-[90vh] overflow-y-auto`}>
+                {/* Mode Selection */}
+                {creationMode === 'select' && (
+                    <>
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2 text-xl">
+                                <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md">
+                                    <Layers className="w-5 h-5 text-white" />
+                                </div>
+                                <span className="bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent font-bold">
+                                    Create New Project
+                                </span>
+                            </DialogTitle>
+                            <DialogDescription className="pt-1">
+                                Choose how you want to create your project.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid grid-cols-2 gap-4 py-6">
+                            <button
+                                type="button"
+                                onClick={() => setCreationMode('manual')}
+                                className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 transition-all cursor-pointer group"
+                            >
+                                <div className="p-3 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md group-hover:shadow-lg transition-shadow">
+                                    <PenLine className="w-6 h-6 text-white" />
+                                </div>
+                                <div className="text-center">
+                                    <p className="font-semibold text-slate-800">Manual</p>
+                                    <p className="text-xs text-slate-500 mt-1">Fill in project details manually</p>
+                                </div>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setCreationMode('from-documentation')}
+                                className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/50 transition-all cursor-pointer group"
+                            >
+                                <div className="p-3 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md group-hover:shadow-lg transition-shadow">
+                                    <FileText className="w-6 h-6 text-white" />
+                                </div>
+                                <div className="text-center">
+                                    <p className="font-semibold text-slate-800">From Sources</p>
+                                    <p className="text-xs text-slate-500 mt-1">AI extracts details from text & files</p>
+                                </div>
+                            </button>
+                        </div>
+                    </>
+                )}
+
+                {/* From Documentation Mode */}
+                {creationMode === 'from-documentation' && (
+                    <CreateProjectFromSources
+                        onSuccess={() => {
+                            onOpenChange(false);
+                            onSuccess();
+                        }}
+                        onBack={() => setCreationMode('select')}
+                    />
+                )}
+
+                {/* Manual Mode */}
+                {creationMode === 'manual' && (
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-xl">
@@ -336,8 +401,8 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
                     </div>
 
                     <DialogFooter>
-                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="hover:bg-slate-100">
-                            Cancel
+                        <Button type="button" variant="ghost" onClick={() => setCreationMode('select')} className="hover:bg-slate-100">
+                            Back
                         </Button>
                         <Button
                             type="submit"
@@ -348,6 +413,7 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
                         </Button>
                     </DialogFooter>
                 </form>
+                )}
             </DialogContent>
         </Dialog>
     );

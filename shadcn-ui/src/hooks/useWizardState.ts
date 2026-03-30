@@ -11,6 +11,7 @@ import type { RequirementUnderstanding } from '@/types/requirement-understanding
 import type { ImpactMap } from '@/types/impact-map';
 import type { EstimationBlueprint } from '@/types/estimation-blueprint';
 import type { RequirementValidationResult } from '@/types/ai-validation';
+import type { ProjectTechnicalBlueprint } from '@/types/project-technical-blueprint';
 
 /** Project context for AI to avoid redundant questions */
 export interface ProjectContext {
@@ -62,6 +63,8 @@ export interface WizardData {
   // Estimation Blueprint artifact
   estimationBlueprint?: EstimationBlueprint;
   estimationBlueprintConfirmed?: boolean;
+  // Project Technical Blueprint (project-level architectural baseline)
+  projectTechnicalBlueprint?: ProjectTechnicalBlueprint;
 }
 
 const STORAGE_KEY = 'estimation_wizard_data';

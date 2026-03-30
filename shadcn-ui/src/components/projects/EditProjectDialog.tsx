@@ -13,7 +13,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FormFieldBlock } from '@/components/shared/FormFieldBlock';
+import { ProjectBlueprintTab } from './blueprint/ProjectBlueprintTab';
 import { toast } from 'sonner';
 import type { Project, Technology } from '@/types/database';
 
@@ -103,16 +105,23 @@ export function EditProjectDialog({ open, onOpenChange, project, onSuccess }: Ed
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-h-[90vh] overflow-y-auto">
-                <form onSubmit={handleSubmit}>
-                    <DialogHeader>
-                        <DialogTitle>Edit Project</DialogTitle>
-                        <DialogDescription>
-                            Update project details and default technology.
-                        </DialogDescription>
-                    </DialogHeader>
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[900px]">
+                <DialogHeader>
+                    <DialogTitle>Edit Project</DialogTitle>
+                    <DialogDescription>
+                        Update project details, default technology, or inspect the technical blueprint.
+                    </DialogDescription>
+                </DialogHeader>
 
-                    <div className="space-y-4 py-4">
+                <Tabs defaultValue="general" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="general">General</TabsTrigger>
+                        <TabsTrigger value="blueprint">Technical Blueprint</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="general">
+                        <form onSubmit={handleSubmit}>
+                            <div className="space-y-4 py-4">
                         <FormFieldBlock label="Project Name" htmlFor="name" required>
                             <Input
                                 id="name"
@@ -269,6 +278,12 @@ export function EditProjectDialog({ open, onOpenChange, project, onSuccess }: Ed
                         </Button>
                     </DialogFooter>
                 </form>
+                    </TabsContent>
+
+                    <TabsContent value="blueprint">
+                        {project && <ProjectBlueprintTab projectId={project.id} />}
+                    </TabsContent>
+                </Tabs>
             </DialogContent>
         </Dialog>
     );

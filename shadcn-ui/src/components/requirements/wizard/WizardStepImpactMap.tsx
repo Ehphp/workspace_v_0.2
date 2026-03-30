@@ -68,6 +68,9 @@ export function WizardStepImpactMap({
                     data.requirementUnderstanding && data.requirementUnderstandingConfirmed
                         ? data.requirementUnderstanding
                         : undefined,
+                projectTechnicalBlueprint: data.projectTechnicalBlueprint
+                    ? (data.projectTechnicalBlueprint as unknown as Record<string, unknown>)
+                    : undefined,
             });
 
             if (result.success && result.impactMap) {
