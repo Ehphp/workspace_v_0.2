@@ -20,7 +20,7 @@
   - File: `src/components/estimation/QuickEstimate.tsx`, `src/pages/Home.tsx`.
 
 - Utenti autenticati (authenticated users)
-  - Creano e gestiscono `lists` (progetti), `requirements`, salvano `estimations`, importano requisiti.
+  - Creano e gestiscono `projects` (progetti), `requirements`, salvano `estimations`, importano requisiti.
   - Possono creare attività `is_custom` e gestirle dal pannello Admin.
   - File: `src/pages/Lists.tsx`, `src/components/requirements/ImportRequirementsDialog.tsx`, `src/pages/AdminActivities.tsx`.
 
@@ -90,7 +90,7 @@
 - Passi principali:
   1. parseExcelFile (client) → detect headers, suggested mapping.
   2. mapDataToRequirements + validateRequirements per riga (client side).
-  3. Duplicate detection: `select req_id from requirements where list_id = X`.
+  3. Duplicate detection: `select req_id from requirements where project_id = X`.
   4. For each valid row: if missing title → call `generateTitleFromDescription()` (AI).
   5. Insert rows in `requirements` table per riga valida; show progress.
 - Output: nuove righe di `requirements` nella lista.
@@ -104,8 +104,8 @@
 - Drivers: driver con `options` {value,label,multiplier} usati per calcolare il moltiplicatore
 - Risks: rischi con `weight` sommati nel `risk_score`
 - Technology presets: `default_activity_codes`, `default_driver_values`, `default_risks`
-- Lists: progetti legati all'utente (owner), con `tech_preset_id` ereditato da `requirements`
-- Requirements: requisiti in un list_id con `req_id`, `title`, `description`, `state`, `priority`.
+- Projects: progetti legati all'utente (owner), con `tech_preset_id` ereditato da `requirements`
+- Requirements: requisiti in un project_id con `req_id`, `title`, `description`, `state`, `priority`.
 - Estimations: salvataggi storici collegati a un requirement_id, contiene base & total & driver, e `scenario_name`.
 - Junctions: `estimation_activities`, `estimation_drivers`, `estimation_risks`.
 
@@ -117,7 +117,7 @@
 
 - Validazioni frontend: Zod schema per forms (`src/lib/validation.ts`), `sanitizePromptInput`, min length description, etc.
 - Validazioni backend: Netlify `ai-suggest` riapplica sanitizzazione e validazione deterministica, enforce rate limit & enum structured outputs.
-- DB: RLS su user-data (lists, requirements, estimations) e policies sui cataloghi (activities read-only public but `is_custom` editable by its creator).
+- DB: RLS su user-data (projects, requirements, estimations) e policies sui cataloghi (activities read-only public but `is_custom` editable by its creator).
 - Salvataggio atomic: `save_estimation_atomic` RPC esegue tutto in transazione; fallisce con exception su invalid data or no activities.
 
 ---

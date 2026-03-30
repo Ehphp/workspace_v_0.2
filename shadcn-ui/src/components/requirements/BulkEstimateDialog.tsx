@@ -24,7 +24,7 @@ interface BulkEstimateDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     requirements: Requirement[];
-    listTechPresetId: string | null;
+    projectTechPresetId: string | null;
     onConfirm: () => void;
 }
 
@@ -32,11 +32,11 @@ export function BulkEstimateDialog({
     open,
     onOpenChange,
     requirements,
-    listTechPresetId,
+    projectTechPresetId,
     onConfirm,
 }: BulkEstimateDialogProps) {
     const estimableRequirements = requirements.filter((req) => {
-        const techId = req.technology_id || req.tech_preset_id || listTechPresetId;
+        const techId = req.technology_id || req.tech_preset_id || projectTechPresetId;
         return techId && req.description?.trim();
     });
     const skippedCount = requirements.length - estimableRequirements.length;

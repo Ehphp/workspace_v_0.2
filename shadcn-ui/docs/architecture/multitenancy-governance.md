@@ -22,7 +22,7 @@ The application has been refactored from a single-user model to a **Multi-tenant
 - **role**: Enum (`admin`, `editor`, `viewer`)
 - *Constraint*: Unique pair (org_id, user_id)
 
-### Lists (Projects) Updates
+### Projects Updates
 - **organization_id**: FK to organizations (Replaces `user_id` as the ownership field).
 - **user_id**: Retained as "Created By" audit field.
 - **status**: Enum (`DRAFT`, `REVIEW`, `LOCKED`).
@@ -34,8 +34,8 @@ Security is enforced at the database layer via PostgreSQL RLS policies.
 
 ### Access Hierarchy
 1.  **Organization Level**: Users can only see organizations they are a member of.
-2.  **Project Level**: Users can only see lists belonging to their organizations.
-3.  **Resource Level**: Requirements and Estimations inherit access from their parent List.
+2.  **Project Level**: Users can only see projects belonging to their organizations.
+3.  **Resource Level**: Requirements and Estimations inherit access from their parent Project.
 
 ### Governance Rules
 | Role | View | Create/Edit | Delete | Lock/Unlock |
@@ -88,7 +88,7 @@ Replaces direct `useAuth` usage for organization context.
 1.  **Action**: Create a project. Add a requirement.
 2.  **Action (DB)**: Manually lock the project.
     ```sql
-    UPDATE lists SET status = 'LOCKED' WHERE name = 'My Project';
+    UPDATE projects SET status = 'LOCKED' WHERE name = 'My Project';
     ```
 3.  **Expected Result**:
     - Refresh the project page.

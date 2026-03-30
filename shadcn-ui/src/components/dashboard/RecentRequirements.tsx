@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/useAuthStore';
+import { fetchProjectIdsAndNames, PROJECT_FK } from '@/lib/projects';
 import { Badge } from '@/components/ui/badge';
 import { Clock, FileText, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,8 +13,8 @@ interface RecentRequirement {
     title: string;
     priority: string;
     state: string;
-    list_id: string;
-    list_name: string;
+    project_id: string;
+    project_name: string;
     total_days: number | null;
     updated_at: string;
 }
@@ -34,17 +35,12 @@ export function RecentRequirements() {
         if (!user || !currentOrganization) return;
 
         try {
-            // Get organization's lists
-            const { data: lists, error: listsError } = await supabase
-                .from('lists')
-                .select('id, name')
-                .eq('organization_id', currentOrganization.id);
+            // Get organization's projects
+            const projects = await fetchProjectIdsAndNames(currentOrganization.id);
 
-            if (listsError) throw listsError;
+            const projectIds = projects.map(l => l.id);
 
-            const listIds = lists?.map(l => l.id) || [];
-
-            if (listIds.length === 0) {
+            if (projectIds.length === 0) {
                 setRequirements([]);
                 setLoading(false);
                 return;
@@ -53,8 +49,8 @@ export function RecentRequirements() {
             // Get recent requirements
             const { data: reqs, error: reqsError } = await supabase
                 .from('requirements')
-                .select('id, title, priority, state, list_id, updated_at')
-                .in('list_id', listIds)
+                .select('id, title, priority, state, project_id, updated_at')
+                .in(PROJECT_FK, projectIds)
                 .order('updated_at', { ascending: false })
                 .limit(10);
 
@@ -85,12 +81,13 @@ export function RecentRequirements() {
                 }
             });
 
-            // Map requirements with their estimations and list names
+            // Map requirements with their estimations and project names
             const requirementsWithEstimations = reqs.map(req => {
-                const list = lists?.find(l => l.id === req.list_id);
+                const project = projects?.find(l => l.id === req.project_id);
                 return {
                     ...req,
-                    list_name: list?.name || 'Unknown',
+                    project_id: req.project_id,
+                    project_name: project?.name || 'Unknown',
                     total_days: latestEstimationMap.get(req.id) || null,
                 };
             });
@@ -137,7 +134,7 @@ export function RecentRequirements() {
                 <div
                     key={req.id}
                     className="group flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer border border-transparent hover:border-slate-200 hover:shadow-sm"
-                    onClick={() => navigate(`/dashboard/${req.list_id}/requirements/${req.id}`)}
+                    onClick={() => navigate(`/dashboard/${req.project_id}/requirements/${req.id}`)}
                 >
                     <div className="flex-shrink-0 mt-0.5">
                         <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
@@ -156,7 +153,7 @@ export function RecentRequirements() {
                         </div>
 
                         <div className="flex items-center gap-2 text-xs">
-                            <span className="text-slate-500 truncate max-w-[100px]">{req.list_name}</span>
+                            <span className="text-slate-500 truncate max-w-[100px]">{req.project_name}</span>
                             <span className="text-slate-300">•</span>
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${getPriorityColor(req.priority)}`}>
                                 {req.priority}

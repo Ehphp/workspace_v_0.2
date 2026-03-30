@@ -44,7 +44,7 @@ import { generateTitleFromDescription } from '@/lib/openai';
 interface ImportRequirementsDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    listId: string;
+    projectId: string;
     onImport: (requirements: ParsedRequirement[]) => void;
 }
 
@@ -53,7 +53,7 @@ type Step = 'upload' | 'mapping' | 'preview';
 export function ImportRequirementsDialog({
     open,
     onOpenChange,
-    listId,
+    projectId,
     onImport,
 }: ImportRequirementsDialogProps) {
     const { user } = useAuth();

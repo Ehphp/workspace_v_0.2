@@ -9,7 +9,7 @@ const trimmedString = (max: number, min?: number) => {
   return schema.transform((val) => val.trim());
 };
 
-export const listSchema = z.object({
+export const projectSchema = z.object({
   name: trimmedString(255, 3),
   description: trimmedString(2000).optional().or(z.literal('')),
   owner: trimmedString(255).optional().or(z.literal('')),
@@ -23,7 +23,7 @@ export const listSchema = z.object({
   methodology: z.enum(['AGILE', 'WATERFALL', 'HYBRID']).optional().nullable(),
 });
 
-export type ListFormValues = z.infer<typeof listSchema>;
+export type ProjectFormValues = z.infer<typeof projectSchema>;
 
 export const requirementSchema = z.object({
   title: trimmedString(300, 3),

@@ -40,7 +40,7 @@ const App = () => (
             }
           />
           <Route
-            path="/dashboard/:listId/requirements"
+            path="/dashboard/:projectId/requirements"
             element={
               <AuthGuard>
                 <Requirements />
@@ -48,7 +48,7 @@ const App = () => (
             }
           />
           <Route
-            path="/dashboard/:listId/requirements/:reqId"
+            path="/dashboard/:projectId/requirements/:reqId"
             element={
               <AuthGuard>
                 <RequirementDetail />
@@ -112,10 +112,11 @@ const App = () => (
               </AuthGuard>
             }
           />
-          {/* Backward compatibility redirects */}
+          {/* Legacy route compatibility — can be removed after deprecation window */}
           <Route path="/lists" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/lists/:listId/requirements" element={<Navigate to="/dashboard/:listId/requirements" replace />} />
-          <Route path="/lists/:listId/requirements/:reqId" element={<Navigate to="/dashboard/:listId/requirements/:reqId" replace />} />
+          <Route path="/lists/:listId/requirements" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/lists/:listId/requirements/:reqId" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard/:projectId/requirements/*" element={<Navigate to="/dashboard/:projectId/requirements" replace />} />
           <Route path="/admin" element={<Navigate to="/configuration" replace />} />
           <Route path="/admin/activities" element={<Navigate to="/configuration/activities" replace />} />
           <Route path="/presets" element={<Navigate to="/configuration/technologies" replace />} />

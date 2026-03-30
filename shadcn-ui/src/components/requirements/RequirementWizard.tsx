@@ -36,14 +36,14 @@ export interface ProjectContext {
 }
 
 interface RequirementWizardProps {
-    listId: string;
+    projectId: string;
     projectContext?: ProjectContext;
     onSuccess: () => void;
     onCancel: () => void;
     isOpen?: boolean;
 }
 
-export function RequirementWizard({ listId, projectContext, onSuccess, onCancel, isOpen }: RequirementWizardProps) {
+export function RequirementWizard({ projectId, projectContext, onSuccess, onCancel, isOpen }: RequirementWizardProps) {
     const [currentStep, setCurrentStep] = useState(0);
     const { data, updateData, resetData } = useWizardState();
     const { user } = useAuth();
@@ -132,7 +132,7 @@ export function RequirementWizard({ listId, projectContext, onSuccess, onCancel,
 
             // 1. Create Requirement
             const requirement = await createRequirement({
-                listId,
+                projectId,
                 title: finalTitle,
                 description: data.description,
                 priority: data.priority,

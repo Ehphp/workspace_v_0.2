@@ -1,10 +1,10 @@
 import type React from 'react';
 import { Button } from '@/components/ui/button';
 import { FileText, Zap, Plus, Settings, Loader2 } from 'lucide-react';
-import type { List } from '@/types/database';
+import type { Project } from '@/types/database';
 
 interface RequirementsHeaderProps {
-    list: List | null;
+    project: Project | null;
     totalEstimation: number;
     estimatedCount: number;
     notEstimatedCount: number;
@@ -14,11 +14,11 @@ interface RequirementsHeaderProps {
     isBulkRunning?: boolean;
     onCreateRequirement: () => void;
     onRetry: () => void;
-    onEditList: () => void;
+    onEditProject: () => void;
 }
 
 export function RequirementsHeader({
-    list,
+    project,
     totalEstimation,
     estimatedCount,
     notEstimatedCount,
@@ -28,7 +28,7 @@ export function RequirementsHeader({
     isBulkRunning,
     onCreateRequirement,
     onRetry,
-    onEditList,
+    onEditProject,
 }: RequirementsHeaderProps) {
     const total = estimatedCount + notEstimatedCount;
 
@@ -45,11 +45,11 @@ export function RequirementsHeader({
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-3">
                                 <h1 className="text-xl font-bold text-slate-900 truncate">
-                                    {list?.name}
+                                    {project?.name}
                                 </h1>
                                 <button
-                                    onClick={onEditList}
-                                    disabled={!list}
+                                    onClick={onEditProject}
+                                    disabled={!project}
                                     className="text-slate-300 hover:text-slate-500 transition-colors shrink-0"
                                     title="Impostazioni Progetto"
                                 >
@@ -58,8 +58,8 @@ export function RequirementsHeader({
                             </div>
                             {/* Inline project summary */}
                             <p className="text-xs text-slate-400 mt-0.5 truncate">
-                                {list?.description ? (
-                                    <>{list.description}</>
+                                {project?.description ? (
+                                    <>{project.description}</>
                                 ) : total > 0 ? (
                                     <>{total} requisiti · {totalEstimation.toFixed(1)} gg stimati · {estimatedCount} stimati, {notEstimatedCount} in attesa</>
                                 ) : null}

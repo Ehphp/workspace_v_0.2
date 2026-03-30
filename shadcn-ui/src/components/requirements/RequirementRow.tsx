@@ -15,7 +15,7 @@ import { STATE_LABELS, PRIORITY_LABELS } from '@/types/export';
 
 interface RequirementRowProps {
     req: RequirementWithEstimation;
-    listId: string;
+    projectId: string;
     onDelete: (req: RequirementWithEstimation) => void;
     bulkStatus?: BulkItemState;
 }
@@ -33,7 +33,7 @@ const priorityAccents: Record<string, string> = {
     LOW: 'bg-emerald-400',
 };
 
-export function RequirementRow({ req, listId, onDelete, bulkStatus }: RequirementRowProps) {
+export function RequirementRow({ req, projectId, onDelete, bulkStatus }: RequirementRowProps) {
     const navigate = useNavigate();
     const estimation = req.latest_estimation;
     const hasEstimation = !!estimation;
@@ -67,13 +67,13 @@ export function RequirementRow({ req, listId, onDelete, bulkStatus }: Requiremen
                 ${isProcessing ? 'bg-indigo-50/40' : ''}
                 ${isPending ? 'opacity-60' : ''}
             `}
-            onClick={() => navigate(`/dashboard/${listId}/requirements/${req.id}`)}
+            onClick={() => navigate(`/dashboard/${projectId}/requirements/${req.id}`)}
             role="button"
             tabIndex={0}
             onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    navigate(`/dashboard/${listId}/requirements/${req.id}`);
+                    navigate(`/dashboard/${projectId}/requirements/${req.id}`);
                 }
             }}
         >

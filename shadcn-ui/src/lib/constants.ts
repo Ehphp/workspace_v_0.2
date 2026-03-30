@@ -13,7 +13,7 @@ export const STATE = {
     DONE: 'DONE',
 } as const;
 
-export const LIST_STATUS = {
+export const PROJECT_STATUS = {
     DRAFT: 'DRAFT',
     ACTIVE: 'ACTIVE',
     ARCHIVED: 'ARCHIVED',
@@ -21,7 +21,7 @@ export const LIST_STATUS = {
 
 export type Priority = typeof PRIORITY[keyof typeof PRIORITY];
 export type State = typeof STATE[keyof typeof STATE];
-export type ListStatus = typeof LIST_STATUS[keyof typeof LIST_STATUS];
+export type ProjectStatus = typeof PROJECT_STATUS[keyof typeof PROJECT_STATUS];
 
 export const PRIORITY_VARIANTS = {
     [PRIORITY.HIGH]: 'destructive',
@@ -36,10 +36,10 @@ export const STATE_VARIANTS = {
     [STATE.DONE]: 'default',
 } as const;
 
-export const LIST_STATUS_VARIANTS = {
-    [LIST_STATUS.DRAFT]: 'secondary',
-    [LIST_STATUS.ACTIVE]: 'default',
-    [LIST_STATUS.ARCHIVED]: 'outline',
+export const PROJECT_STATUS_VARIANTS = {
+    [PROJECT_STATUS.DRAFT]: 'secondary',
+    [PROJECT_STATUS.ACTIVE]: 'default',
+    [PROJECT_STATUS.ARCHIVED]: 'outline',
 } as const;
 
 /** Canonical chart color palette — matches Tailwind palette */

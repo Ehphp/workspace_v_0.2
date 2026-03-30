@@ -110,7 +110,7 @@ AI receives only the filtered activity pool, ensuring suggestions are relevant t
 
 ### 3. Wizard Flow
 
-Technology is automatically inherited from the project (`lists.technology_id`) when a new requirement is created. The wizard no longer includes a manual technology selection step — `RequirementWizard.tsx` resolves the project's `defaultTechPresetId` via `fetchTechnology()` and sets `techPresetId` + `techCategory` in wizard state on mount.
+Technology is automatically inherited from the project (`projects.technology_id`) when a new requirement is created. The wizard no longer includes a manual technology selection step — `RequirementWizard.tsx` resolves the project's `defaultTechPresetId` via `fetchTechnology()` and sets `techPresetId` + `techCategory` in wizard state on mount.
 
 This `techPresetId` flows forward to all subsequent steps and AI endpoints.
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/useAuthStore';
+import { fetchProjects, PROJECT_FK } from '@/lib/projects';
 
 interface DashboardStats {
     totalProjects: number;
@@ -45,27 +46,26 @@ export function useDashboardData() {
 
         try {
             // 1) Get organization's active projects and keep the ids for next queries
-            const { data: projects, count: projectCount, error: projectError } = await supabase
-                .from('lists')
-                .select('id', { count: 'exact' })
-                .eq('organization_id', currentOrganization.id)
-                .neq('status', 'ARCHIVED');
+            const projects = await fetchProjects({
+                organizationId: currentOrganization.id,
+                excludeStatus: 'ARCHIVED',
+                selectColumns: 'id',
+            });
 
-            if (projectError) throw projectError;
-
-            const listIds = projects?.map(l => l.id) || [];
+            const projectCount = projects.length;
+            const projectIds = projects.map(l => l.id);
 
             let activeRequirementsCount = 0;
             let totalDays = 0;
             let avgDays = 0;
 
-            if (listIds.length > 0) {
+            if (projectIds.length > 0) {
                 // 2) Count requirements in those projects and collect their ids
-                // Count active requirements in organization's lists
+                // Count active requirements in organization's projects
                 const { data: requirements, count: reqCount, error: reqError } = await supabase
                     .from('requirements')
                     .select('id', { count: 'exact' })
-                    .in('list_id', listIds);
+                    .in(PROJECT_FK, projectIds);
 
                 if (reqError) throw reqError;
                 activeRequirementsCount = reqCount || 0;

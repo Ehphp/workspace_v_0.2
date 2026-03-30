@@ -8,11 +8,11 @@ import type { Requirement } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { CreateRequirementDialog } from '@/components/requirements/CreateRequirementDialog';
 import { ImportRequirementsDialog } from '@/components/requirements/ImportRequirementsDialog';
-import { ClearListDialog } from '@/components/lists/ClearListDialog';
+import { ClearProjectDialog } from '@/components/projects/ClearProjectDialog';
 import { DeleteRequirementDialog } from '@/components/requirements/DeleteRequirementDialog';
 import { BulkEstimateDialog } from '@/components/requirements/BulkEstimateDialog';
 import { useBulkEstimation } from '@/hooks/useBulkEstimation';
-import { EditListDialog } from '@/components/lists/EditListDialog';
+import { EditProjectDialog } from '@/components/projects/EditProjectDialog';
 import { PageShell } from '@/components/layout/PageShell';
 import { useAuthStore } from '@/store/useAuthStore';
 import { RequirementsHeader } from '@/components/requirements/RequirementsHeader';
@@ -25,11 +25,12 @@ import { Plus, Upload, Loader2, FileText, Search } from 'lucide-react';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { generateTitleFromDescription } from '@/lib/openai';
 import { supabase } from '@/lib/supabase';
+import { PROJECT_FK } from '@/lib/projects';
 
 import { motion } from 'framer-motion';
 
 export default function Requirements() {
-    const { listId } = useParams<{ listId: string }>();
+    const { projectId } = useParams<{ projectId: string }>();
     const { user } = useAuth();
     const { toast } = useToast();
     const { userRole } = useAuthStore();
@@ -37,7 +38,7 @@ export default function Requirements() {
 
     // Use custom hook for data management
     const {
-        list,
+        project,
         filteredRequirements,
         loading,
         errorMessage,
@@ -56,7 +57,7 @@ export default function Requirements() {
         loadData,
         updateRequirement,
         addRequirement,
-    } = useRequirementsList({ listId, userId: user?.id });
+    } = useRequirementsList({ projectId, userId: user?.id });
 
     // Track processing items to avoid race conditions
     const processingRef = useRef<Set<string>>(new Set());
@@ -121,7 +122,7 @@ export default function Requirements() {
     // Dialog state
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [showImportDialog, setShowImportDialog] = useState(false);
-    const [showListEditDialog, setShowListEditDialog] = useState(false);
+    const [showProjectEditDialog, setShowProjectEditDialog] = useState(false);
     const [showClearDialog, setShowClearDialog] = useState(false);
     const [showBulkEstimate, setShowBulkEstimate] = useState(false);
     const [deleteRequirement, setDeleteRequirement] = useState<Requirement | null>(null);
@@ -138,7 +139,7 @@ export default function Requirements() {
     }, [bulkEstimation.isRunning]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleImportRequirements = async (parsedRequirements: any[]) => {
-        if (!user || !listId) return;
+        if (!user || !projectId) return;
 
         toast({
             title: "Import started",
@@ -150,7 +151,7 @@ export default function Requirements() {
         const { data: existingReqs } = await supabase
             .from('requirements')
             .select('req_id')
-            .eq('list_id', listId)
+            .eq(PROJECT_FK, projectId)
             .in('req_id', reqIds);
 
         const existingReqIds = new Set(existingReqs?.map(r => r.req_id) || []);
@@ -191,7 +192,7 @@ export default function Requirements() {
                 }
 
                 const { data, error } = await supabase.from('requirements').insert({
-                    list_id: listId,
+                    [PROJECT_FK]: projectId,
                     req_id: req.req_id,
                     title: title,
                     description: req.description,
@@ -340,7 +341,7 @@ export default function Requirements() {
 
             {/* Page Header with Stats */}
             <RequirementsHeader
-                list={list}
+                project={project}
                 totalEstimation={totalEstimation}
                 estimatedCount={estimatedCount}
                 notEstimatedCount={notEstimatedCount}
@@ -350,7 +351,7 @@ export default function Requirements() {
                 isBulkRunning={bulkEstimation.isRunning}
                 onCreateRequirement={() => setShowCreateDialog(true)}
                 onRetry={() => loadData()}
-                onEditList={() => setShowListEditDialog(true)}
+                onEditProject={() => setShowProjectEditDialog(true)}
             />
 
             {/* Filters Bar */}
@@ -379,7 +380,7 @@ export default function Requirements() {
                     {viewMode === 'dashboard' && requirements.length > 0 ? (
                         <RequirementsDashboardView
                             requirements={filteredRequirements}
-                            listId={listId || ''}
+                            projectId={projectId || ''}
                             totalEstimation={totalEstimation}
                             estimatedCount={estimatedCount}
                             notEstimatedCount={notEstimatedCount}
@@ -463,7 +464,7 @@ export default function Requirements() {
                                             <RequirementRow
                                                 key={req.id}
                                                 req={req}
-                                                listId={listId || ''}
+                                                projectId={projectId || ''}
                                                 onDelete={setDeleteRequirement}
                                                 bulkStatus={bulkEstimation.statusMap.get(req.id)}
                                             />
@@ -477,45 +478,45 @@ export default function Requirements() {
             </div>
 
             {/* Dialogs */}
-            {listId && (
+            {projectId && (
                 <>
                     <CreateRequirementDialog
                         open={showCreateDialog}
                         onOpenChange={setShowCreateDialog}
-                        listId={listId}
-                        list={list || undefined}
+                        projectId={projectId}
+                        project={project || undefined}
                         onSuccess={loadData}
                     />
                     <ImportRequirementsDialog
                         open={showImportDialog}
                         onOpenChange={setShowImportDialog}
-                        listId={listId}
+                        projectId={projectId}
                         onImport={handleImportRequirements}
                     />
-                    <ClearListDialog
+                    <ClearProjectDialog
                         open={showClearDialog}
                         onOpenChange={setShowClearDialog}
-                        listId={listId}
-                        listName={list?.name || ''}
+                        projectId={projectId}
+                        projectName={project?.name || ''}
                         onSuccess={loadData}
                     />
                     <BulkEstimateDialog
                         open={showBulkEstimate}
                         onOpenChange={setShowBulkEstimate}
                         requirements={filteredRequirements}
-                        listTechPresetId={list?.technology_id || list?.tech_preset_id}
+                        projectTechPresetId={project?.technology_id || project?.tech_preset_id}
                         onConfirm={() => bulkEstimation.start(
                             filteredRequirements,
-                            list?.technology_id || list?.tech_preset_id || null,
+                            project?.technology_id || project?.tech_preset_id || null,
                         )}
                     />
 
-                    <EditListDialog
-                        open={showListEditDialog}
-                        onOpenChange={setShowListEditDialog}
-                        list={list}
+                    <EditProjectDialog
+                        open={showProjectEditDialog}
+                        onOpenChange={setShowProjectEditDialog}
+                        project={project}
                         onSuccess={() => {
-                            setShowListEditDialog(false);
+                            setShowProjectEditDialog(false);
                             loadData();
                         }}
                     />

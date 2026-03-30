@@ -1,26 +1,42 @@
-%% ERD.mmd - Mermaid ERD
+%% ERD.mmd - Mermaid ERD (updated 2026-03-30 post-migration)
 erDiagram
   USERS {
     UUID id PK
     string email
   }
 
-  LISTS {
+  ORGANIZATIONS {
     UUID id PK
-    UUID user_id FK -> USERS.id
+    string name
+    string type
+  }
+
+  ORGANIZATION_MEMBERS {
+    UUID id PK
+    UUID org_id FK
+    UUID user_id FK
+    string role
+  }
+
+  PROJECTS {
+    UUID id PK
+    UUID user_id FK
+    UUID organization_id FK
     string name
     string description
-    UUID tech_preset_id FK -> TECHNOLOGY_PRESETS.id
+    UUID technology_id FK
     string status
+    timestamp locked_at
+    UUID locked_by FK
   }
 
   REQUIREMENTS {
     UUID id PK
-    UUID list_id FK -> LISTS.id
+    UUID project_id FK
     string req_id
     string title
     text description
-    UUID tech_preset_id FK -> TECHNOLOGY_PRESETS.id (nullable)
+    UUID technology_id FK
     string priority
     string state
     jsonb labels
@@ -28,10 +44,10 @@ erDiagram
 
   ESTIMATIONS {
     UUID id PK
-    UUID requirement_id FK -> REQUIREMENTS.id
-    UUID user_id FK -> USERS.id
+    UUID requirement_id FK
+    UUID user_id FK
     decimal total_days
-    decimal base_days
+    decimal base_hours
     decimal driver_multiplier
     integer risk_score
     decimal contingency_percent
@@ -41,23 +57,23 @@ erDiagram
 
   ESTIMATION_ACTIVITIES {
     UUID id PK
-    UUID estimation_id FK -> ESTIMATIONS.id
-    UUID activity_id FK -> ACTIVITIES.id
+    UUID estimation_id FK
+    UUID activity_id FK
     boolean is_ai_suggested
     text notes
   }
 
   ESTIMATION_DRIVERS {
     UUID id PK
-    UUID estimation_id FK -> ESTIMATIONS.id
-    UUID driver_id FK -> DRIVERS.id
+    UUID estimation_id FK
+    UUID driver_id FK
     string selected_value
   }
 
   ESTIMATION_RISKS {
     UUID id PK
-    UUID estimation_id FK -> ESTIMATIONS.id
-    UUID risk_id FK -> RISKS.id
+    UUID estimation_id FK
+    UUID risk_id FK
   }
 
   ACTIVITIES {
@@ -65,20 +81,20 @@ erDiagram
     string code
     string name
     text description
-    decimal base_days
+    decimal base_hours
     string tech_category
-    string "group"
+    string group
     boolean active
     boolean is_custom
-    UUID base_activity_id FK -> ACTIVITIES.id (self-ref)
-    UUID created_by FK -> USERS.id
+    UUID base_activity_id FK
+    UUID created_by FK
   }
 
   DRIVERS {
     UUID id PK
     string code
     string name
-    jsonb options  -- {value, label, multiplier}
+    jsonb options
   }
 
   RISKS {
@@ -88,7 +104,7 @@ erDiagram
     integer weight
   }
 
-  TECHNOLOGY_PRESETS {
+  TECHNOLOGIES {
     UUID id PK
     string code
     string name
@@ -98,22 +114,54 @@ erDiagram
     jsonb default_risks
   }
 
-  TECHNOLOGY_PRESET_ACTIVITIES {
+  REQUIREMENT_UNDERSTANDING {
     UUID id PK
-    UUID tech_preset_id FK -> TECHNOLOGY_PRESETS.id
-    UUID activity_id FK -> ACTIVITIES.id
-    integer position
+    UUID requirement_id FK
+    UUID user_id FK
+    jsonb understanding_data
+    integer version
   }
 
-  USERS ||--o{ LISTS: "owns >"
-  LISTS ||--o{ REQUIREMENTS: "contains >"
-  REQUIREMENTS ||--o{ ESTIMATIONS: "has >"
-  ESTIMATIONS ||--o{ ESTIMATION_ACTIVITIES: "includes >"
-  ESTIMATION_ACTIVITIES }o--|| ACTIVITIES: "refers to >"
-  ESTIMATION_DRIVERS }o--|| DRIVERS: "refers to >"
-  ESTIMATION_RISKS }o--|| RISKS: "refers to >"
-  TECHNOLOGY_PRESETS ||--o{ TECHNOLOGY_PRESET_ACTIVITIES: "has pivot >"
-  TECHNOLOGY_PRESET_ACTIVITIES }o--|| ACTIVITIES: "map to >"
-  ACTIVITIES ||--o| ACTIVITIES: "base_activity"
-  USERS ||--o{ ACTIVITIES: "created_by >"
-  TECHNOLOGY_PRESETS ||--o{ LISTS: "default for lists (optionally) >"
+  IMPACT_MAP {
+    UUID id PK
+    UUID requirement_id FK
+    UUID user_id FK
+    jsonb impact_data
+    integer version
+  }
+
+  ESTIMATION_BLUEPRINT {
+    UUID id PK
+    UUID requirement_id FK
+    UUID user_id FK
+    jsonb blueprint_data
+    integer version
+  }
+
+  CONSULTANT_ANALYSES {
+    UUID id PK
+    UUID requirement_id FK
+    UUID user_id FK
+    jsonb analysis_data
+  }
+
+  USERS ||--o{ ORGANIZATION_MEMBERS : "member of >"
+  ORGANIZATIONS ||--o{ ORGANIZATION_MEMBERS : "has members >"
+  ORGANIZATIONS ||--o{ PROJECTS : "owns >"
+  USERS ||--o{ PROJECTS : "created by >"
+  PROJECTS ||--o{ REQUIREMENTS : "contains >"
+  REQUIREMENTS ||--o{ ESTIMATIONS : "has >"
+  ESTIMATIONS ||--o{ ESTIMATION_ACTIVITIES : "includes >"
+  ESTIMATIONS ||--o{ ESTIMATION_DRIVERS : "includes >"
+  ESTIMATIONS ||--o{ ESTIMATION_RISKS : "includes >"
+  ESTIMATION_ACTIVITIES }o--|| ACTIVITIES : "refers to >"
+  ESTIMATION_DRIVERS }o--|| DRIVERS : "refers to >"
+  ESTIMATION_RISKS }o--|| RISKS : "refers to >"
+  TECHNOLOGIES ||--o{ PROJECTS : "default for >"
+  TECHNOLOGIES ||--o{ REQUIREMENTS : "overrides >"
+  ACTIVITIES ||--o| ACTIVITIES : "base_activity"
+  USERS ||--o{ ACTIVITIES : "created_by >"
+  REQUIREMENTS ||--o{ REQUIREMENT_UNDERSTANDING : "analyzed by >"
+  REQUIREMENTS ||--o{ IMPACT_MAP : "mapped by >"
+  REQUIREMENTS ||--o{ ESTIMATION_BLUEPRINT : "planned by >"
+  REQUIREMENTS ||--o{ CONSULTANT_ANALYSES : "reviewed by >"

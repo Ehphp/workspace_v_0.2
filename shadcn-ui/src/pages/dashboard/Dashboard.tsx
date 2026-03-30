@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardData } from '@/hooks/useDashboardData';
+import { fetchProjects, fetchProjectIds, PROJECT_FK } from '@/lib/projects';
 import { Button } from '@/components/ui/button';
 import { Plus, Search, Layers, TrendingUp, ListChecks, BarChart3, PieChart, LayoutGrid, List as ListIcon, Target } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -14,10 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { List } from '@/types/database';
-import { CreateListDialog } from '@/components/lists/CreateListDialog';
-import { EditListDialog } from '@/components/lists/EditListDialog';
-import { DeleteListDialog } from '@/components/lists/DeleteListDialog';
+import type { Project } from '@/types/database';
+import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog';
+import { EditProjectDialog } from '@/components/projects/EditProjectDialog';
+import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
 import { PageShell } from '@/components/layout/PageShell';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { RecentRequirements } from '@/components/dashboard/RecentRequirements';
@@ -31,14 +32,14 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { user, currentOrganization, fetchOrganizations } = useAuthStore();
   const { stats } = useDashboardData();
-  const [lists, setLists] = useState<List[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('updated-desc');
-  const [editList, setEditList] = useState<List | null>(null);
-  const [deleteList, setDeleteList] = useState<List | null>(null);
+  const [editProject, setEditProject] = useState<Project | null>(null);
+  const [deleteProject, setDeleteProject] = useState<Project | null>(null);
   const [statusData, setStatusData] = useState<{ name: string; value: number; color: string }[]>([]);
   const [techData, setTechData] = useState<{ name: string; value: number }[]>([]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -54,32 +55,26 @@ export default function Dashboard() {
   useEffect(() => {
     if (user && currentOrganization) {
       console.log('[Dashboard] Loading data for organization:', currentOrganization.id);
-      loadLists();
+      loadProjects();
       loadChartData();
     }
   }, [user, currentOrganization, showArchived]);
 
-  const loadLists = async () => {
+  const loadProjects = async () => {
     if (!user || !currentOrganization) return;
 
-    let query = supabase
-      .from('lists')
-      .select('*')
-      .eq('organization_id', currentOrganization.id)
-      .order('updated_at', { ascending: false });
-
-    if (showArchived) {
-      query = query.eq('status', 'ARCHIVED');
-    } else {
-      query = query.neq('status', 'ARCHIVED');
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error('Error loading lists:', error);
-    } else {
-      setLists(data || []);
+    try {
+      const data = await fetchProjects({
+        organizationId: currentOrganization.id,
+        ...(showArchived
+          ? { status: 'ARCHIVED' }
+          : { excludeStatus: 'ARCHIVED' }),
+        orderBy: 'updated_at',
+        ascending: false,
+      });
+      setProjects(data);
+    } catch (error) {
+      console.error('Error loading projects:', error);
     }
     setLoading(false);
   };
@@ -88,15 +83,10 @@ export default function Dashboard() {
     if (!user || !currentOrganization) return;
 
     try {
-      // Get organization's lists
-      const { data: orgLists } = await supabase
-        .from('lists')
-        .select('id')
-        .eq('organization_id', currentOrganization.id);
+      // Get organization's projects
+      const projectIds = await fetchProjectIds(currentOrganization.id);
 
-      const listIds = orgLists?.map(l => l.id) || [];
-
-      if (listIds.length === 0) return;
+      if (projectIds.length === 0) return;
 
       // Get status distribution and tech stack
       // For charts, we don't need ALL requirements if there are thousands
@@ -104,7 +94,7 @@ export default function Dashboard() {
       const { data: requirements } = await supabase
         .from('requirements')
         .select('state, technology_id')
-        .in('list_id', listIds)
+        .in(PROJECT_FK, projectIds)
         .order('updated_at', { ascending: false })
         .limit(500);
 
@@ -152,12 +142,12 @@ export default function Dashboard() {
     }
   };
 
-  const filteredLists = lists
-    .filter((list) => {
+  const filteredProjects = projects
+    .filter((project) => {
       const searchLower = searchTerm.toLowerCase();
       return (
-        list.name.toLowerCase().includes(searchLower) ||
-        (list.description && list.description.toLowerCase().includes(searchLower))
+        project.name.toLowerCase().includes(searchLower) ||
+        (project.description && project.description.toLowerCase().includes(searchLower))
       );
     })
     .sort((a, b) => {
@@ -275,7 +265,7 @@ export default function Dashboard() {
                   <Layers className="w-4 h-4 text-slate-400" />
                   <div>
                     <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">I tuoi Progetti</h2>
-                    <p className="text-xs text-slate-400">{filteredLists.length} progetti</p>
+                    <p className="text-xs text-slate-400">{filteredProjects.length} progetti</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -315,7 +305,7 @@ export default function Dashboard() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
-                {filteredLists.length === 0 ? (
+                {filteredProjects.length === 0 ? (
                   <EmptyState
                     icon={Layers}
                     title="Nessun progetto trovato"
@@ -333,12 +323,12 @@ export default function Dashboard() {
                   />
                 ) : (
                   <div className={viewMode === 'grid' ? "grid grid-cols-2 xl:grid-cols-3 gap-3" : "flex flex-col gap-2"}>
-                    {filteredLists.map((list) => (
+                    {filteredProjects.map((project) => (
                       <ProjectCard
-                        key={list.id}
-                        project={list}
-                        onEdit={setEditList}
-                        onDelete={setDeleteList}
+                        key={project.id}
+                        project={project}
+                        onEdit={setEditProject}
+                        onDelete={setDeleteProject}
                         layout={viewMode}
                       />
                     ))}
@@ -366,31 +356,31 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <CreateListDialog
+      <CreateProjectDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
-        onSuccess={loadLists}
+        onSuccess={loadProjects}
       />
 
-      <EditListDialog
-        open={!!editList}
-        onOpenChange={(open) => !open && setEditList(null)}
-        list={editList}
+      <EditProjectDialog
+        open={!!editProject}
+        onOpenChange={(open) => !open && setEditProject(null)}
+        project={editProject}
         onSuccess={() => {
-          setEditList(null);
-          loadLists();
+          setEditProject(null);
+          loadProjects();
         }}
       />
 
-      {deleteList && (
-        <DeleteListDialog
-          open={!!deleteList}
-          onOpenChange={(open) => !open && setDeleteList(null)}
-          listId={deleteList.id}
-          listName={deleteList.name}
+      {deleteProject && (
+        <DeleteProjectDialog
+          open={!!deleteProject}
+          onOpenChange={(open) => !open && setDeleteProject(null)}
+          projectId={deleteProject.id}
+          projectName={deleteProject.name}
           onSuccess={() => {
-            setDeleteList(null);
-            loadLists();
+            setDeleteProject(null);
+            loadProjects();
           }}
         />
       )}

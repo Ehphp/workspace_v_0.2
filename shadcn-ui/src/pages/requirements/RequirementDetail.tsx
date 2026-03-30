@@ -44,20 +44,20 @@ const HISTORY_PAGE_SIZE = 50;
 
 export default function RequirementDetail() {
     const navigate = useNavigate();
-    const { listId, reqId } = useParams<{ listId: string; reqId: string }>();
+    const { projectId, reqId } = useParams<{ projectId: string; reqId: string }>();
     const { user } = useAuth();
 
     // Load requirement data
     const {
         requirement,
-        list,
+        project,
         preset,
         driverValues: requirementDriverValues,
         assignedEstimation,
         loading: requirementLoading,
         error: requirementError,
         refetch: refetchRequirement
-    } = useRequirement(listId, reqId, user?.id);
+    } = useRequirement(projectId, reqId, user?.id);
 
     // Load estimation master data
     const {
@@ -162,7 +162,7 @@ export default function RequirementDetail() {
     }, [consultantHistory, consultantAnalysis]);
 
 
-    const fallbackTechnologyId = requirement?.technology_id || requirement?.tech_preset_id || list?.technology_id || list?.tech_preset_id || '';
+    const fallbackTechnologyId = requirement?.technology_id || requirement?.tech_preset_id || project?.technology_id || project?.tech_preset_id || '';
     const activeTechnologyId = selectedPresetId || fallbackTechnologyId;
     const activeTechnology = useMemo(
         () => presets.find((p) => p.id === activeTechnologyId) || null,
@@ -228,7 +228,7 @@ export default function RequirementDetail() {
     // Senior Consultant Analysis Handler
     // Reads activities & drivers from the saved (assigned) estimation, NOT from the Estimation tab state
     const handleRequestConsultant = async () => {
-        if (!requirement || !list || !activeTechnology) {
+        if (!requirement || !project || !activeTechnology) {
             toast.error('Dati mancanti per l\'analisi del consulente');
             return;
         }
@@ -279,9 +279,9 @@ export default function RequirementDetail() {
                 activities: savedActivitiesData,
                 drivers: savedDriversData,
                 projectContext: {
-                    name: list.name,
-                    description: list.description || '',
-                    owner: list.owner || undefined,
+                    name: project.name,
+                    description: project.description || '',
+                    owner: project.owner || undefined,
                 },
                 technologyName: activeTechnology.name,
                 technologyCategory: activeTechnology.code,
@@ -446,8 +446,8 @@ export default function RequirementDetail() {
     };
 
     const handleBack = () => {
-        if (listId) {
-            navigate(`/dashboard/${listId}/requirements`);
+        if (projectId) {
+            navigate(`/dashboard/${projectId}/requirements`);
             return;
         }
         navigate('/dashboard');

@@ -130,7 +130,7 @@ $$ LANGUAGE plpgsql STABLE;
 -- FUNCTION: Get Latest Estimation per Requirement
 -- ============================================
 
-CREATE OR REPLACE FUNCTION get_latest_estimations(list_id_param UUID)
+CREATE OR REPLACE FUNCTION get_latest_estimations(project_id_param UUID)
 RETURNS TABLE (
     requirement_id UUID,
     req_id VARCHAR,
@@ -160,7 +160,7 @@ BEGIN
         ORDER BY created_at DESC
         LIMIT 1
     ) e ON true
-    WHERE r.list_id = list_id_param
+    WHERE r.project_id = project_id_param
     ORDER BY r.req_id;
 END;
 $$ LANGUAGE plpgsql STABLE;
@@ -195,7 +195,7 @@ COMMENT ON FUNCTION compare_estimations IS
 'Returns a JSON comparison of two estimations including all activities, drivers, and risks';
 
 COMMENT ON FUNCTION get_latest_estimations IS 
-'Returns the latest estimation for each requirement in a list, with estimation count';
+'Returns the latest estimation for each requirement in a project, with estimation count';
 
 COMMENT ON INDEX idx_estimations_req_created IS 
 'Optimizes queries for estimation history ordered by date';

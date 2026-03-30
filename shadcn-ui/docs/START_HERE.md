@@ -112,5 +112,5 @@ See [ai/KEY_POLICY.md](ai/KEY_POLICY.md) for key security guidelines.
 1. **Deterministic Estimation**: AI never calculates effort. The engine does. Same inputs → same outputs.
 2. **AI Artifacts are Advisory**: AI generates structured artifacts; user reviews and confirms each one.
 3. **Server-Side AI**: OpenAI API key stays on the server (Netlify Functions). No client-side AI calls in production.
-4. **RLS Data Isolation**: Users see only their own lists, requirements, estimations. Catalog tables are public-read.
+4. **RLS Data Isolation**: Users see only their own projects, requirements, estimations. Catalog tables are public-read.
 5. **Domain Model Traceability**: Every estimation traces through Analysis → ImpactMap → CandidateSet → Decision → Snapshot.

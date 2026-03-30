@@ -549,7 +549,7 @@ RequirementDetail.tsx
 ```typescript
 {
   id: string;
-  list_id: string;
+  project_id: string;
   title: string;
   description: string | null;
   priority: 'LOW' | 'MEDIUM' | 'HIGH';

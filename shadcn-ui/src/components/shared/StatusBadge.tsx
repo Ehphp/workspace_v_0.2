@@ -15,14 +15,14 @@ const STATE_STYLES = {
     DONE: { bg: 'from-teal-50 to-cyan-50', text: 'text-teal-700', border: 'border-teal-200/50' },
 } as const;
 
-// ---- List status configs ----
-const LIST_STATUS_STYLES = {
+// ---- Project status configs ----
+const PROJECT_STATUS_STYLES = {
     DRAFT: { bg: 'from-slate-50 to-gray-50', text: 'text-slate-600', border: 'border-slate-200/50' },
     ACTIVE: { bg: 'from-emerald-50 to-green-50', text: 'text-emerald-700', border: 'border-emerald-200/50' },
     ARCHIVED: { bg: 'from-gray-50 to-slate-50', text: 'text-gray-500', border: 'border-gray-200/50' },
 } as const;
 
-type StatusType = 'priority' | 'state' | 'listStatus';
+type StatusType = 'priority' | 'state' | 'projectStatus';
 
 interface StatusBadgeProps {
     type: StatusType;
@@ -36,7 +36,7 @@ export function StatusBadge({ type, value, className }: StatusBadgeProps) {
             ? PRIORITY_STYLES[value as keyof typeof PRIORITY_STYLES]
             : type === 'state'
                 ? STATE_STYLES[value as keyof typeof STATE_STYLES]
-                : LIST_STATUS_STYLES[value as keyof typeof LIST_STATUS_STYLES];
+                : PROJECT_STATUS_STYLES[value as keyof typeof PROJECT_STATUS_STYLES];
 
     if (!styles) return <span className="text-xs text-slate-500">{value}</span>;
 
@@ -60,4 +60,4 @@ export function StatusBadge({ type, value, className }: StatusBadgeProps) {
     );
 }
 
-export { PRIORITY_STYLES, STATE_STYLES, LIST_STATUS_STYLES };
+export { PRIORITY_STYLES, STATE_STYLES, PROJECT_STATUS_STYLES };

@@ -28,13 +28,13 @@ Syntero uses PostgreSQL (via Supabase) with Row Level Security (RLS) for data is
          │
 ┌─────────────────────────────────────────────────────────────────────┐
 │                           requirements                               │
-│  (id, list_id, req_id, title, description, technology_id, ...)     │
+│  (id, project_id, req_id, title, description, technology_id, ...)   │
 └─────────────────────────────────────────────────────────────────────┘
          ▲
          │ 1:N
          │
 ┌─────────────────────────────────────────────────────────────────────┐
-│                              lists                                   │
+│                            projects                                  │
 │  (id, user_id, name, description, technology_id, status, ...)      │
 └─────────────────────────────────────────────────────────────────────┘
          │
@@ -129,7 +129,7 @@ Technology stacks. After simplification (migration `20260228`), template fields 
 
 ## User Data Tables (RLS Protected)
 
-### lists
+### projects
 
 Project containers owned by users.
 
@@ -137,6 +137,7 @@ Project containers owned by users.
 |--------|------|-------------|
 | `id` | UUID | Primary key |
 | `user_id` | UUID | Owner (FK to auth.users) |
+| `organization_id` | UUID | Owning organization |
 | `name` | VARCHAR(255) | Project name |
 | `description` | TEXT | Project description |
 | `owner` | VARCHAR(255) | Business owner label |
@@ -150,15 +151,16 @@ Project containers owned by users.
 | `methodology` | VARCHAR(20) | `AGILE`, `WATERFALL`, `HYBRID` (nullable) |
 
 **Migration**: `20260329_project_context_enrichment.sql` — added project context fields for AI enrichment.
+**Migration**: `20260330_rename_lists_to_projects.sql` — renamed table from `lists` to `projects`.
 
 ### requirements
 
-Individual requirements within a list.
+Individual requirements within a project.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | UUID | Primary key |
-| `list_id` | UUID | Parent list (FK) |
+| `project_id` | UUID | Parent project (FK) |
 | `req_id` | VARCHAR(100) | Custom ID (e.g., `HR-API-001`) |
 | `title` | VARCHAR(500) | Requirement title |
 | `description` | TEXT | Full description |
@@ -285,7 +287,7 @@ and estimation at the time, enabling full traceability and history.
 - `requirement_snapshot`: `{title, description, priority, state, technology_id, technology_name}`
 - `estimation_snapshot`: `{estimation_id, total_days, base_hours, driver_multiplier, risk_score, contingency_percent, scenario_name, activities: [{code, name, base_hours, group}], drivers: [{code, name, selected_value, multiplier}]}`
 
-**RLS**: Users can read/insert analyses for requirements they own (via list ownership).
+**RLS**: Users can read/insert analyses for requirements they own (via project ownership).
 
 **Migration**: [20260301_consultant_analysis_history.sql](../supabase/migrations/20260301_consultant_analysis_history.sql)
 
@@ -326,8 +328,8 @@ without modifying the base activity catalog.
 | `drivers` | Public | — | — | — |
 | `risks` | Public | — | — | — |
 | `technologies` | System + own custom | Own only | Own only | Own only |
-| `lists` | Own only | Own only | Own only | Own only |
-| `requirements` | Via list ownership | Via list ownership | Via list ownership | Via list ownership |
+| `projects` | Own org only | Editor/admin | Editor/admin | Admin only |
+| `requirements` | Via project ownership | Via project ownership | Via project ownership | Via project ownership |
 | `estimations` | Via org membership | Editor/admin in org | — | — |
 | `estimation_activities` | Via org membership | Editor/admin in org | — | — |
 | `estimation_drivers` | Via org membership | Editor/admin in org | — | — |
@@ -336,8 +338,10 @@ without modifying the base activity catalog.
 ### Example Policy
 
 ```sql
-CREATE POLICY "Users can view their own lists" ON lists
-    FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view projects in their orgs" ON projects
+    FOR SELECT USING (
+        organization_id = ANY(get_user_org_ids())
+    );
 ```
 
 ---
@@ -391,8 +395,8 @@ $$ LANGUAGE plpgsql;
 Key indexes for performance:
 
 ```sql
-CREATE INDEX idx_lists_user_id ON lists(user_id);
-CREATE INDEX idx_requirements_list_id ON requirements(list_id);
+CREATE INDEX idx_projects_user_id ON projects(user_id);
+CREATE INDEX idx_requirements_project_id ON requirements(project_id);
 CREATE INDEX idx_estimations_requirement_id ON estimations(requirement_id);
 CREATE INDEX idx_activities_tech_category ON activities(tech_category);
 CREATE INDEX idx_activities_is_custom ON activities(is_custom);
@@ -486,7 +490,7 @@ Stores Senior Consultant AI analysis runs with full context snapshots for tracea
 | `estimation_snapshot` | JSONB | {total_days, base_hours, driver_multiplier, risk_score, activities, drivers} |
 | `created_at` | TIMESTAMPTZ | Auto-set |
 
-**RLS**: Users can read analyses for requirements in lists they own. Insert requires `user_id = auth.uid()`.
+**RLS**: Users can read analyses for requirements in projects they own. Insert requires `user_id = auth.uid()`.
 
 ### agent_execution_log
 
@@ -543,7 +547,7 @@ Stores structured AI-generated understanding artifacts for requirements. Each ro
 - `idx_requirement_understanding_user` — `(user_id)` for RLS policy
 
 **RLS**:
-- **SELECT**: User can read understanding for requirements they own (via `requirements → lists → user_id`) or that they created (`user_id = auth.uid()`)
+- **SELECT**: User can read understanding for requirements they own (via `requirements → projects → user_id`) or that they created (`user_id = auth.uid()`)
 - **INSERT**: `user_id = auth.uid()`
 - **UPDATE**: `user_id = auth.uid()`
 - **DELETE**: `user_id = auth.uid()`
@@ -575,7 +579,7 @@ Stores structured AI-generated architectural impact analysis artifacts for requi
 - `idx_impact_map_user` — `(user_id)` for RLS policy
 
 **RLS**:
-- **SELECT**: User can read impact maps for requirements they own (via `requirements → lists → user_id`) or that they created (`user_id = auth.uid()`)
+- **SELECT**: User can read impact maps for requirements they own (via `requirements → projects → user_id`) or that they created (`user_id = auth.uid()`)
 - **INSERT**: `user_id = auth.uid()`
 - **UPDATE**: `user_id = auth.uid()`
 - **DELETE**: `user_id = auth.uid()`
@@ -608,7 +612,7 @@ Stores structured AI-generated Estimation Blueprint artifacts for requirements. 
 - `idx_estimation_blueprint_user` — `(user_id)` for RLS policy
 
 **RLS Policies**:
-- **SELECT**: User can read blueprints for requirements they own (via `requirements → lists → user_id`) or that they created (`user_id = auth.uid()`)
+- **SELECT**: User can read blueprints for requirements they own (via `requirements → projects → user_id`) or that they created (`user_id = auth.uid()`)
 - **INSERT**: `user_id = auth.uid()`
 - **UPDATE**: `user_id = auth.uid()`
 - **DELETE**: `user_id = auth.uid()`

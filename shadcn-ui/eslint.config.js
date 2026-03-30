@@ -39,8 +39,6 @@ export default tseslint.config(
       "src/lib/technology-helpers.ts",
       // Display/CRUD — reads tech_category for UI labels, not estimation decisions
       "src/components/estimation/TechnologySection.tsx",
-      "src/components/lists/EditListDialog.tsx",
-      "src/components/lists/ListTechnologyDialog.tsx",
       "src/hooks/useActivityManagement.ts",
       // Domain persistence — passes through, not filtering
       "src/lib/api.ts",

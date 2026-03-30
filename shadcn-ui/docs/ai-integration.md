@@ -299,7 +299,7 @@ Both endpoints remain backward-compatible: if `requirementUnderstanding` is abse
 
 ### Persistence
 
-The confirmed understanding is saved to the `requirement_understanding` table (see [data-model.md](data-model.md)) after the requirement is created. On the detail page (`/dashboard/:listId/requirements/:reqId`), the latest understanding is loaded via `getLatestRequirementUnderstanding()` and displayed in the Overview tab.
+The confirmed understanding is saved to the `requirement_understanding` table (see [data-model.md](data-model.md)) after the requirement is created. On the detail page (`/dashboard/:projectId/requirements/:reqId`), the latest understanding is loaded via `getLatestRequirementUnderstanding()` and displayed in the Overview tab.
 
 ### Files
 
@@ -536,7 +536,7 @@ When project context is provided, the LLM uses it to:
 
 ### Persistence
 
-All ProjectContext fields are persisted as nullable columns on the `lists` table (see [data-model.md](data-model.md#lists)). The wizard reads them from the list and propagates them through `CreateRequirementDialog → RequirementWizard → AI endpoints`.
+All ProjectContext fields are persisted as nullable columns on the `projects` table (see [data-model.md](data-model.md#projects)). The wizard reads them from the project and propagates them through `CreateRequirementDialog → RequirementWizard → AI endpoints`.
 
 **Migration**: `20260329_project_context_enrichment.sql`
 

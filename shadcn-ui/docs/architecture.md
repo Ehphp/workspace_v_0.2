@@ -46,7 +46,7 @@ Syntero is a requirements estimation system with four distinct layers:
 │                     PERSISTENCE LAYER                            │
 │   Supabase (PostgreSQL + Auth + RLS + pgvector)                 │
 │   - Catalog tables: activities, drivers, risks, technologies    │
-│   - User data: lists, requirements, estimations                 │
+│   - User data: projects, requirements, estimations               │
 │   - AI artifacts: requirement_understanding, impact_map,        │
 │     estimation_blueprint                                        │
 │   - Domain model: requirement_analyses, impact_maps,            │
@@ -75,7 +75,7 @@ Syntero is a requirements estimation system with four distinct layers:
 | **Interview** | Single-requirement interview flow | `src/components/estimation/interview/` |
 | **PresetWizard** | AI-assisted preset creation | `src/components/configuration/presets/ai-wizard/` |
 | **Estimation Engine** | Deterministic calculation | `src/lib/estimationEngine.ts` |
-| **Dashboard** | Project/list management | `src/pages/Dashboard.tsx`, `src/pages/Lists.tsx` |
+| **Dashboard** | Project management | `src/pages/Dashboard.tsx` |
 | **Admin** | Activity/preset management | `src/pages/AdminActivities.tsx`, `src/pages/Presets.tsx` |
 
 ### Serverless Functions (`netlify/functions/`)
@@ -133,7 +133,7 @@ See [data-model.md](data-model.md) for full schema reference. Key table groups:
 | Group | Tables |
 |-------|--------|
 | **Catalog** | `activities`, `drivers`, `risks`, `technologies`, `technology_activities` |
-| **User Data** | `lists`, `requirements`, `estimations`, `estimation_activities/drivers/risks` |
+| **User Data** | `projects`, `requirements`, `estimations`, `estimation_activities/drivers/risks` |
 | **AI Artifacts** | `requirement_understanding`, `impact_map`, `estimation_blueprint` |
 | **Domain Model** | `requirement_analyses`, `impact_maps`, `candidate_sets`, `estimation_decisions`, `estimation_snapshots` |
 | **Observability** | `consultant_analyses`, `agent_execution_log`, `ai_prompts` |
@@ -250,7 +250,7 @@ The `save-orchestrator.ts` manages this chain atomically. Legacy estimations (wi
 
 ### Authorization
 - **Row Level Security (RLS)** on all user data tables
-- Users see only their own lists, requirements, estimations
+- Users see only their own projects, requirements, estimations
 - Catalog tables (activities, drivers, risks) are public-read
 - Custom activities/presets editable only by creator
 - Organization-based policies on junction tables

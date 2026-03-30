@@ -44,7 +44,7 @@ All commands should pass without warnings or errors.
 ## Post-Deployment Verification
 - **Anonymous flow:** complete the 5-step wizard and view the result.
 - **Auth flow:** sign up, sign in, and access protected routes.
-- **Lists & isolation:** create a project as User A, ensure User B cannot see it.
+- **Projects & isolation:** create a project as User A, ensure User B cannot see it.
 - **AI suggestions:** verify OpenAI calls succeed for imports and wizard flows.
 - **Exports:** confirm Excel/PDF outputs if enabled in your build.
 

@@ -18,7 +18,7 @@ import { STATUS_CHART_COLORS, PRIORITY_CHART_COLORS } from '@/lib/constants';
 
 interface RequirementsDashboardViewProps {
     requirements: RequirementWithEstimation[];
-    listId: string;
+    projectId: string;
     totalEstimation: number;
     estimatedCount: number;
     notEstimatedCount: number;
@@ -66,7 +66,7 @@ const PRIORITY_COLORS = PRIORITY_CHART_COLORS;
 
 export function RequirementsDashboardView({
     requirements,
-    listId,
+    projectId,
     totalEstimation,
     estimatedCount,
     notEstimatedCount
@@ -342,7 +342,7 @@ export function RequirementsDashboardView({
                                 topEstimated.map((req, idx) => (
                                     <div
                                         key={req.id}
-                                        onClick={() => navigate(`/dashboard/${listId}/requirements/${req.id}`)}
+                                        onClick={() => navigate(`/dashboard/${projectId}/requirements/${req.id}`)}
                                         className="group flex items-center justify-between bg-white/80 p-2 rounded-lg border border-slate-200 hover:border-emerald-200 transition-all cursor-pointer"
                                     >
                                         <div className="flex items-center gap-2 min-w-0">
@@ -387,7 +387,7 @@ export function RequirementsDashboardView({
                             {recentRequirements.map((req) => (
                                 <div
                                     key={req.id}
-                                    onClick={() => navigate(`/dashboard/${listId}/requirements/${req.id}`)}
+                                    onClick={() => navigate(`/dashboard/${projectId}/requirements/${req.id}`)}
                                     className="group flex items-center justify-between bg-white/80 p-2 rounded-lg border border-slate-200 hover:border-cyan-200 transition-all cursor-pointer"
                                 >
                                     <div className="flex items-center gap-2 min-w-0">

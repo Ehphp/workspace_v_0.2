@@ -5,21 +5,21 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { RequirementWizard } from './RequirementWizard';
-import type { List } from '@/types/database';
+import type { Project } from '@/types/database';
 
 interface CreateRequirementDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    listId: string;
-    list?: List;
+    projectId: string;
+    project?: Project;
     onSuccess: () => void;
 }
 
 export function CreateRequirementDialog({
     open,
     onOpenChange,
-    listId,
-    list,
+    projectId,
+    project,
     onSuccess,
 }: CreateRequirementDialogProps) {
     return (
@@ -32,18 +32,18 @@ export function CreateRequirementDialog({
                 <div className="flex-1 overflow-hidden p-6 bg-slate-50/30">
                     <RequirementWizard
                         isOpen={open}
-                        listId={listId}
-                        projectContext={list ? {
-                            name: list.name,
-                            description: list.description,
-                            owner: list.owner,
-                            defaultTechPresetId: list.technology_id || undefined,
-                            projectType: list.project_type || undefined,
-                            domain: list.domain || undefined,
-                            scope: list.scope || undefined,
-                            teamSize: list.team_size || undefined,
-                            deadlinePressure: list.deadline_pressure || undefined,
-                            methodology: list.methodology || undefined,
+                        projectId={projectId}
+                        projectContext={project ? {
+                            name: project.name,
+                            description: project.description,
+                            owner: project.owner,
+                            defaultTechPresetId: project.technology_id || undefined,
+                            projectType: project.project_type || undefined,
+                            domain: project.domain || undefined,
+                            scope: project.scope || undefined,
+                            teamSize: project.team_size || undefined,
+                            deadlinePressure: project.deadline_pressure || undefined,
+                            methodology: project.methodology || undefined,
                         } : undefined}
                         onSuccess={() => {
                             onSuccess();

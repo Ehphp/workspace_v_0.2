@@ -56,7 +56,7 @@
 // src/types/database.ts
 export interface Requirement {
   id: string;                    // UUID generato da Supabase
-  list_id: string;               // FK alla lista di appartenenza
+  project_id: string;               // FK al progetto di appartenenza
   req_id: string;                // ID custom es. "HR-API-001"
   title: string;                 // Titolo (generato da AI o manuale)
   description: string;           // Descrizione dettagliata
@@ -490,10 +490,10 @@ RequirementWizard.handleSave()
 ```typescript
 // src/lib/api.ts
 export async function createRequirement(input: CreateRequirementInput): Promise<Requirement> {
-  const reqId = input.req_id || (await generateNextRequirementId(input.listId));
+  const reqId = input.req_id || (await generateNextRequirementId(input.projectId));
   
   const payload = {
-    list_id: input.listId,
+    project_id: input.projectId,
     req_id: reqId,
     title: input.title,
     description: input.description || '',
@@ -733,7 +733,7 @@ export function useEstimationHistory(
 
 ```
 ┌──────────────────┐       ┌──────────────────┐
-│     lists        │       │ technology_      │
+│     projects     │       │ technology_      │
 │                  │       │ presets          │
 │ id               │       │                  │
 │ user_id          │       │ id               │
@@ -748,7 +748,7 @@ export function useEstimationHistory(
 │  requirements    │                │
 │                  │◄───────────────┘
 │ id               │
-│ list_id          │
+│ project_id       │
 │ req_id           │
 │ title            │
 │ description      │
@@ -817,7 +817,7 @@ localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 
 ### Row Level Security (RLS)
 Tutte le tabelle utente hanno RLS abilitato:
-- `lists`, `requirements`, `estimations`: solo owner può leggere/scrivere
+- `projects`, `requirements`, `estimations`: solo owner può leggere/scrivere
 - `activities`, `drivers`, `risks`, `technology_presets`: lettura pubblica
 
 ### Validazione Input AI

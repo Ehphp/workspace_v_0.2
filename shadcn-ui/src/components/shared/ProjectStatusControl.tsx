@@ -6,25 +6,25 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { updateListStatus } from '@/lib/api';
+import { patchProject } from '@/lib/projects';
 import { useToast } from '@/hooks/use-toast';
 import { Lock, Unlock } from 'lucide-react';
-import { List } from '@/types/database';
+import { Project } from '@/types/database';
 
 interface ProjectStatusControlProps {
-    list: List;
+    project: Project;
     onStatusChange: () => void;
     canManage: boolean;
 }
 
-export function ProjectStatusControl({ list, onStatusChange, canManage }: ProjectStatusControlProps) {
+export function ProjectStatusControl({ project, onStatusChange, canManage }: ProjectStatusControlProps) {
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
 
     const handleStatusChange = async (newStatus: 'DRAFT' | 'REVIEW' | 'LOCKED') => {
         setIsLoading(true);
         try {
-            await updateListStatus(list.id, newStatus);
+            await patchProject(project.id, { status: newStatus });
             toast({
                 title: 'Status updated',
                 description: `Project status changed to ${newStatus}.`,
@@ -45,8 +45,8 @@ export function ProjectStatusControl({ list, onStatusChange, canManage }: Projec
     if (!canManage) {
         return (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                {list.status === 'LOCKED' ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
-                <span className="capitalize">{list.status.toLowerCase()}</span>
+                {project.status === 'LOCKED' ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                <span className="capitalize">{project.status.toLowerCase()}</span>
             </div>
         );
     }
@@ -54,13 +54,13 @@ export function ProjectStatusControl({ list, onStatusChange, canManage }: Projec
     return (
         <div className="flex items-center gap-2">
             <Select
-                value={list.status}
+                value={project.status}
                 onValueChange={(val) => handleStatusChange(val as any)}
                 disabled={isLoading}
             >
                 <SelectTrigger className="w-[130px]">
                     <div className="flex items-center gap-2">
-                        {list.status === 'LOCKED' ? (
+                        {project.status === 'LOCKED' ? (
                             <Lock className="h-4 w-4 text-orange-500" />
                         ) : (
                             <Unlock className="h-4 w-4 text-green-500" />

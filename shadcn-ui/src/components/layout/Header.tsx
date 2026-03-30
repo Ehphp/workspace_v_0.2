@@ -1,6 +1,7 @@
 import { Link, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import { fetchProjectName } from '@/lib/projects';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -22,22 +23,17 @@ export function Header() {
     const { user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
-    const params = useParams<{ listId?: string; reqId?: string }>();
-    const [listName, setListName] = useState<string>('');
+    const params = useParams<{ projectId?: string; reqId?: string }>();
+    const [projectName, setProjectName] = useState<string>('');
     const [requirementTitle, setRequirementTitle] = useState<string>('');
     const [isSigningOut, setIsSigningOut] = useState(false);
 
-    // Load list and requirement data for breadcrumb
+    // Load project and requirement data for breadcrumb
     useEffect(() => {
         const loadBreadcrumbData = async () => {
-            if (params.listId && user) {
-                const { data: list } = await supabase
-                    .from('lists')
-                    .select('name')
-                    .eq('id', params.listId)
-                    .single(); // Removed user_id check as RLS handles it now
-
-                if (list) setListName(list.name);
+            if (params.projectId && user) {
+                const name = await fetchProjectName(params.projectId);
+                if (name) setProjectName(name);
             }
 
             if (params.reqId && user) {
@@ -52,7 +48,7 @@ export function Header() {
         };
 
         loadBreadcrumbData();
-    }, [params.listId, params.reqId, user]);
+    }, [params.projectId, params.reqId, user]);
 
     const handleSignOut = async () => {
         setIsSigningOut(true);
@@ -92,7 +88,7 @@ export function Header() {
     const getBreadcrumb = () => {
         const pathParts = location.pathname.split('/').filter(Boolean);
 
-        if (pathParts[0] === 'dashboard' && params.listId) {
+        if (pathParts[0] === 'dashboard' && params.projectId) {
             return (
                 <div className="hidden md:flex items-center gap-2 text-xs font-mono text-slate-500">
                     <span className="text-slate-300">/</span>
@@ -100,15 +96,15 @@ export function Header() {
                         dashboard
                     </Link>
 
-                    {params.listId && (
+                    {params.projectId && (
                         <>
                             <span className="text-slate-300">/</span>
                             <Link
-                                to={`/dashboard/${params.listId}/requirements`}
+                                to={`/dashboard/${params.projectId}/requirements`}
                                 className="hover:text-blue-600 transition-colors max-w-[120px] truncate"
-                                title={listName || 'Loading project...'}
+                                title={projectName || 'Loading project...'}
                             >
-                                {listName || <span className="animate-pulse bg-slate-200 h-3 w-16 rounded inline-block"></span>}
+                                {projectName || <span className="animate-pulse bg-slate-200 h-3 w-16 rounded inline-block"></span>}
                             </Link>
                         </>
                     )}

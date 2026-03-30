@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/useAuthStore';
+import { fetchProjectIds, PROJECT_FK } from '@/lib/projects';
 
 export interface ScatterDatum {
     estimationId: string;
@@ -70,15 +71,9 @@ export function useAccuracyData() {
 
         try {
             // 1) Get org's requirement IDs
-            const { data: lists, error: listError } = await supabase
-                .from('lists')
-                .select('id')
-                .eq('organization_id', currentOrganization.id);
+            const projectIds = await fetchProjectIds(currentOrganization.id);
 
-            if (listError) throw listError;
-            const listIds = lists?.map(l => l.id) || [];
-
-            if (listIds.length === 0) {
+            if (projectIds.length === 0) {
                 setStats(prev => ({ ...prev, loading: false, scatterData: [] }));
                 return;
             }
@@ -86,7 +81,7 @@ export function useAccuracyData() {
             const { data: reqs, error: reqError } = await supabase
                 .from('requirements')
                 .select('id')
-                .in('list_id', listIds);
+                .in(PROJECT_FK, projectIds);
 
             if (reqError) throw reqError;
             const reqIds = reqs?.map(r => r.id) || [];

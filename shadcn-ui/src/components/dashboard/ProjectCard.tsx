@@ -7,12 +7,12 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { FolderOpen, MoreVertical, Edit, Trash2, Calendar, User } from 'lucide-react';
-import { List } from '@/types/database';
+import { Project } from '@/types/database';
 
 interface ProjectCardProps {
-    project: List;
-    onEdit: (project: List) => void;
-    onDelete: (project: List) => void;
+    project: Project;
+    onEdit: (project: Project) => void;
+    onDelete: (project: Project) => void;
     layout?: 'grid' | 'list';
 }
 

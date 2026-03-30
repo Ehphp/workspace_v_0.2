@@ -110,14 +110,14 @@ export type ProjectScope = 'SMALL' | 'MEDIUM' | 'LARGE' | 'ENTERPRISE';
 export type DeadlinePressure = 'RELAXED' | 'NORMAL' | 'TIGHT' | 'CRITICAL';
 export type Methodology = 'AGILE' | 'WATERFALL' | 'HYBRID';
 
-export interface List {
+export interface Project {
   id: string;
   user_id: string; // Now acts as "created_by"
   organization_id: string; // New owner field
   name: string;
   description: string;
   owner: string;
-  technology_id: string | null; // Default technology for requirements in this list
+  technology_id: string | null; // Default technology for requirements in this project
   /** @deprecated Use technology_id */
   tech_preset_id?: string | null;
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
@@ -134,7 +134,7 @@ export interface List {
 
 export interface Requirement {
   id: string;
-  list_id: string;
+  project_id: string;
   req_id: string;
   title: string;
   description: string;

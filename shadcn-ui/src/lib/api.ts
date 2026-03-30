@@ -4,7 +4,7 @@ import type {
   Driver,
   EstimationBlueprintRow,
   ImpactMapRow,
-  List,
+  Project,
   Requirement,
   RequirementDriverValue,
   RequirementUnderstandingRow,
@@ -14,6 +14,12 @@ import type {
   Organization,
   OrganizationMember
 } from '@/types/database';
+import {
+  fetchProject as repoFetchProject,
+  createProject as repoCreateProject,
+  PROJECT_FK,
+} from '@/lib/projects';
+import type { CreateProjectInput as RepoCreateProjectInput } from '@/lib/projects';
 
 export class ApiError extends Error {
   status?: number;
@@ -36,23 +42,17 @@ async function requireSingle<T>(promise: PromiseLike<{ data: T | null; error: un
   return data;
 }
 
-export async function fetchList(listId: string): Promise<List> {
-  return requireSingle(
-    supabase
-      .from('lists')
-      .select('*')
-      .eq('id', listId)
-      .single(),
-  );
+export async function fetchProject(projectId: string): Promise<Project> {
+  return repoFetchProject(projectId);
 }
 
-export async function fetchRequirement(listId: string, reqId: string): Promise<Requirement> {
+export async function fetchRequirement(projectId: string, reqId: string): Promise<Requirement> {
   return requireSingle(
     supabase
       .from('requirements')
       .select('*')
       .eq('id', reqId)
-      .eq('list_id', listId)
+      .eq(PROJECT_FK, projectId)
       .single(),
   );
 }
@@ -120,7 +120,7 @@ export async function fetchTechnologies(): Promise<Technology[]> {
 /** @deprecated Use fetchTechnologies */
 export const fetchPresets = fetchTechnologies;
 
-export interface CreateListInput {
+export interface CreateProjectInput {
   userId: string;
   organizationId: string;
   name: string;
@@ -137,37 +137,30 @@ export interface CreateListInput {
   methodology?: string | null;
 }
 
-export async function createList(input: CreateListInput): Promise<List> {
-  const payload = {
-    user_id: input.userId,
-    organization_id: input.organizationId,
+export async function createProject(input: CreateProjectInput): Promise<Project> {
+  const repoInput: RepoCreateProjectInput = {
+    userId: input.userId,
+    organizationId: input.organizationId,
     name: input.name,
-    description: input.description || '',
-    owner: input.owner || '',
-    technology_id: input.technologyId ?? input.techPresetId ?? null,
+    description: input.description,
+    owner: input.owner,
+    technologyId: input.technologyId ?? input.techPresetId ?? null,
     status: input.status,
-    project_type: input.projectType || null,
-    domain: input.domain || null,
-    scope: input.scope || null,
-    team_size: input.teamSize || null,
-    deadline_pressure: input.deadlinePressure || null,
-    methodology: input.methodology || null,
+    projectType: input.projectType,
+    domain: input.domain,
+    scope: input.scope,
+    teamSize: input.teamSize,
+    deadlinePressure: input.deadlinePressure,
+    methodology: input.methodology,
   };
-
-  return requireSingle(
-    supabase
-      .from('lists')
-      .insert(payload)
-      .select('*')
-      .single(),
-  );
+  return repoCreateProject(repoInput);
 }
 
-export async function generateNextRequirementId(listId: string): Promise<string> {
+export async function generateNextRequirementId(projectId: string): Promise<string> {
   const { data, error, status } = await supabase
     .from('requirements')
     .select('req_id')
-    .eq('list_id', listId)
+    .eq(PROJECT_FK, projectId)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -188,7 +181,7 @@ export async function generateNextRequirementId(listId: string): Promise<string>
 }
 
 export interface CreateRequirementInput {
-  listId: string;
+  projectId: string;
   title: string;
   description?: string;
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
@@ -200,9 +193,9 @@ export interface CreateRequirementInput {
 }
 
 export async function createRequirement(input: CreateRequirementInput): Promise<Requirement> {
-  const reqId = input.req_id || (await generateNextRequirementId(input.listId));
+  const reqId = input.req_id || (await generateNextRequirementId(input.projectId));
   const payload = {
-    list_id: input.listId,
+    [PROJECT_FK]: input.projectId,
     req_id: reqId,
     title: input.title,
     description: input.description || '',
@@ -238,11 +231,11 @@ export async function fetchEstimationDetails(estimationId: string) {
   return estimation;
 }
 
-export async function fetchRequirementBundle(listId: string, reqId: string, _userId: string) {
-  const list = await fetchList(listId);
-  const requirement = await fetchRequirement(listId, reqId);
+export async function fetchRequirementBundle(projectId: string, reqId: string, _userId: string) {
+  const project = await fetchProject(projectId);
+  const requirement = await fetchRequirement(projectId, reqId);
 
-  const technologyId = requirement.technology_id || list.technology_id;
+  const technologyId = requirement.technology_id || project.technology_id;
   const preset = technologyId ? await fetchTechnology(technologyId) : null;
 
   const { data: driverValues, error: driverErr } = await supabase
@@ -263,7 +256,7 @@ export async function fetchRequirementBundle(listId: string, reqId: string, _use
   }
 
   return {
-    list,
+    project,
     requirement,
     preset,
     driverValues: (driverValues || []) as RequirementDriverValue[],

@@ -2,16 +2,17 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
-import type { List, Requirement, RequirementWithEstimation, Estimation } from '@/types/database';
+import { fetchProjectByUser, PROJECT_FK } from '@/lib/projects';
+import type { Project, Requirement, RequirementWithEstimation, Estimation } from '@/types/database';
 
 interface UseRequirementsListProps {
-    listId: string | undefined;
+    projectId: string | undefined;
     userId: string | undefined;
 }
 
 interface UseRequirementsListReturn {
     // Data
-    list: List | null;
+    project: Project | null;
     requirements: RequirementWithEstimation[];
     filteredRequirements: RequirementWithEstimation[];
     paginatedRequirements: RequirementWithEstimation[];
@@ -49,12 +50,12 @@ interface UseRequirementsListReturn {
     updateRequirement: (id: string, updates: Partial<RequirementWithEstimation>) => void;
 }
 
-export function useRequirementsList({ listId, userId }: UseRequirementsListProps): UseRequirementsListReturn {
+export function useRequirementsList({ projectId, userId }: UseRequirementsListProps): UseRequirementsListReturn {
     const navigate = useNavigate();
     const { toast } = useToast();
 
     // Data state
-    const [list, setList] = useState<List | null>(null);
+    const [project, setProject] = useState<Project | null>(null);
     const [requirements, setRequirements] = useState<RequirementWithEstimation[]>([]);
     const [loading, setLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -80,28 +81,19 @@ export function useRequirementsList({ listId, userId }: UseRequirementsListProps
     }, []);
 
     const loadData = useCallback(async (signal?: AbortSignal) => {
-        if (!userId || !listId) return;
+        if (!userId || !projectId) return;
 
         setLoading(true);
         setErrorMessage(null);
 
         try {
             // Load list details
-            const { data: listData, error: listError } = await supabase
-                .from('lists')
-                .select('*')
-                .eq('id', listId)
-                .eq('user_id', userId)
-                .abortSignal(signal as AbortSignal)
-                .single();
+            const projectData = await fetchProjectByUser(projectId, userId, signal);
 
-            const isAborted =
-                signal?.aborted ||
-                listError?.name === 'AbortError' ||
-                listError?.message?.includes('AbortError');
+            const isAborted = signal?.aborted;
 
-            if (listError && !isAborted) {
-                console.error('Error loading list:', listError);
+            if (!projectData && !isAborted) {
+                console.error('Error loading project: not found or not authorized');
                 toast({
                     title: 'Error',
                     description: 'Failed to load project details',
@@ -113,7 +105,7 @@ export function useRequirementsList({ listId, userId }: UseRequirementsListProps
             }
 
             if (isAborted) return;
-            setList(listData);
+            setProject(projectData);
 
             // Load requirements with their latest estimation
             // Using estimations!requirement_id to explicitly specify which foreign key to use
@@ -131,7 +123,7 @@ export function useRequirementsList({ listId, userId }: UseRequirementsListProps
             created_at
           )
         `)
-                .eq('list_id', listId)
+                .eq(PROJECT_FK, projectId)
                 .order('created_at', { ascending: false })
                 .abortSignal(signal as AbortSignal);
 
@@ -185,19 +177,19 @@ export function useRequirementsList({ listId, userId }: UseRequirementsListProps
                 setLoading(false);
             }
         }
-    }, [userId, listId, navigate, toast]);
+    }, [userId, projectId, navigate, toast]);
 
     // Load data on mount
     useEffect(() => {
         const abortController = new AbortController();
-        if (userId && listId) {
+        if (userId && projectId) {
             loadData(abortController.signal);
         }
 
         return () => {
             abortController.abort();
         };
-    }, [userId, listId, loadData]);
+    }, [userId, projectId, loadData]);
 
     // Reset page when filters change
     useEffect(() => {
@@ -282,7 +274,7 @@ export function useRequirementsList({ listId, userId }: UseRequirementsListProps
 
     return {
         // Data
-        list,
+        project,
         requirements,
         filteredRequirements,
         paginatedRequirements,

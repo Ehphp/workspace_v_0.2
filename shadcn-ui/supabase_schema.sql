@@ -1,3 +1,12 @@
+-- ⚠️  HISTORICAL SNAPSHOT — Phase 1 MVP schema (pre-migration)
+-- The authoritative schema is now defined by the ordered migrations in supabase/migrations/.
+-- This file is retained for reference only. Do NOT apply it to the live database.
+-- Key changes since this snapshot:
+--   - lists → projects (table rename, 20260330_rename_lists_to_projects.sql)
+--   - list_id → project_id (FK rename on requirements)
+--   - RLS policies updated for organization-based multitenancy
+-- ============================================================================
+
 -- Requirements Estimation System - Database Schema
 -- Phase 1 MVP
 
