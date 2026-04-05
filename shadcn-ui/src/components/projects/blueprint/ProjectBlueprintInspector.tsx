@@ -66,9 +66,8 @@ function NodeDetail({ data, nodeId, graphModel }: {
                             <span className="text-[9px] font-bold text-blue-500 uppercase tracking-wider">Core</span>
                         )}
                         {reviewStatus && reviewStatus !== 'draft' && (
-                            <Badge className={`text-[9px] px-1 py-0 h-3.5 ${
-                                reviewStatus === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
-                            }`}>
+                            <Badge className={`text-[9px] px-1 py-0 h-3.5 ${reviewStatus === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                                }`}>
                                 {reviewStatus}
                             </Badge>
                         )}
@@ -325,9 +324,8 @@ function BlueprintOverview({ blueprint }: { blueprint: ProjectTechnicalBlueprint
                             )}
                         </p>
                         {blueprint.reviewStatus && blueprint.reviewStatus !== 'draft' && (
-                            <Badge className={`text-[9px] px-1 py-0 h-3.5 ${
-                                blueprint.reviewStatus === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
-                            }`}>
+                            <Badge className={`text-[9px] px-1 py-0 h-3.5 ${blueprint.reviewStatus === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                                }`}>
                                 {blueprint.reviewStatus}
                             </Badge>
                         )}
@@ -408,27 +406,25 @@ function BlueprintOverview({ blueprint }: { blueprint: ProjectTechnicalBlueprint
                                     <div className="flex items-center gap-2">
                                         <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
                                             <div
-                                                className={`h-full rounded-full ${
-                                                    blueprint.qualityScore >= 0.85 ? 'bg-emerald-500' :
-                                                    blueprint.qualityScore >= 0.65 ? 'bg-blue-500' :
-                                                    blueprint.qualityScore >= 0.45 ? 'bg-amber-500' :
-                                                    'bg-red-500'
-                                                }`}
+                                                className={`h-full rounded-full ${blueprint.qualityScore >= 0.85 ? 'bg-emerald-500' :
+                                                        blueprint.qualityScore >= 0.65 ? 'bg-blue-500' :
+                                                            blueprint.qualityScore >= 0.45 ? 'bg-amber-500' :
+                                                                'bg-red-500'
+                                                    }`}
                                                 style={{ width: `${Math.round(blueprint.qualityScore * 100)}%` }}
                                             />
                                         </div>
                                         <span className="text-xs text-slate-600 tabular-nums font-medium">
                                             {Math.round(blueprint.qualityScore * 100)}%
                                         </span>
-                                        <Badge className={`text-[9px] px-1 py-0 h-3.5 ${
-                                            blueprint.qualityScore >= 0.85 ? 'bg-emerald-100 text-emerald-700' :
-                                            blueprint.qualityScore >= 0.65 ? 'bg-blue-100 text-blue-700' :
-                                            blueprint.qualityScore >= 0.45 ? 'bg-amber-100 text-amber-700' :
-                                            'bg-red-100 text-red-700'
-                                        }`}>
+                                        <Badge className={`text-[9px] px-1 py-0 h-3.5 ${blueprint.qualityScore >= 0.85 ? 'bg-emerald-100 text-emerald-700' :
+                                                blueprint.qualityScore >= 0.65 ? 'bg-blue-100 text-blue-700' :
+                                                    blueprint.qualityScore >= 0.45 ? 'bg-amber-100 text-amber-700' :
+                                                        'bg-red-100 text-red-700'
+                                            }`}>
                                             {blueprint.qualityScore >= 0.85 ? 'excellent' :
-                                             blueprint.qualityScore >= 0.65 ? 'good' :
-                                             blueprint.qualityScore >= 0.45 ? 'fair' : 'poor'}
+                                                blueprint.qualityScore >= 0.65 ? 'good' :
+                                                    blueprint.qualityScore >= 0.45 ? 'fair' : 'poor'}
                                         </Badge>
                                     </div>
                                 </div>

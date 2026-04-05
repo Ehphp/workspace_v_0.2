@@ -460,11 +460,10 @@ export function CreateProjectFromSources({
                 {/* Section B: Drag & Drop / Upload */}
                 <div
                     {...getRootProps()}
-                    className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-                        isDragActive
+                    className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${isDragActive
                             ? 'border-emerald-400 bg-emerald-50/50'
                             : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/30'
-                    }`}
+                        }`}
                 >
                     <input {...getInputProps()} />
                     <div className="flex flex-col items-center gap-2">
@@ -1143,13 +1142,12 @@ function SourceCard({
         : getFileIcon(source.fileName ?? '');
 
     return (
-        <div className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${
-            source.status === 'error'
+        <div className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${source.status === 'error'
                 ? 'bg-red-50/50 border-red-200'
                 : source.status === 'processing'
                     ? 'bg-slate-50/50 border-slate-200 animate-pulse'
                     : 'bg-white border-slate-200'
-        }`}>
+            }`}>
             <div className="mt-0.5">{icon}</div>
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">

@@ -135,9 +135,9 @@ export function computeBlueprintQualityScore(
 
     const verdict: BlueprintQualityResult['verdict'] =
         score >= 0.85 ? 'excellent' :
-        score >= 0.65 ? 'good' :
-        score >= 0.45 ? 'fair' :
-        'poor';
+            score >= 0.65 ? 'good' :
+                score >= 0.45 ? 'fair' :
+                    'poor';
 
     return { qualityScore: score, penalties, verdict };
 }

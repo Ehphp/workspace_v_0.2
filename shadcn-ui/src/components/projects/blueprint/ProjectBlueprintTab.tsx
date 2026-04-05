@@ -188,12 +188,11 @@ export function ProjectBlueprintTab({ projectId }: ProjectBlueprintTabProps) {
                             }}
                             className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-blue-50 transition-colors"
                         >
-                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                                r.kind === 'component' ? 'bg-blue-500' :
-                                r.kind === 'data_domain' ? 'bg-emerald-500' :
-                                r.kind === 'integration' ? 'bg-violet-500' :
-                                'bg-indigo-500'
-                            }`} />
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${r.kind === 'component' ? 'bg-blue-500' :
+                                    r.kind === 'data_domain' ? 'bg-emerald-500' :
+                                        r.kind === 'integration' ? 'bg-violet-500' :
+                                            'bg-indigo-500'
+                                }`} />
                             <span className="text-xs font-medium text-slate-700 truncate">{r.label}</span>
                             <span className="text-[10px] text-slate-400 ml-auto flex-shrink-0">
                                 {r.matchSnippet.substring(0, 40)}

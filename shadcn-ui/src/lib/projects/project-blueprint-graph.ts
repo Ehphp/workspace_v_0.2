@@ -107,15 +107,15 @@ const VERTICAL_GAP = 24; // gap between nodes in same column
 export const NODE_STYLES: Record<BlueprintNodeKind, {
     bg: string; border: string; badge: string; edgeColor: string;
 }> = {
-    component:   { bg: '#eff6ff', border: '#3b82f6', badge: 'bg-blue-100 text-blue-800',   edgeColor: '#3b82f6' },
+    component: { bg: '#eff6ff', border: '#3b82f6', badge: 'bg-blue-100 text-blue-800', edgeColor: '#3b82f6' },
     integration: { bg: '#faf5ff', border: '#a855f7', badge: 'bg-purple-100 text-purple-800', edgeColor: '#a855f7' },
-    data_domain: { bg: '#f0fdf4', border: '#22c55e', badge: 'bg-green-100 text-green-800',  edgeColor: '#22c55e' },
+    data_domain: { bg: '#f0fdf4', border: '#22c55e', badge: 'bg-green-100 text-green-800', edgeColor: '#22c55e' },
 };
 
 /** Column header labels exported for the canvas overlay */
 export const COLUMN_HEADERS: { key: BlueprintNodeKind; label: string; x: number }[] = [
     { key: 'data_domain', label: 'Data Domains', x: COLUMN_X.left },
-    { key: 'component',   label: 'Core Components', x: COLUMN_X.center },
+    { key: 'component', label: 'Core Components', x: COLUMN_X.center },
     { key: 'integration', label: 'External Systems', x: COLUMN_X.right },
 ];
 
