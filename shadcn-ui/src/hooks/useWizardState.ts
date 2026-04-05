@@ -74,6 +74,10 @@ export interface WizardData {
   projectTechnicalBlueprint?: ProjectTechnicalBlueprint;
   // Rich candidate provenance from CandidateBuilder (for domain save persistence)
   candidateProvenance?: CandidateProvenanceEntry[];
+  // DecisionEngine trace (for observability)
+  decisionTrace?: Array<{ step: string; action: string; code: string; reason: string; score?: number; layer?: string }>;
+  // Coverage report from DecisionEngine
+  coverageReport?: { byLayer: Record<string, { covered: boolean; activityCount: number; topScore: number; topCode: string }>; totalSelected: number; totalCandidates: number; gapLayers: string[] };
 }
 
 const STORAGE_KEY = 'estimation_wizard_data';

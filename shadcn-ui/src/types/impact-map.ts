@@ -19,13 +19,17 @@
 
 import { z } from 'zod';
 import type { RequirementUnderstanding } from './requirement-understanding';
+import {
+    type PipelineLayer,
+    PipelineLayerSchema,
+} from '../../netlify/functions/lib/domain/pipeline/pipeline-domain';
 
 // ============================================================================
 // ENUMS / UNION TYPES
 // ============================================================================
 
 /**
- * Architectural layers — technology-agnostic.
+ * Architectural layers — extends PipelineLayer with 'ai_pipeline' for LLM output validation.
  *
  * | Layer          | Covers                                                    |
  * |----------------|-----------------------------------------------------------|
@@ -37,26 +41,16 @@ import type { RequirementUnderstanding } from './requirement-understanding';
  * | configuration  | Feature flags, settings, environment parameters           |
  * | ai_pipeline    | LLM prompts, RAG pipelines, embeddings, ML models        |
  */
-export type ImpactLayer =
-    | 'frontend'
-    | 'logic'
-    | 'data'
-    | 'integration'
-    | 'automation'
-    | 'configuration'
-    | 'ai_pipeline';
+export type ImpactLayer = PipelineLayer | 'ai_pipeline';
 
 /**
  * Type of structural action required on a layer.
+ * Impact-specific subset — excludes 'delete' (not applicable in impact analysis).
  *
  * Maps to effort gradients (read < configure < modify < create)
  * but the Impact Map itself must NOT estimate effort.
  */
-export type ImpactAction =
-    | 'read'
-    | 'modify'
-    | 'create'
-    | 'configure';
+export type ImpactAction = 'read' | 'modify' | 'create' | 'configure';
 
 // ============================================================================
 // CORE ARTIFACT
@@ -177,16 +171,13 @@ export interface ImpactMapResponse {
 // ZOD SCHEMAS FOR VALIDATION
 // ============================================================================
 
-export const ImpactLayerSchema = z.enum([
-    'frontend',
-    'logic',
-    'data',
-    'integration',
-    'automation',
-    'configuration',
-    'ai_pipeline',
+/** Extends PipelineLayerSchema with 'ai_pipeline' for LLM output validation. */
+export const ImpactLayerSchema = z.union([
+    PipelineLayerSchema,
+    z.literal('ai_pipeline'),
 ]);
 
+/** Impact-specific action schema — validates the 4-value ImpactAction subset. */
 export const ImpactActionSchema = z.enum([
     'read',
     'modify',

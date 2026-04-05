@@ -13,7 +13,7 @@ import type {
     BlueprintTestingScope,
     BlueprintLayer,
     InterventionType,
-    ComponentComplexity,
+    Complexity,
     TestCriticality,
 } from '@/types/estimation-blueprint';
 
@@ -42,7 +42,7 @@ const interventionBadge: Record<InterventionType, { label: string; className: st
     migration: { label: 'Migrazione', className: 'bg-orange-50 text-orange-700 border-orange-200' },
 };
 
-const complexityBadge: Record<ComponentComplexity, { label: string; className: string }> = {
+const complexityBadge: Record<Complexity, { label: string; className: string }> = {
     LOW: { label: 'Bassa', className: 'bg-green-50 text-green-700 border-green-200' },
     MEDIUM: { label: 'Media', className: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
     HIGH: { label: 'Alta', className: 'bg-red-50 text-red-700 border-red-200' },

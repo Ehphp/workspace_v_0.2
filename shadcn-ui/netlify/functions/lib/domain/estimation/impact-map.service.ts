@@ -12,6 +12,9 @@ import type {
 
 /**
  * Persist a new ImpactMap linked to an analysis.
+ *
+ * New writes set `artifact_impact_map_id` FK and leave `impact_data`
+ * JSONB null. Legacy callers that still pass inline JSONB are supported.
  */
 export async function createImpactMap(
     input: CreateImpactMapInput,
@@ -22,7 +25,8 @@ export async function createImpactMap(
         .from('impact_maps')
         .insert({
             analysis_id: input.analysis_id,
-            impact_data: input.impact_data,
+            impact_data: input.impact_data ?? null,
+            artifact_impact_map_id: input.artifact_impact_map_id ?? null,
             confidence: input.confidence ?? null,
             created_by: input.created_by,
         })

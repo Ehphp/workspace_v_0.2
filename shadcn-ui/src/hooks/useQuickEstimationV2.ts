@@ -101,6 +101,10 @@ export interface QuickEstimationV2Result {
     shouldEscalate: boolean;
     /** Reason for escalation recommendation */
     escalationReason?: string;
+    /** Decision trace from deterministic DecisionEngine */
+    decisionTrace?: Array<{ step: string; action: string; code: string; reason: string; score?: number; layer?: string }>;
+    /** Coverage report from DecisionEngine */
+    coverageReport?: { byLayer: Record<string, { covered: boolean; activityCount: number; topScore: number; topCode: string }>; totalSelected: number; totalCandidates: number; gapLayers: string[] };
 }
 
 /** A completed-step insight shown live during the pipeline */
@@ -504,6 +508,8 @@ export function useQuickEstimationV2() {
                 metrics: estimationRes.metrics as Record<string, unknown> | undefined,
                 shouldEscalate,
                 escalationReason,
+                decisionTrace: estimationRes.decisionTrace,
+                coverageReport: estimationRes.coverageReport,
             });
             setCurrentStep('done');
             return true;

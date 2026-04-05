@@ -12,7 +12,11 @@ import type {
 } from '../../../../../src/types/domain-model';
 
 /**
- * Persist a new RequirementAnalysis from an existing understanding artifact.
+ * Persist a new RequirementAnalysis.
+ *
+ * New writes set `requirement_understanding_id` FK and leave `understanding`
+ * JSONB null. Legacy callers that still pass inline JSONB are supported for
+ * backward compatibility.
  */
 export async function createRequirementAnalysis(
     input: CreateRequirementAnalysisInput,
@@ -23,7 +27,8 @@ export async function createRequirementAnalysis(
         .from('requirement_analyses')
         .insert({
             requirement_id: input.requirement_id,
-            understanding: input.understanding,
+            understanding: input.understanding ?? null,
+            requirement_understanding_id: input.requirement_understanding_id ?? null,
             input_description: input.input_description,
             input_tech_category: input.input_tech_category ?? null,
             confidence: input.confidence ?? null,

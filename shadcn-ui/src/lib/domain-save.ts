@@ -170,7 +170,11 @@ export interface WizardDomainSaveInput {
     technologyId?: string | null;
     blueprintId?: string | null;
     understanding?: Record<string, unknown> | null;
+    /** UUID of the canonical requirement_understanding artifact row */
+    requirementUnderstandingId?: string | null;
     impactMapData?: Record<string, unknown> | null;
+    /** UUID of the canonical impact_map artifact row */
+    artifactImpactMapId?: string | null;
     activities: ResolvedActivity[];
     drivers: ResolvedDriver[];
     risks: ResolvedRisk[];
@@ -203,7 +207,8 @@ async function getLatestAnalysis(requirementId: string): Promise<RequirementAnal
 
 async function createAnalysis(input: {
     requirement_id: string;
-    understanding: Record<string, unknown>;
+    understanding?: Record<string, unknown> | null;
+    requirement_understanding_id?: string | null;
     input_description: string;
     input_tech_category: string | null;
     confidence: number | null;
@@ -232,7 +237,8 @@ async function getLatestImpactMap(analysisId: string): Promise<ImpactMapDomainRo
 
 async function createImpactMapDomain(input: {
     analysis_id: string;
-    impact_data: Record<string, unknown>;
+    impact_data?: Record<string, unknown> | null;
+    artifact_impact_map_id?: string | null;
     confidence: number | null;
     created_by: string;
 }): Promise<ImpactMapDomainRow> {
@@ -322,12 +328,13 @@ function buildCandidates(activities: ResolvedActivity[]): CandidateActivity[] {
 export async function orchestrateWizardDomainSave(
     input: WizardDomainSaveInput,
 ): Promise<WizardDomainSaveResult> {
-    // 1. Ensure RequirementAnalysis exists
+    // 1. Ensure RequirementAnalysis exists (FK-first: prefer FK to canonical artifact)
     let analysis = await getLatestAnalysis(input.requirementId);
-    if (!analysis && input.understanding) {
+    if (!analysis && (input.understanding || input.requirementUnderstandingId)) {
         analysis = await createAnalysis({
             requirement_id: input.requirementId,
-            understanding: input.understanding,
+            requirement_understanding_id: input.requirementUnderstandingId ?? null,
+            understanding: input.requirementUnderstandingId ? null : (input.understanding ?? null),
             input_description: input.description,
             input_tech_category: input.techCategory ?? null,
             confidence: null,
@@ -345,12 +352,13 @@ export async function orchestrateWizardDomainSave(
         });
     }
 
-    // 2. Impact map (optional — reuse or create)
+    // 2. Impact map (optional — FK-first: prefer FK to canonical artifact)
     let impactMap = await getLatestImpactMap(analysis.id);
-    if (!impactMap && input.impactMapData) {
+    if (!impactMap && (input.impactMapData || input.artifactImpactMapId)) {
         impactMap = await createImpactMapDomain({
             analysis_id: analysis.id,
-            impact_data: input.impactMapData,
+            artifact_impact_map_id: input.artifactImpactMapId ?? null,
+            impact_data: input.artifactImpactMapId ? null : (input.impactMapData ?? null),
             confidence: null,
             created_by: input.userId,
         });

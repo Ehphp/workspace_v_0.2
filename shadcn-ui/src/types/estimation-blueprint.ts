@@ -21,38 +21,28 @@
 import { z } from 'zod';
 import type { RequirementUnderstanding } from './requirement-understanding';
 import type { ImpactMap } from './impact-map';
+import {
+    type PipelineLayer,
+    PipelineLayerSchema,
+    type InterventionType,
+    InterventionTypeSchema,
+    type Complexity,
+    ComplexitySchema,
+} from '../../netlify/functions/lib/domain/pipeline/pipeline-domain';
+
+// Re-export canonical types for consumers that import from this module
+export type { InterventionType, Complexity };
+export { InterventionTypeSchema, ComplexitySchema };
 
 // ============================================================================
 // ENUMS / UNION TYPES
 // ============================================================================
 
 /**
- * Architectural layers — reuses the same taxonomy as ImpactMap
- * for consistency across the pipeline.
+ * Architectural layers — extends PipelineLayer with 'ai_pipeline' for LLM output validation.
+ * Reuses the same taxonomy as ImpactMap for consistency across the pipeline.
  */
-export type BlueprintLayer =
-    | 'frontend'
-    | 'logic'
-    | 'data'
-    | 'integration'
-    | 'automation'
-    | 'configuration'
-    | 'ai_pipeline';
-
-/**
- * Type of technical intervention required on a component.
- */
-export type InterventionType =
-    | 'new_development'
-    | 'modification'
-    | 'configuration'
-    | 'integration'
-    | 'migration';
-
-/**
- * Estimated complexity of work on a component.
- */
-export type ComponentComplexity = 'LOW' | 'MEDIUM' | 'HIGH';
+export type BlueprintLayer = PipelineLayer | 'ai_pipeline';
 
 /**
  * Direction of an integration.
@@ -84,7 +74,7 @@ export interface BlueprintComponent {
     /** Type of technical intervention */
     interventionType: InterventionType;
     /** Complexity assessment */
-    complexity: ComponentComplexity;
+    complexity: Complexity;
     /** Optional notes or clarifications */
     notes?: string;
 }
@@ -230,25 +220,11 @@ export interface EstimationBlueprintResponse {
 // ZOD SCHEMAS
 // ============================================================================
 
-export const BlueprintLayerSchema = z.enum([
-    'frontend',
-    'logic',
-    'data',
-    'integration',
-    'automation',
-    'configuration',
-    'ai_pipeline',
+/** Extends PipelineLayerSchema with 'ai_pipeline' for LLM output validation. */
+export const BlueprintLayerSchema = z.union([
+    PipelineLayerSchema,
+    z.literal('ai_pipeline'),
 ]);
-
-export const InterventionTypeSchema = z.enum([
-    'new_development',
-    'modification',
-    'configuration',
-    'integration',
-    'migration',
-]);
-
-export const ComponentComplexitySchema = z.enum(['LOW', 'MEDIUM', 'HIGH']);
 
 export const IntegrationDirectionSchema = z.enum([
     'inbound',
@@ -275,7 +251,7 @@ export const BlueprintComponentSchema = z.object({
     name: z.string().min(2).max(200),
     layer: BlueprintLayerSchema,
     interventionType: InterventionTypeSchema,
-    complexity: ComponentComplexitySchema,
+    complexity: ComplexitySchema,
     notes: z.string().max(500).optional(),
 });
 

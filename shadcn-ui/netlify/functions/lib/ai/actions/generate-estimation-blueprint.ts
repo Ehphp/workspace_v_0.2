@@ -27,6 +27,8 @@ import {
 } from '../ai-cache';
 import type { CacheConfig } from '../ai-cache';
 import { formatProjectContextBlock } from '../prompt-builder';
+import type { RequirementUnderstanding } from '../../../../../src/types/requirement-understanding';
+import type { ImpactMap } from '../../../../../src/types/impact-map';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cache profile — 12 h (same TTL as understanding / impact map)
@@ -59,9 +61,9 @@ export interface GenerateBlueprintRequest {
         methodology?: string;
     };
     /** Confirmed Requirement Understanding from previous step */
-    requirementUnderstanding?: Record<string, unknown>;
+    requirementUnderstanding?: RequirementUnderstanding | Record<string, unknown>;
     /** Confirmed Impact Map from previous step */
-    impactMap?: Record<string, unknown>;
+    impactMap?: ImpactMap | Record<string, unknown>;
     /** Skip cache for testing */
     testMode?: boolean;
 }
@@ -156,7 +158,7 @@ const LLMOutputSchema = z.object({
 // Helpers — format upstream artifacts as prompt blocks
 // ─────────────────────────────────────────────────────────────────────────────
 
-function formatUnderstandingBlock(ru: Record<string, unknown> | undefined): string {
+function formatUnderstandingBlock(ru: RequirementUnderstanding | Record<string, unknown> | undefined): string {
     if (!ru || typeof ru !== 'object') return '';
     try {
         const lines: string[] = [];
@@ -193,7 +195,7 @@ function formatUnderstandingBlock(ru: Record<string, unknown> | undefined): stri
     }
 }
 
-function formatImpactMapBlock(im: Record<string, unknown> | undefined): string {
+function formatImpactMapBlock(im: ImpactMap | Record<string, unknown> | undefined): string {
     if (!im || typeof im !== 'object') return '';
     try {
         const lines: string[] = [];

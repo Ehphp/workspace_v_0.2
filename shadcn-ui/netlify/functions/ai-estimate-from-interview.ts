@@ -25,13 +25,26 @@ import {
     type InterviewAnswerRecord,
 } from './lib/activities';
 import {
+    mapBlueprintToActivities,
+    isBlueprintMappable,
+    blueprintToNormalizedSignals,
     type BlueprintMappingResult,
     type ActivityProvenance,
 } from './lib/blueprint-activity-mapper';
 import {
-    buildCandidateSet,
-    type CandidateSetResult,
-} from './lib/candidate-builder';
+    extractImpactMapSignals,
+    impactMapToNormalizedSignals,
+} from './lib/impact-map-signal-extractor';
+import {
+    extractUnderstandingSignals,
+    understandingToNormalizedSignals,
+} from './lib/understanding-signal-extractor';
+import { keywordToNormalizedSignals } from './lib/domain/pipeline/keyword-signal-adapter';
+import {
+    synthesizeCandidates,
+    type SynthesizedCandidateSet,
+} from './lib/domain/pipeline/candidate-synthesizer';
+import type { SignalSet } from './lib/domain/pipeline/signal-types';
 import { buildProvenanceMap, attachProvenance, provenanceBreakdown } from './lib/provenance-map';
 import { formatProjectContextBlock } from './lib/ai/prompt-builder';
 import { evaluateProjectContextRules } from './lib/domain/estimation/project-context-rules';
@@ -40,6 +53,9 @@ import { mergeProjectAndBlueprintRules } from './lib/domain/estimation/blueprint
 import { mergeDriverSuggestions, mergeRiskSuggestions } from './lib/domain/estimation/project-context-integration';
 import type { ProjectTechnicalBlueprint } from './lib/domain/project/project-technical-blueprint.types';
 import type { EstimationContext } from './lib/domain/types/estimation';
+import { runDecisionEngine } from './lib/domain/pipeline/decision-engine';
+import { explainDecision, type DecisionExplanation } from './lib/ai/actions/explain-decision';
+import type { DecisionExplanationPromptInput } from './lib/ai/prompts/decision-explanation';
 
 // Model configuration - use env variable AI_ESTIMATION_MODEL or default to gpt-4o
 // NOTE: gpt-5 has limitations (no custom temperature, no json_schema response_format)
@@ -536,44 +552,68 @@ export const handler = createAIHandler<RequestBody>({
             console.log('[ai-estimate-from-interview] Merged context+blueprint rules:', mergedRules.notes);
         }
 
-        // ─── Candidate Generation: CandidateBuilder (multi-signal) ──────
+        // ─── Candidate Generation: CandidateSynthesizer (multi-signal) ──
         //
-        // Strategy (unified):
-        //   1. Blueprint structural mapping (highest weight: 3.0)
-        //   2. ImpactMap layer→activity signals (weight: 2.0)
-        //   3. Keyword ranking (baseline weight: 1.0)
-        //   4. Project-context biases (additive: 0.5)
-        //   All merged with per-activity provenance.
+        // Pipeline (deterministic):
+        //   1. Extract structured signals from artifacts
+        //   2. Normalize all signals to canonical NormalizedSignal format
+        //   3. Synthesize: weighted merge (blueprint=3.0, impact-map=2.0,
+        //      understanding=1.5, keyword=1.0, context=0.5)
+        //   4. Conflict + gap detection, provenance throughout
         //
-        const candidateResult: CandidateSetResult = buildCandidateSet({
-            catalog: fetchResult.activities,
+
+        // Step 1: Run extractors
+        const blueprintMappingResult: BlueprintMappingResult | undefined =
+            body.estimationBlueprint && isBlueprintMappable(body.estimationBlueprint)
+                ? mapBlueprintToActivities(body.estimationBlueprint, fetchResult.activities, techCat)
+                : undefined;
+
+        const impactMapResult = body.impactMap && (body.impactMap as any).impacts?.length > 0
+            ? extractImpactMapSignals(body.impactMap as any, fetchResult.activities, techCat)
+            : undefined;
+
+        const understandingResult = body.requirementUnderstanding
+            ? extractUnderstandingSignals(body.requirementUnderstanding as any, fetchResult.activities, techCat)
+            : undefined;
+
+        // Step 2: Normalize to SignalSets
+        const signalSets: SignalSet[] = [];
+        if (blueprintMappingResult) signalSets.push(blueprintToNormalizedSignals(blueprintMappingResult));
+        if (impactMapResult) signalSets.push(impactMapToNormalizedSignals(impactMapResult));
+        if (understandingResult) signalSets.push(understandingToNormalizedSignals(understandingResult));
+        signalSets.push(keywordToNormalizedSignals({
+            activities: fetchResult.activities,
             description: sanitizedDescription,
-            techCategory: techCat,
             answers: body.answers,
+            topN: 30,
             blueprint: body.estimationBlueprint,
-            impactMap: body.impactMap as any,
-            understanding: body.requirementUnderstanding as any,
             activityBiases: mergedRules.activityBiases,
-            topN: 20,
+        }));
+
+        // Step 3: Synthesize candidates
+        const candidateResult: SynthesizedCandidateSet = synthesizeCandidates({
+            signalSets,
+            catalog: fetchResult.activities,
+            techCategory: techCat,
+            config: { maxCandidates: 20 },
         });
 
         const rankedActivities: Activity[] = candidateResult.candidates.map(c => c.activity);
-        const blueprintMappingResult: BlueprintMappingResult | undefined = candidateResult.blueprintResult;
 
-        // Metrics from candidate builder
-        metrics.candidateSource = candidateResult.strategy;
-        if (candidateResult.blueprintResult) {
+        // Metrics from synthesizer
+        metrics.candidateSource = candidateResult.strategy as any;
+        if (blueprintMappingResult) {
             metrics.blueprintCoverage = {
-                componentCoveragePercent: candidateResult.blueprintResult.coverage.componentCoveragePercent,
-                fromBlueprint: candidateResult.blueprintResult.coverage.fromBlueprint,
-                fromFallback: candidateResult.blueprintResult.coverage.fromFallback,
-                missingGroups: candidateResult.blueprintResult.coverage.missingGroups,
+                componentCoveragePercent: blueprintMappingResult.coverage.componentCoveragePercent,
+                fromBlueprint: blueprintMappingResult.coverage.fromBlueprint,
+                fromFallback: blueprintMappingResult.coverage.fromFallback,
+                missingGroups: blueprintMappingResult.coverage.missingGroups,
             };
-            if (candidateResult.blueprintResult.warnings.length > 0) {
-                metrics.blueprintWarnings = candidateResult.blueprintResult.warnings;
+            if (blueprintMappingResult.warnings.length > 0) {
+                metrics.blueprintWarnings = blueprintMappingResult.warnings;
             }
         }
-        console.log(`[ai-estimate-from-interview] CandidateBuilder: strategy=${candidateResult.strategy} | blueprint=${candidateResult.diagnostics.fromBlueprint} | impactMap=${candidateResult.diagnostics.fromImpactMap} | understanding=${candidateResult.diagnostics.fromUnderstanding} | keyword=${candidateResult.diagnostics.fromKeyword} | overlaps=${candidateResult.diagnostics.mergedOverlaps}`);
+        console.log(`[ai-estimate-from-interview] CandidateSynthesizer: strategy=${candidateResult.strategy} | blueprint=${candidateResult.diagnostics.fromBlueprint} | impactMap=${candidateResult.diagnostics.fromImpactMap} | understanding=${candidateResult.diagnostics.fromUnderstanding} | keyword=${candidateResult.diagnostics.fromKeyword} | overlaps=${candidateResult.diagnostics.mergedOverlaps}`);
 
         metrics.activitiesAfterRanking = rankedActivities.length;
 
@@ -732,228 +772,114 @@ export const handler = createAIHandler<RequestBody>({
             }
         }
 
-        // ─── Legacy Linear Pipeline ────────────────────────────────────
-        console.log('[ai-estimate-from-interview] Using LINEAR pipeline (legacy)');
-        metrics.pipelineMode = 'legacy';
+        // ─── Deterministic Pipeline (replaces Legacy Linear Pipeline) ──
+        console.log('[ai-estimate-from-interview] Using DETERMINISTIC pipeline');
+        metrics.pipelineMode = 'legacy'; // keep backward-compatible metric label
         const legacyStart = Date.now();
 
-        // Get LLM provider
-        const provider = getDefaultProvider();
-
-        // Use vector search for more relevant activities (Phase 2)
-        // NOTE: When blueprint mapper was used, vector search only SUPPLEMENTS
-        // (does not replace) the structurally-derived candidate set.
-        let activitiesToUse: Activity[] = rankedActivities;
-        let searchMethod = blueprintMappingResult ? 'blueprint-mapped' : (fetchResult.source === 'server' ? 'server-ranked' : 'client-ranked');
-
-        const vectorSearchStart = Date.now();
-        if (isVectorSearchEnabled() && body.techCategory && !blueprintMappingResult) {
-            // Only use vector search as primary when NO blueprint mapping was done.
-            // When blueprint mapping is active, the structural mapping is more reliable.
-            try {
-                console.log('[ai-estimate-from-interview] Using vector search for activity retrieval');
-                const techCategories = [body.techCategory, 'MULTI'];
-                const searchResult = await searchSimilarActivities(
-                    sanitizedDescription,
-                    techCategories,
-                    20,
-                    0.45
-                );
-
-                if (searchResult.results.length > 0) {
-                    activitiesToUse = searchResult.results.map(r => ({
-                        code: r.code,
-                        name: r.name,
-                        description: r.description || '',
-                        base_hours: r.base_hours,
-                        group: r.group,
-                        tech_category: r.tech_category,
-                    }));
-                    searchMethod = searchResult.metrics.usedFallback ? 'vector-fallback' : 'vector';
-                    metrics.candidateSource = 'vector-search';
-                    console.log(`[ai-estimate-from-interview] Vector search returned ${activitiesToUse.length} activities in ${searchResult.metrics.latencyMs}ms`);
-                }
-            } catch (err) {
-                console.warn('[ai-estimate-from-interview] Vector search failed, using ranked activities:', err);
-            }
-        }
-        metrics.vectorSearchMs = Date.now() - vectorSearchStart;
-
-        // Retrieve RAG context (Phase 4: Historical Learning)
-        const ragStart = Date.now();
-        let ragContext = { hasExamples: false, promptFragment: '', searchLatencyMs: 0 } as any;
-        if (isVectorSearchEnabled()) {
-            try {
-                ragContext = await retrieveRAGContext(sanitizedDescription);
-                if (ragContext.hasExamples) {
-                    console.log(`[ai-estimate-from-interview] RAG: found ${ragContext.examples?.length || 0} historical examples`);
-                }
-            } catch (err) {
-                console.warn('[ai-estimate-from-interview] RAG retrieval failed:', err);
-            }
-        }
-        metrics.ragRetrievalMs = Date.now() - ragStart;
-
-        // Format data for prompt
-        const activitiesCatalog = formatActivitiesCatalog(activitiesToUse);
-        const interviewAnswers = formatInterviewAnswers(body.answers);
-        const validActivityCodes = activitiesToUse.map(a => a.code);
-
-        // Build provenance hint for the LLM when blueprint mapping was used
-        let provenanceHint = '';
-        if (blueprintMappingResult) {
-            const bpActs = blueprintMappingResult.blueprintActivities;
-            if (bpActs.length > 0) {
-                const provenanceLines = bpActs.map(m =>
-                    `- ${m.activity.code}: derivato da ${m.sourceLabel} (${m.provenance}, confidenza ${Math.round(m.confidence * 100)}%)`
-                );
-                provenanceHint = `\n\nATTIVITÀ PRE-DERIVATE DAL BLUEPRINT (alta priorità — queste attività sono state derivate strutturalmente dal blueprint tecnico confermato dall'utente. Valuta la loro inclusione con priorità rispetto ad attività non derivate):\n${provenanceLines.join('\n')}\n`;
-            }
-        }
-
-        console.log('[ai-estimate-from-interview] Processing:', {
-            descriptionLength: sanitizedDescription.length,
-            answersCount: Object.keys(body.answers).length,
-            activitiesCount: activitiesToUse.length,
-            techCategory: body.techCategory,
-            hasProjectContext: !!body.projectContext,
-            hasRequirementUnderstanding: !!body.requirementUnderstanding,
-            hasImpactMap: !!body.impactMap,
-            hasBlueprint: !!body.estimationBlueprint,
-            candidateSource: metrics.candidateSource,
-            blueprintCoverage: metrics.blueprintCoverage,
-            searchMethod,
-            ragExamples: ragContext.examples?.length || 0,
-            validCodes: validActivityCodes.slice(0, 5).join(', ') + (validActivityCodes.length > 5 ? '...' : ''),
+        // ── Phase D1: Run DecisionEngine ────────────────────────────────
+        const techCatForEngine = techCat || body.techCategory || 'POWER_PLATFORM';
+        const decisionResult = runDecisionEngine({
+            candidates: candidateResult.candidates,
+            answers: body.answers,
+            techCategory: techCatForEngine,
+            catalog: fetchResult.activities,
+            description: sanitizedDescription,
+            activityBiases: mergedRules.activityBiases,
         });
 
-        // Build response schema with valid activity codes enum
-        // This is CRITICAL to prevent AI from inventing codes
-        const responseSchema = buildResponseSchema(validActivityCodes);
-
-        // Build project context section if available
-        let projectContextSection = '';
-        if (body.projectContext) {
-            projectContextSection = formatProjectContextBlock(body.projectContext) +
-                '\n\nNOTA: Usa il contesto del progetto per capire meglio lo scope e le convenzioni già stabilite.\n';
-        }
-
-        // Build user prompt with optional RAG context
-        // Include pre-estimate anchor if provided by Round 0 planner
-        let preEstimateSection = '';
-        if (body.preEstimate) {
-            preEstimateSection = `
-PRE-STIMA (dal planner, Round 0 — usala come ancora, puoi discostartene se le risposte lo giustificano):
-- Range: ${body.preEstimate.minHours}h – ${body.preEstimate.maxHours}h
-- Confidence iniziale: ${body.preEstimate.confidence}
-`;
-        }
-
-        let userPrompt = `REQUISITO:
-${sanitizedDescription}
-${projectContextSection}${preEstimateSection}${formatUnderstandingBlock(body.requirementUnderstanding)}${formatImpactMapBlock(body.impactMap)}${formatBlueprintBlock(body.estimationBlueprint)}${formatProjectTechnicalBlueprintBlock(body.projectTechnicalBlueprint)}${provenanceHint}
-RISPOSTE INTERVIEW TECNICA:
-${interviewAnswers}
-
-CATALOGO ATTIVITÀ DISPONIBILI (usa SOLO questi codici):
-${activitiesCatalog}
-
-IMPORTANTE: Puoi usare ESCLUSIVAMENTE i codici attività elencati sopra. Non inventare nuovi codici.
-
-Analizza le risposte e seleziona le attività necessarie per implementare questo requisito.
-Collega ogni attività alla risposta che l'ha motivata.`;
-
-        // Add RAG examples if available
-        if (ragContext.hasExamples && ragContext.promptFragment) {
-            userPrompt = userPrompt + '\n' + ragContext.promptFragment;
-        }
-
-        // Build system prompt with optional RAG enhancement
-        let systemPrompt = await getPrompt('estimate_from_interview') ?? SYSTEM_PROMPT;
-        if (ragContext.hasExamples) {
-            systemPrompt = systemPrompt + '\n' + getRAGSystemPromptAddition();
-        }
-
-        console.log(`[ai-estimate-from-interview] Using model: ${AI_MODEL}`);
-
-        // Estimate prompt size for metrics (rough: 4 chars ≈ 1 token)
-        metrics.promptTokensEstimate = Math.round((systemPrompt.length + userPrompt.length) / 4);
-
-        // Call LLM with dynamic schema containing enum constraint
-        // maxTokens: 4096 is sufficient for the JSON output (~2-3k tokens).
-        // For reasoning models (gpt-5/o-series), keep higher to allow internal reasoning.
-        const isReasoningModel = AI_MODEL.startsWith('gpt-5') || AI_MODEL.startsWith('o1') || AI_MODEL.startsWith('o3') || AI_MODEL.startsWith('o4');
-        const maxTokens = isReasoningModel ? 8192 : 4096;
-
-        const draftStart = Date.now();
-        const responseContent = await provider.generateContent({
-            model: AI_MODEL,
-            options: { timeout: 55000 },
-            maxTokens,
-            systemPrompt: systemPrompt,
-            userPrompt: userPrompt,
-            responseFormat: responseSchema as any,
+        console.log('[ai-estimate-from-interview] DecisionEngine result:', {
+            selected: decisionResult.selectedCandidates.length,
+            excluded: decisionResult.excludedCandidates.length,
+            mandatory: decisionResult.mandatoryInclusions.length,
+            variants: decisionResult.variantChoices.length,
+            gaps: decisionResult.coverageReport.gapLayers,
+            confidence: decisionResult.confidence,
         });
-        metrics.draftDurationMs = Date.now() - draftStart;
 
-        // Parse response
-        if (!responseContent) {
-            throw new Error('Empty response from LLM');
+        // ── Phase D2: AI Explanation (post-decision commentary) ─────────
+        const coverageSummaryLines = Object.entries(decisionResult.coverageReport.byLayer)
+            .map(([layer, cov]) => `${layer}: ${cov.covered ? `✓ (${cov.activityCount} attività, top score ${cov.topScore.toFixed(2)})` : '✗ non coperto'}`)
+            .join('\n');
+
+        const explanationPromptInput: DecisionExplanationPromptInput = {
+            description: sanitizedDescription,
+            answers: body.answers,
+            selectedActivities: decisionResult.selectedCandidates.map(c => ({
+                code: c.activity.code,
+                name: c.activity.name,
+                score: c.score,
+                sources: c.sources,
+            })),
+            coverageSummary: coverageSummaryLines,
+            mandatoryInclusions: decisionResult.mandatoryInclusions.map(m => ({
+                code: m.code,
+                matchedKeyword: m.matchedKeyword,
+            })),
+            techCategory: techCatForEngine,
+        };
+
+        let explanation: DecisionExplanation;
+        try {
+            explanation = await explainDecision({ promptInput: explanationPromptInput });
+        } catch (explainError: any) {
+            console.warn('[ai-estimate-from-interview] explainDecision failed, using fallback:', explainError?.message);
+            explanation = {
+                reasoning: 'Selezione attività basata su analisi strutturale del requisito e delle risposte.',
+                activityExplanations: decisionResult.selectedCandidates.map(c => ({
+                    code: c.activity.code,
+                    explanation: `Selezionato con score ${c.score.toFixed(2)} da ${c.primarySource}`,
+                })),
+                warnings: [],
+                gaps: decisionResult.coverageReport.gapLayers.map(l => `Layer "${l}" non coperto`),
+                suggestedDrivers: [],
+                suggestedRisks: [],
+            };
         }
 
-        const result = JSON.parse(responseContent);
+        // ── Build activities array (backward-compatible shape) ──────────
+        const selectedActivities = decisionResult.selectedCandidates.map(c => {
+            const actExplanation = explanation.activityExplanations.find(e => e.code === c.activity.code);
+            return {
+                code: c.activity.code,
+                name: c.activity.name,
+                baseHours: c.activity.base_hours,
+                reason: actExplanation?.explanation || `Score ${c.score.toFixed(2)} (${c.primarySource})`,
+                fromAnswer: '',
+                fromQuestionId: '',
+            };
+        });
 
-        // Validate activities are from catalog
-        const validatedActivities = result.activities.filter((a: any) =>
-            validActivityCodes.includes(a.code)
+        const totalBaseDays = selectedActivities.reduce(
+            (sum, a) => sum + (a.baseHours / 8),
+            0,
         );
 
-        // Recalculate total if activities were filtered
-        const totalBaseDays = validatedActivities.reduce(
-            (sum: number, a: any) => sum + (a.baseHours / 8),
-            0
-        );
+        // ── Provenance re-attachment ────────────────────────────────────
+        const enrichedActivities = attachProvenance(selectedActivities, provenanceMap);
+        console.log('[ai-estimate-from-interview] Deterministic provenance breakdown:', provenanceBreakdown(enrichedActivities));
 
-        // Adjust confidence if activities were filtered out
-        let confidenceScore = result.confidenceScore;
-        if (validatedActivities.length < result.activities.length) {
-            console.warn('[ai-estimate-from-interview] Filtered out invalid activities:',
-                result.activities.length - validatedActivities.length
-            );
-            confidenceScore = Math.max(0.3, confidenceScore - 0.1);
-        }
-
-        // Log success
-        console.log('[ai-estimate-from-interview] Generated estimate:', {
-            generatedTitle: result.generatedTitle,
-            activitiesCount: validatedActivities.length,
-            totalBaseDays: totalBaseDays.toFixed(2),
-            confidenceScore: confidenceScore.toFixed(2),
-            suggestedDriversCount: result.suggestedDrivers?.length || 0,
-            suggestedRisksCount: result.suggestedRisks?.length || 0,
-        });
-
-        metrics.totalDurationMs = Date.now() - pipelineStart;
-
-        // ─── Provenance re-attachment (legacy pipeline) ────────────────
-        const enrichedLegacyActivities = attachProvenance(validatedActivities, provenanceMap);
-
-        console.log('[ai-estimate-from-interview] Legacy provenance breakdown:', provenanceBreakdown(enrichedLegacyActivities));
-
-        // ─── Merge project-context + blueprint rule suggestions ───────
+        // ── Merge project-context + blueprint rule suggestions ──────────
         const mergedLegacyDrivers = mergeDriverSuggestions(
-            result.suggestedDrivers || [],
+            explanation.suggestedDrivers.map(d => ({
+                code: d.name,
+                suggestedValue: 'medium',
+                reason: d.rationale,
+                fromQuestionId: null,
+            })),
             mergedRules.suggestedDrivers,
         );
         const mergedLegacyRisks = mergeRiskSuggestions(
-            result.suggestedRisks || [],
+            explanation.suggestedRisks.map(r => r.name),
             mergedRules.suggestedRisks,
         );
 
+        metrics.draftDurationMs = Date.now() - legacyStart;
+        metrics.totalDurationMs = Date.now() - pipelineStart;
+
         console.log('[ai-estimate-from-interview] METRICS:', JSON.stringify(metrics));
 
-        // Return successful response (createAIHandler wraps with statusCode/headers)
-        // Include candidate provenance from builder for end-to-end persistence
+        // ── Build candidate provenance (same shape as before) ───────────
         const candidateProvenance = candidateResult.candidates.map(c => ({
             code: c.activity.code,
             score: c.score,
@@ -966,15 +892,20 @@ Collega ogni attività alla risposta che l'ha motivata.`;
 
         return {
             success: true,
-            generatedTitle: result.generatedTitle || '',
-            activities: enrichedLegacyActivities,
+            generatedTitle: '',
+            activities: enrichedActivities,
             totalBaseDays: Number(totalBaseDays.toFixed(2)),
-            reasoning: result.reasoning,
-            confidenceScore: Number(confidenceScore.toFixed(2)),
+            reasoning: explanation.reasoning,
+            confidenceScore: Number(decisionResult.confidence.toFixed(2)),
             suggestedDrivers: mergedLegacyDrivers,
             suggestedRisks: mergedLegacyRisks.map(r => r.code),
             candidateProvenance,
             projectContextNotes: mergedRules.notes.length > 0 ? mergedRules.notes : undefined,
+            // New deterministic pipeline fields (backward-compatible additions)
+            decisionTrace: decisionResult.decisionTrace,
+            coverageReport: decisionResult.coverageReport,
+            explanationWarnings: explanation.warnings.length > 0 ? explanation.warnings : undefined,
+            explanationGaps: explanation.gaps.length > 0 ? explanation.gaps : undefined,
             metrics,
         };
     }

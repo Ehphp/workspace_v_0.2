@@ -6,9 +6,15 @@
  * chain:  Analysis → ImpactMap → CandidateSet → Decision → Estimation → Snapshot
  */
 
+import type { ProvenanceSource } from '../../netlify/functions/lib/domain/pipeline/pipeline-domain';
+
 // ─── Source enum for candidate activities ────────────────────────
 
-export type CandidateSource = 'blueprint' | 'ai' | 'rule' | 'manual';
+/**
+ * Extends ProvenanceSource with legacy source values ('ai', 'rule')
+ * that may exist in stored data. New writes should use ProvenanceSource values only.
+ */
+export type CandidateSource = ProvenanceSource | 'ai' | 'rule';
 
 // ─── Candidate Activity (single item inside candidate_sets.candidates) ──
 
@@ -26,7 +32,10 @@ export interface CandidateActivity {
 export interface RequirementAnalysisRow {
     id: string;
     requirement_id: string;
-    understanding: Record<string, unknown>;
+    /** @deprecated Use requirement_understanding_id FK to read from artifact table */
+    understanding: Record<string, unknown> | null;
+    /** FK to canonical artifact table (set on new writes) */
+    requirement_understanding_id: string | null;
     input_description: string;
     input_tech_category: string | null;
     confidence: number | null;
@@ -36,7 +45,10 @@ export interface RequirementAnalysisRow {
 
 export interface CreateRequirementAnalysisInput {
     requirement_id: string;
-    understanding: Record<string, unknown>;
+    /** @deprecated Pass requirement_understanding_id instead of inline JSONB */
+    understanding?: Record<string, unknown> | null;
+    /** FK to canonical requirement_understanding artifact */
+    requirement_understanding_id?: string | null;
     input_description: string;
     input_tech_category?: string | null;
     confidence?: number | null;
@@ -48,7 +60,10 @@ export interface CreateRequirementAnalysisInput {
 export interface ImpactMapDomainRow {
     id: string;
     analysis_id: string;
-    impact_data: Record<string, unknown>;
+    /** @deprecated Use artifact_impact_map_id FK to read from artifact table */
+    impact_data: Record<string, unknown> | null;
+    /** FK to canonical impact_map artifact table (set on new writes) */
+    artifact_impact_map_id: string | null;
     confidence: number | null;
     created_by: string;
     created_at: string;
@@ -56,7 +71,10 @@ export interface ImpactMapDomainRow {
 
 export interface CreateImpactMapInput {
     analysis_id: string;
-    impact_data: Record<string, unknown>;
+    /** @deprecated Pass artifact_impact_map_id instead of inline JSONB */
+    impact_data?: Record<string, unknown> | null;
+    /** FK to canonical impact_map artifact */
+    artifact_impact_map_id?: string | null;
     confidence?: number | null;
     created_by: string;
 }

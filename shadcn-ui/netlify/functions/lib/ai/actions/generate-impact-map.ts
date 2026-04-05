@@ -27,6 +27,7 @@ import {
 } from '../ai-cache';
 import type { CacheConfig } from '../ai-cache';
 import { formatProjectContextBlock } from '../prompt-builder';
+import type { RequirementUnderstanding } from '../../../../../src/types/requirement-understanding';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cache profile — 12 h (same TTL as understanding)
@@ -59,7 +60,7 @@ export interface GenerateImpactMapRequest {
         methodology?: string;
     };
     /** Confirmed Requirement Understanding from previous step */
-    requirementUnderstanding?: Record<string, unknown>;
+    requirementUnderstanding?: RequirementUnderstanding | Record<string, unknown>;
     /** Project Technical Blueprint — architectural baseline from project creation */
     projectTechnicalBlueprint?: Record<string, unknown>;
     /** Skip cache for testing */
@@ -113,7 +114,7 @@ const LLMOutputSchema = z.object({
  *
  * Returns empty string if understanding is absent or malformed.
  */
-function formatUnderstandingBlock(ru: Record<string, unknown> | undefined): string {
+function formatUnderstandingBlock(ru: RequirementUnderstanding | Record<string, unknown> | undefined): string {
     if (!ru) return '';
 
     try {

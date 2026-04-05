@@ -27,6 +27,8 @@ import {
     findBestMatch,
     buildCatalogIndexes,
 } from './blueprint-activity-mapper';
+import type { PipelineLayer } from './domain/pipeline/pipeline-domain';
+import type { NormalizedSignal, SignalSet } from './domain/pipeline/signal-types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -279,5 +281,68 @@ export function extractImpactMapSignals(
         unmappedLayers: [...new Set(unmappedLayers)],
         impactsProcessed: impactMap.impacts.length,
         signalsProduced: allSignals.length,
+    };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Signal Adapter — converts ImpactMapExtractionResult → SignalSet
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Map ImpactLayer string to PipelineLayer (filtering out ai_pipeline) */
+function toPipelineLayer(layer: string): PipelineLayer | undefined {
+    const valid: PipelineLayer[] = ['frontend', 'logic', 'data', 'integration', 'automation', 'configuration'];
+    return valid.includes(layer as PipelineLayer) ? (layer as PipelineLayer) : undefined;
+}
+
+/**
+ * Convert an ImpactMapExtractionResult into a canonical SignalSet.
+ *
+ * Each ImpactMapSignal becomes a NormalizedSignal with:
+ *   - score = original score (already 0–1)
+ *   - kind = primary source from signal.sources[0] (impact-map-layer or impact-map-action)
+ *   - source = 'impact-map'
+ *   - layer = extracted from provenance chain
+ */
+export function impactMapToNormalizedSignals(
+    result: ImpactMapExtractionResult,
+): SignalSet {
+    const signals: NormalizedSignal[] = [];
+
+    for (const sig of result.signals) {
+        // Extract layer from provenance (format: "impact-map:frontend")
+        const layerProv = sig.provenance.find(p => p.startsWith('impact-map:'));
+        const rawLayer = layerProv?.split(':')[1];
+        const layer = rawLayer ? toPipelineLayer(rawLayer) : undefined;
+
+        // Map source to canonical SignalKind
+        const kind = sig.sources.includes('impact-map-action')
+            ? 'impact-map-action' as const
+            : 'impact-map-layer' as const;
+
+        signals.push({
+            activityCode: sig.activityCode,
+            score: sig.score,
+            kind,
+            source: 'impact-map',
+            confidence: sig.contributions.impactConfidence,
+            contributions: {
+                layerMatch: sig.contributions.layerMatch,
+                actionWeight: sig.contributions.actionWeight,
+                impactConfidence: sig.contributions.impactConfidence,
+                componentDensity: sig.contributions.componentDensity,
+            },
+            provenance: sig.provenance,
+            layer,
+        });
+    }
+
+    return {
+        signals,
+        source: 'impact-map',
+        diagnostics: {
+            processed: result.impactsProcessed,
+            produced: signals.length,
+            unmapped: result.unmappedLayers,
+        },
     };
 }

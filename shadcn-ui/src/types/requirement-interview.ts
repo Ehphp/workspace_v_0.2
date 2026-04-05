@@ -299,6 +299,26 @@ export interface EstimationFromInterviewResponse {
     candidateProvenance?: CandidateProvenanceEntry[];
     /** Error message if success is false */
     error?: string;
+    /** Decision trace from deterministic DecisionEngine (when available) */
+    decisionTrace?: Array<{
+        step: string;
+        action: string;
+        code: string;
+        reason: string;
+        score?: number;
+        layer?: string;
+    }>;
+    /** Coverage report from DecisionEngine (when available) */
+    coverageReport?: {
+        byLayer: Record<string, { covered: boolean; activityCount: number; topScore: number; topCode: string }>;
+        totalSelected: number;
+        totalCandidates: number;
+        gapLayers: string[];
+    };
+    /** Warnings from AI explanation (when available) */
+    explanationWarnings?: string[];
+    /** Functional gaps from AI explanation (when available) */
+    explanationGaps?: string[];
     /** Performance metrics for pipeline instrumentation */
     metrics?: {
         totalMs: number;
@@ -312,8 +332,8 @@ export interface EstimationFromInterviewResponse {
         fallbackUsed?: boolean;
         activitiesRanked?: number;
         activitiesSent?: number;
-        /** How the candidate set was generated */
-        candidateSource?: 'blueprint-mapper' | 'keyword-ranking' | 'vector-search';
+        /** How the candidate set was generated. @deprecated Use SignalKind from pipeline-domain.ts */
+        candidateSource?: 'blueprint-mapper' | 'keyword-ranking' | 'vector-search' | string;
         /** Coverage report from blueprint mapper (if used) */
         blueprintCoverage?: {
             componentCoveragePercent: number;
@@ -435,6 +455,27 @@ export const EstimationFromInterviewResponseSchema = z.object({
     })).optional(),
     suggestedRisks: z.array(z.string()).optional(),
     error: z.string().optional(),
+    decisionTrace: z.array(z.object({
+        step: z.string(),
+        action: z.string(),
+        code: z.string(),
+        reason: z.string(),
+        score: z.number().optional(),
+        layer: z.string().optional(),
+    })).optional(),
+    coverageReport: z.object({
+        byLayer: z.record(z.object({
+            covered: z.boolean(),
+            activityCount: z.number(),
+            topScore: z.number(),
+            topCode: z.string(),
+        })),
+        totalSelected: z.number(),
+        totalCandidates: z.number(),
+        gapLayers: z.array(z.string()),
+    }).optional(),
+    explanationWarnings: z.array(z.string()).optional(),
+    explanationGaps: z.array(z.string()).optional(),
 });
 
 // ============================================================================

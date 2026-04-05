@@ -20,6 +20,7 @@ import { selectTopActivities } from './activities';
 import {
     mapBlueprintToActivities,
     isBlueprintMappable,
+    LAYER_TECH_PATTERNS,
     type BlueprintMappingResult,
     type MappedActivity,
     type ActivityProvenance,
@@ -37,14 +38,18 @@ import {
 import type { ImpactMap } from '../../../src/types/impact-map';
 import type { RequirementUnderstanding } from '../../../src/types/requirement-understanding';
 import type { ActivityBiases } from './domain/estimation/project-context-rules';
+import type { SignalKind } from './domain/pipeline/pipeline-domain';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Canonical source type — extends existing ActivityProvenance with structured signals */
+/**
+ * @internal Signal source type used by the candidate builder.
+ * Production code uses SignalKind from pipeline-domain.ts.
+ */
 export type CandidateSource =
-    | ActivityProvenance
+    | SignalKind
     | 'impact-map'
     | 'impact-map-exclusive'
     | 'understanding';
@@ -103,6 +108,12 @@ export interface CandidateSetResult {
         mergedOverlaps: number;
         finalCount: number;
     };
+    /** Layer coverage breakdown (which layers have candidates) */
+    layerCoverage?: Record<string, { count: number; topScore: number }>;
+    /** Intervention type coverage */
+    interventionCoverage?: Record<string, number>;
+    /** Detected conflicts between candidates */
+    conflicts?: Array<{ code1: string; code2: string; reason: string }>;
 }
 
 /** Input for the candidate builder */
@@ -383,8 +394,9 @@ function selectCandidates(
 /**
  * Build a scored candidate set from all available structured artifacts.
  *
- * This is the CANONICAL entry point for candidate generation.
- * It replaces direct calls to selectTopActivities + mapBlueprintToActivities.
+ * @internal Test-only utility. Production endpoints use `synthesizeCandidates()`
+ * from `domain/pipeline/candidate-synthesizer.ts` which implements the canonical
+ * 3-step pipeline: extractors → signal adapters → synthesis.
  *
  * Every returned candidate has mandatory: score, sources, contributions, provenance.
  * If a candidate can't be traced, it doesn't enter the set.
@@ -495,6 +507,20 @@ export function buildCandidateSet(input: CandidateBuilderInput): CandidateSetRes
         console.log(`[candidate-builder] Unmatched Understanding perimeter terms: ${understandingResult.unmatchedTerms.join(', ')}`);
     }
 
+    // Compute layer coverage from candidates
+    const techPatterns = LAYER_TECH_PATTERNS[techCategory] || LAYER_TECH_PATTERNS['POWER_PLATFORM'];
+    const layerCoverage: Record<string, { count: number; topScore: number }> = {};
+    for (const layer of Object.keys(techPatterns)) {
+        const prefixes = techPatterns[layer].map((p: { prefix: string }) => p.prefix);
+        const matched = candidates.filter(c =>
+            prefixes.some((prefix: string) => c.activity.code.startsWith(prefix)),
+        );
+        layerCoverage[layer] = {
+            count: matched.length,
+            topScore: matched.length > 0 ? Math.max(...matched.map(m => m.score)) : 0,
+        };
+    }
+
     return {
         candidates,
         blueprintResult,
@@ -510,6 +536,7 @@ export function buildCandidateSet(input: CandidateBuilderInput): CandidateSetRes
             mergedOverlaps,
             finalCount: candidates.length,
         },
+        layerCoverage,
     };
 }
 
@@ -538,9 +565,9 @@ export function toDomainCandidates(
             activity_code: c.activity.code,
             source: c.primarySource === 'keyword-fallback' ? 'ai' as const
                 : c.primarySource === 'impact-map' || c.primarySource === 'impact-map-exclusive' ? 'rule' as const
-                : c.primarySource === 'understanding' ? 'rule' as const
-                : c.primarySource.startsWith('blueprint') || c.primarySource === 'multi-crosscutting' ? 'blueprint' as const
-                : 'ai' as const,
+                    : c.primarySource === 'understanding' ? 'rule' as const
+                        : c.primarySource.startsWith('blueprint') || c.primarySource === 'multi-crosscutting' ? 'blueprint' as const
+                            : 'ai' as const,
             score: Math.round(c.score * 10), // scale to 0–100 range
             confidence: c.confidence,
             reason: JSON.stringify({

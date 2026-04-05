@@ -35,6 +35,8 @@ import {
     buildCatalogIndexes,
     type PatternEntry,
 } from './blueprint-activity-mapper';
+import type { PipelineLayer } from './domain/pipeline/pipeline-domain';
+import type { NormalizedSignal, SignalSet } from './domain/pipeline/signal-types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -379,4 +381,66 @@ export function extractUnderstandingSignals(
     };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Signal Adapter — converts UnderstandingExtractionResult → SignalSet
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Map ImpactLayer string to PipelineLayer (filtering out ai_pipeline) */
+function toPipelineLayer(layer: string): PipelineLayer | undefined {
+    const valid: PipelineLayer[] = ['frontend', 'logic', 'data', 'integration', 'automation', 'configuration'];
+    return valid.includes(layer as PipelineLayer) ? (layer as PipelineLayer) : undefined;
+}
+
+/**
+ * Convert an UnderstandingExtractionResult into a canonical SignalSet.
+ *
+ * Each UnderstandingSignal becomes a NormalizedSignal with:
+ *   - score = original score (already 0–1)
+ *   - kind = mapped from signal.kind (functional-perimeter → understanding-perimeter,
+ *            complexity-variant → understanding-complexity)
+ *   - source = 'understanding'
+ *   - layer = extracted from provenance chain
+ */
+export function understandingToNormalizedSignals(
+    result: UnderstandingExtractionResult,
+): SignalSet {
+    const signals: NormalizedSignal[] = [];
+
+    for (const sig of result.signals) {
+        // Map internal kind to canonical SignalKind
+        const kind = sig.kind === 'complexity-variant'
+            ? 'understanding-complexity' as const
+            : 'understanding-perimeter' as const;
+
+        // Extract layer from provenance (format: "layer:frontend")
+        const layerProv = sig.provenance.find(p => p.startsWith('layer:'));
+        const rawLayer = layerProv?.split(':')[1];
+        const layer = rawLayer ? toPipelineLayer(rawLayer) : undefined;
+
+        signals.push({
+            activityCode: sig.activityCode,
+            score: sig.score,
+            kind,
+            source: 'understanding',
+            confidence: sig.contributions.perimeterMatch || sig.contributions.complexityRouting,
+            contributions: {
+                perimeterMatch: sig.contributions.perimeterMatch,
+                layerCoverage: sig.contributions.layerCoverage,
+                complexityRouting: sig.contributions.complexityRouting,
+            },
+            provenance: sig.provenance,
+            layer,
+        });
+    }
+
+    return {
+        signals,
+        source: 'understanding',
+        diagnostics: {
+            processed: result.perimeterTermsProcessed,
+            produced: signals.length,
+            unmapped: result.unmatchedTerms,
+        },
+    };
+}
 

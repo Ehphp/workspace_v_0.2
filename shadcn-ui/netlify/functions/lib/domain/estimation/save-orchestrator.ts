@@ -47,8 +47,12 @@ export interface DomainSaveInput {
 
     /** Existing understanding artifact (from wizard step) */
     understanding?: Record<string, unknown> | null;
+    /** UUID of the canonical requirement_understanding artifact row */
+    requirementUnderstandingId?: string | null;
     /** Existing impact map artifact (from wizard step) */
     impactMapData?: Record<string, unknown> | null;
+    /** UUID of the canonical impact_map artifact row */
+    artifactImpactMapId?: string | null;
 
     /** Activities selected by user / AI — fully resolved with IDs */
     activities: {
@@ -84,6 +88,11 @@ export interface DomainSaveInput {
      * so that candidate_sets persists full score/sources/contributions.
      */
     enrichedCandidates?: import('../../../../../src/types/domain-model').CandidateActivity[];
+
+    /** Decision confidence from DecisionEngine (0-1) */
+    decisionConfidence?: number;
+    /** Decision trace from DecisionEngine (stored in assumptions JSONB) */
+    decisionTrace?: unknown[];
 }
 
 export interface DomainSaveResult {
@@ -106,10 +115,12 @@ export async function orchestrateDomainSave(
 ): Promise<DomainSaveResult> {
     // 1. Ensure RequirementAnalysis exists
     let analysis = await getLatestAnalysis(input.requirementId);
-    if (!analysis && input.understanding) {
+    if (!analysis && (input.understanding || input.requirementUnderstandingId)) {
         analysis = await createRequirementAnalysis({
             requirement_id: input.requirementId,
-            understanding: input.understanding,
+            // FK-based write: set artifact ID, skip inline JSONB when FK is available
+            requirement_understanding_id: input.requirementUnderstandingId ?? null,
+            understanding: input.requirementUnderstandingId ? null : (input.understanding ?? null),
             input_description: input.description,
             input_tech_category: input.techCategory ?? null,
             confidence: null,
@@ -130,10 +141,12 @@ export async function orchestrateDomainSave(
 
     // 2. Impact map (optional — reuse or create)
     let impactMap = await getLatestImpactMap(analysis.id);
-    if (!impactMap && input.impactMapData) {
+    if (!impactMap && (input.impactMapData || input.artifactImpactMapId)) {
         impactMap = await createImpactMap({
             analysis_id: analysis.id,
-            impact_data: input.impactMapData,
+            // FK-based write: set artifact ID, skip inline JSONB when FK is available
+            artifact_impact_map_id: input.artifactImpactMapId ?? null,
+            impact_data: input.artifactImpactMapId ? null : (input.impactMapData ?? null),
             confidence: null,
             created_by: input.userId,
         });
@@ -153,6 +166,9 @@ export async function orchestrateDomainSave(
 
     // 4. Create EstimationDecision
     const selectedIds = input.activities.map((a) => a.activity_id);
+    const decisionAssumptions = input.decisionTrace
+        ? [...(input.assumptions ?? []), JSON.stringify({ decisionTrace: input.decisionTrace })]
+        : (input.assumptions ?? []);
     const decision = await createEstimationDecision({
         candidate_set_id: candidateSet.id,
         selected_activity_ids: selectedIds,
@@ -163,8 +179,8 @@ export async function orchestrateDomainSave(
         })),
         risk_ids: input.risks.map((r) => r.risk_id),
         warnings: input.warnings ?? [],
-        assumptions: input.assumptions ?? [],
-        decision_confidence: null,
+        assumptions: decisionAssumptions,
+        decision_confidence: input.decisionConfidence ?? null,
         created_by: input.userId,
     });
 

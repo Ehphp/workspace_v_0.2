@@ -119,6 +119,8 @@ export function WizardStepInterview({
                 confidenceScore: result.confidenceScore,
                 aiAnalysis: result.reasoning,
                 candidateProvenance: result.candidateProvenance,
+                decisionTrace: result.decisionTrace,
+                coverageReport: result.coverageReport,
             });
             setPhase('result');
         } else {
@@ -166,6 +168,8 @@ export function WizardStepInterview({
                 confidenceScore: result.confidenceScore,
                 aiAnalysis: result.reasoning, // Save AI reasoning/analysis
                 candidateProvenance: result.candidateProvenance,
+                decisionTrace: result.decisionTrace,
+                coverageReport: result.coverageReport,
             });
 
             setPhase('result');

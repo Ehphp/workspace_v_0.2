@@ -30,9 +30,25 @@ import {
     formatActivitiesSummary,
 } from './lib/activities';
 import {
-    buildCandidateSet,
-    type CandidateSetResult,
-} from './lib/candidate-builder';
+    mapBlueprintToActivities,
+    isBlueprintMappable,
+    blueprintToNormalizedSignals,
+    type BlueprintMappingResult,
+} from './lib/blueprint-activity-mapper';
+import {
+    extractImpactMapSignals,
+    impactMapToNormalizedSignals,
+} from './lib/impact-map-signal-extractor';
+import {
+    extractUnderstandingSignals,
+    understandingToNormalizedSignals,
+} from './lib/understanding-signal-extractor';
+import { keywordToNormalizedSignals } from './lib/domain/pipeline/keyword-signal-adapter';
+import {
+    synthesizeCandidates,
+    type SynthesizedCandidateSet,
+} from './lib/domain/pipeline/candidate-synthesizer';
+import type { SignalSet } from './lib/domain/pipeline/signal-types';
 import { retrieveRAGContext, getRAGSystemPromptAddition } from './lib/ai/rag';
 import { isVectorSearchEnabled } from './lib/ai/vector-search';
 import { formatProjectContextBlock } from './lib/ai/prompt-builder';
@@ -525,21 +541,47 @@ export const handler = createAIHandler<RequestBody>({
             console.log('[ai-requirement-interview] Merged context+blueprint rules:', mergedRules.notes);
         }
 
-        // ─── Candidate generation: CandidateBuilder (multi-signal) ─────
-        const candidateResult: CandidateSetResult = buildCandidateSet({
-            catalog: fetchResult.activities,
+        // ─── Candidate generation: CandidateSynthesizer (multi-signal) ──
+
+        // Step 1: Run extractors
+        const blueprintMappingResult: BlueprintMappingResult | undefined =
+            body.estimationBlueprint && isBlueprintMappable(body.estimationBlueprint)
+                ? mapBlueprintToActivities(body.estimationBlueprint, fetchResult.activities, techCat)
+                : undefined;
+
+        const impactMapResult = body.impactMap && (body.impactMap as any).impacts?.length > 0
+            ? extractImpactMapSignals(body.impactMap as any, fetchResult.activities, techCat)
+            : undefined;
+
+        const understandingResult = body.requirementUnderstanding
+            ? extractUnderstandingSignals(body.requirementUnderstanding as any, fetchResult.activities, techCat)
+            : undefined;
+
+        // Step 2: Normalize to SignalSets
+        const signalSets: SignalSet[] = [];
+        if (blueprintMappingResult) signalSets.push(blueprintToNormalizedSignals(blueprintMappingResult));
+        if (impactMapResult) signalSets.push(impactMapToNormalizedSignals(impactMapResult));
+        if (understandingResult) signalSets.push(understandingToNormalizedSignals(understandingResult));
+        signalSets.push(keywordToNormalizedSignals({
+            activities: fetchResult.activities,
             description: sanitizedDescription,
-            techCategory: techCat,
             answers: undefined, // no answers at interview planner stage
+            topN: 30,
             blueprint: body.estimationBlueprint,
-            impactMap: body.impactMap as any,
-            understanding: body.requirementUnderstanding as any,
             activityBiases: mergedRules.activityBiases,
-            topN: 20,
+        }));
+
+        // Step 3: Synthesize candidates
+        const candidateResult: SynthesizedCandidateSet = synthesizeCandidates({
+            signalSets,
+            catalog: fetchResult.activities,
+            techCategory: techCat,
+            config: { maxCandidates: 20 },
         });
+
         const rankedActivities = candidateResult.candidates.map(c => c.activity);
-        if (candidateResult.blueprintResult?.warnings && candidateResult.blueprintResult.warnings.length > 0) {
-            console.log(`[ai-requirement-interview] Blueprint warnings: ${candidateResult.blueprintResult.warnings.map(w => `[${w.code}] ${w.message}`).join('; ')}`);
+        if (blueprintMappingResult?.warnings && blueprintMappingResult.warnings.length > 0) {
+            console.log(`[ai-requirement-interview] Blueprint warnings: ${blueprintMappingResult.warnings.map(w => `[${w.code}] ${w.message}`).join('; ')}`);
         }
 
         const activitiesSummary = rankedActivities.length > 0

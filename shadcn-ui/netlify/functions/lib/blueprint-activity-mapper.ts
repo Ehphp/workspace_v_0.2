@@ -18,20 +18,18 @@
  */
 
 import type { Activity } from './activities';
+import type { SignalKind, PipelineLayer } from './domain/pipeline/pipeline-domain';
+import type { NormalizedSignal, SignalSet } from './domain/pipeline/signal-types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Why an activity was included in the candidate set */
-export type ActivityProvenance =
-    | 'blueprint-component'
-    | 'blueprint-integration'
-    | 'blueprint-data'
-    | 'blueprint-testing'
-    | 'keyword-fallback'
-    | 'multi-crosscutting'
-    | 'agent-discovered';
+/**
+ * Why an activity was included in the candidate set.
+ * @deprecated Use SignalKind from pipeline-domain.ts
+ */
+export type ActivityProvenance = SignalKind;
 
 /** An activity with provenance and scoring metadata */
 export interface MappedActivity {
@@ -766,4 +764,86 @@ export function isBlueprintMappable(blueprint: Record<string, unknown> | undefin
     return components.some(
         (c: any) => c && typeof c === 'object' && c.layer && c.interventionType
     );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Signal Adapter — converts BlueprintMappingResult → NormalizedSignal[]
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Provenance string → canonical SignalKind mapping */
+const PROVENANCE_TO_KIND: Record<string, SignalKind> = {
+    'blueprint-component': 'blueprint-component',
+    'blueprint-integration': 'blueprint-integration',
+    'blueprint-data': 'blueprint-data',
+    'blueprint-testing': 'blueprint-testing',
+    'keyword-fallback': 'keyword-fallback',
+    'multi-crosscutting': 'multi-crosscutting',
+    'agent-discovered': 'agent-discovered',
+};
+
+/**
+ * Convert a BlueprintMappingResult into canonical NormalizedSignal[].
+ *
+ * Each MappedActivity becomes a NormalizedSignal with:
+ *   - score = confidence (0–1)
+ *   - kind = mapped from provenance
+ *   - source = 'blueprint'
+ *   - layer = inferred from activity code prefix via LAYER_TECH_PATTERNS
+ */
+export function blueprintToNormalizedSignals(
+    result: BlueprintMappingResult,
+): SignalSet {
+    const signals: NormalizedSignal[] = [];
+    const unmapped: string[] = [];
+
+    for (const mapped of result.allActivities) {
+        const kind = PROVENANCE_TO_KIND[mapped.provenance] ?? 'blueprint-component';
+        const layer = inferLayerFromCode(mapped.activity.code);
+
+        signals.push({
+            activityCode: mapped.activity.code,
+            score: Math.min(1.0, Math.max(0, mapped.confidence)),
+            kind,
+            source: 'blueprint',
+            confidence: mapped.confidence,
+            contributions: {
+                blueprint: mapped.confidence,
+            },
+            provenance: [
+                `blueprint:${mapped.provenance}`,
+                `source-label:${mapped.sourceLabel}`,
+                `resolved:${mapped.activity.code}`,
+            ],
+            layer,
+        });
+    }
+
+    for (const comp of result.coverage.unmappedComponents) {
+        unmapped.push(comp);
+    }
+
+    return {
+        signals,
+        source: 'blueprint',
+        diagnostics: {
+            processed: result.coverage.fromBlueprint + result.coverage.fromFallback,
+            produced: signals.length,
+            unmapped,
+        },
+    };
+}
+
+/**
+ * Infer PipelineLayer from an activity code prefix.
+ * Uses known prefix conventions (PP_DV_FORM → frontend, BE_API → logic, etc.)
+ */
+function inferLayerFromCode(code: string): PipelineLayer | undefined {
+    const upper = code.toUpperCase();
+    if (upper.includes('_FORM') || upper.includes('_UI_') || upper.includes('_ANL_UX') || upper.includes('_DV_FORM')) return 'frontend';
+    if (upper.includes('_API_') || upper.includes('_BUSINESS_RULE') || upper.includes('_STATE_')) return 'logic';
+    if (upper.includes('_DB_') || upper.includes('_DV_FIELD') || upper.includes('_MIGRATION')) return 'data';
+    if (upper.includes('_INT_') || upper.includes('_API_INTEGRATION')) return 'integration';
+    if (upper.includes('_FLOW_') || upper.includes('_CRON') || upper.includes('_BATCH')) return 'automation';
+    if (upper.includes('_LOGGING') || upper.includes('_CONFIG') || upper.includes('_DEPLOY')) return 'configuration';
+    return undefined;
 }
