@@ -20,6 +20,12 @@ export interface ProjectContext {
   description: string;
   owner?: string;
   defaultTechPresetId?: string;
+  projectType?: string;
+  domain?: string;
+  scope?: string;
+  teamSize?: number;
+  deadlinePressure?: string;
+  methodology?: string;
 }
 
 export interface WizardData {

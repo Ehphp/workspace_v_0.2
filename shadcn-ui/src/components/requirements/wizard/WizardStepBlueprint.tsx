@@ -64,6 +64,7 @@ export function WizardStepBlueprint({
                 description: data.description,
                 techCategory: data.techCategory || undefined,
                 techPresetId: data.techPresetId || undefined,
+                projectContext: data.projectContext || undefined,
                 requirementUnderstanding:
                     data.requirementUnderstanding && data.requirementUnderstandingConfirmed
                         ? data.requirementUnderstanding

@@ -112,6 +112,12 @@ export interface RequirementUnderstandingRequest {
         name: string;
         description: string;
         owner?: string;
+        projectType?: string;
+        domain?: string;
+        scope?: string;
+        teamSize?: number;
+        deadlinePressure?: string;
+        methodology?: string;
     };
     /** Optional normalization result (if user ran "Analizza e Migliora" first) */
     normalizationResult?: {

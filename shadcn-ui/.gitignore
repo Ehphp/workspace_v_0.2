@@ -11,3 +11,8 @@ dist-ssr
 
 # Project-specific generated files
 .storage/
+
+# Obsidian vault internals (keep config tracked, exclude workspace cache)
+docs-obsidian/.obsidian/workspace.json
+docs-obsidian/.obsidian/workspace-mobile.json
+docs-obsidian/.obsidian/cache

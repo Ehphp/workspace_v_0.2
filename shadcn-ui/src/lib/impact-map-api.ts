@@ -61,6 +61,7 @@ export async function generateImpactMap(
                 description: sanitizedDescription,
                 techCategory: request.techCategory,
                 techPresetId: request.techPresetId,
+                projectContext: request.projectContext,
                 requirementUnderstanding: request.requirementUnderstanding,
                 ...(request.projectTechnicalBlueprint ? { projectTechnicalBlueprint: request.projectTechnicalBlueprint } : {}),
             }),

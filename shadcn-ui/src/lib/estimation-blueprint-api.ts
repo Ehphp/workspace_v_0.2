@@ -61,6 +61,7 @@ export async function generateEstimationBlueprint(
                 description: sanitizedDescription,
                 techCategory: request.techCategory,
                 techPresetId: request.techPresetId,
+                projectContext: request.projectContext,
                 requirementUnderstanding: request.requirementUnderstanding,
                 impactMap: request.impactMap,
             }),
