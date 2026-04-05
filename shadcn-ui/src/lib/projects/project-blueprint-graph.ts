@@ -10,7 +10,13 @@
  */
 
 import { type Node, type Edge, Position } from '@xyflow/react';
-import type { ProjectTechnicalBlueprint } from '@/types/project-technical-blueprint';
+import type {
+    ProjectTechnicalBlueprint,
+    BlueprintRelation,
+    EvidenceRef,
+    CriticalityLevel,
+    ReviewStatus,
+} from '@/types/project-technical-blueprint';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Graph Node Data
@@ -28,6 +34,33 @@ export interface BlueprintGraphNodeData {
     sourceIndex: number;
     /** Whether this is the primary/core component */
     isPrimary?: boolean;
+    /** v2: node ID from domain model */
+    nodeId?: string;
+    /** v2: evidence snippets */
+    evidence?: EvidenceRef[];
+    /** v2: business criticality */
+    businessCriticality?: CriticalityLevel;
+    /** v2: estimation impact */
+    estimationImpact?: CriticalityLevel;
+    /** v2: change likelihood */
+    changeLikelihood?: CriticalityLevel;
+    /** v2: review status */
+    reviewStatus?: ReviewStatus;
+    /** v2: whether the node has no evidence */
+    hasNoEvidence?: boolean;
+    [key: string]: unknown;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Graph Edge Data
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type BlueprintEdgeKind = 'structural' | 'inferred';
+
+export interface BlueprintGraphEdgeData {
+    kind: BlueprintEdgeKind;
+    relationType?: string;
+    relationConfidence?: number;
     [key: string]: unknown;
 }
 
@@ -40,6 +73,8 @@ export interface BlueprintGraphModel {
     edges: Edge[];
     /** Pre-computed adjacency: nodeId → Set of connected nodeIds */
     adjacency: Map<string, Set<string>>;
+    /** v2: typed relations from the blueprint (for inspector) */
+    relations: BlueprintRelation[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -85,6 +120,19 @@ export const COLUMN_HEADERS: { key: BlueprintNodeKind; label: string; x: number 
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Relation edge style constants
+// ─────────────────────────────────────────────────────────────────────────────
+
+const RELATION_EDGE_COLORS: Record<string, string> = {
+    reads: '#0ea5e9',       // sky
+    writes: '#f59e0b',      // amber
+    orchestrates: '#6366f1', // indigo
+    syncs: '#14b8a6',       // teal
+    owns: '#22c55e',        // green
+    depends_on: '#ef4444',  // red
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Builder
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -105,6 +153,9 @@ export function buildProjectBlueprintGraph(
         coreComponentIndices.add(0);
     }
 
+    // ── Node ID map: domain id → graph node id ──────────────────────
+    const domainIdToGraphId = new Map<string, string>();
+
     // ── Column trackers ─────────────────────────────────────────────
     let leftY = FIRST_NODE_Y;
     let centerY = FIRST_NODE_Y;
@@ -114,8 +165,10 @@ export function buildProjectBlueprintGraph(
     blueprint.components.forEach((comp, i) => {
         const dim = NODE_DIMENSIONS.component;
         const isPrimary = coreComponentIndices.has(i);
+        const graphId = `comp-${i}`;
+        if (comp.id) domainIdToGraphId.set(comp.id, graphId);
         nodes.push({
-            id: `comp-${i}`,
+            id: graphId,
             type: 'blueprintNode',
             position: { x: COLUMN_X.center, y: centerY },
             sourcePosition: Position.Right,
@@ -128,6 +181,13 @@ export function buildProjectBlueprintGraph(
                 typeLabel: comp.type,
                 sourceIndex: i,
                 isPrimary,
+                nodeId: comp.id,
+                evidence: comp.evidence,
+                businessCriticality: comp.businessCriticality,
+                estimationImpact: comp.estimationImpact,
+                changeLikelihood: comp.changeLikelihood,
+                reviewStatus: comp.reviewStatus,
+                hasNoEvidence: !comp.evidence || comp.evidence.length === 0,
             },
         });
         centerY += dim.height + VERTICAL_GAP;
@@ -136,8 +196,10 @@ export function buildProjectBlueprintGraph(
     // ── Data Domains → LEFT column ──────────────────────────────────
     blueprint.dataDomains.forEach((dd, i) => {
         const dim = NODE_DIMENSIONS.data_domain;
+        const graphId = `dd-${i}`;
+        if (dd.id) domainIdToGraphId.set(dd.id, graphId);
         nodes.push({
-            id: `dd-${i}`,
+            id: graphId,
             type: 'blueprintNode',
             position: { x: COLUMN_X.left, y: leftY },
             sourcePosition: Position.Right,
@@ -149,6 +211,13 @@ export function buildProjectBlueprintGraph(
                 confidence: dd.confidence,
                 typeLabel: 'Data Domain',
                 sourceIndex: i,
+                nodeId: dd.id,
+                evidence: dd.evidence,
+                businessCriticality: dd.businessCriticality,
+                estimationImpact: dd.estimationImpact,
+                changeLikelihood: dd.changeLikelihood,
+                reviewStatus: dd.reviewStatus,
+                hasNoEvidence: !dd.evidence || dd.evidence.length === 0,
             },
         });
         leftY += dim.height + VERTICAL_GAP;
@@ -157,8 +226,10 @@ export function buildProjectBlueprintGraph(
     // ── Integrations → RIGHT column ─────────────────────────────────
     blueprint.integrations.forEach((integ, i) => {
         const dim = NODE_DIMENSIONS.integration;
+        const graphId = `integ-${i}`;
+        if (integ.id) domainIdToGraphId.set(integ.id, graphId);
         nodes.push({
-            id: `integ-${i}`,
+            id: graphId,
             type: 'blueprintNode',
             position: { x: COLUMN_X.right, y: rightY },
             sourcePosition: Position.Right,
@@ -170,24 +241,66 @@ export function buildProjectBlueprintGraph(
                 confidence: integ.confidence,
                 typeLabel: integ.direction ?? 'unknown',
                 sourceIndex: i,
+                nodeId: integ.id,
+                evidence: integ.evidence,
+                businessCriticality: integ.businessCriticality,
+                estimationImpact: integ.estimationImpact,
+                changeLikelihood: integ.changeLikelihood,
+                reviewStatus: integ.reviewStatus,
+                hasNoEvidence: !integ.evidence || integ.evidence.length === 0,
             },
         });
         rightY += dim.height + VERTICAL_GAP;
     });
 
-    // ── Edges: LEFT → CENTER → RIGHT (clean horizontal flow) ───────
+    // ── Typed relation edges (v2) ───────────────────────────────────
+    const usedRelationEdges = new Set<string>();
+    const blueprintRelations = blueprint.relations ?? [];
+
+    for (const rel of blueprintRelations) {
+        const sourceId = domainIdToGraphId.get(rel.fromNodeId);
+        const targetId = domainIdToGraphId.get(rel.toNodeId);
+        if (!sourceId || !targetId) continue;
+
+        const edgeId = `rel-${rel.id ?? `${sourceId}-${targetId}`}`;
+        if (usedRelationEdges.has(edgeId)) continue;
+        usedRelationEdges.add(edgeId);
+
+        // Track that these nodes are connected via a typed relation
+        const edgeColor = RELATION_EDGE_COLORS[rel.type] ?? '#94a3b8';
+        edges.push({
+            id: edgeId,
+            source: sourceId,
+            target: targetId,
+            style: {
+                stroke: edgeColor,
+                strokeWidth: 2,
+                strokeDasharray: rel.confidence != null && rel.confidence < 0.5 ? '5,5' : undefined,
+            },
+            type: 'smoothstep',
+            label: rel.type,
+            labelStyle: { fontSize: 9, fill: edgeColor },
+            data: { kind: 'inferred' as BlueprintEdgeKind, relationType: rel.type, relationConfidence: rel.confidence },
+        });
+    }
+
+    // ── Structural edges: LEFT → CENTER → RIGHT (fallback for nodes without typed relations) ───
     const coreIds = Array.from(coreComponentIndices).map((i) => `comp-${i}`);
 
     // Data Domains → nearest core component (round-robin to spread)
     if (coreIds.length > 0) {
         blueprint.dataDomains.forEach((_, i) => {
+            const graphId = `dd-${i}`;
+            // Skip if already connected via typed relation
+            if (edges.some((e) => (e.source === graphId || e.target === graphId) && e.data?.kind === 'inferred')) return;
             const target = coreIds[i % coreIds.length];
             edges.push({
                 id: `e-dd-${i}-${target}`,
-                source: `dd-${i}`,
+                source: graphId,
                 target,
-                style: { stroke: NODE_STYLES.data_domain.edgeColor, strokeWidth: 1.5 },
+                style: { stroke: NODE_STYLES.data_domain.edgeColor, strokeWidth: 1.5, opacity: 0.6 },
                 type: 'smoothstep',
+                data: { kind: 'structural' as BlueprintEdgeKind },
             });
         });
     }
@@ -195,14 +308,17 @@ export function buildProjectBlueprintGraph(
     // Core components → integrations (round-robin)
     if (coreIds.length > 0) {
         blueprint.integrations.forEach((_, i) => {
+            const graphId = `integ-${i}`;
+            if (edges.some((e) => (e.source === graphId || e.target === graphId) && e.data?.kind === 'inferred')) return;
             const source = coreIds[i % coreIds.length];
             edges.push({
                 id: `e-${source}-integ-${i}`,
                 source,
-                target: `integ-${i}`,
+                target: graphId,
                 animated: true,
-                style: { stroke: NODE_STYLES.integration.edgeColor, strokeWidth: 1.5 },
+                style: { stroke: NODE_STYLES.integration.edgeColor, strokeWidth: 1.5, opacity: 0.6 },
                 type: 'smoothstep',
+                data: { kind: 'structural' as BlueprintEdgeKind },
             });
         });
     }
@@ -216,5 +332,5 @@ export function buildProjectBlueprintGraph(
         adjacency.get(edge.target)!.add(edge.source);
     }
 
-    return { nodes, edges, adjacency };
+    return { nodes, edges, adjacency, relations: blueprintRelations };
 }

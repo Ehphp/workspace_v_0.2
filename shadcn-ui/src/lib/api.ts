@@ -666,3 +666,47 @@ export async function getLatestEstimationBlueprint(
   if (!data || data.length === 0) return null;
   return data[0] as EstimationBlueprintRow;
 }
+
+// ── Candidate Set (provenance debug) ──
+
+export interface CandidateSetWithProvenance {
+  id: string;
+  analysis_id: string;
+  candidates: Array<{
+    activity_code: string;
+    source: string;
+    score: number;
+    confidence: number;
+    reason?: string;
+  }>;
+  created_at: string;
+}
+
+/**
+ * Fetch the latest candidate set for a requirement (via requirement_analyses).
+ * Returns null if no candidate set exists.
+ */
+export async function getLatestCandidateSet(
+  requirementId: string
+): Promise<CandidateSetWithProvenance | null> {
+  // Step 1: find latest analysis for this requirement
+  const { data: analyses, error: analysisErr } = await supabase
+    .from('requirement_analyses')
+    .select('id')
+    .eq('requirement_id', requirementId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (analysisErr || !analyses || analyses.length === 0) return null;
+
+  // Step 2: find latest candidate set for this analysis
+  const { data: sets, error: setErr } = await supabase
+    .from('candidate_sets')
+    .select('id, analysis_id, candidates, created_at')
+    .eq('analysis_id', analyses[0].id)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (setErr || !sets || sets.length === 0) return null;
+  return sets[0] as CandidateSetWithProvenance;
+}

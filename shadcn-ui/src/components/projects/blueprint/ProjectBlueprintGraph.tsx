@@ -30,11 +30,27 @@ const nodeTypes = { blueprintNode: BlueprintNode };
 interface ProjectBlueprintGraphProps {
     blueprint: ProjectTechnicalBlueprint;
     onNodeSelect?: (nodeId: string | null, data: BlueprintGraphNodeData | null) => void;
+    /** Node IDs to highlight (e.g. from search results) */
+    highlightedNodeIds?: Set<string>;
 }
 
-function GraphCanvas({ blueprint, onNodeSelect }: ProjectBlueprintGraphProps) {
+function GraphCanvas({ blueprint, onNodeSelect, highlightedNodeIds }: ProjectBlueprintGraphProps) {
     const graphModel = useMemo(() => buildProjectBlueprintGraph(blueprint), [blueprint]);
-    const [nodes, setNodes, onNodesChange] = useNodesState(graphModel.nodes);
+
+    // Apply search highlighting to nodes
+    const initialNodes = useMemo(() => {
+        if (!highlightedNodeIds || highlightedNodeIds.size === 0) return graphModel.nodes;
+        return graphModel.nodes.map((n) => ({
+            ...n,
+            data: {
+                ...n.data,
+                _searchMatch: highlightedNodeIds.has(n.id),
+                _dimmed: highlightedNodeIds.size > 0 && !highlightedNodeIds.has(n.id),
+            },
+        }));
+    }, [graphModel.nodes, highlightedNodeIds]);
+
+    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(graphModel.edges);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const { fitView } = useReactFlow();

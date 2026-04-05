@@ -235,6 +235,26 @@ export function RequirementWizard({ projectId, projectContext, onSuccess, onCanc
                 activities: resolvedActivities,
                 drivers: resolvedDrivers,
                 risks: resolvedRisks,
+                // Pass enriched candidates from CandidateBuilder (with provenance)
+                // so that candidate_sets persists full score/sources/contributions.
+                enrichedCandidates: data.candidateProvenance
+                    ? data.candidateProvenance.map(cp => ({
+                        activity_id: resolvedActivities.find(a => a.code === cp.code)?.activity_id || '',
+                        activity_code: cp.code,
+                        source: (cp.primarySource === 'keyword-fallback' ? 'ai'
+                            : cp.primarySource === 'impact-map' || cp.primarySource === 'impact-map-exclusive' ? 'rule'
+                                : cp.primarySource.startsWith('blueprint') || cp.primarySource === 'multi-crosscutting' ? 'blueprint'
+                                    : 'ai') as 'blueprint' | 'ai' | 'rule' | 'manual',
+                        score: Math.round(cp.score * 10),
+                        confidence: cp.confidence,
+                        reason: JSON.stringify({
+                            sources: cp.sources,
+                            contributions: cp.contributions,
+                            provenance: cp.provenance,
+                            primarySource: cp.primarySource,
+                        }),
+                    }))
+                    : undefined,
             });
 
             // 3. Save Estimation — domain engine is the canonical source

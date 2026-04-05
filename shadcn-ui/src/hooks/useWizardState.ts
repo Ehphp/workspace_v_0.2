@@ -5,7 +5,8 @@ import type {
   InterviewAnswer,
   SelectedActivityWithReason,
   SuggestedDriver,
-  PreEstimate
+  PreEstimate,
+  CandidateProvenanceEntry,
 } from '@/types/requirement-interview';
 import type { RequirementUnderstanding } from '@/types/requirement-understanding';
 import type { ImpactMap } from '@/types/impact-map';
@@ -65,6 +66,8 @@ export interface WizardData {
   estimationBlueprintConfirmed?: boolean;
   // Project Technical Blueprint (project-level architectural baseline)
   projectTechnicalBlueprint?: ProjectTechnicalBlueprint;
+  // Rich candidate provenance from CandidateBuilder (for domain save persistence)
+  candidateProvenance?: CandidateProvenanceEntry[];
 }
 
 const STORAGE_KEY = 'estimation_wizard_data';

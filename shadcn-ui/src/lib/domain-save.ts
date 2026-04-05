@@ -174,6 +174,11 @@ export interface WizardDomainSaveInput {
     activities: ResolvedActivity[];
     drivers: ResolvedDriver[];
     risks: ResolvedRisk[];
+    /**
+     * Enriched candidates from CandidateBuilder (with provenance).
+     * When provided, persisted directly instead of the pass-through buildCandidates().
+     */
+    enrichedCandidates?: CandidateActivity[];
 }
 
 export interface WizardDomainSaveResult {
@@ -352,7 +357,9 @@ export async function orchestrateWizardDomainSave(
     }
 
     // 3. Build & persist CandidateSet
-    const candidates = buildCandidates(input.activities);
+    // Use enriched candidates from CandidateBuilder when available (with provenance),
+    // fall back to pass-through builder for legacy/manual paths.
+    const candidates = input.enrichedCandidates ?? buildCandidates(input.activities);
     const candidateSet = await createCandidateSet({
         analysis_id: analysis.id,
         impact_map_id: impactMap?.id ?? null,

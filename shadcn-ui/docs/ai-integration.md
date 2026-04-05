@@ -532,16 +532,42 @@ The Project Technical Blueprint is a **project-level** artifact (distinct from t
           ▼
 ┌─────────────────────────────────┐      ┌────────────────────────────┐
 │  Pass 1: Extract ProjectDraft   │ ───▶ │  Pass 2: Extract Blueprint │
-│  (name, type, domain, etc.)     │      │  (components, integrations)│
+│  (name, type, domain, etc.)     │      │  (components, integrations,│
+│                                 │      │   relations, evidence,     │
+│                                 │      │   coverage, qualityFlags)  │
 └─────────────────────────────────┘      └────────────┬───────────────┘
-                                                      │ User reviews & edits
+                                                      │ normalize-blueprint.ts (v2)
+                                                      │ → ID stabilization
+                                                      │ → semantic dedup
+                                                      │ → relation validation
+                                                      │ → evidence consolidation
+                                                      │ → quality flags
+                                                      │ → coverage computation
+                                                      ▼
+                                         ┌────────────────────────────┐
+                                         │  User reviews & edits      │
+                                         └────────────┬───────────────┘
                                                       ▼
                                          ┌────────────────────────────┐
                                          │  createProject() +         │
                                          │  createProjectTechnical-   │
                                          │  Blueprint()               │
+                                         │  → auto-diff vs previous  │
                                          └────────────────────────────┘
 ```
+
+### V2 Enrichment (2026-04-02)
+
+The blueprint system was enriched with:
+
+- **Evidence anchoring**: Each node (component, data domain, integration) can carry `evidence[]` — short textual citations from the source documentation proving the node's existence.
+- **Explicit relations**: `BlueprintRelation[]` with typed links (`reads`, `writes`, `orchestrates`, `syncs`, `owns`, `depends_on`) between nodes, with optional confidence and evidence.
+- **Coverage score**: 0–1 numeric score combining AI self-assessment with heuristic structural analysis.
+- **Quality flags**: Deterministic flags like `missing_relations`, `weak_evidence`, `core_node_without_evidence`, `data_domain_without_owner_component`, `integration_without_connected_component`.
+- **Review status**: `draft` → `reviewed` → `approved` workflow at blueprint and node level.
+- **Semantic diff**: On version creation, the repository auto-computes `BlueprintDiffSummary` (added/removed/updated/reclassified nodes, relation changes, breaking change detection) and persists it as `diff_from_previous` + human-readable `change_summary`.
+
+The normalizer was upgraded to v2 with: deterministic node ID generation (`cmp_`, `dom_`, `int_` prefixes + slugified name), semantic deduplication with known alias resolution (e.g. Office365 = Microsoft365), relation validation (orphan/self-loop/duplicate removal), evidence consolidation (dedup + truncation), and deterministic quality flag computation.
 
 ### Downstream Enrichment in Wizard
 
@@ -560,15 +586,18 @@ All endpoints remain backward-compatible: if `projectTechnicalBlueprint` is abse
 
 | File | Purpose |
 |------|---------|
-| `netlify/functions/lib/domain/project/project-technical-blueprint.types.ts` | Domain types |
+| `netlify/functions/lib/domain/project/project-technical-blueprint.types.ts` | Domain types (v2: EvidenceRef, BlueprintRelation, BlueprintDiffSummary, CriticalityLevel, ReviewStatus) |
+| `netlify/functions/lib/domain/project/blueprint-diff.ts` | Diff engine: `computeProjectBlueprintDiff()` + `formatChangeSummary()` |
 | `src/types/project-technical-blueprint.ts` | Frontend type re-exports + API types |
-| `src/lib/project-technical-blueprint-repository.ts` | Repository (CRUD, version tracking) |
+| `src/lib/project-technical-blueprint-repository.ts` | Repository (CRUD, version tracking, auto-diff on create) |
 | `src/lib/project-documentation-api.ts` | Frontend API client |
 | `netlify/functions/ai-generate-project-from-documentation.ts` | Endpoint (createAIHandler, 2-pass) |
-| `netlify/functions/lib/ai/actions/generate-project-from-documentation.ts` | AI action (dual LLM pass) |
-| `netlify/functions/lib/ai/prompts/project-from-documentation.ts` | System prompts + JSON schemas |
+| `netlify/functions/lib/ai/actions/generate-project-from-documentation.ts` | AI action (dual LLM pass, v2 schema) |
+| `netlify/functions/lib/ai/prompts/project-from-documentation.ts` | System prompts + JSON schemas (v2: evidence, relations, coverage, qualityFlags) |
+| `netlify/functions/lib/ai/post-processing/normalize-blueprint.ts` | Normalizer v2 (10-step pipeline) |
 | `src/components/projects/CreateProjectFromDocumentation.tsx` | Multi-step UI (input/generate/review/save) |
 | `supabase/migrations/20260401_project_technical_blueprints.sql` | Table + indexes + RLS migration |
+| `supabase/migrations/20260402_blueprint_v2_enrichment.sql` | V2 additive columns migration |
 
 ---
 

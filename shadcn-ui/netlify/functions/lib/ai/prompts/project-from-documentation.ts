@@ -120,6 +120,54 @@ Ogni elemento DEVE apparire in UNA SOLA categoria. NESSUNA sovrapposizione.
 └─────────────────┴────────────────────────────────────────────────┘
 
 ═══════════════════════════════════════════════════════════════════
+EVIDENCE — ANCORAGGIO AL TESTO SORGENTE
+═══════════════════════════════════════════════════════════════════
+
+Per ogni nodo (component, dataDomain, integration) DEVI fornire da 1 a 3
+evidenze testuali brevi estratte dal documento sorgente.
+
+REGOLE EVIDENCE:
+- Ogni evidence è un oggetto { sourceType: "source_text", snippet: "..." }
+- Lo snippet deve essere una citazione diretta dal documento (max 200 caratteri)
+- NON inventare snippet: se non c'è appoggio testuale, NON creare il nodo
+- Se un nodo è ragionevolmente deducibile ma senza citazione diretta,
+  puoi crearlo con evidence vuoto [] — verrà flaggato come weak_evidence
+
+═══════════════════════════════════════════════════════════════════
+RELATIONS — COLLEGAMENTI TRA NODI
+═══════════════════════════════════════════════════════════════════
+
+Produci un array "relations" che descrive i collegamenti tra i nodi.
+Ogni relazione ha:
+- fromNodeId: nome temporaneo del nodo sorgente (uguale al "name" o "systemName")
+- toNodeId: nome temporaneo del nodo destinazione
+- type: uno tra "reads", "writes", "orchestrates", "syncs", "owns", "depends_on"
+- confidence: 0-1 (quanto sei sicuro di questa relazione)
+- evidence: [] (array di EvidenceRef, opzionale)
+
+REGOLE RELATIONS:
+- Produci solo relazioni inferibili dal testo, NON inventare
+- Nessun self-loop (fromNodeId === toNodeId)
+- Se non riesci a produrre relazioni ragionevoli, restituisci array vuoto []
+- Massimo 20 relazioni
+
+═══════════════════════════════════════════════════════════════════
+COVERAGE & QUALITY FLAGS
+═══════════════════════════════════════════════════════════════════
+
+- "coverage": numero 0-1 che indica quanto il blueprint copre l'architettura
+  descritta nel documento. 1.0 = copertura completa, 0.3 = molto parziale.
+- "qualityFlags": array di stringhe che segnalano problemi rilevati.
+  Usa questi flag se applicabili:
+  - "missing_relations" — nessuna relazione prodotta
+  - "weak_evidence" — nodi senza citazioni testuali dirette
+  - "low_architectural_coverage" — il documento è troppo vago
+  - "empty_column_components" — nessun component trovato
+  - "empty_column_data_domains" — nessun data domain trovato
+  - "empty_column_integrations" — nessuna integration trovata
+  - "too_many_generic_nodes" — troppi nodi con nomi generici
+
+═══════════════════════════════════════════════════════════════════
 REGOLE OBBLIGATORIE
 ═══════════════════════════════════════════════════════════════════
 
@@ -153,6 +201,16 @@ frontend, backend, database, workflow, reporting, security, infrastructure, othe
 Rispondi SOLO con JSON strutturato, senza testo aggiuntivo.`;
 
 export function createTechnicalBlueprintResponseSchema() {
+    const evidenceItemSchema = {
+        type: 'object',
+        properties: {
+            sourceType: { type: 'string', enum: ['source_text'] },
+            snippet: { type: 'string' },
+        },
+        required: ['sourceType', 'snippet'],
+        additionalProperties: false,
+    };
+
     return {
         type: 'json_schema' as const,
         json_schema: {
@@ -178,8 +236,9 @@ export function createTechnicalBlueprintResponseSchema() {
                                 },
                                 description: { type: ['string', 'null'] },
                                 confidence: { type: ['number', 'null'] },
+                                evidence: { type: 'array', items: evidenceItemSchema },
                             },
-                            required: ['name', 'type', 'description', 'confidence'],
+                            required: ['name', 'type', 'description', 'confidence', 'evidence'],
                             additionalProperties: false,
                         },
                     },
@@ -191,8 +250,9 @@ export function createTechnicalBlueprintResponseSchema() {
                                 name: { type: 'string' },
                                 description: { type: ['string', 'null'] },
                                 confidence: { type: ['number', 'null'] },
+                                evidence: { type: 'array', items: evidenceItemSchema },
                             },
-                            required: ['name', 'description', 'confidence'],
+                            required: ['name', 'description', 'confidence', 'evidence'],
                             additionalProperties: false,
                         },
                     },
@@ -208,11 +268,32 @@ export function createTechnicalBlueprintResponseSchema() {
                                 },
                                 description: { type: ['string', 'null'] },
                                 confidence: { type: ['number', 'null'] },
+                                evidence: { type: 'array', items: evidenceItemSchema },
                             },
-                            required: ['systemName', 'direction', 'description', 'confidence'],
+                            required: ['systemName', 'direction', 'description', 'confidence', 'evidence'],
                             additionalProperties: false,
                         },
                     },
+                    relations: {
+                        type: 'array',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                fromNodeId: { type: 'string' },
+                                toNodeId: { type: 'string' },
+                                type: {
+                                    type: 'string',
+                                    enum: ['reads', 'writes', 'orchestrates', 'syncs', 'owns', 'depends_on'],
+                                },
+                                confidence: { type: ['number', 'null'] },
+                                evidence: { type: 'array', items: evidenceItemSchema },
+                            },
+                            required: ['fromNodeId', 'toNodeId', 'type', 'confidence', 'evidence'],
+                            additionalProperties: false,
+                        },
+                    },
+                    coverage: { type: 'number' },
+                    qualityFlags: { type: 'array', items: { type: 'string' } },
                     architecturalNotes: { type: 'array', items: { type: 'string' } },
                     assumptions: { type: 'array', items: { type: 'string' } },
                     missingInformation: { type: 'array', items: { type: 'string' } },
@@ -220,6 +301,7 @@ export function createTechnicalBlueprintResponseSchema() {
                 },
                 required: [
                     'summary', 'components', 'dataDomains', 'integrations',
+                    'relations', 'coverage', 'qualityFlags',
                     'architecturalNotes', 'assumptions', 'missingInformation', 'confidence',
                 ],
                 additionalProperties: false,

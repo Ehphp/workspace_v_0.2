@@ -252,6 +252,32 @@ export interface SuggestedDriver {
 /**
  * Response from estimate generation
  */
+/**
+ * Provenance entry for a single candidate activity.
+ * Carries full traceability from the CandidateBuilder.
+ */
+export interface CandidateProvenanceEntry {
+    /** Activity code */
+    code: string;
+    /** Composite score (0–10 scale) */
+    score: number;
+    /** Signal sources that contributed */
+    sources: string[];
+    /** Per-source contribution breakdown */
+    contributions: {
+        blueprint: number;
+        impactMap: number;
+        keyword: number;
+        projectContext: number;
+    };
+    /** Highest contributing source */
+    primarySource: string;
+    /** Human-readable provenance trail */
+    provenance: string[];
+    /** Confidence (0–1) */
+    confidence: number;
+}
+
 export interface EstimationFromInterviewResponse {
     /** Whether generation was successful */
     success: boolean;
@@ -269,6 +295,8 @@ export interface EstimationFromInterviewResponse {
     suggestedDrivers?: SuggestedDriver[];
     /** Suggested risks based on answers */
     suggestedRisks?: string[];
+    /** Rich candidate provenance from CandidateBuilder (when available) */
+    candidateProvenance?: CandidateProvenanceEntry[];
     /** Error message if success is false */
     error?: string;
     /** Performance metrics for pipeline instrumentation */

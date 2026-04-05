@@ -13,7 +13,7 @@ export const projectSchema = z.object({
   name: trimmedString(255, 3),
   description: trimmedString(2000).optional().or(z.literal('')),
   owner: trimmedString(255).optional().or(z.literal('')),
-  techPresetId: z.string().uuid().optional().nullable(),
+  techPresetId: z.string().uuid({ message: 'Technology is required. Select a default technology for the project.' }),
   status: z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']),
   projectType: z.enum(['NEW_DEVELOPMENT', 'MAINTENANCE', 'MIGRATION', 'INTEGRATION', 'REFACTORING']).optional().nullable(),
   domain: trimmedString(50).optional().nullable().or(z.literal('')),

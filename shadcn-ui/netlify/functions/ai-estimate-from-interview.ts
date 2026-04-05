@@ -20,22 +20,25 @@ import { retrieveRAGContext, getRAGSystemPromptAddition } from './lib/ai/rag';
 import { runAgentPipeline, AgentInput } from './lib/ai/agent';
 import {
     fetchActivitiesServerSide,
-    selectTopActivities,
     formatActivitiesCatalog,
     type Activity,
     type InterviewAnswerRecord,
 } from './lib/activities';
 import {
-    mapBlueprintToActivities,
-    isBlueprintMappable,
     type BlueprintMappingResult,
-    type MappedActivity,
     type ActivityProvenance,
 } from './lib/blueprint-activity-mapper';
+import {
+    buildCandidateSet,
+    type CandidateSetResult,
+} from './lib/candidate-builder';
 import { buildProvenanceMap, attachProvenance, provenanceBreakdown } from './lib/provenance-map';
 import { formatProjectContextBlock } from './lib/ai/prompt-builder';
 import { evaluateProjectContextRules } from './lib/domain/estimation/project-context-rules';
+import { evaluateProjectTechnicalBlueprintRules } from './lib/domain/estimation/blueprint-rules';
+import { mergeProjectAndBlueprintRules } from './lib/domain/estimation/blueprint-context-integration';
 import { mergeDriverSuggestions, mergeRiskSuggestions } from './lib/domain/estimation/project-context-integration';
+import type { ProjectTechnicalBlueprint } from './lib/domain/project/project-technical-blueprint.types';
 import type { EstimationContext } from './lib/domain/types/estimation';
 
 // Model configuration - use env variable AI_ESTIMATION_MODEL or default to gpt-4o
@@ -479,9 +482,8 @@ export const handler = createAIHandler<RequestBody>({
         if (!body.answers || typeof body.answers !== 'object') {
             return 'Le risposte all\'interview sono obbligatorie.';
         }
-        if (!body.techCategory || typeof body.techCategory !== 'string') {
-            return 'La categoria tecnologica è obbligatoria.';
-        }
+        // techCategory is optional — projects may have no technology selected
+        // Defaults to 'MULTI' in handler if missing
         // activities is now optional — fetched server-side
         return null;
     },
@@ -524,70 +526,54 @@ export const handler = createAIHandler<RequestBody>({
             } : null,
         };
         const contextRules = evaluateProjectContextRules(estimationCtx);
-        if (contextRules.notes.length > 0) {
-            console.log('[ai-estimate-from-interview] Project context rules:', contextRules.notes);
+
+        // ─── Blueprint deterministic rules ─────────────────────────────
+        const blueprintRules = evaluateProjectTechnicalBlueprintRules(
+            body.projectTechnicalBlueprint as unknown as ProjectTechnicalBlueprint | undefined,
+        );
+        const mergedRules = mergeProjectAndBlueprintRules(contextRules, blueprintRules);
+        if (mergedRules.notes.length > 0) {
+            console.log('[ai-estimate-from-interview] Merged context+blueprint rules:', mergedRules.notes);
         }
 
-        // ─── Candidate Generation: Blueprint-first, keyword-fallback ───
+        // ─── Candidate Generation: CandidateBuilder (multi-signal) ──────
         //
-        // Strategy:
-        //   1. If a confirmed Blueprint is available → mapBlueprintToActivities (structural)
-        //   2. selectTopActivities fills coverage gaps (keyword-based fallback)
-        //   3. If no Blueprint → selectTopActivities alone (legacy path)
-        //   4. Project-context biases applied to keyword ranking (additive)
+        // Strategy (unified):
+        //   1. Blueprint structural mapping (highest weight: 3.0)
+        //   2. ImpactMap layer→activity signals (weight: 2.0)
+        //   3. Keyword ranking (baseline weight: 1.0)
+        //   4. Project-context biases (additive: 0.5)
+        //   All merged with per-activity provenance.
         //
-        let rankedActivities: Activity[];
-        let blueprintMappingResult: BlueprintMappingResult | undefined;
+        const candidateResult: CandidateSetResult = buildCandidateSet({
+            catalog: fetchResult.activities,
+            description: sanitizedDescription,
+            techCategory: techCat,
+            answers: body.answers,
+            blueprint: body.estimationBlueprint,
+            impactMap: body.impactMap as any,
+            understanding: body.requirementUnderstanding as any,
+            activityBiases: mergedRules.activityBiases,
+            topN: 20,
+        });
 
-        if (isBlueprintMappable(body.estimationBlueprint)) {
-            // PRIMARY PATH: Blueprint-driven candidate generation
-            console.log('[ai-estimate-from-interview] Using BLUEPRINT-DRIVEN candidate generation');
+        const rankedActivities: Activity[] = candidateResult.candidates.map(c => c.activity);
+        const blueprintMappingResult: BlueprintMappingResult | undefined = candidateResult.blueprintResult;
 
-            blueprintMappingResult = mapBlueprintToActivities(
-                body.estimationBlueprint!,
-                fetchResult.activities,
-                techCat,
-                // Fallback: keyword ranking on remaining activities to fill gaps
-                (catalog, excludeCodes) => {
-                    const remaining = catalog.filter(a => !excludeCodes.has(a.code));
-                    return selectTopActivities(
-                        remaining,
-                        sanitizedDescription,
-                        body.answers,
-                        10, // fill up to 10 gap activities
-                        undefined,
-                        contextRules.activityBiases,
-                    );
-                },
-            );
-
-            rankedActivities = blueprintMappingResult.allActivities.map(m => m.activity);
-            metrics.candidateSource = 'blueprint-mapper';
+        // Metrics from candidate builder
+        metrics.candidateSource = candidateResult.strategy;
+        if (candidateResult.blueprintResult) {
             metrics.blueprintCoverage = {
-                componentCoveragePercent: blueprintMappingResult.coverage.componentCoveragePercent,
-                fromBlueprint: blueprintMappingResult.coverage.fromBlueprint,
-                fromFallback: blueprintMappingResult.coverage.fromFallback,
-                missingGroups: blueprintMappingResult.coverage.missingGroups,
+                componentCoveragePercent: candidateResult.blueprintResult.coverage.componentCoveragePercent,
+                fromBlueprint: candidateResult.blueprintResult.coverage.fromBlueprint,
+                fromFallback: candidateResult.blueprintResult.coverage.fromFallback,
+                missingGroups: candidateResult.blueprintResult.coverage.missingGroups,
             };
-
-            console.log(`[ai-estimate-from-interview] Blueprint mapped ${blueprintMappingResult.coverage.fromBlueprint} activities, fallback added ${blueprintMappingResult.coverage.fromFallback}. Component coverage: ${blueprintMappingResult.coverage.componentCoveragePercent}%`);
-            if (blueprintMappingResult.warnings.length > 0) {
-                metrics.blueprintWarnings = blueprintMappingResult.warnings;
-                console.log(`[ai-estimate-from-interview] Blueprint warnings: ${blueprintMappingResult.warnings.map(w => `[${w.code}] ${w.message}`).join('; ')}`);
+            if (candidateResult.blueprintResult.warnings.length > 0) {
+                metrics.blueprintWarnings = candidateResult.blueprintResult.warnings;
             }
-        } else {
-            // FALLBACK PATH: keyword-based ranking (legacy behavior)
-            console.log('[ai-estimate-from-interview] No mappable blueprint — using KEYWORD RANKING (fallback)');
-            rankedActivities = selectTopActivities(
-                fetchResult.activities,
-                sanitizedDescription,
-                body.answers,
-                20,
-                body.estimationBlueprint,
-                contextRules.activityBiases,
-            );
-            metrics.candidateSource = 'keyword-ranking';
         }
+        console.log(`[ai-estimate-from-interview] CandidateBuilder: strategy=${candidateResult.strategy} | blueprint=${candidateResult.diagnostics.fromBlueprint} | impactMap=${candidateResult.diagnostics.fromImpactMap} | understanding=${candidateResult.diagnostics.fromUnderstanding} | keyword=${candidateResult.diagnostics.fromKeyword} | overlaps=${candidateResult.diagnostics.mergedOverlaps}`);
 
         metrics.activitiesAfterRanking = rankedActivities.length;
 
@@ -693,6 +679,17 @@ export const handler = createAIHandler<RequestBody>({
 
                 console.log('[ai-estimate-from-interview] METRICS:', JSON.stringify(metrics));
 
+                // Include candidate provenance from builder (same as legacy path)
+                const candidateProvenance = candidateResult.candidates.map(c => ({
+                    code: c.activity.code,
+                    score: c.score,
+                    sources: c.sources,
+                    contributions: c.contributions,
+                    primarySource: c.primarySource,
+                    provenance: c.provenance,
+                    confidence: c.confidence,
+                }));
+
                 return {
                     success: true,
                     generatedTitle: agentResult.generatedTitle,
@@ -702,6 +699,7 @@ export const handler = createAIHandler<RequestBody>({
                     confidenceScore: agentResult.confidenceScore,
                     suggestedDrivers: mergedDrivers,
                     suggestedRisks: mergedRisks.map(r => r.code),
+                    candidateProvenance,
                     projectContextNotes: contextRules.notes.length > 0 ? contextRules.notes : undefined,
                     // Phase 3 metadata
                     agentMetadata: {
@@ -942,19 +940,30 @@ Collega ogni attività alla risposta che l'ha motivata.`;
 
         console.log('[ai-estimate-from-interview] Legacy provenance breakdown:', provenanceBreakdown(enrichedLegacyActivities));
 
-        // ─── Merge project-context rule suggestions (legacy pipeline) ──
+        // ─── Merge project-context + blueprint rule suggestions ───────
         const mergedLegacyDrivers = mergeDriverSuggestions(
             result.suggestedDrivers || [],
-            contextRules.suggestedDrivers,
+            mergedRules.suggestedDrivers,
         );
         const mergedLegacyRisks = mergeRiskSuggestions(
             result.suggestedRisks || [],
-            contextRules.suggestedRisks,
+            mergedRules.suggestedRisks,
         );
 
         console.log('[ai-estimate-from-interview] METRICS:', JSON.stringify(metrics));
 
         // Return successful response (createAIHandler wraps with statusCode/headers)
+        // Include candidate provenance from builder for end-to-end persistence
+        const candidateProvenance = candidateResult.candidates.map(c => ({
+            code: c.activity.code,
+            score: c.score,
+            sources: c.sources,
+            contributions: c.contributions,
+            primarySource: c.primarySource,
+            provenance: c.provenance,
+            confidence: c.confidence,
+        }));
+
         return {
             success: true,
             generatedTitle: result.generatedTitle || '',
@@ -964,7 +973,8 @@ Collega ogni attività alla risposta che l'ha motivata.`;
             confidenceScore: Number(confidenceScore.toFixed(2)),
             suggestedDrivers: mergedLegacyDrivers,
             suggestedRisks: mergedLegacyRisks.map(r => r.code),
-            projectContextNotes: contextRules.notes.length > 0 ? contextRules.notes : undefined,
+            candidateProvenance,
+            projectContextNotes: mergedRules.notes.length > 0 ? mergedRules.notes : undefined,
             metrics,
         };
     }

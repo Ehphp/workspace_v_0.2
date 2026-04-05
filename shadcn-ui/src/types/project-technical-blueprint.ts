@@ -9,6 +9,12 @@
 export type {
     BlueprintComponentType,
     IntegrationDirection,
+    CriticalityLevel,
+    ReviewStatus,
+    EvidenceRef,
+    BlueprintRelationType,
+    BlueprintRelation,
+    BlueprintDiffSummary,
     BlueprintComponent,
     BlueprintDataDomain,
     BlueprintIntegration,

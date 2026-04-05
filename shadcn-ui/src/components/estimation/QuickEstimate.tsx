@@ -7,15 +7,17 @@ import { QuickEstimateResultV2 } from '@/components/estimation/quick-estimate/Qu
 import { QuickEstimateProgress } from '@/components/estimation/quick-estimate/QuickEstimateProgress';
 import { Zap, Sparkles, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { ProjectTechnicalBlueprint } from '@/types/project-technical-blueprint';
 
 interface QuickEstimateProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    projectTechnicalBlueprint?: ProjectTechnicalBlueprint;
 }
 
 type ViewState = 'input' | 'running' | 'result';
 
-export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
+export function QuickEstimate({ open, onOpenChange, projectTechnicalBlueprint }: QuickEstimateProps) {
     const [view, setView] = useState<ViewState>('input');
     const [description, setDescription] = useState('');
     const [techPresetId, setTechPresetId] = useState('');
@@ -48,7 +50,7 @@ export function QuickEstimate({ open, onOpenChange }: QuickEstimateProps) {
 
     const handleCalculate = async () => {
         setView('running');
-        const success = await calculate(description, techPresetId);
+        const success = await calculate(description, techPresetId, undefined, projectTechnicalBlueprint);
         if (success) {
             setView('result');
         } else {

@@ -47,8 +47,9 @@ export function WizardStepInterview({
         if (data.interviewQuestions && data.interviewQuestions.length > 0) {
             // Already have questions, restore state
             setPhase('interviewing');
-        } else if (data.description && data.techPresetId && data.techCategory) {
+        } else if (data.description) {
             // Need to generate questions (or get SKIP decision)
+            // techPresetId/techCategory are optional — projects can have no technology
             generateQuestions();
         }
     }, []);
@@ -117,6 +118,7 @@ export function WizardStepInterview({
                 suggestedRisks: result.suggestedRisks,
                 confidenceScore: result.confidenceScore,
                 aiAnalysis: result.reasoning,
+                candidateProvenance: result.candidateProvenance,
             });
             setPhase('result');
         } else {
@@ -163,6 +165,7 @@ export function WizardStepInterview({
                 suggestedRisks: result.suggestedRisks,
                 confidenceScore: result.confidenceScore,
                 aiAnalysis: result.reasoning, // Save AI reasoning/analysis
+                candidateProvenance: result.candidateProvenance,
             });
 
             setPhase('result');

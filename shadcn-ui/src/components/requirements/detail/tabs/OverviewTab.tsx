@@ -9,6 +9,7 @@ import { RequirementProgress } from '../RequirementProgress';
 import { ConsultantAnalysisCard } from '@/components/estimation/ConsultantAnalysisCard';
 import { ConsultantHistoryPanel } from '@/components/estimation/ConsultantHistoryPanel';
 import { RequirementUnderstandingCard } from '@/components/requirements/wizard/RequirementUnderstandingCard';
+import { CandidateProvenanceCard } from '../CandidateProvenanceCard';
 import type { ConsultantAnalysisRecord } from '@/hooks/useConsultantHistory';
 
 interface OverviewTabProps {
@@ -210,6 +211,11 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
                                     />
                                 </section>
                             )}
+
+                            {/* Candidate Provenance Debug View */}
+                            <section className="border-t border-slate-100 pt-4">
+                                <CandidateProvenanceCard requirementId={requirement?.id} />
+                            </section>
 
                         </div>
 

@@ -24,14 +24,23 @@ import type {
     ProjectDraftBlueprint,
     BlueprintComponentType,
     IntegrationDirection,
+    EvidenceRef,
+    BlueprintRelation,
 } from '../../domain/project/project-technical-blueprint.types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Request / Response types
 // ─────────────────────────────────────────────────────────────────────────────
 
+export interface TechnologyCatalogEntry {
+    id: string;
+    code: string;
+    name: string;
+}
+
 export interface GenerateProjectFromDocRequest {
     sourceText: string;
+    technologyCatalog?: TechnologyCatalogEntry[];
     testMode?: boolean;
 }
 
@@ -45,18 +54,24 @@ export interface GenerateProjectFromDocResponse {
             type: BlueprintComponentType;
             description?: string;
             confidence?: number;
+            evidence?: EvidenceRef[];
         }>;
         dataDomains: Array<{
             name: string;
             description?: string;
             confidence?: number;
+            evidence?: EvidenceRef[];
         }>;
         integrations: Array<{
             systemName: string;
             direction?: IntegrationDirection;
             description?: string;
             confidence?: number;
+            evidence?: EvidenceRef[];
         }>;
+        relations?: BlueprintRelation[];
+        coverage?: number;
+        qualityFlags?: string[];
         architecturalNotes: string[];
         assumptions: string[];
         missingInformation: string[];
@@ -97,6 +112,25 @@ const ComponentTypeEnum = z.enum([
 
 const DirectionEnum = z.enum(['inbound', 'outbound', 'bidirectional', 'unknown']).nullable().optional();
 
+const EvidenceRefSchema = z.object({
+    sourceType: z.literal('source_text'),
+    snippet: z.string().max(500),
+}).optional();
+
+const EvidenceArraySchema = z.array(
+    z.object({ sourceType: z.literal('source_text'), snippet: z.string().max(500) }),
+).optional().default([]);
+
+const RelationSchema = z.object({
+    fromNodeId: z.string().min(1),
+    toNodeId: z.string().min(1),
+    type: z.enum(['reads', 'writes', 'orchestrates', 'syncs', 'owns', 'depends_on']),
+    confidence: z.number().min(0).max(1).nullable().optional(),
+    evidence: z.array(
+        z.object({ sourceType: z.literal('source_text'), snippet: z.string().max(500) }),
+    ).optional().default([]),
+});
+
 const TechnicalBlueprintSchema = z.object({
     summary: z.string().nullable().optional(),
     components: z.array(z.object({
@@ -104,18 +138,24 @@ const TechnicalBlueprintSchema = z.object({
         type: ComponentTypeEnum,
         description: z.string().nullable().optional(),
         confidence: z.number().min(0).max(1).nullable().optional(),
+        evidence: EvidenceArraySchema,
     })).max(10),
     dataDomains: z.array(z.object({
         name: z.string().min(1).max(200),
         description: z.string().nullable().optional(),
         confidence: z.number().min(0).max(1).nullable().optional(),
+        evidence: EvidenceArraySchema,
     })).max(20),
     integrations: z.array(z.object({
         systemName: z.string().min(1).max(200),
         direction: DirectionEnum,
         description: z.string().nullable().optional(),
         confidence: z.number().min(0).max(1).nullable().optional(),
+        evidence: EvidenceArraySchema,
     })).max(15),
+    relations: z.array(RelationSchema).max(20).optional().default([]),
+    coverage: z.number().min(0).max(1).optional(),
+    qualityFlags: z.array(z.string()).optional().default([]),
     architecturalNotes: z.array(z.string()),
     assumptions: z.array(z.string()),
     missingInformation: z.array(z.string()),
@@ -129,16 +169,22 @@ const TechnicalBlueprintSchema = z.object({
 export async function generateProjectFromDocumentation(
     request: GenerateProjectFromDocRequest,
 ): Promise<GenerateProjectFromDocResponse> {
-    const { sourceText } = request;
+    const { sourceText, technologyCatalog } = request;
     const totalStart = Date.now();
     const provider = getDefaultProvider();
 
-    console.log('[generate-project-from-doc] Starting, source text length:', sourceText.length);
+    console.log('[generate-project-from-doc] Starting, source text length:', sourceText.length,
+        'technologies:', technologyCatalog?.length ?? 0);
 
     // ── Pass 1: Project Draft Extraction ────────────────────────────
     const pass1Start = Date.now();
 
-    const pass1UserPrompt = `DOCUMENTAZIONE PROGETTUALE:\n\n${sourceText}`;
+    // Build user prompt with optional technology catalog
+    const techCatalogBlock = technologyCatalog && technologyCatalog.length > 0
+        ? `\n\nCATALOGO TECNOLOGIE DISPONIBILI (usa l'id corrispondente per technologyId):\n${technologyCatalog.map(t => `- id: "${t.id}" | code: "${t.code}" | name: "${t.name}"`).join('\n')}\n`
+        : '';
+
+    const pass1UserPrompt = `DOCUMENTAZIONE PROGETTUALE:\n\n${sourceText}${techCatalogBlock}`;
     const pass1Schema = createProjectDraftResponseSchema();
 
     const pass1Raw = await provider.generateContent({
@@ -230,18 +276,31 @@ export async function generateProjectFromDocumentation(
                 type: c.type as BlueprintComponentType,
                 description: c.description ?? undefined,
                 confidence: c.confidence ?? undefined,
+                evidence: c.evidence ?? [],
             })),
             dataDomains: blueprintData.dataDomains.map((d) => ({
                 name: d.name,
                 description: d.description ?? undefined,
                 confidence: d.confidence ?? undefined,
+                evidence: d.evidence ?? [],
             })),
             integrations: blueprintData.integrations.map((i) => ({
                 systemName: i.systemName,
                 direction: (i.direction ?? undefined) as IntegrationDirection | undefined,
                 description: i.description ?? undefined,
                 confidence: i.confidence ?? undefined,
+                evidence: i.evidence ?? [],
             })),
+            relations: (blueprintData.relations ?? []).map((r) => ({
+                id: '', // normalizer will generate deterministic IDs
+                fromNodeId: r.fromNodeId,
+                toNodeId: r.toNodeId,
+                type: r.type,
+                confidence: r.confidence ?? undefined,
+                evidence: r.evidence ?? [],
+            })),
+            coverage: blueprintData.coverage,
+            qualityFlags: blueprintData.qualityFlags ?? [],
             architecturalNotes: blueprintData.architecturalNotes,
             assumptions: blueprintData.assumptions,
             missingInformation: blueprintData.missingInformation,
@@ -273,6 +332,9 @@ export async function generateProjectFromDocumentation(
             components: normalizedBlueprint.components,
             dataDomains: normalizedBlueprint.dataDomains,
             integrations: normalizedBlueprint.integrations,
+            relations: normalizedBlueprint.relations ?? [],
+            coverage: normalizedBlueprint.coverage,
+            qualityFlags: normalizedBlueprint.qualityFlags ?? [],
             architecturalNotes: normalizedBlueprint.architecturalNotes,
             assumptions: normalizedBlueprint.assumptions,
             missingInformation: normalizedBlueprint.missingInformation,

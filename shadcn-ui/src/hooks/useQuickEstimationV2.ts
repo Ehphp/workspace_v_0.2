@@ -29,6 +29,7 @@ import type { Technology } from '@/types/database';
 import type { RequirementUnderstanding } from '@/types/requirement-understanding';
 import type { ImpactMap } from '@/types/impact-map';
 import type { EstimationBlueprint } from '@/types/estimation-blueprint';
+import type { ProjectTechnicalBlueprint } from '@/types/project-technical-blueprint';
 import type {
     SelectedActivityWithReason,
     SuggestedDriver,
@@ -196,6 +197,7 @@ export function useQuickEstimationV2() {
         description: string,
         techPresetId: string,
         projectContext?: { name: string; description: string; owner?: string; projectType?: string; domain?: string; scope?: string; teamSize?: number; deadlinePressure?: string; methodology?: string },
+        projectTechnicalBlueprint?: ProjectTechnicalBlueprint,
     ): Promise<boolean> => {
         // Validation
         if (!description.trim() || description.trim().length < 10) {
@@ -376,6 +378,9 @@ export function useQuickEstimationV2() {
                     requirementUnderstanding: artifacts.understanding,
                     impactMap: artifacts.impactMap,
                     estimationBlueprint: artifacts.blueprint,
+                    projectTechnicalBlueprint: projectTechnicalBlueprint
+                        ? (projectTechnicalBlueprint as unknown as Record<string, unknown>)
+                        : undefined,
                 }),
                 steps,
             );
@@ -420,6 +425,9 @@ export function useQuickEstimationV2() {
                     requirementUnderstanding: artifacts.understanding,
                     impactMap: artifacts.impactMap,
                     estimationBlueprint: artifacts.blueprint,
+                    projectTechnicalBlueprint: projectTechnicalBlueprint
+                        ? (projectTechnicalBlueprint as unknown as Record<string, unknown>)
+                        : undefined,
                 }),
                 steps,
             );

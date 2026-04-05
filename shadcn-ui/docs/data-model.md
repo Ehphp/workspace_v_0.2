@@ -634,16 +634,25 @@ Stores structured AI-generated Project Technical Blueprint artifacts. This is a 
 | `version` | INTEGER | Monotonically increasing per project_id (DEFAULT 1) |
 | `source_text` | TEXT | Original documentation used to generate the blueprint |
 | `summary` | TEXT | AI-generated project summary |
-| `components` | JSONB | Array of `{ name, type, description, technologies[] }` |
-| `data_domains` | JSONB | Array of `{ name, description }` |
-| `integrations` | JSONB | Array of `{ system, direction, description }` |
+| `components` | JSONB | Array of `{ id?, name, type, description, confidence?, evidence?[], businessCriticality?, changeLikelihood?, estimationImpact?, reviewStatus? }` |
+| `data_domains` | JSONB | Array of `{ id?, name, description, confidence?, evidence?[], businessCriticality?, changeLikelihood?, estimationImpact?, reviewStatus? }` |
+| `integrations` | JSONB | Array of `{ id?, systemName, direction, description, confidence?, evidence?[], businessCriticality?, changeLikelihood?, estimationImpact?, reviewStatus? }` |
+| `relations` | JSONB | Array of `{ id, fromNodeId, toNodeId, type, confidence?, evidence?[] }`. Relation types: reads, writes, orchestrates, syncs, owns, depends_on. **Nullable** (v2). |
 | `architectural_notes` | TEXT | Free-form architectural notes |
 | `assumptions` | TEXT[] | Array of assumptions made during extraction |
 | `missing_information` | TEXT[] | Array of information gaps identified |
 | `confidence` | NUMERIC | Overall confidence score (0.0–1.0) |
-| `user_id` | UUID | FK → auth.users. Who triggered the generation. |
+| `coverage` | NUMERIC | Architectural coverage score (0.0–1.0). Heuristic + AI weighted average. **Nullable** (v2). |
+| `quality_flags` | TEXT[] | Deterministic quality flags (e.g. `missing_relations`, `weak_evidence`, `core_node_without_evidence`). **Nullable** (v2). |
+| `review_status` | TEXT | Blueprint-level review status: `draft`, `reviewed`, or `approved`. **Nullable** (v2). |
+| `change_summary` | TEXT | Human-readable summary of diff from previous version. **Nullable** (v2). |
+| `diff_from_previous` | JSONB | Structured `BlueprintDiffSummary` with addedNodes, removedNodes, updatedNodes, reclassifiedNodes, addedRelations, removedRelations, changedAssumptions, changedMissingInformation, breakingArchitecturalChanges. **Nullable** (v2). |
 | `created_at` | TIMESTAMPTZ | DEFAULT now() |
 | `updated_at` | TIMESTAMPTZ | DEFAULT now() (auto-updated via trigger) |
+
+**Constraints** (v2):
+- `chk_blueprint_coverage`: coverage IS NULL OR (0 ≤ coverage ≤ 1)
+- `chk_blueprint_review_status`: review_status IS NULL OR IN ('draft', 'reviewed', 'approved')
 
 **Indexes**:
 - `idx_ptb_project` — `(project_id)` for lookups
@@ -655,7 +664,9 @@ Stores structured AI-generated Project Technical Blueprint artifacts. This is a 
 - **UPDATE**: User can update blueprints for projects in their organization
 - **DELETE**: User can delete blueprints for projects in their organization
 
-**Migration**: [20260401_project_technical_blueprints.sql](../supabase/migrations/20260401_project_technical_blueprints.sql)
+**Migrations**:
+- [20260401_project_technical_blueprints.sql](../supabase/migrations/20260401_project_technical_blueprints.sql) — initial table
+- [20260402_blueprint_v2_enrichment.sql](../supabase/migrations/20260402_blueprint_v2_enrichment.sql) — v2 additive columns (relations, coverage, quality_flags, review_status, change_summary, diff_from_previous)
 
 ---
 
@@ -787,6 +798,7 @@ Two new nullable FK columns added for domain-model traceability:
 - **Persistence Convergence (2026-03-21)**: All estimation save paths now converge on `saveEstimationByIds()` → `save_estimation_atomic` RPC. Added `p_blueprint_id UUID DEFAULT NULL` parameter to the RPC. Dropped all 4 historical overloads (11-param NUMERIC/TEXT, 12-param DECIMAL/VARCHAR, 13-param +JSONB, 14-param +UUID) and created definitive 14-param version. Migration: `20260321_add_blueprint_id_to_rpc.sql`.
 - **Domain Model (2026-03-21)**: Five new tables introduced for structured estimation traceability: `requirement_analyses`, `impact_maps` (domain-level, separate from legacy `impact_map`), `candidate_sets`, `estimation_decisions`, `estimation_snapshots`. Two new nullable FK columns added to `estimations`: `analysis_id`, `decision_id`. RPC `save_estimation_atomic` extended with `p_analysis_id UUID` and `p_decision_id UUID`. Migrations: `20260321_domain_model_tables.sql`, `20260321_domain_model_rpc.sql`. Types: `src/types/domain-model.ts`. Domain services: `netlify/functions/lib/domain/estimation/`.
 - **Project Technical Blueprint (2026-04-01)**: `project_technical_blueprints` table added. Stores project-level architectural baseline extracted via "Create Project from Documentation" AI flow. JSONB columns for `components`, `data_domains`, `integrations`. TEXT[] for `assumptions`, `missing_information`. Version-tracked per project. Organization-scoped RLS via projects join. New AI endpoint `ai-generate-project-from-documentation` (2-pass pipeline: project draft extraction + technical blueprint). Blueprint data is injected into requirement-level AI prompts (Impact Map, Interview, Estimation) when available. Migration: `20260401_project_technical_blueprints.sql`.
+- **Blueprint V2 Enrichment (2026-04-02)**: Additive migration for `project_technical_blueprints`. Six new nullable columns: `relations` (JSONB — typed links between blueprint nodes), `coverage` (NUMERIC 0–1), `quality_flags` (TEXT[]), `review_status` (TEXT — draft/reviewed/approved), `change_summary` (TEXT — human-readable diff), `diff_from_previous` (JSONB — structured `BlueprintDiffSummary`). Node types (`BlueprintComponent`, `BlueprintDataDomain`, `BlueprintIntegration`) extended with optional `id`, `businessCriticality`, `changeLikelihood`, `estimationImpact`, `reviewStatus`, `evidence[]` fields. New `EvidenceRef` type for source-text provenance. New `BlueprintRelation` type with 6 relation kinds. Normalizer v2: deterministic node ID generation, semantic dedup with alias resolution, relation validation, evidence consolidation, deterministic quality flags, heuristic coverage computation. Diff engine (`blueprint-diff.ts`): `computeProjectBlueprintDiff()` produces `BlueprintDiffSummary` with breaking-change detection. Repository auto-computes diff on version creation. AI pass 2 prompt extended with evidence/relation/coverage/qualityFlags instructions and structured output schema. Migration: `20260402_blueprint_v2_enrichment.sql`.
 
 ---
 

@@ -27,17 +27,19 @@ import { createAIHandler } from './lib/handler';
 import { getDefaultProvider } from './lib/ai/openai-client';
 import {
     fetchActivitiesServerSide,
-    selectTopActivities,
     formatActivitiesSummary,
 } from './lib/activities';
 import {
-    mapBlueprintToActivities,
-    isBlueprintMappable,
-} from './lib/blueprint-activity-mapper';
+    buildCandidateSet,
+    type CandidateSetResult,
+} from './lib/candidate-builder';
 import { retrieveRAGContext, getRAGSystemPromptAddition } from './lib/ai/rag';
 import { isVectorSearchEnabled } from './lib/ai/vector-search';
 import { formatProjectContextBlock } from './lib/ai/prompt-builder';
 import { evaluateProjectContextRules } from './lib/domain/estimation/project-context-rules';
+import { evaluateProjectTechnicalBlueprintRules } from './lib/domain/estimation/blueprint-rules';
+import { mergeProjectAndBlueprintRules } from './lib/domain/estimation/blueprint-context-integration';
+import type { ProjectTechnicalBlueprint } from './lib/domain/project/project-technical-blueprint.types';
 import type { EstimationContext } from './lib/domain/types/estimation';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -470,9 +472,8 @@ export const handler = createAIHandler<RequestBody>({
         if (!body.description || typeof body.description !== 'string') {
             return 'Missing or invalid description field';
         }
-        if (!body.techCategory || typeof body.techCategory !== 'string') {
-            return 'Missing or invalid techCategory field';
-        }
+        // techCategory is optional — projects may have no technology selected
+        // Defaults to 'MULTI' in handler if missing
         return null;
     },
 
@@ -487,19 +488,20 @@ export const handler = createAIHandler<RequestBody>({
             throw new Error('La descrizione è troppo lunga (max 2000 caratteri).');
         }
 
-        const techCategoryDescription = getTechCategoryDescription(body.techCategory);
-        const techSpecificPrompt = getTechSpecificPrompt(body.techCategory);
+        const techCat = body.techCategory || 'MULTI';
+        const techCategoryDescription = getTechCategoryDescription(techCat);
+        const techSpecificPrompt = getTechSpecificPrompt(techCat);
 
         // ─── Fetch activities server-side (needed for pre-estimate) ─────────
         const fetchResult = await fetchActivitiesServerSide(
-            body.techCategory,
+            techCat,
             body.techPresetId,
         );
 
         // ─── Project Context Rules (deterministic, pre-AI) ──────────
         const interviewEstCtx: EstimationContext = {
             technologyId: body.techPresetId ?? null,
-            techCategory: body.techCategory ?? null,
+            techCategory: techCat ?? null,
             project: body.projectContext ? {
                 name: body.projectContext.name,
                 description: body.projectContext.description,
@@ -513,37 +515,31 @@ export const handler = createAIHandler<RequestBody>({
             } : null,
         };
         const interviewContextRules = evaluateProjectContextRules(interviewEstCtx);
-        if (interviewContextRules.notes.length > 0) {
-            console.log('[ai-requirement-interview] Project context rules:', interviewContextRules.notes);
+
+        // ─── Blueprint deterministic rules ─────────────────────────────
+        const blueprintRules = evaluateProjectTechnicalBlueprintRules(
+            body.projectTechnicalBlueprint as unknown as ProjectTechnicalBlueprint | undefined,
+        );
+        const mergedRules = mergeProjectAndBlueprintRules(interviewContextRules, blueprintRules);
+        if (mergedRules.notes.length > 0) {
+            console.log('[ai-requirement-interview] Merged context+blueprint rules:', mergedRules.notes);
         }
 
-        // ─── Candidate generation: blueprint-first, keyword-fallback ─────
-        let rankedActivities;
-        if (isBlueprintMappable(body.estimationBlueprint)) {
-            console.log('[ai-requirement-interview] Using BLUEPRINT-DRIVEN candidate generation');
-            const mappingResult = mapBlueprintToActivities(
-                body.estimationBlueprint!,
-                fetchResult.activities,
-                body.techCategory,
-                (catalog, excludeCodes) => {
-                    const remaining = catalog.filter(a => !excludeCodes.has(a.code));
-                    return selectTopActivities(remaining, sanitizedDescription, undefined, 10, undefined, interviewContextRules.activityBiases);
-                },
-            );
-            rankedActivities = mappingResult.allActivities.map(m => m.activity);
-            if (mappingResult.warnings.length > 0) {
-                console.log(`[ai-requirement-interview] Blueprint warnings: ${mappingResult.warnings.map(w => `[${w.code}] ${w.message}`).join('; ')}`);
-            }
-        } else {
-            console.log('[ai-requirement-interview] No mappable blueprint — using keyword ranking (fallback)');
-            rankedActivities = selectTopActivities(
-                fetchResult.activities,
-                sanitizedDescription,
-                undefined,
-                20,
-                body.estimationBlueprint,
-                interviewContextRules.activityBiases,
-            );
+        // ─── Candidate generation: CandidateBuilder (multi-signal) ─────
+        const candidateResult: CandidateSetResult = buildCandidateSet({
+            catalog: fetchResult.activities,
+            description: sanitizedDescription,
+            techCategory: techCat,
+            answers: undefined, // no answers at interview planner stage
+            blueprint: body.estimationBlueprint,
+            impactMap: body.impactMap as any,
+            understanding: body.requirementUnderstanding as any,
+            activityBiases: mergedRules.activityBiases,
+            topN: 20,
+        });
+        const rankedActivities = candidateResult.candidates.map(c => c.activity);
+        if (candidateResult.blueprintResult?.warnings && candidateResult.blueprintResult.warnings.length > 0) {
+            console.log(`[ai-requirement-interview] Blueprint warnings: ${candidateResult.blueprintResult.warnings.map(w => `[${w.code}] ${w.message}`).join('; ')}`);
         }
 
         const activitiesSummary = rankedActivities.length > 0
@@ -577,7 +573,7 @@ export const handler = createAIHandler<RequestBody>({
 
         console.log('[ai-requirement-interview] Planner starting:', {
             descriptionLength: sanitizedDescription.length,
-            techCategory: body.techCategory,
+            techCategory: techCat,
             techPresetId: body.techPresetId,
             hasProjectContext: !!body.projectContext,
             hasRequirementUnderstanding: !!body.requirementUnderstanding,

@@ -102,7 +102,7 @@ const LAYER_TO_GROUPS: Record<string, string[]> = {
  * Components on these layers will produce an UNSUPPORTED_LAYER warning and
  * land in unmappedComponents. They are NOT silently ignored.
  */
-const UNSUPPORTED_LAYERS = new Set(['ai_pipeline', 'ml_model', 'iot', 'embedded']);
+export const UNSUPPORTED_LAYERS = new Set(['ai_pipeline', 'ml_model', 'iot', 'embedded']);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Layer + TechCategory → Activity code pattern mapping
@@ -111,7 +111,7 @@ const UNSUPPORTED_LAYERS = new Set(['ai_pipeline', 'ml_model', 'iot', 'embedded'
 // that should be considered when a component on that layer is present.
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface PatternEntry {
+export interface PatternEntry {
     /** Activity code prefix (matched with startsWith) */
     prefix: string;
     /** Which intervention types this pattern covers */
@@ -138,7 +138,7 @@ interface PatternEntry {
 // │                                                                           │
 // │  ⚠️  DO NOT add prefixes here without verifying they exist in the seed.    │
 // └─────────────────────────────────────────────────────────────────────────────┘
-const LAYER_TECH_PATTERNS: Record<string, Record<string, PatternEntry[]>> = {
+export const LAYER_TECH_PATTERNS: Record<string, Record<string, PatternEntry[]>> = {
     // POWER PLATFORM
     POWER_PLATFORM: {
         frontend: [
@@ -233,7 +233,7 @@ function getVariantSuffix(complexity: string | undefined): string {
  * Find the best matching activity for a code prefix + complexity.
  * Tries variant first, then base, then any match with that prefix.
  */
-function findBestMatch(
+export function findBestMatch(
     catalog: Map<string, Activity>,
     catalogByPrefix: Map<string, Activity[]>,
     prefix: string,
@@ -561,7 +561,7 @@ function addCrossCuttingActivities(
 // Index builders
 // ─────────────────────────────────────────────────────────────────────────────
 
-function buildCatalogIndexes(activities: Activity[]): {
+export function buildCatalogIndexes(activities: Activity[]): {
     byCode: Map<string, Activity>;
     byPrefix: Map<string, Activity[]>;
 } {

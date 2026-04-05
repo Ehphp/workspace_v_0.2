@@ -15,6 +15,7 @@
 
 import { createAIHandler } from './lib/handler';
 import { generateProjectFromDocumentation } from './lib/ai/actions/generate-project-from-documentation';
+import { createClient } from '@supabase/supabase-js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -56,12 +57,32 @@ export const handler = createAIHandler<RequestBody>({
 
         const sanitizedText = ctx.sanitize(body.sourceText);
 
+        // Load technology catalog from Supabase for AI matching
+        let technologyCatalog: Array<{ id: string; code: string; name: string }> = [];
+        try {
+            const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+            const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+            if (supabaseUrl && supabaseKey) {
+                const supabase = createClient(supabaseUrl, supabaseKey);
+                const { data } = await supabase
+                    .from('technologies')
+                    .select('id, code, name')
+                    .order('name');
+                if (data) {
+                    technologyCatalog = data;
+                }
+            }
+        } catch (err) {
+            console.warn('[ai-generate-project-from-documentation] Failed to load technology catalog:', err);
+        }
+
         console.log(
-            `[ai-generate-project-from-documentation] Source text: ${sanitizedText.length} chars`,
+            `[ai-generate-project-from-documentation] Source text: ${sanitizedText.length} chars, technologies: ${technologyCatalog.length}`,
         );
 
         const result = await generateProjectFromDocumentation({
             sourceText: sanitizedText,
+            technologyCatalog,
             testMode: body.testMode,
         });
 

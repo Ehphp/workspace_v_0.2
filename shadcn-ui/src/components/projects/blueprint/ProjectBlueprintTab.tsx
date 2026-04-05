@@ -3,6 +3,7 @@ import { getLatestProjectTechnicalBlueprint } from '@/lib/project-technical-blue
 import { ProjectBlueprintGraph } from './ProjectBlueprintGraph';
 import { ProjectBlueprintInspector } from './ProjectBlueprintInspector';
 import { buildProjectBlueprintGraph } from '@/lib/projects/project-blueprint-graph';
+import { searchBlueprint, type BlueprintSearchResult } from '@/lib/projects/blueprint-search';
 import type { ProjectTechnicalBlueprint } from '@/types/project-technical-blueprint';
 import type { BlueprintGraphNodeData } from '@/lib/projects/project-blueprint-graph';
 
@@ -16,6 +17,19 @@ export function ProjectBlueprintTab({ projectId }: ProjectBlueprintTabProps) {
     const [error, setError] = useState<string | null>(null);
     const [selectedNode, setSelectedNode] = useState<BlueprintGraphNodeData | null>(null);
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // Search results — recomputed on every query change
+    const searchResults = useMemo<BlueprintSearchResult[]>(() => {
+        if (!blueprint || searchQuery.trim().length < 2) return [];
+        return searchBlueprint(blueprint, searchQuery);
+    }, [blueprint, searchQuery]);
+
+    // Set of matching graph node IDs for highlighting
+    const highlightedNodeIds = useMemo<Set<string>>(
+        () => new Set(searchResults.map((r) => r.graphNodeId).filter(Boolean) as string[]),
+        [searchResults],
+    );
 
     useEffect(() => {
         let cancelled = false;
@@ -130,23 +144,85 @@ export function ProjectBlueprintTab({ projectId }: ProjectBlueprintTabProps) {
 
     // ── Graph + Inspector ───────────────────────────────────────────
     return (
-        <div className="flex h-[520px] border rounded-lg overflow-hidden bg-white">
-            {/* Graph canvas */}
-            <div className="flex-1 min-w-0">
-                <ProjectBlueprintGraph
-                    blueprint={blueprint}
-                    onNodeSelect={handleNodeSelect}
+        <div className="flex flex-col h-[560px]">
+            {/* Search bar */}
+            <div className="flex items-center gap-2 px-3 py-2 border-b bg-white">
+                <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search components, domains, integrations…"
+                    className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-400"
                 />
+                {searchQuery.length > 0 && (
+                    <button
+                        onClick={() => setSearchQuery('')}
+                        className="text-xs text-slate-400 hover:text-slate-600"
+                    >
+                        ✕
+                    </button>
+                )}
+                {searchResults.length > 0 && (
+                    <span className="text-[10px] text-slate-500 tabular-nums">
+                        {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
+                    </span>
+                )}
             </div>
 
-            {/* Inspector sidebar */}
-            <div className="w-[280px] border-l bg-slate-50/60 flex-shrink-0">
-                <ProjectBlueprintInspector
-                    blueprint={blueprint}
-                    selectedNode={selectedNode}
-                    selectedNodeId={selectedNodeId}
-                    graphModel={graphModel!}
-                />
+            {/* Search results list (shown when searching) */}
+            {searchResults.length > 0 && (
+                <div className="border-b bg-slate-50/80 max-h-[140px] overflow-y-auto">
+                    {searchResults.slice(0, 20).map((r) => (
+                        <button
+                            key={r.nodeId}
+                            onClick={() => {
+                                if (r.graphNodeId) {
+                                    const gNode = graphModel?.nodes.find((n) => n.id === r.graphNodeId);
+                                    if (gNode) {
+                                        handleNodeSelect(r.graphNodeId, gNode.data);
+                                    }
+                                }
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-blue-50 transition-colors"
+                        >
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                r.kind === 'component' ? 'bg-blue-500' :
+                                r.kind === 'data_domain' ? 'bg-emerald-500' :
+                                r.kind === 'integration' ? 'bg-violet-500' :
+                                'bg-indigo-500'
+                            }`} />
+                            <span className="text-xs font-medium text-slate-700 truncate">{r.label}</span>
+                            <span className="text-[10px] text-slate-400 ml-auto flex-shrink-0">
+                                {r.matchSnippet.substring(0, 40)}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* Graph + Inspector */}
+            <div className="flex flex-1 min-h-0 border rounded-b-lg overflow-hidden bg-white">
+                {/* Graph canvas */}
+                <div className="flex-1 min-w-0">
+                    <ProjectBlueprintGraph
+                        blueprint={blueprint}
+                        onNodeSelect={handleNodeSelect}
+                        highlightedNodeIds={highlightedNodeIds}
+                    />
+                </div>
+
+                {/* Inspector sidebar */}
+                <div className="w-[280px] border-l bg-slate-50/60 flex-shrink-0">
+                    <ProjectBlueprintInspector
+                        blueprint={blueprint}
+                        selectedNode={selectedNode}
+                        selectedNodeId={selectedNodeId}
+                        graphModel={graphModel!}
+                    />
+                </div>
             </div>
         </div>
     );

@@ -11,7 +11,15 @@ import type {
     ProjectTechnicalBlueprint,
     ProjectTechnicalBlueprintRow,
     CreateProjectTechnicalBlueprintInput,
+    ReviewStatus,
 } from '@/types/project-technical-blueprint';
+import {
+    computeProjectBlueprintDiff,
+    formatChangeSummary,
+} from '../../netlify/functions/lib/domain/project/blueprint-diff';
+import {
+    computeBlueprintQualityScore,
+} from '../../netlify/functions/lib/domain/project/blueprint-quality-score';
 
 const TABLE = 'project_technical_blueprints' as const;
 
@@ -34,6 +42,14 @@ export function mapBlueprintRowToDomain(row: ProjectTechnicalBlueprintRow): Proj
         missingInformation: row.missing_information ?? [],
         confidence: row.confidence ?? undefined,
         createdAt: row.created_at,
+        // v2 fields (nullable → undefined for backward compat)
+        relations: row.relations ?? undefined,
+        coverage: row.coverage ?? undefined,
+        qualityFlags: row.quality_flags ?? undefined,
+        qualityScore: row.quality_score ?? undefined,
+        reviewStatus: (row.review_status as ReviewStatus) ?? undefined,
+        changeSummary: row.change_summary ?? undefined,
+        diffFromPrevious: row.diff_from_previous ?? undefined,
     };
 }
 
@@ -53,6 +69,14 @@ function mapInputToRow(
         assumptions: input.assumptions,
         missing_information: input.missingInformation,
         confidence: input.confidence ?? null,
+        // v2 fields (optional, nullable)
+        relations: input.relations ?? null,
+        coverage: input.coverage ?? null,
+        quality_flags: input.qualityFlags ?? null,
+        quality_score: input.qualityScore ?? null,
+        review_status: input.reviewStatus ?? null,
+        change_summary: input.changeSummary ?? null,
+        diff_from_previous: input.diffFromPrevious ?? null,
     };
 }
 
@@ -113,15 +137,18 @@ export async function listProjectTechnicalBlueprintVersions(
 /**
  * Create a new blueprint version for a project.
  * Automatically calculates the next version number.
+ * If a previous version exists, computes a semantic diff and persists it.
  */
 export async function createProjectTechnicalBlueprint(
     input: CreateProjectTechnicalBlueprintInput,
 ): Promise<ProjectTechnicalBlueprint> {
-    // Determine next version
+    // Determine next version + fetch previous for diff
     let nextVersion = 1;
+    let previousBlueprint: ProjectTechnicalBlueprint | null = null;
+
     const { data: latestRow } = await supabase
         .from(TABLE)
-        .select('version')
+        .select('*')
         .eq('project_id', input.projectId)
         .order('version', { ascending: false })
         .limit(1)
@@ -129,9 +156,48 @@ export async function createProjectTechnicalBlueprint(
 
     if (latestRow) {
         nextVersion = (latestRow as { version: number }).version + 1;
+        previousBlueprint = mapBlueprintRowToDomain(latestRow as ProjectTechnicalBlueprintRow);
     }
 
-    const payload = mapInputToRow(input, nextVersion);
+    // Build a temporary domain object for the new blueprint to compute diff
+    const enrichedInput = { ...input };
+    if (previousBlueprint) {
+        const tempNext: ProjectTechnicalBlueprint = {
+            projectId: input.projectId,
+            version: nextVersion,
+            components: input.components,
+            dataDomains: input.dataDomains,
+            integrations: input.integrations,
+            architecturalNotes: input.architecturalNotes,
+            assumptions: input.assumptions,
+            missingInformation: input.missingInformation,
+            confidence: input.confidence,
+            relations: input.relations,
+        };
+        const diff = computeProjectBlueprintDiff(previousBlueprint, tempNext);
+        enrichedInput.diffFromPrevious = diff;
+        enrichedInput.changeSummary = enrichedInput.changeSummary || formatChangeSummary(diff);
+    }
+
+    // Compute quality score deterministically
+    const tempBlueprint: ProjectTechnicalBlueprint = {
+        projectId: input.projectId,
+        version: nextVersion,
+        components: enrichedInput.components,
+        dataDomains: enrichedInput.dataDomains,
+        integrations: enrichedInput.integrations,
+        architecturalNotes: enrichedInput.architecturalNotes,
+        assumptions: enrichedInput.assumptions,
+        missingInformation: enrichedInput.missingInformation,
+        confidence: enrichedInput.confidence,
+        coverage: enrichedInput.coverage,
+        relations: enrichedInput.relations,
+        qualityFlags: enrichedInput.qualityFlags,
+    };
+    const qResult = computeBlueprintQualityScore(tempBlueprint);
+    enrichedInput.qualityScore = qResult.qualityScore;
+
+    const payload = mapInputToRow(enrichedInput, nextVersion);
 
     const { data, error } = await supabase
         .from(TABLE)
@@ -161,7 +227,8 @@ export async function updateProjectTechnicalBlueprint(
     patch: Partial<Pick<
         ProjectTechnicalBlueprint,
         'summary' | 'components' | 'dataDomains' | 'integrations' |
-        'architecturalNotes' | 'assumptions' | 'missingInformation' | 'confidence'
+        'architecturalNotes' | 'assumptions' | 'missingInformation' | 'confidence' |
+        'relations' | 'coverage' | 'qualityFlags' | 'qualityScore' | 'reviewStatus' | 'changeSummary' | 'diffFromPrevious'
     >>,
 ): Promise<ProjectTechnicalBlueprint> {
     const row: Record<string, unknown> = {};
@@ -173,6 +240,14 @@ export async function updateProjectTechnicalBlueprint(
     if (patch.assumptions !== undefined) row.assumptions = patch.assumptions;
     if (patch.missingInformation !== undefined) row.missing_information = patch.missingInformation;
     if (patch.confidence !== undefined) row.confidence = patch.confidence;
+    // v2 fields
+    if (patch.relations !== undefined) row.relations = patch.relations;
+    if (patch.coverage !== undefined) row.coverage = patch.coverage;
+    if (patch.qualityFlags !== undefined) row.quality_flags = patch.qualityFlags;
+    if (patch.qualityScore !== undefined) row.quality_score = patch.qualityScore;
+    if (patch.reviewStatus !== undefined) row.review_status = patch.reviewStatus;
+    if (patch.changeSummary !== undefined) row.change_summary = patch.changeSummary;
+    if (patch.diffFromPrevious !== undefined) row.diff_from_previous = patch.diffFromPrevious;
 
     const { data, error } = await supabase
         .from(TABLE)

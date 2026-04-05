@@ -77,6 +77,13 @@ export interface DomainSaveInput {
     warnings?: string[];
     /** Assumptions surfaced during estimation */
     assumptions?: string[];
+
+    /**
+     * Enriched candidates from CandidateBuilder (with provenance).
+     * When provided, these replace the pass-through buildCandidates() output
+     * so that candidate_sets persists full score/sources/contributions.
+     */
+    enrichedCandidates?: import('../../../../../src/types/domain-model').CandidateActivity[];
 }
 
 export interface DomainSaveResult {
@@ -133,7 +140,9 @@ export async function orchestrateDomainSave(
     }
 
     // 3. Build & persist CandidateSet
-    const candidates = buildCandidates(input.activities);
+    // Use enriched candidates from CandidateBuilder when available (with provenance),
+    // fall back to pass-through builder for legacy/manual paths.
+    const candidates = input.enrichedCandidates ?? buildCandidates(input.activities);
     const candidateSet = await createCandidateSet({
         analysis_id: analysis.id,
         impact_map_id: impactMap?.id ?? null,

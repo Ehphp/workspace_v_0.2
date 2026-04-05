@@ -31,24 +31,97 @@ export type IntegrationDirection =
     | 'bidirectional'
     | 'unknown';
 
+export type CriticalityLevel = 'low' | 'medium' | 'high';
+export type ReviewStatus = 'draft' | 'reviewed' | 'approved';
+
+// ============================================================================
+// Evidence — textual proof from source documentation
+// ============================================================================
+
+export interface EvidenceRef {
+    sourceType: 'source_text';
+    snippet: string;
+    startOffset?: number;
+    endOffset?: number;
+}
+
+// ============================================================================
+// Relations — explicit links between blueprint nodes
+// ============================================================================
+
+export type BlueprintRelationType =
+    | 'reads'
+    | 'writes'
+    | 'orchestrates'
+    | 'syncs'
+    | 'owns'
+    | 'depends_on';
+
+export interface BlueprintRelation {
+    id: string;
+    fromNodeId: string;
+    toNodeId: string;
+    type: BlueprintRelationType;
+    confidence?: number;
+    evidence?: EvidenceRef[];
+}
+
+// ============================================================================
+// Diff Summary — semantic diff between blueprint versions
+// ============================================================================
+
+export interface BlueprintDiffSummary {
+    addedNodes: string[];
+    removedNodes: string[];
+    updatedNodes: string[];
+    reclassifiedNodes: string[];
+    addedRelations: string[];
+    removedRelations: string[];
+    changedAssumptions: boolean;
+    changedMissingInformation: boolean;
+    breakingArchitecturalChanges: boolean;
+}
+
+// ============================================================================
+// Node types (with optional enrichment fields)
+// ============================================================================
+
 export interface BlueprintComponent {
+    id?: string;
     name: string;
     type: BlueprintComponentType;
     description?: string;
     confidence?: number;
+    businessCriticality?: CriticalityLevel;
+    changeLikelihood?: CriticalityLevel;
+    estimationImpact?: CriticalityLevel;
+    reviewStatus?: ReviewStatus;
+    evidence?: EvidenceRef[];
 }
 
 export interface BlueprintDataDomain {
+    id?: string;
     name: string;
     description?: string;
     confidence?: number;
+    businessCriticality?: CriticalityLevel;
+    changeLikelihood?: CriticalityLevel;
+    estimationImpact?: CriticalityLevel;
+    reviewStatus?: ReviewStatus;
+    evidence?: EvidenceRef[];
 }
 
 export interface BlueprintIntegration {
+    id?: string;
     systemName: string;
     direction?: IntegrationDirection;
     description?: string;
     confidence?: number;
+    businessCriticality?: CriticalityLevel;
+    changeLikelihood?: CriticalityLevel;
+    estimationImpact?: CriticalityLevel;
+    reviewStatus?: ReviewStatus;
+    evidence?: EvidenceRef[];
 }
 
 // ============================================================================
@@ -69,6 +142,14 @@ export interface ProjectTechnicalBlueprint {
     missingInformation: string[];
     confidence?: number;
     createdAt?: string;
+    // ── New fields (v2 — all optional for backward compat) ──────────
+    relations?: BlueprintRelation[];
+    coverage?: number;
+    qualityFlags?: string[];
+    qualityScore?: number;
+    reviewStatus?: ReviewStatus;
+    changeSummary?: string;
+    diffFromPrevious?: BlueprintDiffSummary;
 }
 
 // ============================================================================
@@ -118,6 +199,14 @@ export interface ProjectTechnicalBlueprintRow {
     confidence: number | null;
     created_at: string;
     updated_at: string;
+    // ── New columns (v2 — nullable for backward compat) ─────────────
+    relations: BlueprintRelation[] | null;
+    coverage: number | null;
+    quality_flags: string[] | null;
+    quality_score: number | null;
+    review_status: string | null;
+    change_summary: string | null;
+    diff_from_previous: BlueprintDiffSummary | null;
 }
 
 // ============================================================================
@@ -135,4 +224,12 @@ export interface CreateProjectTechnicalBlueprintInput {
     assumptions: string[];
     missingInformation: string[];
     confidence?: number;
+    // ── New fields (v2 — optional for backward compat) ──────────────
+    relations?: BlueprintRelation[];
+    coverage?: number;
+    qualityFlags?: string[];
+    qualityScore?: number;
+    reviewStatus?: ReviewStatus;
+    changeSummary?: string;
+    diffFromPrevious?: BlueprintDiffSummary;
 }
