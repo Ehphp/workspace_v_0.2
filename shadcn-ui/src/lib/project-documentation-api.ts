@@ -6,7 +6,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
-import { sanitizePromptInput } from '@/types/ai-validation';
+import { sanitizeDocumentInput } from '@/types/ai-validation';
 import { buildFunctionUrl } from '@/lib/netlify';
 import type { GenerateProjectFromDocumentationResponse } from '@/types/project-technical-blueprint';
 
@@ -20,7 +20,7 @@ export async function generateProjectFromDocumentation(
     sourceText: string,
 ): Promise<GenerateProjectFromDocumentationResponse> {
     // 1. Client-side sanitization
-    const sanitizedText = sanitizePromptInput(sourceText);
+    const sanitizedText = sanitizeDocumentInput(sourceText);
 
     // 2. Basic validation
     if (!sanitizedText || sanitizedText.trim().length < 50) {

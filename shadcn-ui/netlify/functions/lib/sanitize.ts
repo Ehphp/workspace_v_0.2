@@ -20,3 +20,19 @@ export function sanitizePromptInput(text: string): string {
         .slice(0, 5000)                  // Limit length
         .trim();
 }
+
+/**
+ * Sanitize document ingestion input.
+ *
+ * Same escaping as sanitizePromptInput but with a higher length limit (20 000)
+ * appropriate for document-to-blueprint flows.
+ */
+export function sanitizeDocumentInput(text: string): string {
+    return text
+        .replace(/[<>]/g, '')
+        .replace(/[{}]/g, '')
+        // eslint-disable-next-line no-control-regex
+        .replace(/[\u0000-\u001F\u007F]/g, '')
+        .slice(0, 20000)
+        .trim();
+}

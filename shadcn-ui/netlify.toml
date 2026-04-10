@@ -43,6 +43,9 @@
 [functions."ai-bulk-estimate-with-answers"]
   timeout = 90
 
+[functions."ai-generate-project-from-documentation"]
+  timeout = 90
+
 # Redirect all requests to index.html for SPA routing
 [[redirects]]
   from = "/*"

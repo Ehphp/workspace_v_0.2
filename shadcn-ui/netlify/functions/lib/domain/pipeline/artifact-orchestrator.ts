@@ -57,6 +57,9 @@ export interface OrchestrateInput {
     /** Project context (optional) */
     projectContext?: CanonicalProjectContext | null;
 
+    /** Project technical blueprint — architectural baseline (optional) */
+    projectTechnicalBlueprint?: Record<string, unknown> | null;
+
     /**
      * Pre-existing artifacts (user-confirmed). If provided, the orchestrator
      * skips generation for that artifact and uses it as-is.
@@ -140,6 +143,7 @@ export async function orchestrateArtifacts(input: OrchestrateInput): Promise<Art
         description,
         techCategory,
         projectContext,
+        projectTechnicalBlueprint,
         existing,
         testMode,
     } = input;
@@ -153,7 +157,7 @@ export async function orchestrateArtifacts(input: OrchestrateInput): Promise<Art
     const projectCtx = projectContext ?? undefined;
 
     if (strategy === 'parallel-independent') {
-        return orchestrateParallel(description, techCategory, projectCtx, existing, testMode, steps, startMs);
+        return orchestrateParallel(description, techCategory, projectCtx, projectTechnicalBlueprint ?? undefined, existing, testMode, steps, startMs);
     }
 
     // ── Sequential-enriched (default) or pre-populated ──────────────
@@ -192,6 +196,7 @@ export async function orchestrateArtifacts(input: OrchestrateInput): Promise<Art
             techCategory,
             projectContext: projectCtx,
             requirementUnderstanding: understanding as unknown as Record<string, unknown>,
+            projectTechnicalBlueprint: projectTechnicalBlueprint ?? undefined,
             testMode,
         });
         impactMap = toImpactMap(result);
@@ -259,6 +264,7 @@ async function orchestrateParallel(
     description: string,
     techCategory: string,
     projectContext: CanonicalProjectContext | undefined,
+    projectTechnicalBlueprint: Record<string, unknown> | undefined,
     existing: OrchestrateInput['existing'],
     testMode: boolean | undefined,
     steps: GenerationStep[],
@@ -288,14 +294,14 @@ async function orchestrateParallel(
         })());
     }
 
-    // ImpactMap (parallel — no understanding input)
+    // ImpactMap (parallel — no understanding input, but with blueprint baseline)
     if (impactMap) {
         steps.push({ artifact: 'impactMap', source: 'pre-existing', durationMs: 0, confidence: impactMap.overallConfidence });
     } else {
         promises.push((async () => {
             const stepStart = Date.now();
             const result = await generateImpactMap({
-                description, techCategory, projectContext, testMode,
+                description, techCategory, projectContext, projectTechnicalBlueprint, testMode,
             });
             impactMap = toImpactMap(result);
             steps.push({

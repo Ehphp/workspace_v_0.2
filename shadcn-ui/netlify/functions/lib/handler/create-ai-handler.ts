@@ -30,7 +30,7 @@ import { getCorsHeaders, isOriginAllowed } from '../security/cors';
 import { checkRateLimit } from '../security/rate-limiter';
 import { isLLMConfigured } from '../ai/openai-client';
 import { CircuitOpenError } from '../ai/circuit-breaker';
-import { sanitizePromptInput } from '../sanitize';
+import { sanitizePromptInput, sanitizeDocumentInput } from '../sanitize';
 
 /**
  * Context passed to handler business logic
@@ -46,6 +46,8 @@ export interface AIHandlerContext {
     headers: Record<string, string>;
     /** Sanitize user input for prompts */
     sanitize: (input: string) => string;
+    /** Sanitize document ingestion input (higher length limit) */
+    sanitizeDocument: (input: string) => string;
 }
 
 /**
@@ -222,6 +224,7 @@ export function createAIHandler<TBody = any, TResponse = any>(
                 netlifyContext: context,
                 headers,
                 sanitize: sanitizePromptInput,
+                sanitizeDocument: sanitizeDocumentInput,
             };
 
             // 10. Execute business logic

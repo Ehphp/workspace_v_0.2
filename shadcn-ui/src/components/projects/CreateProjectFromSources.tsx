@@ -53,6 +53,7 @@ import {
     X,
     FileCode,
     File as FileIcon,
+    AlertTriangle,
 } from 'lucide-react';
 import { generateProjectFromDocumentation } from '@/lib/project-documentation-api';
 import { createProject, fetchPresets } from '@/lib/api';
@@ -71,7 +72,7 @@ import type {
 } from '@/types/project-technical-blueprint';
 import { BlueprintNodeReviewCard } from './blueprint/BlueprintNodeReviewCard';
 import { BlueprintRelationReviewCard, AddRelationInline } from './blueprint/BlueprintRelationReviewCard';
-import type { ProjectSourceItem } from '@/types/project-sources';
+import type { ProjectSourceItem, DocumentParsingWarning, ParsedDocument } from '@/types/project-sources';
 import { ACCEPTED_FILE_TYPES } from '@/types/project-sources';
 import {
     parseProjectFile,
@@ -520,6 +521,18 @@ export function CreateProjectFromSources({
                             <AlertCircle className="w-3 h-3" />
                             You have unsaved text in the paste area. Click "Add Text Source" to include it.
                         </p>
+                    </div>
+                )}
+
+                {/* Extraction warnings */}
+                {bundle.warnings && bundle.warnings.length > 0 && (
+                    <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 space-y-1">
+                        {deduplicateWarnings(bundle.warnings).map((w, i) => (
+                            <p key={i} className="text-xs text-amber-700 flex items-center gap-1.5">
+                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                {w.message}
+                            </p>
+                        ))}
                     </div>
                 )}
 
@@ -1169,6 +1182,11 @@ function SourceCard({
                         {getSourcePreview(source.textContent, 120)}
                     </p>
                 )}
+                {source.status === 'ready' && source.parsedDocument && (
+                    <p className="text-xs text-slate-400 mt-0.5">
+                        {getBlockStats(source.parsedDocument)}
+                    </p>
+                )}
                 {source.status === 'processing' && (
                     <p className="text-xs text-slate-400 mt-1">Extracting text…</p>
                 )}
@@ -1220,4 +1238,29 @@ function getFileIcon(fileName: string) {
         default:
             return <FileIcon className="w-4 h-4 text-slate-400" />;
     }
+}
+
+function deduplicateWarnings(warnings: DocumentParsingWarning[]): DocumentParsingWarning[] {
+    const seen = new Set<string>();
+    return warnings.filter((w) => {
+        const key = `${w.code}:${w.message}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
+function getBlockStats(doc: ParsedDocument): string {
+    const counts: Record<string, number> = {};
+    for (const b of doc.blocks) {
+        counts[b.type] = (counts[b.type] || 0) + 1;
+    }
+    const parts: string[] = [];
+    if (doc.metadata.pageCount) parts.push(`${doc.metadata.pageCount} pg`);
+    parts.push(`${doc.blocks.length} blocks`);
+    if (counts.heading) parts.push(`${counts.heading} headings`);
+    if (counts.table) parts.push(`${counts.table} tables`);
+    if (counts.list) parts.push(`${counts.list} lists`);
+    if (doc.metadata.detectedImageCount > 0) parts.push(`${doc.metadata.detectedImageCount} img`);
+    return parts.join(' · ');
 }

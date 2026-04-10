@@ -55,7 +55,7 @@ export const handler = createAIHandler<RequestBody>({
     handler: async (body, ctx) => {
         const startMs = Date.now();
 
-        const sanitizedText = ctx.sanitize(body.sourceText);
+        const sanitizedText = ctx.sanitizeDocument(body.sourceText);
 
         // Load technology catalog from Supabase for AI matching
         let technologyCatalog: Array<{ id: string; code: string; name: string }> = [];

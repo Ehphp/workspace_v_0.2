@@ -242,6 +242,7 @@ export async function generateProjectFromDocumentation(
         responseFormat: pass2Schema as any,
         systemPrompt: TECHNICAL_BLUEPRINT_SYSTEM_PROMPT,
         userPrompt: pass2UserPrompt,
+        options: 'complex',
     });
 
     const pass2Ms = Date.now() - pass2Start;

@@ -70,6 +70,23 @@ export function sanitizePromptInput(text: string): string {
 }
 
 /**
+ * Sanitize document ingestion input.
+ *
+ * Same escaping as sanitizePromptInput but with a higher length limit (20 000)
+ * appropriate for document-to-blueprint flows.
+ * Keeps sanitizePromptInput unchanged for all other AI consumers.
+ */
+export function sanitizeDocumentInput(text: string): string {
+    return text
+        .replace(/[<>]/g, '')
+        .replace(/[{}]/g, '')
+        // eslint-disable-next-line no-control-regex
+        .replace(/[\u0000-\u001F\u007F]/g, '')
+        .slice(0, 20000)
+        .trim();
+}
+
+/**
  * Schema per validazione generazione titolo
  */
 export const AITitleGenerationSchema = z.object({
