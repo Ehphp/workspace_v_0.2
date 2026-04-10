@@ -5,7 +5,7 @@
  *   1. Full blueprint → complete structural mapping
  *   2. Partial blueprint → mapping + keyword fallback
  *   3. No blueprint → isBlueprintMappable returns false
- *   4. Variant selection (_SM/_LG) based on complexity
+ *   4. Complexity-based prefix routing (SIMPLE vs COMPLEX)
  *   5. Cross-cutting activities (deploy, governance)
  *   6. Coverage report accuracy
  *   7. Catalog validation — all prefixes match real catalog codes
@@ -309,12 +309,13 @@ describe('mapBlueprintToActivities — full blueprint (Backend)', () => {
         expect(apiActs.length).toBeGreaterThan(0);
     });
 
-    it('selects _LG variant for HIGH complexity component', () => {
-        // The logic component has HIGH complexity → should pick BE_API_COMPLEX_LG
-        const lgActs = result.blueprintActivities.filter(m =>
-            m.activity.code.endsWith('_LG')
+    it('selects base code for HIGH complexity (hour scaling is downstream)', () => {
+        // The logic component has HIGH complexity → should pick BE_API_COMPLEX (base)
+        // Hour scaling (_SM/_LG multipliers) is handled downstream by complexity-resolver
+        const apiComplex = result.blueprintActivities.filter(m =>
+            m.activity.code === 'BE_API_COMPLEX'
         );
-        expect(lgActs.length).toBeGreaterThan(0);
+        expect(apiComplex.length).toBeGreaterThan(0);
     });
 
     it('maps DB migration for data component', () => {
@@ -415,8 +416,8 @@ describe('mapBlueprintToActivities — empty blueprint', () => {
     });
 });
 
-describe('variant selection', () => {
-    it('picks _SM variant for LOW complexity', () => {
+describe('complexity-based selection (base codes only, no _SM/_LG)', () => {
+    it('picks base code for LOW complexity (hour scaling downstream)', () => {
         const catalog = buildTestCatalog('POWER_PLATFORM');
         const blueprint = {
             components: [
@@ -429,10 +430,11 @@ describe('variant selection', () => {
             m.activity.code.startsWith('PP_DV_FORM')
         );
         expect(formActs.length).toBeGreaterThan(0);
-        expect(formActs[0].activity.code).toBe('PP_DV_FORM_SM');
+        // Should pick base code — complexity scaling is downstream
+        expect(formActs[0].activity.code).toBe('PP_DV_FORM');
     });
 
-    it('picks _LG variant for HIGH complexity', () => {
+    it('picks base code for HIGH complexity (hour scaling downstream)', () => {
         const catalog = buildTestCatalog('POWER_PLATFORM');
         const blueprint = {
             components: [
@@ -445,10 +447,10 @@ describe('variant selection', () => {
             m.activity.code.startsWith('PP_DV_FORM')
         );
         expect(formActs.length).toBeGreaterThan(0);
-        expect(formActs[0].activity.code).toBe('PP_DV_FORM_LG');
+        expect(formActs[0].activity.code).toBe('PP_DV_FORM');
     });
 
-    it('picks base variant for MEDIUM complexity', () => {
+    it('picks base code for MEDIUM complexity', () => {
         const catalog = buildTestCatalog('POWER_PLATFORM');
         const blueprint = {
             components: [
@@ -461,7 +463,6 @@ describe('variant selection', () => {
             m.activity.code.startsWith('PP_DV_FORM')
         );
         expect(formActs.length).toBeGreaterThan(0);
-        // MEDIUM → no suffix → base variant
         expect(formActs[0].activity.code).toBe('PP_DV_FORM');
     });
 });

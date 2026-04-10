@@ -311,7 +311,7 @@ export async function saveEstimation(input: SaveEstimationInput): Promise<string
   const activities = input.activities.map((a) => {
     const activity = masterData.activities.find((ma) => ma.code === a.code);
     if (!activity) return null;
-    return { activity_id: activity.id, is_ai_suggested: a.isAiSuggested, notes: '' };
+    return { activity_id: activity.id, is_ai_suggested: a.isAiSuggested, notes: '', complexity_variant: null };
   }).filter((i): i is NonNullable<typeof i> => i !== null);
 
   const drivers = input.drivers.map((d) => {
@@ -385,7 +385,7 @@ export interface SaveEstimationByIdsInput {
   blueprintId?: string | null;
   analysisId?: string | null;
   decisionId?: string | null;
-  activities: { activity_id: string; is_ai_suggested: boolean; notes?: string | null }[];
+  activities: { activity_id: string; is_ai_suggested: boolean; notes?: string | null; complexity_variant?: string | null }[];
   drivers?: { driver_id: string; selected_value: string }[] | null;
   risks?: { risk_id: string }[] | null;
 }

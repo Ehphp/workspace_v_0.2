@@ -2,8 +2,8 @@
  * Tests for project-context-rules.ts — deterministic project context rules engine
  *
  * Covers:
- *   1. scope=LARGE → preferLargeVariants, notes
- *   2. scope=SMALL → preferSmallVariants, notes
+ *   1. scope=LARGE → boostGroups + notes
+ *   2. scope=SMALL → notes (lean estimation)
  *   3. deadlinePressure=CRITICAL → driver + risk + notes
  *   4. deadlinePressure=TIGHT → risk + notes (no driver)
  *   5. teamSize=1 → SPOF risk
@@ -60,30 +60,26 @@ describe('evaluateProjectContextRules', () => {
 
     // ── Scope ─────────────────────────────────────────────────────────────
 
-    it('scope=LARGE → preferLargeVariants + notes', () => {
+    it('scope=LARGE → boostGroups + notes', () => {
         const result = evalWith({ scope: 'LARGE' });
-        expect(result.activityBiases.preferLargeVariants).toBe(true);
-        expect(result.activityBiases.preferSmallVariants).toBeUndefined();
+        expect(result.activityBiases.boostGroups).toContain('ANALYSIS');
         expect(result.notes.some(n => n.includes('scope_large'))).toBe(true);
     });
 
-    it('scope=ENTERPRISE → preferLargeVariants + notes', () => {
+    it('scope=ENTERPRISE → boostGroups + notes', () => {
         const result = evalWith({ scope: 'ENTERPRISE' });
-        expect(result.activityBiases.preferLargeVariants).toBe(true);
+        expect(result.activityBiases.boostGroups).toContain('ANALYSIS');
         expect(result.notes.some(n => n.includes('ENTERPRISE'))).toBe(true);
     });
 
-    it('scope=SMALL → preferSmallVariants + notes', () => {
+    it('scope=SMALL → notes only', () => {
         const result = evalWith({ scope: 'SMALL' });
-        expect(result.activityBiases.preferSmallVariants).toBe(true);
-        expect(result.activityBiases.preferLargeVariants).toBeUndefined();
         expect(result.notes.some(n => n.includes('scope_small'))).toBe(true);
     });
 
-    it('scope=MEDIUM → no variant preference', () => {
+    it('scope=MEDIUM → no scope-specific biases', () => {
         const result = evalWith({ scope: 'MEDIUM' });
-        expect(result.activityBiases.preferLargeVariants).toBeUndefined();
-        expect(result.activityBiases.preferSmallVariants).toBeUndefined();
+        expect(result.activityBiases.boostGroups).toBeUndefined();
     });
 
     // ── Deadline pressure ─────────────────────────────────────────────────
@@ -238,7 +234,7 @@ describe('evaluateProjectContextRules', () => {
         });
 
         // Scope
-        expect(result.activityBiases.preferLargeVariants).toBe(true);
+        expect(result.activityBiases.boostGroups).toContain('ANALYSIS');
 
         // Deadline
         expect(result.suggestedDrivers.some(d => d.code === 'TIMELINE_PRESSURE')).toBe(true);

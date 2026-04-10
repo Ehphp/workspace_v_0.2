@@ -7,7 +7,7 @@
  *
  * Extracts two signal types:
  *   1. functional-perimeter → maps scope items to architectural layers → activity codes
- *   2. complexity-variant   → routes to _SM / _LG activity variants
+ *   2. complexity-variant   → determines complexity level (hour scaling handled by complexity-resolver)
  *
  * Contract:
  *   - Every signal has score, sources, contributions, provenance — no exceptions.
@@ -21,7 +21,7 @@
  *     → LAYER_TECH_PATTERNS[techCategory][layer] → patterns
  *     → findBestMatch(catalog, prefix, complexity) → activity codes with provenance
  *
- *   complexityAssessment.level → variant suffix (_SM / _LG / base)
+ *   complexityAssessment.level → complexity level for downstream hour scaling
  *     → applied to ALL matched activities
  */
 
@@ -74,7 +74,7 @@ export interface UnderstandingExtractionResult {
     signals: UnderstandingSignal[];
     /** Perimeter terms that had no matching patterns */
     unmatchedTerms: string[];
-    /** Complexity level used for variant routing */
+    /** Complexity level used for hour scaling */
     complexityLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'unknown';
     /** Total perimeter terms processed */
     perimeterTermsProcessed: number;
@@ -180,7 +180,7 @@ export const PERIMETER_LAYER_MAP: PerimeterPattern[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Complexity → variant mapping
+// Complexity → level mapping
 // ─────────────────────────────────────────────────────────────────────────────
 
 function complexityToVariant(level: ComplexityAssessment['level'] | undefined): string | undefined {
@@ -188,7 +188,7 @@ function complexityToVariant(level: ComplexityAssessment['level'] | undefined): 
         case 'LOW': return 'LOW';
         case 'HIGH': return 'HIGH';
         case 'MEDIUM':
-        default: return undefined; // MEDIUM → base variant
+        default: return undefined; // MEDIUM → base (1.0x multiplier)
     }
 }
 
@@ -300,7 +300,7 @@ function extractFromPerimeterTerm(
  *
  * Uses two signal sources:
  *   1. functionalPerimeter[] — maps scope terms to layers → activities
- *   2. complexityAssessment.level — routes to _SM/_LG variants
+ *   2. complexityAssessment.level — determines complexity for hour scaling
  *
  * Deterministic: same understanding + same catalog = same signals.
  * Every signal carries mandatory score, sources, contributions, provenance.
@@ -329,7 +329,7 @@ export function extractUnderstandingSignals(
     // Build catalog indexes (same as blueprint mapper)
     const { byCode, byPrefix } = buildCatalogIndexes(catalog);
 
-    // Resolve complexity for variant routing
+    // Resolve complexity level for downstream hour scaling
     const complexity = complexityToVariant(understanding.complexityAssessment?.level);
     const complexityLevel = understanding.complexityAssessment?.level ?? 'unknown';
 

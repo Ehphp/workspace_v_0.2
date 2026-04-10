@@ -38,16 +38,6 @@ export function applyActivityBiases(
     return scoredActivities.map(({ activity, score }) => {
         let adjusted = score;
 
-        // ── Variant bias (_SM / _LG) ─────────────────────────────
-        if (biases.preferLargeVariants) {
-            if (activity.code.endsWith('_LG')) adjusted += 3;
-            if (activity.code.endsWith('_SM')) adjusted -= 1;
-        }
-        if (biases.preferSmallVariants) {
-            if (activity.code.endsWith('_SM')) adjusted += 3;
-            if (activity.code.endsWith('_LG')) adjusted -= 1;
-        }
-
         // ── Group boost ──────────────────────────────────────────
         if (boostGroupSet.size > 0) {
             const activityGroup = (activity.group || '').toUpperCase();

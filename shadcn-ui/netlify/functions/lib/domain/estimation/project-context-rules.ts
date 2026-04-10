@@ -29,10 +29,6 @@ export interface ProjectContextRuleSuggestion<T = string> {
 }
 
 export interface ActivityBiases {
-    /** Favor _LG activity variants */
-    preferLargeVariants?: boolean;
-    /** Favor _SM activity variants */
-    preferSmallVariants?: boolean;
     /** Activity group names to boost in ranking */
     boostGroups?: string[];
     /** Keywords to boost activity relevance scoring */
@@ -86,16 +82,15 @@ function applyScopeRules(
     if (!p.scope) return;
 
     if (p.scope === 'LARGE' || p.scope === 'ENTERPRISE') {
-        r.activityBiases.preferLargeVariants = true;
+        r.activityBiases.boostGroups = [...(r.activityBiases.boostGroups ?? []), 'ANALYSIS'];
         r.notes.push(
-            `[scope_large] Scope is ${p.scope} — preferring _LG activity variants and extended analysis.`,
+            `[scope_large] Scope is ${p.scope} — boosting analysis activities and extended estimation.`,
         );
     }
 
     if (p.scope === 'SMALL') {
-        r.activityBiases.preferSmallVariants = true;
         r.notes.push(
-            '[scope_small] Scope is SMALL — preferring _SM activity variants for lean estimation.',
+            '[scope_small] Scope is SMALL — lean estimation applied.',
         );
     }
 }

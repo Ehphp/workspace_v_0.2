@@ -29,6 +29,8 @@ CREATE TABLE activities (
     active BOOLEAN DEFAULT true,
     is_custom BOOLEAN DEFAULT false, -- Created via admin panel
     base_activity_id UUID REFERENCES activities(id), -- Optional link to OOTB activity when overriding
+    sm_multiplier DECIMAL(4,2) NOT NULL DEFAULT 0.50, -- Multiplier for LOW complexity (base_hours × sm_multiplier)
+    lg_multiplier DECIMAL(4,2) NOT NULL DEFAULT 2.00, -- Multiplier for HIGH complexity (base_hours × lg_multiplier)
     created_by UUID REFERENCES auth.users(id), -- Track who added the activity
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -53,32 +55,30 @@ CREATE TABLE risks (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Technology presets
-CREATE TABLE technology_presets (
+-- Technologies (was technology_presets, renamed by 20260228_simplify_presets_to_technologies)
+CREATE TABLE technologies (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     code VARCHAR(50) NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     tech_category VARCHAR(50) NOT NULL,
-    default_driver_values JSONB, -- {COMPLEXITY: "MEDIUM", ...}
-    default_risks JSONB, -- Array of risk codes
-    default_activity_codes JSONB, -- Array of activity codes
+    complexity_tier VARCHAR(10) DEFAULT 'STANDARD', -- LIGHT, STANDARD, COMPLEX
     is_custom BOOLEAN DEFAULT false,
     created_by UUID REFERENCES auth.users(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(code, created_by)
 );
 
-CREATE UNIQUE INDEX idx_tech_presets_system_code ON technology_presets(code) WHERE created_by IS NULL;
+CREATE UNIQUE INDEX idx_technologies_system_code ON technologies(code) WHERE created_by IS NULL;
 
--- Pivot: default activities per technology preset (ordered)
-CREATE TABLE technology_preset_activities (
+-- Pivot: activities per technology (ordered)
+CREATE TABLE technology_activities (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tech_preset_id UUID NOT NULL REFERENCES technology_presets(id) ON DELETE CASCADE,
+    technology_id UUID NOT NULL REFERENCES technologies(id) ON DELETE CASCADE,
     activity_id UUID NOT NULL REFERENCES activities(id),
     position INTEGER, -- optional ordering (lower = higher priority)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE (tech_preset_id, activity_id)
+    UNIQUE (technology_id, activity_id)
 );
 
 -- ============================================
@@ -147,6 +147,7 @@ CREATE TABLE estimation_activities (
     estimation_id UUID NOT NULL REFERENCES estimations(id) ON DELETE CASCADE,
     activity_id UUID NOT NULL REFERENCES activities(id),
     is_ai_suggested BOOLEAN DEFAULT false,
+    complexity_variant VARCHAR(5) DEFAULT 'BASE', -- SM, BASE, LG
     notes TEXT,
     UNIQUE(estimation_id, activity_id)
 );

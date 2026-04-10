@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { CheckCircle2, Circle } from 'lucide-react';
+import { CheckCircle2, Circle, Sparkles } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { useActivityActions } from '@/hooks/useActivityActions';
@@ -116,7 +116,7 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
                         <div key={groupKey} className="space-y-1.5">
                             {/* Group header */}
                             <div className="flex items-center justify-between px-1">
-                                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                                <span className="text-[10px] font-semibold text-purple-400 uppercase tracking-wider">
                                     {groupLabels[groupKey] || groupKey}
                                 </span>
                                 <div className="flex items-center gap-2">
@@ -143,14 +143,14 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
                                             className={cn(
                                                 "group flex items-center gap-2 p-2 rounded-lg border transition-colors cursor-pointer",
                                                 isDone
-                                                    ? "bg-blue-50/50 border-blue-100"
-                                                    : "bg-white border-slate-200 hover:border-blue-300"
+                                                    ? "bg-purple-50/50 border-purple-100"
+                                                    : "bg-white border-purple-200 hover:border-purple-300"
                                             )}
                                             onClick={() => !isUpdating && handleToggle(estAct.id, isDone)}
                                         >
                                             <div className={cn(
                                                 "shrink-0 transition-colors duration-200",
-                                                isDone ? "text-blue-600" : "text-slate-300 group-hover:text-blue-400"
+                                                isDone ? "text-purple-600" : "text-slate-300 group-hover:text-purple-400"
                                             )}>
                                                 {isDone ? (
                                                     <CheckCircle2 className="w-4 h-4" />
@@ -163,7 +163,12 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
                                                     "font-medium text-[11px] transition-colors duration-200 truncate",
                                                     isDone ? "text-slate-500 line-through" : "text-slate-800"
                                                 )}>
-                                                    {activity!.name}
+                                                    <span className="truncate">{activity!.name}</span>
+                                                    {estAct.is_ai_suggested && (
+                                                        <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-purple-500 text-white shrink-0 flex items-center gap-0.5">
+                                                            <Sparkles className="h-2 w-2" /> AI
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div className="text-[9px] text-slate-400 truncate">
                                                     {activity!.code}
@@ -171,7 +176,7 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
                                             </div>
                                             <div className={cn(
                                                 "text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0",
-                                                isDone ? "bg-slate-100 text-slate-400" : "bg-blue-50 text-blue-700"
+                                                isDone ? "bg-slate-100 text-slate-400" : "bg-purple-50 text-purple-700"
                                             )}>
                                                 {activity!.base_hours}h
                                             </div>

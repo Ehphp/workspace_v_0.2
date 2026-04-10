@@ -1,9 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, User, Settings, Lock } from 'lucide-react';
+import { ArrowLeft, User, Settings, Lock, Download, FileText, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ExportDialog } from '@/components/export/ExportDialog';
 import { useRequirementActions } from '@/hooks/useRequirementActions';
-import type { Requirement, Technology } from '@/types/database';
+import type { Requirement, Technology, EstimationWithDetails, Activity, Driver, Risk } from '@/types/database';
+import type { ExportableEstimation } from '@/types/export';
 import { useAuth } from '@/hooks/useAuth';
 import { PriorityBadge, StateBadge } from '@/components/shared/RequirementBadges';
 import { useWorkflow } from '@/hooks/workflow/useWorkflow';
@@ -15,12 +23,19 @@ interface RequirementHeaderProps {
     onBack: () => void;
     refetchRequirement: () => Promise<void>;
     presets?: Technology[];
+    latestEstimation?: EstimationWithDetails | null;
+    activities?: Activity[];
+    drivers?: Driver[];
+    risks?: Risk[];
 }
 
-export function RequirementHeader({ requirement, onBack, refetchRequirement, presets = [] }: RequirementHeaderProps) {
+export function RequirementHeader({ requirement, onBack, refetchRequirement, presets = [], latestEstimation, activities = [], drivers = [], risks = [] }: RequirementHeaderProps) {
     const { user } = useAuth();
     const { saveHeader } = useRequirementActions({ requirement, user, refetchRequirement });
     const { availableTransitions, canTransition } = useWorkflow(requirement);
+
+    // Export State
+    const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
     // Title Editing State
     const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -185,6 +200,64 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
 
     const currentPreset = presets.find(p => p.id === currentTechId);
 
+    // Build exportable estimation from saved data
+    const getExportableEstimation = (): ExportableEstimation | null => {
+        if (!latestEstimation) return null;
+        const techPreset = presets.find(p => p.id === (requirement.technology_id || requirement.tech_preset_id));
+        return {
+            requirement: {
+                id: requirement.id,
+                reqId: requirement.req_id,
+                title: requirement.title,
+                description: requirement.description || undefined,
+                priority: requirement.priority as 'HIGH' | 'MEDIUM' | 'LOW',
+                state: requirement.state,
+                businessOwner: requirement.business_owner || undefined,
+            },
+            estimation: {
+                totalDays: latestEstimation.total_days,
+                baseDays: latestEstimation.base_hours / 8,
+                driverMultiplier: latestEstimation.driver_multiplier,
+                subtotal: (latestEstimation.base_hours / 8) * latestEstimation.driver_multiplier,
+                riskScore: latestEstimation.risk_score,
+                contingencyPercent: latestEstimation.contingency_percent,
+                contingencyDays: latestEstimation.total_days - ((latestEstimation.base_hours / 8) * latestEstimation.driver_multiplier),
+                createdAt: latestEstimation.created_at,
+                scenarioName: latestEstimation.scenario_name || undefined,
+            },
+            technology: techPreset ? { name: techPreset.name, category: techPreset.code } : undefined,
+            activities: (latestEstimation.estimation_activities || []).map(ea => {
+                const activity = activities.find(a => a.id === ea.activity_id);
+                return {
+                    code: activity?.code || ea.activity_id,
+                    name: activity?.name || 'Unknown',
+                    group: activity?.group || 'DEV',
+                    hours: activity?.base_hours || 0,
+                    isAiSuggested: ea.is_ai_suggested,
+                };
+            }),
+            drivers: (latestEstimation.estimation_drivers || []).map(ed => {
+                const driver = drivers.find(d => d.id === ed.driver_id);
+                const option = driver?.options.find((o: { value: string; multiplier: number }) => o.value === ed.selected_value);
+                return {
+                    code: driver?.code || ed.driver_id,
+                    name: driver?.name || ed.driver_id,
+                    value: ed.selected_value,
+                    label: option?.label || ed.selected_value,
+                    multiplier: option?.multiplier || 1.0,
+                };
+            }),
+            risks: (latestEstimation.estimation_risks || []).map(er => {
+                const risk = risks.find(r => r.id === er.risk_id);
+                return {
+                    code: risk?.code || er.risk_id,
+                    name: risk?.name || 'Unknown',
+                    weight: risk?.weight || 0,
+                };
+            }),
+        };
+    };
+
     return (
         <div className="flex items-center gap-3">
             {/* Back button */}
@@ -326,7 +399,52 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
                         </SelectContent>
                     </Select>
                 </div>
+
+                {/* Export button */}
+                {latestEstimation && (
+                    <>
+                        <div className="w-px h-5 bg-slate-200" />
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs text-slate-600 hover:text-blue-600 rounded-lg border-slate-200 hover:border-blue-200 hover:bg-blue-50/50 transition-all duration-200"
+                                >
+                                    <Download className="w-3.5 h-3.5 mr-1.5" />
+                                    Esporta
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-52 rounded-xl">
+                                <DropdownMenuItem
+                                    onClick={() => setExportDialogOpen(true)}
+                                    className="flex items-center gap-3 rounded-lg py-2"
+                                >
+                                    <FileText className="w-4 h-4 text-red-500" />
+                                    <span>Esporta PDF</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => setExportDialogOpen(true)}
+                                    className="flex items-center gap-3 rounded-lg py-2"
+                                >
+                                    <FileSpreadsheet className="w-4 h-4 text-green-500" />
+                                    <span>Esporta Excel</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </>
+                )}
             </div>
+
+            {/* Export Dialog */}
+            {getExportableEstimation() && (
+                <ExportDialog
+                    open={exportDialogOpen}
+                    onOpenChange={setExportDialogOpen}
+                    estimations={[getExportableEstimation()!]}
+                    projectName={requirement.title}
+                />
+            )}
         </div>
     );
 }

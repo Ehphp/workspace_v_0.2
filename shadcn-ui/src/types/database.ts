@@ -29,6 +29,10 @@ export interface Activity {
   active: boolean;
   is_custom?: boolean;
   base_activity_id?: string | null;
+  /** Multiplier for LOW complexity (default 0.50) */
+  sm_multiplier?: number;
+  /** Multiplier for HIGH complexity (default 2.00) */
+  lg_multiplier?: number;
   created_by?: string | null;
   created_at: string;
 }

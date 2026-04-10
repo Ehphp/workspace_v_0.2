@@ -31,10 +31,10 @@ SELEZIONE ATTIVITÀ OBBLIGATORIE (se il requisito le richiede):
 4. Se menziona "test", "validazione", "UAT" → INCLUDI attività TEST
 5. Se menziona "deploy", "rilascio", "ambiente" → INCLUDI attività DEPLOY
 
-SCELTA VARIANTE _SM vs _LG (BASATA SULLE RISPOSTE):
-- Risposta "semplice", "pochi", "1-2" → variante _SM
-- Risposta "complesso", "molti", "5+" → variante _LG
-- Risposta neutra → variante BASE
+SCELTA SFORZO:
+- La complessità viene gestita automaticamente dal sistema di moltiplicatori
+- NON specificare varianti _SM o _LG nei codici attività
+- Usa SOLO i codici base
 
 CONFIDENCE SCORE (DETERMINISTICO):
 - 0.90: Tutte le domande hanno risposta chiara

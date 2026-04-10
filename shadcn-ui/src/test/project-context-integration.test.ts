@@ -2,12 +2,11 @@
  * Tests for project-context-integration.ts — bias application and merge logic
  *
  * Covers:
- *   1. applyActivityBiases: variant preference (_SM/_LG)
- *   2. applyActivityBiases: group boost
- *   3. applyActivityBiases: keyword boost
- *   4. applyActivityBiases: empty biases → no change
- *   5. mergeDriverSuggestions: AI priority, dedup, provenance
- *   6. mergeRiskSuggestions: AI priority, dedup, provenance
+ *   1. applyActivityBiases: group boost
+ *   2. applyActivityBiases: keyword boost
+ *   3. applyActivityBiases: empty biases → no change
+ *   4. mergeDriverSuggestions: AI priority, dedup, provenance
+ *   5. mergeRiskSuggestions: AI priority, dedup, provenance
  */
 
 import { describe, it, expect } from 'vitest';
@@ -39,37 +38,6 @@ function scored(activity: Activity, score: number) {
 // ─── Activity Biases ────────────────────────────────────────────────────────
 
 describe('applyActivityBiases', () => {
-    it('preferLargeVariants boosts _LG and penalizes _SM', () => {
-        const input = [
-            scored(makeActivity('PP_DV_FORM_SM'), 5),
-            scored(makeActivity('PP_DV_FORM'), 5),
-            scored(makeActivity('PP_DV_FORM_LG'), 5),
-        ];
-
-        const result = applyActivityBiases(input, { preferLargeVariants: true });
-
-        const lgScore = result.find(r => r.activity.code === 'PP_DV_FORM_LG')!.score;
-        const smScore = result.find(r => r.activity.code === 'PP_DV_FORM_SM')!.score;
-        const baseScore = result.find(r => r.activity.code === 'PP_DV_FORM')!.score;
-
-        expect(lgScore).toBeGreaterThan(baseScore);
-        expect(smScore).toBeLessThan(baseScore);
-    });
-
-    it('preferSmallVariants boosts _SM and penalizes _LG', () => {
-        const input = [
-            scored(makeActivity('PP_DV_FORM_SM'), 5),
-            scored(makeActivity('PP_DV_FORM_LG'), 5),
-        ];
-
-        const result = applyActivityBiases(input, { preferSmallVariants: true });
-
-        const smScore = result.find(r => r.activity.code === 'PP_DV_FORM_SM')!.score;
-        const lgScore = result.find(r => r.activity.code === 'PP_DV_FORM_LG')!.score;
-
-        expect(smScore).toBeGreaterThan(lgScore);
-    });
-
     it('boostGroups raises score for matching groups', () => {
         const input = [
             scored(makeActivity('ACT_1', 'MIGRATION'), 5),

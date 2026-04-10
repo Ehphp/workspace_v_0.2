@@ -55,8 +55,6 @@ export function mergeProjectAndBlueprintRules(
 
 function mergeBiases(a: ActivityBiases, b: ActivityBiases): ActivityBiases {
     return {
-        preferLargeVariants: a.preferLargeVariants || b.preferLargeVariants,
-        preferSmallVariants: a.preferSmallVariants || b.preferSmallVariants,
         boostGroups: dedup([...(a.boostGroups ?? []), ...(b.boostGroups ?? [])]),
         boostKeywords: dedup([...(a.boostKeywords ?? []), ...(b.boostKeywords ?? [])]),
     };

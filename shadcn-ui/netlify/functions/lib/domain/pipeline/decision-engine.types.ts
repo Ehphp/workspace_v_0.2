@@ -92,11 +92,9 @@ export interface DecisionEngineResult {
     excludedCandidates: ScoredCandidate[];
     /** Per-layer coverage analysis */
     coverageReport: CoverageReport;
-    /** Variant routing decisions (e.g. _SM → _LG swaps) */
-    variantChoices: VariantChoice[];
     /** Mandatory inclusions triggered by keyword rules */
     mandatoryInclusions: MandatoryInclusion[];
-    /** Full decision trace — every include/exclude/swap with reason */
+    /** Full decision trace — every include/exclude with reason */
     decisionTrace: DecisionTraceEntry[];
     /** Overall confidence in the selection (0.0–1.0) */
     confidence: number;
@@ -129,21 +127,6 @@ export interface LayerCoverage {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Variant Routing
-// ─────────────────────────────────────────────────────────────────────────────
-
-export interface VariantChoice {
-    /** Original activity code before routing */
-    originalCode: string;
-    /** Resolved activity code after routing */
-    resolvedCode: string;
-    /** Which variant was selected */
-    variant: 'SM' | 'LG' | 'BASE';
-    /** Human-readable reason for the routing */
-    reason: string;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Mandatory Inclusion
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -165,13 +148,11 @@ export type DecisionStep =
     | 'mandatory-keyword'
     | 'coverage-enforcement'
     | 'redundancy-elimination'
-    | 'variant-routing'
     | 'top-k-cap';
 
 export type DecisionAction =
     | 'select'
     | 'exclude'
-    | 'swap-variant'
     | 'add-coverage'
     | 'add-mandatory';
 

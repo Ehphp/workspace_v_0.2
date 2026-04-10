@@ -197,19 +197,16 @@ function findKeywordMatch(
 }
 
 /**
- * Find the best activity matching a prefix. Prefer the base variant
- * (without _SM/_LG suffix) if available.
+ * Find the best activity matching a prefix.
  */
 function findBestActivity(prefix: string, catalog: Activity[]): Activity | null {
     const candidates = catalog.filter(a => a.code.startsWith(prefix));
     if (candidates.length === 0) return null;
 
-    // Prefer base variant (exact prefix match or without _SM/_LG)
-    const base = candidates.find(
-        a => a.code === prefix || (!a.code.endsWith('_SM') && !a.code.endsWith('_LG')),
-    );
-    if (base) return base;
+    // Prefer exact prefix match
+    const exact = candidates.find(a => a.code === prefix);
+    if (exact) return exact;
 
-    // Fallback to first match (typically _SM)
+    // Fallback to first match
     return candidates[0];
 }

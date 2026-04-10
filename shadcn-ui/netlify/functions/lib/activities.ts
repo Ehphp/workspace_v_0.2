@@ -24,6 +24,10 @@ export interface Activity {
     tech_category: string;
     /** Canonical FK to technologies.id */
     technology_id?: string | null;
+    /** Multiplier for LOW complexity (default 0.50) */
+    sm_multiplier?: number;
+    /** Multiplier for HIGH complexity (default 2.00) */
+    lg_multiplier?: number;
 }
 
 export interface InterviewAnswerRecord {

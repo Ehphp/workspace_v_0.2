@@ -5,13 +5,14 @@
  * unit-testable algorithm. The LLM no longer selects activities — it only
  * explains the selection after the fact.
  *
- * Algorithm (6 phases, each produces DecisionTraceEntry[]):
+ * Algorithm (5 phases, each produces DecisionTraceEntry[]):
  *   1. Score threshold gate
  *   2. Mandatory keyword enforcement
  *   3. Layer coverage enforcement
  *   4. Redundancy elimination
- *   5. Variant routing
- *   6. Top-K cap
+ *   5. Top-K cap
+ *
+ * Complexity-based hour scaling is handled AFTER selection by complexity-resolver.ts.
  *
  * Pure function, no IO, no LLM calls.
  *
@@ -32,12 +33,10 @@ import {
     type DecisionEngineConfig,
     type CoverageReport,
     type LayerCoverage,
-    type VariantChoice,
     type MandatoryInclusion,
     type DecisionTraceEntry,
     DEFAULT_CONFIG,
 } from './decision-engine.types';
-import { routeVariant } from './variant-router';
 import { getDefaultRules, evaluateMandatoryRules } from './mandatory-rules';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -77,12 +76,10 @@ function resolveLayer(
 
 /**
  * Resolve which "group" prefix an activity belongs to (for redundancy check).
- * E.g. PP_FLOW_SIMPLE_SM → PP_FLOW, BE_API_COMPLEX_LG → BE_API
+ * E.g. PP_FLOW_SIMPLE → PP_FLOW, BE_API_COMPLEX → BE_API
  */
 function resolveGroupPrefix(code: string): string {
-    // Strip variant suffixes
     let base = code;
-    if (base.endsWith('_SM') || base.endsWith('_LG')) base = base.slice(0, -3);
     // Strip complexity suffixes
     if (base.endsWith('_SIMPLE') || base.endsWith('_COMPLEX')) {
         base = base.replace(/_SIMPLE$|_COMPLEX$/, '');
@@ -298,51 +295,7 @@ function redundancyElimination(
 }
 
 /**
- * Phase 5: Variant routing.
- */
-function variantRouting(
-    selected: ScoredCandidate[],
-    answers: Record<string, { questionId: string; category: string; value: string | string[] | number }>,
-    catalog: Activity[],
-): { selected: ScoredCandidate[]; variantChoices: VariantChoice[]; trace: DecisionTraceEntry[] } {
-    const variantChoices: VariantChoice[] = [];
-    const trace: DecisionTraceEntry[] = [];
-    const result: ScoredCandidate[] = [];
-
-    for (const candidate of selected) {
-        const choice = routeVariant(candidate.activity.code, answers, catalog);
-
-        if (choice.originalCode !== choice.resolvedCode) {
-            // Swap the activity in the candidate
-            const newActivity = catalog.find(a => a.code === choice.resolvedCode);
-            if (newActivity) {
-                result.push({
-                    ...candidate,
-                    activity: newActivity,
-                    provenance: [...candidate.provenance, `variant-route:${choice.originalCode}→${choice.resolvedCode}`],
-                });
-                variantChoices.push(choice);
-                trace.push({
-                    step: 'variant-routing',
-                    action: 'swap-variant',
-                    code: choice.resolvedCode,
-                    reason: `${choice.originalCode} → ${choice.resolvedCode}: ${choice.reason}`,
-                    score: candidate.score,
-                });
-            } else {
-                // Fallback: keep original if resolved variant not in catalog
-                result.push(candidate);
-            }
-        } else {
-            result.push(candidate);
-        }
-    }
-
-    return { selected: result, variantChoices, trace };
-}
-
-/**
- * Phase 6: Top-K cap.
+ * Phase 5: Top-K cap.
  * Remove lowest-scored candidates that aren't coverage-enforced or mandatory.
  */
 function topKCap(
@@ -500,12 +453,6 @@ export function runDecisionEngine(input: DecisionEngineInput): DecisionEngineRes
     selected = phase4.selected;
     allTrace.push(...phase4.trace);
 
-    // Phase 5: Variant Routing
-    const phase5 = variantRouting(selected, input.answers, input.catalog);
-    selected = phase5.selected;
-    const variantChoices = phase5.variantChoices;
-    allTrace.push(...phase5.trace);
-
     // Collect protected codes for top-K cap
     const coverageCodes = new Set(
         phase3.trace
@@ -514,10 +461,10 @@ export function runDecisionEngine(input: DecisionEngineInput): DecisionEngineRes
     );
     const mandatoryCodes = new Set(mandatoryInclusions.map(m => m.code));
 
-    // Phase 6: Top-K Cap
-    const phase6 = topKCap(selected, excluded, config.maxSelected, coverageCodes, mandatoryCodes);
-    selected = phase6.selected;
-    allTrace.push(...phase6.trace);
+    // Phase 5: Top-K Cap
+    const phase5 = topKCap(selected, excluded, config.maxSelected, coverageCodes, mandatoryCodes);
+    selected = phase5.selected;
+    allTrace.push(...phase5.trace);
 
     // Build coverage report
     const coverageReport = buildCoverageReport(
@@ -531,7 +478,7 @@ export function runDecisionEngine(input: DecisionEngineInput): DecisionEngineRes
 
     console.log(
         `[decision-engine] Selected: ${selected.length}/${input.candidates.length} | ` +
-        `Mandatory: ${mandatoryInclusions.length} | Variants: ${variantChoices.length} | ` +
+        `Mandatory: ${mandatoryInclusions.length} | ` +
         `Gaps: ${coverageReport.gapLayers.join(',') || 'none'} | Confidence: ${confidence}`,
     );
 
@@ -539,7 +486,6 @@ export function runDecisionEngine(input: DecisionEngineInput): DecisionEngineRes
         selectedCandidates: selected,
         excludedCandidates: excluded,
         coverageReport,
-        variantChoices,
         mandatoryInclusions,
         decisionTrace: allTrace,
         confidence,

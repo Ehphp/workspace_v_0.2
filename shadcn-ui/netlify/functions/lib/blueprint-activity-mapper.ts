@@ -124,7 +124,7 @@ export interface PatternEntry {
 // │  Every prefix below has been verified against the real activity catalog    │
 // │  (supabase_seed.sql + supabase_granular_activities.sql).                   │
 // │                                                                           │
-// │  Verified prefixes (exist as base + _SM + _LG variants):                  │
+// │  Verified prefixes (base activity codes):                                 │
 // │    PP: PP_ANL_ALIGN, PP_DV_FIELD, PP_DV_FORM, PP_FLOW_SIMPLE,            │
 // │        PP_FLOW_COMPLEX, PP_BUSINESS_RULE, PP_E2E_TEST, PP_UAT_RUN,       │
 // │        PP_DEPLOY                                                          │
@@ -212,55 +212,27 @@ export const LAYER_TECH_PATTERNS: Record<string, Record<string, PatternEntry[]>>
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Complexity → variant suffix
-// ─────────────────────────────────────────────────────────────────────────────
-
-function getVariantSuffix(complexity: string | undefined): string {
-    switch (complexity?.toUpperCase()) {
-        case 'LOW': return '_SM';
-        case 'HIGH': return '_LG';
-        default: return ''; // MEDIUM or undefined → base variant
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Core Mapping Logic
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Find the best matching activity for a code prefix + complexity.
- * Tries variant first, then base, then any match with that prefix.
+ * Find the best matching activity for a code prefix.
+ * Complexity-based hour scaling is handled downstream by complexity-resolver.ts.
  */
 export function findBestMatch(
     catalog: Map<string, Activity>,
     catalogByPrefix: Map<string, Activity[]>,
     prefix: string,
-    complexity: string | undefined,
+    _complexity?: string | undefined,
 ): Activity | null {
-    const suffix = getVariantSuffix(complexity);
+    // 1. Try exact match
+    const exact = catalog.get(prefix);
+    if (exact) return exact;
 
-    // 1. Try exact variant: e.g. PP_DV_FORM_SM
-    if (suffix) {
-        const exact = catalog.get(prefix + suffix);
-        if (exact) return exact;
-    }
-
-    // 2. Try base variant: e.g. PP_DV_FORM
-    const base = catalog.get(prefix);
-    if (base) return base;
-
-    // 3. Try any activity starting with prefix
+    // 2. Try any activity starting with prefix
     const prefixMatches = catalogByPrefix.get(prefix);
     if (prefixMatches && prefixMatches.length > 0) {
-        // If we wanted _SM, pick smallest base_hours; if _LG, pick largest
-        if (suffix === '_SM') {
-            return prefixMatches.reduce((min, a) => a.base_hours < min.base_hours ? a : min, prefixMatches[0]);
-        }
-        if (suffix === '_LG') {
-            return prefixMatches.reduce((max, a) => a.base_hours > max.base_hours ? a : max, prefixMatches[0]);
-        }
-        // MEDIUM — pick middle or first
-        return prefixMatches[Math.floor(prefixMatches.length / 2)];
+        return prefixMatches[0];
     }
 
     return null;
@@ -569,12 +541,10 @@ export function buildCatalogIndexes(activities: Activity[]): {
     for (const a of activities) {
         byCode.set(a.code, a);
 
-        // Index by all possible prefixes (e.g. PP_DV_FORM → [PP_DV_FORM, PP_DV_FORM_SM, PP_DV_FORM_LG])
-        // Strip _SM/_LG suffix to get base prefix
-        const baseCode = a.code.replace(/_(SM|LG)$/, '');
-        const arr = byPrefix.get(baseCode) || [];
+        // Index by code prefix for startsWith matching
+        const arr = byPrefix.get(a.code) || [];
         arr.push(a);
-        byPrefix.set(baseCode, arr);
+        byPrefix.set(a.code, arr);
     }
 
     return { byCode, byPrefix };

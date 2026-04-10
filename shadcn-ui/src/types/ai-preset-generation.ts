@@ -12,7 +12,7 @@ import { z } from 'zod';
  */
 export interface SuggestedActivity {
     // For EXISTING activities (selected from catalog)
-    existingCode?: string; // e.g. "PP_DV_FORM_SM" - matches activities.code in DB
+    existingCode?: string; // e.g. "PP_DV_FORM" - matches activities.code in DB
 
     // For NEW activities (AI-generated)
     isNew?: boolean; // true if AI created this activity

@@ -75,23 +75,6 @@ export const ACTIVITY_TRIGGER_KEYWORDS: Record<string, string[]> = {
     ]
 };
 
-/**
- * Keywords that indicate small (_SM) vs large (_LG) activity variants.
- * Used to select the appropriate effort level.
- */
-export const SIZE_VARIANT_KEYWORDS = {
-    SMALL: [
-        'semplice', 'simple', 'pochi', 'few', '1-2', '1', '2',
-        'base', 'basic', 'minimo', 'minimum', 'piccolo', 'small',
-        'standard', 'normale', 'normal', 'leggero', 'light'
-    ],
-    LARGE: [
-        'complesso', 'complex', 'molti', 'many', '5+', '10+',
-        'avanzato', 'advanced', 'multipli', 'multiple',
-        'esteso', 'extended', 'pesante', 'heavy', 'grande', 'large',
-        'enterprise', 'scalabile', 'scalable'
-    ]
-};
 
 /**
  * Confidence score thresholds based on response completeness.
@@ -126,44 +109,6 @@ export function getTriggeredCategories(description: string): string[] {
     return categories;
 }
 
-/**
- * Determine size variant (_SM, _LG, or base) from answer text.
- */
-export function determineSizeVariant(answerText: string): 'SM' | 'LG' | 'BASE' {
-    const normalizedText = answerText.toLowerCase();
-
-    // Check for small indicators
-    if (SIZE_VARIANT_KEYWORDS.SMALL.some(kw => normalizedText.includes(kw.toLowerCase()))) {
-        return 'SM';
-    }
-
-    // Check for large indicators
-    if (SIZE_VARIANT_KEYWORDS.LARGE.some(kw => normalizedText.includes(kw.toLowerCase()))) {
-        return 'LG';
-    }
-
-    // Default to base variant
-    return 'BASE';
-}
-
-/**
- * Select the appropriate activity code with size variant.
- * Example: PP_DV_FORM + SM -> PP_DV_FORM_SM (if exists)
- */
-export function selectActivityWithVariant(
-    baseCode: string,
-    variant: 'SM' | 'LG' | 'BASE',
-    availableCodes: string[]
-): string {
-    if (variant === 'BASE') {
-        return baseCode;
-    }
-
-    const variantCode = `${baseCode}_${variant}`;
-
-    // Return variant if it exists, otherwise return base
-    return availableCodes.includes(variantCode) ? variantCode : baseCode;
-}
 
 /**
  * Calculate confidence score based on answered questions percentage.
@@ -204,15 +149,15 @@ SELEZIONE ATTIVITÀ OBBLIGATORIE (se il requisito le richiede):
 7. Se menziona "sicurezza", "permessi", "ruoli" → INCLUDI attività SECURITY
 8. Se menziona "report", "grafico", "analytics" → INCLUDI attività REPORT
 
-SCELTA VARIANTE _SM vs _LG (BASATA SULLE RISPOSTE, NON SUL TUO GIUDIZIO):
-- Se la risposta indica "semplice", "pochi", "1-2", "base", "minimo" → USA variante _SM
-- Se la risposta indica "complesso", "molti", "5+", "avanzato", "multipli" → USA variante _LG  
-- Se la risposta è neutra o assente → USA la variante BASE (senza suffisso)
+SCELTA SFORZO (BASATA SULLA COMPLESSITÀ DEL PROGETTO):
+- La complessità viene gestita automaticamente dal sistema di moltiplicatori
+- NON specificare varianti _SM o _LG nei codici attività
+- Usa SOLO i codici base (es. PP_DV_FORM, BE_API_SIMPLE)
 
 REGOLE DI COERENZA:
 - Per lo STESSO tipo di requisito con le STESSE risposte, seleziona SEMPRE le stesse attività
 - NON aggiungere attività "per sicurezza" - includi SOLO quelle giustificate
-- Se non sei sicuro, usa la variante BASE (senza _SM/_LG)
+- Se non sei sicuro della complessità, il sistema applicherà automaticamente i moltiplicatori corretti
 
 CONFIDENCE SCORE (DETERMINISTICO):
 - 0.90: Tutte le domande hanno risposta chiara e coerente
@@ -227,6 +172,6 @@ CONFIDENCE SCORE (DETERMINISTICO):
 export const DETERMINISTIC_RULES_COMPACT = `
 REGOLE:
 - email/notifica→FLOW, form/UI→FORM, dati/tabella→DATA, API→INTEGRATION, test→TEST, deploy→DEPLOY
-- "semplice/pochi/1-2"→_SM, "complesso/molti/5+"→_LG, neutro→BASE
+- La complessità è gestita automaticamente dal sistema di moltiplicatori
 - Confidence: 0.90(completo), 0.80(80%+), 0.70(60-80%), 0.60(<60%)
 `;

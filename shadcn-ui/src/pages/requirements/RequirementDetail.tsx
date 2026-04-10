@@ -515,6 +515,10 @@ export default function RequirementDetail() {
                         onBack={handleBack}
                         refetchRequirement={refetchRequirement}
                         presets={presets}
+                        latestEstimation={assignedEstimation || (estimationHistory[0] as unknown as EstimationWithDetails) || null}
+                        activities={activities}
+                        drivers={drivers}
+                        risks={risks}
                     />
                 </div>
             </div>

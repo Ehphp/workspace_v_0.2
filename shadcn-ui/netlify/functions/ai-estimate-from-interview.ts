@@ -197,15 +197,15 @@ SELEZIONE ATTIVITÀ OBBLIGATORIE (se il requisito le richiede):
 4. Se menziona "test", "validazione", "UAT" → INCLUDI attività TEST (PP_E2E_TEST_* o equivalente)
 5. Se menziona "deploy", "rilascio", "ambiente" → INCLUDI attività DEPLOY (PP_DEPLOY_* o equivalente)
 
-SCELTA VARIANTE _SM vs _LG (BASATA SULLE RISPOSTE, NON SUL TUO GIUDIZIO):
-- Se la risposta indica "semplice", "pochi", "1-2", "base", "minimo" → USA variante _SM
-- Se la risposta indica "complesso", "molti", "5+", "avanzato", "multipli" → USA variante _LG  
-- Se la risposta è neutra o assente → USA la variante BASE (senza suffisso)
+SCELTA SFORZO (BASATA SULLA COMPLESSITÀ DEL PROGETTO):
+- La complessità viene gestita automaticamente dal sistema di moltiplicatori
+- NON specificare varianti _SM o _LG nei codici attività
+- Usa SOLO i codici base (es. PP_DV_FORM, BE_API_SIMPLE, FE_UI_COMPONENT)
 
 REGOLE DI COERENZA:
 - Per lo STESSO tipo di requisito con le STESSE risposte, seleziona SEMPRE le stesse attività
 - NON aggiungere attività "per sicurezza" - includi SOLO quelle giustificate dalle risposte
-- Se non sei sicuro, usa la variante BASE (senza _SM/_LG)
+- Il sistema applicherà automaticamente i moltiplicatori di complessità corretti
 
 CONFIDENCE SCORE (DETERMINISTICO):
 - 0.90: Tutte le domande hanno risposta chiara e coerente
@@ -796,7 +796,6 @@ export const handler = createAIHandler<RequestBody>({
             selected: decisionResult.selectedCandidates.length,
             excluded: decisionResult.excludedCandidates.length,
             mandatory: decisionResult.mandatoryInclusions.length,
-            variants: decisionResult.variantChoices.length,
             gaps: decisionResult.coverageReport.gapLayers,
             confidence: decisionResult.confidence,
         });

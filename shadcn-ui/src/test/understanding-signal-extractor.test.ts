@@ -6,7 +6,7 @@
  *
  * Verifies:
  * 1. functionalPerimeter[] → layer mapping → activity codes
- * 2. complexityAssessment.level → _SM/_LG variant routing (constraint, not score)
+ * 2. complexityAssessment.level → complexity level tracking (hour scaling downstream)
  * 3. Every signal has score, sources, contributions, provenance
  * 4. No understanding → zero signals, no crash
  * 5. Unknown perimeter terms → skipped, tracked in unmatchedTerms
@@ -283,13 +283,13 @@ describe('UnderstandingSignalExtractor', () => {
     });
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 3. COMPLEXITY ROUTING (constraint, not boost)
+    // 3. COMPLEXITY TRACKING (level tracked, hour scaling downstream)
     // ─────────────────────────────────────────────────────────────────────────
 
-    describe('complexity routing', () => {
+    describe('complexity tracking', () => {
         const catalog = makePowerPlatformCatalog();
 
-        it('routes HIGH complexity to _LG variants', () => {
+        it('tracks HIGH complexity level', () => {
             const understanding = makeUnderstanding({
                 functionalPerimeter: ['dashboard principale'],
                 complexityAssessment: { level: 'HIGH', rationale: 'Many entities involved' },
@@ -298,18 +298,17 @@ describe('UnderstandingSignalExtractor', () => {
             const result = extractUnderstandingSignals(understanding, catalog, 'POWER_PLATFORM');
             expect(result.complexityLevel).toBe('HIGH');
 
-            // Check that _LG variants are preferred and _SM are excluded
+            // All codes should be base codes (no _SM/_LG)
             const codes = result.signals.map(s => s.activityCode);
-            const hasLG = codes.some(c => c.endsWith('_LG'));
             if (codes.length > 0) {
-                expect(hasLG).toBe(true);
-                // _SM variants should NOT appear when complexity is HIGH
                 const hasSM = codes.some(c => c.endsWith('_SM'));
+                const hasLG = codes.some(c => c.endsWith('_LG'));
                 expect(hasSM).toBe(false);
+                expect(hasLG).toBe(false);
             }
         });
 
-        it('routes LOW complexity to _SM variants', () => {
+        it('tracks LOW complexity level', () => {
             const understanding = makeUnderstanding({
                 functionalPerimeter: ['dashboard principale'],
                 complexityAssessment: { level: 'LOW', rationale: 'Simple scope' },
@@ -318,17 +317,17 @@ describe('UnderstandingSignalExtractor', () => {
             const result = extractUnderstandingSignals(understanding, catalog, 'POWER_PLATFORM');
             expect(result.complexityLevel).toBe('LOW');
 
+            // All codes should be base codes (no _SM/_LG)
             const codes = result.signals.map(s => s.activityCode);
-            const hasSM = codes.some(c => c.endsWith('_SM'));
             if (codes.length > 0) {
-                expect(hasSM).toBe(true);
-                // _LG variants should NOT appear when complexity is LOW
+                const hasSM = codes.some(c => c.endsWith('_SM'));
                 const hasLG = codes.some(c => c.endsWith('_LG'));
+                expect(hasSM).toBe(false);
                 expect(hasLG).toBe(false);
             }
         });
 
-        it('uses base variants for MEDIUM complexity', () => {
+        it('uses base codes for MEDIUM complexity', () => {
             const understanding = makeUnderstanding({
                 functionalPerimeter: ['dashboard principale'],
                 complexityAssessment: { level: 'MEDIUM', rationale: 'Average' },

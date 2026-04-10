@@ -645,7 +645,7 @@ describe('CandidateBuilder', () => {
     // ── 11. Litmus test: can we explain why an activity was chosen? ──
 
     describe('explainability litmus test', () => {
-        it('can explain why BE_API_COMPLEX_LG was chosen with full contribution breakdown', () => {
+        it('can explain why BE_API_COMPLEX was chosen with full contribution breakdown', () => {
             const catalog = buildTestCatalog();
 
             const result = buildCandidateSet({
@@ -666,8 +666,8 @@ describe('CandidateBuilder', () => {
                 topN: 20,
             });
 
-            // Find BE_API_COMPLEX_LG (HIGH complexity logic → COMPLEX_LG variant)
-            const target = result.candidates.find(c => c.activity.code === 'BE_API_COMPLEX_LG');
+            // Find BE_API_COMPLEX (base code — hour scaling is downstream)
+            const target = result.candidates.find(c => c.activity.code === 'BE_API_COMPLEX');
 
             if (target) {
                 // The litmus test: we can explain the score
