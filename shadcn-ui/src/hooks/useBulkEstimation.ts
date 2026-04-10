@@ -42,7 +42,7 @@ interface UseBulkEstimationReturn {
     /** True while any requirement is still being processed */
     isRunning: boolean;
     /** Start the bulk pipeline for the given requirements */
-    start: (requirements: BulkRequirement[], projectTechPresetId: string | null) => Promise<void>;
+    start: (requirements: BulkRequirement[], projectTechnologyId: string | null) => Promise<void>;
     /** Cancel in-flight processing */
     cancel: () => void;
     /** Reset state (clear status map) */
@@ -64,14 +64,14 @@ export function useBulkEstimation(): UseBulkEstimationReturn {
 
     const start = useCallback(async (
         requirements: BulkRequirement[],
-        projectTechPresetId: string | null,
+        projectTechnologyId: string | null,
     ) => {
         cancelledRef.current = false;
         setIsRunning(true);
 
         // Filter estimable
         const estimable = requirements.filter(r => {
-            const techId = r.technology_id || r.tech_preset_id || projectTechPresetId;
+            const techId = r.technology_id || r.tech_preset_id || projectTechnologyId;
             return techId && r.description?.trim();
         });
 
@@ -115,7 +115,7 @@ export function useBulkEstimation(): UseBulkEstimationReturn {
             const promises = batch.map(async (req) => {
                 const t0 = performance.now();
                 try {
-                    const technologyId = req.technology_id || req.tech_preset_id || projectTechPresetId;
+                    const technologyId = req.technology_id || req.tech_preset_id || projectTechnologyId;
                     if (!technologyId) throw new Error('Tecnologia mancante');
 
                     const preset = presetsMap.get(technologyId);

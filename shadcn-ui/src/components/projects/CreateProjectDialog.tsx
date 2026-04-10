@@ -34,7 +34,7 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [owner, setOwner] = useState('');
-    const [techPresetId, setTechPresetId] = useState<string>('__NONE__');
+    const [technologyId, setTechnologyId] = useState<string>('__NONE__');
     const [status, setStatus] = useState<'DRAFT' | 'ACTIVE'>('DRAFT');
     const [projectType, setProjectType] = useState<string>('__NONE__');
     const [domain, setDomain] = useState('');
@@ -72,7 +72,7 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
             name,
             description,
             owner: owner || user.email || '',
-            techPresetId: techPresetId === '__NONE__' ? null : techPresetId,
+            techPresetId: technologyId === '__NONE__' ? null : technologyId,
             status,
             projectType: projectType === '__NONE__' ? null : projectType,
             domain: domain || null,
@@ -100,7 +100,7 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
             setName('');
             setDescription('');
             setOwner('');
-            setTechPresetId('__NONE__');
+            setTechnologyId('__NONE__');
             setStatus('DRAFT');
             setProjectType('__NONE__');
             setDomain('');
@@ -263,8 +263,8 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
                                     <Cpu className="w-3.5 h-3.5 text-slate-400" />
                                     Default Technology <span className="text-red-500">*</span>
                                 </Label>
-                                <Select value={techPresetId} onValueChange={setTechPresetId}>
-                                    <SelectTrigger className={`bg-slate-50/50 border-slate-200 focus:bg-white transition-all ${techPresetId === '__NONE__' ? 'border-red-300' : ''}`}>
+                                <Select value={technologyId} onValueChange={setTechnologyId}>
+                                    <SelectTrigger className={`bg-slate-50/50 border-slate-200 focus:bg-white transition-all ${technologyId === '__NONE__' ? 'border-red-300' : ''}`}>
                                         <SelectValue placeholder="Select technology (required)" />
                                     </SelectTrigger>
                                     <SelectContent>

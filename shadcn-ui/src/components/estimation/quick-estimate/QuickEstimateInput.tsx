@@ -8,33 +8,24 @@ import type { Technology } from '@/types/database';
 interface QuickEstimateInputProps {
     description: string;
     onDescriptionChange: (value: string) => void;
-    techPresetId: string;
+    technologyId: string;
     onPresetChange: (value: string) => void;
     presets: Technology[];
     calculating: boolean;
-    isDemoMode: boolean;
     error: string | null;
 }
 
 export function QuickEstimateInput({
     description,
     onDescriptionChange,
-    techPresetId,
+    technologyId,
     onPresetChange,
     presets,
     calculating,
-    isDemoMode,
     error,
 }: QuickEstimateInputProps) {
     return (
         <div className="space-y-6">
-            {isDemoMode && (
-                <div className="p-3 bg-amber-50 border border-amber-200/60 rounded-lg text-xs text-amber-800 flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span><strong>Demo Mode:</strong> Using sample data.</span>
-                </div>
-            )}
-
             <div className="space-y-4">
                 <Label htmlFor="description" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                     What would you like to build?
@@ -64,7 +55,7 @@ export function QuickEstimateInput({
                     Technology Stack
                 </Label>
                 <Select
-                    value={techPresetId}
+                    value={technologyId}
                     onValueChange={onPresetChange}
                     disabled={calculating}
                 >

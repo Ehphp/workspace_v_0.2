@@ -26,6 +26,44 @@ export function WizardStep4({ data, onUpdate, onNext, onBack }: WizardStep4Props
     loadData();
   }, []);
 
+  // Pre-fill drivers/risks from AI suggestions (only once, when step first loads)
+  const [prefilled, setPrefilled] = useState(false);
+  useEffect(() => {
+    if (prefilled || loading || drivers.length === 0) return;
+    setPrefilled(true);
+
+    // Pre-fill driver values from suggestedDrivers (if user hasn't already configured them)
+    const hasDriverSelections = Object.keys(data.selectedDriverValues).length > 0;
+    if (!hasDriverSelections && data.suggestedDrivers && data.suggestedDrivers.length > 0) {
+      const prefillDrivers: Record<string, string> = {};
+      for (const suggestion of data.suggestedDrivers) {
+        const catalogDriver = drivers.find(d => d.code === suggestion.code);
+        if (catalogDriver) {
+          const matchingOption = catalogDriver.options.find(
+            (o: { value: string }) => o.value === suggestion.suggestedValue
+          );
+          if (matchingOption) {
+            prefillDrivers[suggestion.code] = suggestion.suggestedValue;
+          }
+        }
+      }
+      if (Object.keys(prefillDrivers).length > 0) {
+        onUpdate({ selectedDriverValues: prefillDrivers });
+      }
+    }
+
+    // Pre-fill risk codes from suggestedRisks (if user hasn't already configured them)
+    const hasRiskSelections = data.selectedRiskCodes.length > 0;
+    if (!hasRiskSelections && data.suggestedRisks && data.suggestedRisks.length > 0) {
+      const validRiskCodes = data.suggestedRisks.filter(
+        code => risks.some(r => r.code === code)
+      );
+      if (validRiskCodes.length > 0) {
+        onUpdate({ selectedRiskCodes: validRiskCodes });
+      }
+    }
+  }, [loading, drivers, risks, prefilled]);
+
   const loadData = async () => {
     try {
       const [driversResult, risksResult] = await Promise.all([

@@ -67,7 +67,7 @@ interface UseRequirementInterviewReturn {
     // Actions
     generateQuestions: (
         description: string,
-        techPresetId: string,
+        technologyId: string,
         techCategory: string,
         projectContext?: { name: string; description: string; owner?: string; projectType?: string; domain?: string; scope?: string; teamSize?: number; deadlinePressure?: string; methodology?: string },
         requirementUnderstanding?: RequirementUnderstanding,
@@ -81,7 +81,7 @@ interface UseRequirementInterviewReturn {
     goToQuestion: (index: number) => void;
     generateEstimate: (
         description: string,
-        techPresetId: string,
+        technologyId: string,
         techCategory: string,
         projectContext?: { name: string; description: string; owner?: string; projectType?: string; domain?: string; scope?: string; teamSize?: number; deadlinePressure?: string; methodology?: string },
         requirementUnderstanding?: RequirementUnderstanding,
@@ -151,7 +151,7 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
     // Actions
     const generateQuestions = useCallback(async (
         description: string,
-        techPresetId: string,
+        technologyId: string,
         techCategory: string,
         projectContext?: { name: string; description: string; owner?: string; projectType?: string; domain?: string; scope?: string; teamSize?: number; deadlinePressure?: string; methodology?: string },
         requirementUnderstanding?: RequirementUnderstanding,
@@ -165,7 +165,7 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
         try {
             const response = await generateInterviewQuestions({
                 description,
-                techPresetId,
+                techPresetId: technologyId,
                 techCategory,
                 projectContext,
                 requirementUnderstanding,
@@ -250,7 +250,7 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
 
     const generateEstimate = useCallback(async (
         description: string,
-        techPresetId: string,
+        technologyId: string,
         techCategory: string,
         projectContext?: { name: string; description: string; owner?: string; projectType?: string; domain?: string; scope?: string; teamSize?: number; deadlinePressure?: string; methodology?: string },
         requirementUnderstanding?: RequirementUnderstanding,
@@ -269,7 +269,7 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
             // Generate estimate
             const response = await generateEstimateFromInterview({
                 description,
-                techPresetId,
+                techPresetId: technologyId,
                 techCategory,
                 answers: answersMapToRecord(answers),
                 projectContext,

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { AIActivitySuggestion } from '@/types/estimation';
 import type {
   TechnicalQuestion,
   InterviewAnswer,
@@ -19,7 +18,7 @@ export interface ProjectContext {
   name: string;
   description: string;
   owner?: string;
-  defaultTechPresetId?: string;
+  defaultTechnologyId?: string;
   projectType?: string;
   domain?: string;
   scope?: string;
@@ -32,7 +31,7 @@ export interface WizardData {
   reqId?: string;
   title?: string;
   description: string;
-  techPresetId: string;
+  technologyId: string;
   techCategory: string;
   selectedActivityCodes: string[];
   aiSuggestedActivityCodes: string[];
@@ -42,7 +41,6 @@ export interface WizardData {
   business_owner?: string;
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
   state: 'PROPOSED' | 'SELECTED' | 'SCHEDULED' | 'DONE';
-  activitySuggestionResult?: AIActivitySuggestion | null;
   // Project context
   projectContext?: ProjectContext;
   // Interview fields
@@ -114,7 +112,7 @@ export function useWizardState() {
 function getInitialData(): WizardData {
   return {
     description: '',
-    techPresetId: '',
+    technologyId: '',
     techCategory: '',
     selectedActivityCodes: [],
     aiSuggestedActivityCodes: [],
@@ -123,7 +121,6 @@ function getInitialData(): WizardData {
     priority: 'MEDIUM',
     state: 'PROPOSED',
     business_owner: '',
-    activitySuggestionResult: null,
     // Project context
     projectContext: undefined,
     // Interview fields

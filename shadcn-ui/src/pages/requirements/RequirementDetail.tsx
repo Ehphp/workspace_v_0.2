@@ -181,16 +181,43 @@ export default function RequirementDetail() {
         setSelectedPresetId(fallbackTechnologyId);
     }, [fallbackTechnologyId, presets, selectedPresetId, setSelectedPresetId]);
 
-    // Apply requirement-scoped driver defaults when available
+    // Hydrate estimation state from assigned/latest saved estimation
+    // Uses the same logic as OverviewTab: assigned estimation first, then latest history
+    useEffect(() => {
+        // Wait for master data to be loaded
+        if (activities.length === 0) return;
+        // Don't overwrite user's in-progress selections
+        if (hasSelections) return;
+
+        const savedEstimation = assignedEstimation || (estimationHistory[0] as unknown as EstimationWithDetails) || null;
+        if (!savedEstimation?.estimation_activities?.length) return;
+
+        const activityIds = savedEstimation.estimation_activities.map(a => a.activity_id);
+        const aiSuggestedActivityIds = savedEstimation.estimation_activities
+            .filter(a => a.is_ai_suggested)
+            .map(a => a.activity_id);
+        const driverValues: Record<string, string> = {};
+        (savedEstimation.estimation_drivers || []).forEach(d => {
+            driverValues[d.driver_id] = d.selected_value;
+        });
+        const riskIds = (savedEstimation.estimation_risks || []).map(r => r.risk_id);
+
+        estimationState.hydrateFromEstimation({ activityIds, aiSuggestedActivityIds, driverValues, riskIds });
+    }, [assignedEstimation, estimationHistory, activities, hasSelections, estimationState]);
+
+    // Apply requirement-scoped driver defaults when available (only if no saved estimation to hydrate from)
     useEffect(() => {
         if (!requirementDriverValues || requirementDriverValues.length === 0) return;
         if (Object.keys(selectedDriverValues).length > 0) return;
+        // Skip if there's a saved estimation — hydration useEffect above handles drivers
+        const savedEstimation = assignedEstimation || estimationHistory[0];
+        if (savedEstimation) return;
         const map: Record<string, string> = {};
         requirementDriverValues.forEach((rv) => {
             map[rv.driver_id] = rv.selected_value;
         });
         setDriverValues(map);
-    }, [requirementDriverValues, selectedDriverValues, setDriverValues]);
+    }, [requirementDriverValues, selectedDriverValues, setDriverValues, assignedEstimation, estimationHistory]);
 
     // Check for unsaved changes by comparing current estimation with last saved
     const hasUnsavedChanges = useMemo(() => {
@@ -542,10 +569,7 @@ export default function RequirementDetail() {
                             onRequestConsultant={handleRequestConsultant}
                             isConsultantLoading={isConsultantLoading}
                             consultantAnalysis={consultantAnalysis}
-                            consultantHistory={consultantHistory}
-                            consultantHistoryLoading={consultantHistoryLoading}
                             requirementUnderstanding={requirementUnderstanding}
-                            onUnderstandingSave={handleUnderstandingSave}
                             onNavigateToTab={setActiveTab}
                         />
                     </TabsContent>

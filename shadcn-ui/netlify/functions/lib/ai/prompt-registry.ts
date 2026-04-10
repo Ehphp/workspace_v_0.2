@@ -19,6 +19,9 @@ import { ESTIMATE_FROM_INTERVIEW_PROMPT } from './prompt-templates';
 import { QUESTION_GENERATION_SYSTEM_PROMPT } from './prompts/question-generation';
 import { PRESET_GENERATION_SYSTEM_PROMPT } from './prompts/preset-generation';
 import { BLUEPRINT_SYSTEM_PROMPT } from './prompts/blueprint-generation';
+import { UNDERSTANDING_SYSTEM_PROMPT } from './prompts/understanding-generation';
+import { IMPACT_MAP_SYSTEM_PROMPT } from './prompts/impact-map-generation';
+import { AGENT_ESTIMATION_SYSTEM_PROMPT } from './prompts/agent-estimation';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fallback map — keyed by prompt_key, value is the raw template string
@@ -43,10 +46,14 @@ const LOCAL_FALLBACKS: Record<string, string> = {
     // prompts/blueprint-generation.ts
     estimation_blueprint: BLUEPRINT_SYSTEM_PROMPT,
 
-    // Parameterized prompts are NOT stored here as fallbacks because they are
-    // built via functions (createActivitySuggestionPrompt, etc.) that embed
-    // runtime variables.  For those, the calling code will catch the "not found"
-    // case and fall back to the function it already has.
+    // prompts/understanding-generation.ts
+    requirement_understanding: UNDERSTANDING_SYSTEM_PROMPT,
+
+    // prompts/impact-map-generation.ts
+    impact_map: IMPACT_MAP_SYSTEM_PROMPT,
+
+    // prompts/agent-estimation.ts
+    agent_estimation: AGENT_ESTIMATION_SYSTEM_PROMPT,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

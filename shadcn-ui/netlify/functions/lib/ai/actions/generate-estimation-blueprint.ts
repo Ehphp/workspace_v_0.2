@@ -304,6 +304,7 @@ export async function generateEstimationBlueprint(
         responseFormat: responseSchema as any,
         systemPrompt,
         userPrompt,
+        options: 'complex',
     });
 
     const llmMs = Date.now() - llmStart;

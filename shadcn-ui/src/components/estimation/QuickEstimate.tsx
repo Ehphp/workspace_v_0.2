@@ -20,7 +20,7 @@ type ViewState = 'input' | 'running' | 'result';
 export function QuickEstimate({ open, onOpenChange, projectTechnicalBlueprint }: QuickEstimateProps) {
     const [view, setView] = useState<ViewState>('input');
     const [description, setDescription] = useState('');
-    const [techPresetId, setTechPresetId] = useState('');
+    const [technologyId, setTechnologyId] = useState('');
 
     const {
         currentStep,
@@ -28,7 +28,6 @@ export function QuickEstimate({ open, onOpenChange, projectTechnicalBlueprint }:
         isRunning,
         result,
         error,
-        isDemoMode,
         liveInsights,
         technologies: presets,
         loadMasterData,
@@ -43,14 +42,14 @@ export function QuickEstimate({ open, onOpenChange, projectTechnicalBlueprint }:
             if (!result) {
                 setView('input');
                 setDescription('');
-                setTechPresetId('');
+                setTechnologyId('');
             }
         }
     }, [open]);
 
     const handleCalculate = async () => {
         setView('running');
-        const success = await calculate(description, techPresetId, undefined, projectTechnicalBlueprint);
+        const success = await calculate(description, technologyId, undefined, projectTechnicalBlueprint);
         if (success) {
             setView('result');
         } else {
@@ -60,7 +59,7 @@ export function QuickEstimate({ open, onOpenChange, projectTechnicalBlueprint }:
 
     const handleReset = () => {
         setDescription('');
-        setTechPresetId('');
+        setTechnologyId('');
         abort();
         reset();
         setView('input');
@@ -71,7 +70,7 @@ export function QuickEstimate({ open, onOpenChange, projectTechnicalBlueprint }:
         onOpenChange(false);
     };
 
-    const canCalculate = description.trim().length > 0 && techPresetId !== '';
+    const canCalculate = description.trim().length > 0 && technologyId !== '';
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -114,11 +113,10 @@ export function QuickEstimate({ open, onOpenChange, projectTechnicalBlueprint }:
                                 <QuickEstimateInput
                                     description={description}
                                     onDescriptionChange={setDescription}
-                                    techPresetId={techPresetId}
-                                    onPresetChange={setTechPresetId}
+                                    technologyId={technologyId}
+                                    onPresetChange={setTechnologyId}
                                     presets={presets}
                                     calculating={isRunning}
-                                    isDemoMode={isDemoMode}
                                     error={error}
                                 />
                             </motion.div>

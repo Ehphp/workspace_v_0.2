@@ -24,7 +24,7 @@ interface BulkEstimateDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     requirements: Requirement[];
-    projectTechPresetId: string | null;
+    projectTechnologyId: string | null;
     onConfirm: () => void;
 }
 
@@ -32,7 +32,7 @@ export function BulkEstimateDialog({
     open,
     onOpenChange,
     requirements,
-    projectTechPresetId,
+    projectTechnologyId: projectTechPresetId,
     onConfirm,
 }: BulkEstimateDialogProps) {
     const estimableRequirements = requirements.filter((req) => {

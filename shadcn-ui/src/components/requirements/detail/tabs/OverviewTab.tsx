@@ -1,16 +1,11 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Calculator, FileText, ChevronDown, ChevronUp, Sparkles, ShieldCheck, Brain, ArrowRight, Clock, Save, RotateCcw, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { Calculator, FileText, ChevronDown, ChevronUp, Brain, ArrowRight, Clock, ShieldCheck, Target, Lightbulb } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { Requirement, Technology, EstimationWithDetails, Activity } from '@/types/database';
 import type { SeniorConsultantAnalysis } from '@/types/estimation';
 import type { RequirementUnderstanding } from '@/types/requirement-understanding';
 import { RequirementProgress } from '../RequirementProgress';
-import { ConsultantAnalysisCard } from '@/components/estimation/ConsultantAnalysisCard';
-import { ConsultantHistoryPanel } from '@/components/estimation/ConsultantHistoryPanel';
-import { RequirementUnderstandingCard } from '@/components/requirements/wizard/RequirementUnderstandingCard';
-import { CandidateProvenanceCard } from '../CandidateProvenanceCard';
-import type { ConsultantAnalysisRecord } from '@/hooks/useConsultantHistory';
 
 interface OverviewTabProps {
     requirement: Requirement;
@@ -21,59 +16,13 @@ interface OverviewTabProps {
     onRequestConsultant?: () => void;
     isConsultantLoading?: boolean;
     consultantAnalysis?: SeniorConsultantAnalysis | null;
-    consultantHistory?: ConsultantAnalysisRecord[];
-    consultantHistoryLoading?: boolean;
     requirementUnderstanding?: RequirementUnderstanding | null;
-    onUnderstandingSave?: (updated: RequirementUnderstanding) => Promise<void>;
     onNavigateToTab?: (tab: string) => void;
 }
 
-export function OverviewTab({ requirement, presets, refetchRequirement, latestEstimation, activities = [], onRequestConsultant, isConsultantLoading, consultantAnalysis, consultantHistory = [], consultantHistoryLoading = false, requirementUnderstanding, onUnderstandingSave, onNavigateToTab }: OverviewTabProps) {
+export function OverviewTab({ requirement, presets, refetchRequirement, latestEstimation, activities = [], onRequestConsultant, isConsultantLoading, consultantAnalysis, requirementUnderstanding, onNavigateToTab }: OverviewTabProps) {
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(true);
     const [isUnderstandingExpanded, setIsUnderstandingExpanded] = useState(true);
-    const [isAiAnalysisExpanded, setIsAiAnalysisExpanded] = useState(true);
-    const [isConsultantExpanded, setIsConsultantExpanded] = useState(true);
-
-    // Always-editable understanding: working copy + original snapshot
-    const [editedUnderstanding, setEditedUnderstanding] = useState<RequirementUnderstanding | null>(null);
-    const [isSavingUnderstanding, setIsSavingUnderstanding] = useState(false);
-    const originalUnderstandingRef = useRef<RequirementUnderstanding | null>(null);
-
-    // Sync working copy when upstream understanding changes (initial load / after save)
-    useEffect(() => {
-        if (requirementUnderstanding) {
-            originalUnderstandingRef.current = structuredClone(requirementUnderstanding);
-            setEditedUnderstanding(structuredClone(requirementUnderstanding));
-        }
-    }, [requirementUnderstanding]);
-
-    const isDirty = useMemo(() => {
-        if (!editedUnderstanding || !originalUnderstandingRef.current) return false;
-        return JSON.stringify(editedUnderstanding) !== JSON.stringify(originalUnderstandingRef.current);
-    }, [editedUnderstanding]);
-
-    const handleResetEditing = useCallback(() => {
-        if (originalUnderstandingRef.current) {
-            setEditedUnderstanding(structuredClone(originalUnderstandingRef.current));
-        }
-    }, []);
-
-    const handleSaveUnderstanding = useCallback(async () => {
-        if (!editedUnderstanding || !onUnderstandingSave) return;
-        setIsSavingUnderstanding(true);
-        try {
-            await onUnderstandingSave(editedUnderstanding);
-            // After save, upstream will update requirementUnderstanding → useEffect resets original
-        } finally {
-            setIsSavingUnderstanding(false);
-        }
-    }, [editedUnderstanding, onUnderstandingSave]);
-
-    const handleCardUpdate = useCallback((updated: RequirementUnderstanding) => {
-        setEditedUnderstanding(updated);
-    }, []);
-
-    const hasAiAnalysis = latestEstimation?.ai_reasoning && latestEstimation.ai_reasoning.trim().length > 0;
 
     return (
         <div className="h-full flex flex-col overflow-hidden">
@@ -83,7 +32,7 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
                     {/* ═══ Hero: Description (left 70%) + Estimation (right 30%) ═══ */}
                     <div className="grid grid-cols-1 lg:grid-cols-10 gap-5">
 
-                        {/* Left column — Description */}
+                        {/* Left column — Description + AI Summary */}
                         <div className="lg:col-span-7 space-y-5">
 
                             {/* Description section */}
@@ -106,117 +55,90 @@ export function OverviewTab({ requirement, presets, refetchRequirement, latestEs
                                 </div>
                             </section>
 
-                            {/* AI Understanding — structured 2x2 grid layout */}
+                            {/* AI Understanding — compact summary (4 fields) */}
                             {requirementUnderstanding && (
                                 <section className="border-t border-slate-100 pt-4">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <button
-                                            className="flex items-center gap-2 group"
-                                            onClick={() => setIsUnderstandingExpanded(!isUnderstandingExpanded)}
-                                        >
-                                            <Brain className="w-4 h-4 text-blue-500" />
-                                            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Analisi AI</h2>
-                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-blue-200 text-blue-600 bg-blue-50">
-                                                Confermata
-                                            </Badge>
-                                            {isUnderstandingExpanded
-                                                ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
-                                                : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                                            }
-                                        </button>
-                                        {isUnderstandingExpanded && isDirty && onUnderstandingSave && (
-                                            <div className="flex items-center gap-1.5">
-                                                <Button variant="ghost" size="sm" onClick={handleResetEditing} className="h-7 text-xs text-slate-500" disabled={isSavingUnderstanding}>
-                                                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
-                                                    Ripristina
-                                                </Button>
-                                                <Button size="sm" onClick={handleSaveUnderstanding} className="h-7 text-xs" disabled={isSavingUnderstanding}>
-                                                    {isSavingUnderstanding ? (
-                                                        <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                                                    ) : (
-                                                        <Save className="w-3.5 h-3.5 mr-1" />
-                                                    )}
-                                                    Salva
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
-                                    {isUnderstandingExpanded && (
-                                        <RequirementUnderstandingCard
-                                            understanding={editedUnderstanding || requirementUnderstanding}
-                                            originalUnderstanding={isDirty ? originalUnderstandingRef.current || undefined : undefined}
-                                            onUpdate={onUnderstandingSave ? handleCardUpdate : undefined}
-                                        />
-                                    )}
-                                </section>
-                            )}
-
-                            {/* AI Reasoning from estimation */}
-                            {hasAiAnalysis && (
-                                <section className="border-t border-slate-100 pt-4">
                                     <button
-                                        className="flex items-center gap-2 mb-2"
-                                        onClick={() => setIsAiAnalysisExpanded(!isAiAnalysisExpanded)}
+                                        className="flex items-center gap-2 mb-3 group"
+                                        onClick={() => setIsUnderstandingExpanded(!isUnderstandingExpanded)}
                                     >
-                                        <Sparkles className="w-4 h-4 text-blue-500" />
-                                        <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ragionamento AI</h2>
-                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-slate-200 text-slate-500">
-                                            Generato
+                                        <Brain className="w-4 h-4 text-blue-500" />
+                                        <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Analisi AI</h2>
+                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-blue-200 text-blue-600 bg-blue-50">
+                                            Confermata
                                         </Badge>
-                                        {isAiAnalysisExpanded
+                                        {isUnderstandingExpanded
                                             ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
                                             : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                                         }
                                     </button>
-                                    {isAiAnalysisExpanded && (
-                                        <div className="max-h-[25vh] overflow-y-auto pr-1">
-                                            <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
-                                                {latestEstimation!.ai_reasoning}
-                                            </p>
+                                    {isUnderstandingExpanded && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {/* Obiettivo di business */}
+                                            <div className="bg-white rounded-lg border border-slate-200 p-3">
+                                                <div className="flex items-center gap-1.5 mb-1.5">
+                                                    <Target className="w-3.5 h-3.5 text-blue-500" />
+                                                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Obiettivo di business</span>
+                                                </div>
+                                                <p className="text-sm text-slate-700 leading-relaxed">
+                                                    {requirementUnderstanding.businessObjective || '—'}
+                                                </p>
+                                            </div>
+
+                                            {/* Output atteso */}
+                                            <div className="bg-white rounded-lg border border-slate-200 p-3">
+                                                <div className="flex items-center gap-1.5 mb-1.5">
+                                                    <ArrowRight className="w-3.5 h-3.5 text-emerald-500" />
+                                                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Output atteso</span>
+                                                </div>
+                                                <p className="text-sm text-slate-700 leading-relaxed">
+                                                    {requirementUnderstanding.expectedOutput || '—'}
+                                                </p>
+                                            </div>
+
+                                            {/* Perimetro funzionale */}
+                                            <div className="bg-white rounded-lg border border-slate-200 p-3">
+                                                <div className="flex items-center gap-1.5 mb-1.5">
+                                                    <FileText className="w-3.5 h-3.5 text-violet-500" />
+                                                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Perimetro funzionale</span>
+                                                </div>
+                                                {requirementUnderstanding.functionalPerimeter?.length > 0 ? (
+                                                    <ul className="space-y-1">
+                                                        {requirementUnderstanding.functionalPerimeter.map((item, i) => (
+                                                            <li key={i} className="text-sm text-slate-700 leading-relaxed flex items-start gap-1.5">
+                                                                <span className="text-slate-400 mt-1">›</span>
+                                                                {item}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                ) : (
+                                                    <p className="text-sm text-slate-400">—</p>
+                                                )}
+                                            </div>
+
+                                            {/* Assunzioni */}
+                                            <div className="bg-white rounded-lg border border-slate-200 p-3">
+                                                <div className="flex items-center gap-1.5 mb-1.5">
+                                                    <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
+                                                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Assunzioni</span>
+                                                </div>
+                                                {requirementUnderstanding.assumptions?.length > 0 ? (
+                                                    <ul className="space-y-1">
+                                                        {requirementUnderstanding.assumptions.map((item, i) => (
+                                                            <li key={i} className="text-sm text-slate-700 leading-relaxed flex items-start gap-1.5">
+                                                                <span className="text-slate-400 mt-1">›</span>
+                                                                {item}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                ) : (
+                                                    <p className="text-sm text-slate-400">—</p>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
                                 </section>
                             )}
-
-                            {/* Consultant Analysis */}
-                            {consultantAnalysis && (
-                                <section className="border-t border-slate-100 pt-4">
-                                    <button
-                                        className="flex items-center gap-2 mb-2"
-                                        onClick={() => setIsConsultantExpanded(!isConsultantExpanded)}
-                                    >
-                                        <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                                        <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Senior Consultant</h2>
-                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-200 text-emerald-600 bg-emerald-50">
-                                            Analisi
-                                        </Badge>
-                                        {isConsultantExpanded
-                                            ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
-                                            : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                                        }
-                                    </button>
-                                    {isConsultantExpanded && (
-                                        <ConsultantAnalysisCard analysis={consultantAnalysis} />
-                                    )}
-                                </section>
-                            )}
-
-                            {/* Consultant History */}
-                            {(consultantHistory.length > 0 || consultantHistoryLoading) && (
-                                <section className="border-t border-slate-100 pt-4">
-                                    <ConsultantHistoryPanel
-                                        history={consultantHistory}
-                                        loading={consultantHistoryLoading}
-                                        currentAnalysis={consultantAnalysis}
-                                    />
-                                </section>
-                            )}
-
-                            {/* Candidate Provenance Debug View */}
-                            <section className="border-t border-slate-100 pt-4">
-                                <CandidateProvenanceCard requirementId={requirement?.id} />
-                            </section>
-
                         </div>
 
                         {/* ═══ Right column — Estimation + Progress ═══ */}

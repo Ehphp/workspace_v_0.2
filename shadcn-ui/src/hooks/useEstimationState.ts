@@ -38,6 +38,12 @@ export interface UseEstimationStateReturn {
     /** @deprecated No-op: templates removed */
     applyPresetDefaults: (presetId: string) => void;
     applyAiSuggestions: (activityIds: string[], driverValues?: Record<string, string>, riskIds?: string[]) => void;
+    hydrateFromEstimation: (params: {
+        activityIds: string[];
+        aiSuggestedActivityIds: string[];
+        driverValues: Record<string, string>;
+        riskIds: string[];
+    }) => void;
     resetSelections: () => void;
 
     // Computed
@@ -176,6 +182,35 @@ export function useEstimationState({
         }
     }, [activities, drivers, selectedTechnology]);
 
+    // Hydrate state from a saved estimation (assigned or latest)
+    // Unlike applyAiSuggestions, this preserves the original AI-suggested flags
+    const hydrateFromEstimation = useCallback((params: {
+        activityIds: string[];
+        aiSuggestedActivityIds: string[];
+        driverValues: Record<string, string>;
+        riskIds: string[];
+    }) => {
+        const { activityIds, aiSuggestedActivityIds, driverValues, riskIds } = params;
+
+        // Filter activities by technology compatibility
+        const allowedActivityIds = activityIds.filter((id) => {
+            const activity = activities.find((a) => a.id === id);
+            if (!activity) return false;
+            return isActivityCompatible(activity, selectedTechnology, techs);
+        });
+
+        const removed = activityIds.length - allowedActivityIds.length;
+        if (removed > 0) {
+            console.warn(`[hydrateFromEstimation] Removed ${removed} activities outside technology ${selectedTechnology?.code}`);
+        }
+
+        setSelectedActivityIds(allowedActivityIds);
+        // Only mark activities that were originally AI-suggested
+        setAiSuggestedIds(aiSuggestedActivityIds.filter(id => allowedActivityIds.includes(id)));
+        setSelectedDriverValues(driverValues);
+        setSelectedRiskIds(riskIds);
+    }, [activities, selectedTechnology, techs]);
+
     // Reset all selections
     const resetSelections = useCallback(() => {
         setSelectedTechnologyId('');
@@ -268,6 +303,7 @@ export function useEstimationState({
         applyPreset: selectTechnology, // backward compat
         applyPresetDefaults,
         applyAiSuggestions,
+        hydrateFromEstimation,
         resetSelections,
 
         // Computed

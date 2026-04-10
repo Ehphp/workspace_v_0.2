@@ -134,6 +134,20 @@ export interface ToolExecutionContext {
     activitiesCatalog: AgentActivity[];
     /** User ID for personalized RAG */
     userId?: string;
+    /** Pre-fetched RAG context (avoids duplicate calls when agent uses query_history) */
+    prefetchedRAG?: {
+        hasExamples: boolean;
+        examples: Array<{
+            requirementTitle: string;
+            requirementDescription: string;
+            similarity: number;
+            totalDays: number;
+            baseDays: number;
+            activities: Array<{ code: string; name: string; baseHours: number }>;
+            techPresetName?: string;
+        }>;
+        searchLatencyMs: number;
+    };
 }
 
 /**
@@ -222,6 +236,23 @@ async function executeSearchCatalog(
         );
 
         console.log(`[tools]   pgvector: ${results.length} risultati (metodo: ${metrics.method}, ${metrics.latencyMs}ms)`);
+
+        // If vector search fell back (0% similarity), warn clearly and don't return misleading results
+        if (metrics.usedFallback) {
+            console.warn(`[tools]   search_catalog: vector search returned no semantic matches (fallback reason: ${metrics.fallbackReason}). Using keyword fallback instead.`);
+            const kwResult = keywordFallbackSearch(query, categories, limit, ctx.activitiesCatalog);
+            if (kwResult.count === 0) {
+                return {
+                    activities: [],
+                    count: 0,
+                    method: 'no-match',
+                    latencyMs: metrics.latencyMs,
+                    note: 'No semantically similar activities found. Activity embeddings may need to be generated. The agent should rely on the pre-ranked catalog provided in the user prompt.'
+                };
+            }
+            return kwResult;
+        }
+
         results.slice(0, 5).forEach((r, i) => {
             console.log(`[tools]     ${i + 1}. ${r.code}: ${r.name} (similarity: ${Math.round((r.similarity || 0) * 100)}%)`);
         });
@@ -297,6 +328,36 @@ async function executeQueryHistory(
     const userId = (args.userId as string) || ctx.userId;
 
     console.log(`[tools]   query_history: query="${query.substring(0, 100)}...", userId=${userId || 'N/A'}`);
+
+    // Use pre-fetched RAG context if available (avoids duplicate embedding + DB call)
+    if (ctx.prefetchedRAG) {
+        console.log(`[tools]   query_history: using pre-fetched RAG (${ctx.prefetchedRAG.examples.length} examples, skipping duplicate call)`);
+        const pf = ctx.prefetchedRAG;
+        if (pf.hasExamples) {
+            pf.examples.slice(0, 3).forEach((ex, i) => {
+                console.log(`[tools]     ${i + 1}. "${ex.requirementTitle}" — similarity: ${Math.round(ex.similarity * 100)}%, ${ex.totalDays} days`);
+            });
+        }
+        return {
+            hasExamples: pf.hasExamples,
+            examples: pf.examples.map(ex => ({
+                title: ex.requirementTitle,
+                description: ex.requirementDescription.substring(0, 300),
+                similarity: Math.round(ex.similarity * 100),
+                totalDays: ex.totalDays,
+                baseDays: ex.baseDays,
+                activityCount: ex.activities.length,
+                topActivities: ex.activities.slice(0, 5).map(a => ({
+                    code: a.code,
+                    name: a.name,
+                    hours: a.baseHours
+                })),
+                techStack: ex.techPresetName || 'Unknown'
+            })),
+            searchLatencyMs: pf.searchLatencyMs,
+            _cached: true
+        };
+    }
 
     if (!isVectorSearchEnabled()) {
         console.log('[tools]   Vector search disabilitato → nessun esempio storico disponibile');

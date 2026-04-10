@@ -67,11 +67,8 @@ export function WizardStepUnderstanding({
             const result = await generateRequirementUnderstanding({
                 description: data.description,
                 techCategory: data.techCategory || undefined,
-                techPresetId: data.techPresetId || undefined,
+                techPresetId: data.technologyId || undefined,
                 projectContext: data.projectContext || undefined,
-                normalizationResult: data.normalizationResult?.normalizedDescription
-                    ? { normalizedDescription: data.normalizationResult.normalizedDescription }
-                    : undefined,
             });
 
             if (result.success && result.understanding) {
@@ -92,7 +89,7 @@ export function WizardStepUnderstanding({
         } finally {
             generatingRef.current = false;
         }
-    }, [data.description, data.techCategory, data.techPresetId, data.projectContext, data.normalizationResult, onUpdate]);
+    }, [data.description, data.techCategory, data.technologyId, data.projectContext, onUpdate]);
 
     const handleRegenerate = useCallback(() => {
         setOriginalUnderstanding(null);

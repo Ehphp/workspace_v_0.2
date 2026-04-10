@@ -18,7 +18,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { fetchEstimationMasterData, type EstimationMasterData } from '@/lib/api';
-import { MOCK_TECHNOLOGIES, MOCK_ACTIVITIES, MOCK_DRIVERS, MOCK_RISKS } from '@/lib/mockData';
 import { interviewFinalizeEstimation, type FinalizedEstimation } from '@/lib/estimation-utils';
 import { generateRequirementUnderstanding } from '@/lib/requirement-understanding-api';
 import { generateImpactMap } from '@/lib/impact-map-api';
@@ -144,7 +143,6 @@ export function useQuickEstimationV2() {
 
     // Master data (technologies, activities, drivers, risks)
     const [masterData, setMasterData] = useState<EstimationMasterData | null>(null);
-    const [isDemoMode, setIsDemoMode] = useState(false);
 
     // Abort support
     const abortRef = useRef(false);
@@ -177,29 +175,15 @@ export function useQuickEstimationV2() {
     // ── Load master data ────────────────────────────────────────────────
     const loadMasterData = useCallback(async (): Promise<EstimationMasterData> => {
         if (masterData) return masterData;
-        try {
-            const data = await fetchEstimationMasterData();
-            setMasterData(data);
-            setIsDemoMode(false);
-            return data;
-        } catch {
-            const fallback: EstimationMasterData = {
-                technologies: MOCK_TECHNOLOGIES,
-                presets: MOCK_TECHNOLOGIES,
-                activities: MOCK_ACTIVITIES,
-                drivers: MOCK_DRIVERS,
-                risks: MOCK_RISKS,
-            };
-            setMasterData(fallback);
-            setIsDemoMode(true);
-            return fallback;
-        }
+        const data = await fetchEstimationMasterData();
+        setMasterData(data);
+        return data;
     }, [masterData]);
 
     // ── Main pipeline ───────────────────────────────────────────────────
     const calculate = useCallback(async (
         description: string,
-        techPresetId: string,
+        technologyId: string,
         projectContext?: { name: string; description: string; owner?: string; projectType?: string; domain?: string; scope?: string; teamSize?: number; deadlinePressure?: string; methodology?: string },
         projectTechnicalBlueprint?: ProjectTechnicalBlueprint,
     ): Promise<boolean> => {
@@ -208,7 +192,7 @@ export function useQuickEstimationV2() {
             setError('Fornisci una descrizione più dettagliata (almeno 10 caratteri).');
             return false;
         }
-        if (!techPresetId) {
+        if (!technologyId) {
             setError('Seleziona una tecnologia.');
             return false;
         }
@@ -238,7 +222,7 @@ export function useQuickEstimationV2() {
                 return false;
             }
 
-            const preset = data.technologies.find(t => t.id === techPresetId);
+            const preset = data.technologies.find(t => t.id === technologyId);
             if (!preset) {
                 setError('Tecnologia selezionata non trovata.');
                 setCurrentStep('error');
@@ -268,7 +252,7 @@ export function useQuickEstimationV2() {
                 () => generateRequirementUnderstanding({
                     description,
                     techCategory,
-                    techPresetId,
+                    techPresetId: technologyId,
                     projectContext,
                 }),
                 steps,
@@ -302,7 +286,7 @@ export function useQuickEstimationV2() {
                 () => generateImpactMap({
                     description,
                     techCategory,
-                    techPresetId,
+                    techPresetId: technologyId,
                     projectContext,
                     requirementUnderstanding: artifacts.understanding,
                 }),
@@ -337,7 +321,7 @@ export function useQuickEstimationV2() {
                 () => generateEstimationBlueprint({
                     description,
                     techCategory,
-                    techPresetId,
+                    techPresetId: technologyId,
                     projectContext,
                     requirementUnderstanding: artifacts.understanding,
                     impactMap: artifacts.impactMap,
@@ -376,7 +360,7 @@ export function useQuickEstimationV2() {
                 'interview-planner',
                 () => generateInterviewQuestions({
                     description,
-                    techPresetId,
+                    techPresetId: technologyId,
                     techCategory,
                     projectContext,
                     requirementUnderstanding: artifacts.understanding,
@@ -421,7 +405,7 @@ export function useQuickEstimationV2() {
                 'estimation',
                 () => generateEstimateFromInterview({
                     description,
-                    techPresetId,
+                    techPresetId: technologyId,
                     techCategory,
                     answers: {},  // No interview answers in quick mode
                     projectContext,
@@ -545,7 +529,6 @@ export function useQuickEstimationV2() {
         isRunning: currentStep !== 'idle' && currentStep !== 'done' && currentStep !== 'error',
         result,
         error,
-        isDemoMode,
         liveInsights,
 
         // Master data (for preset selector)

@@ -60,7 +60,7 @@ export function WizardStepInterview({
 
         const result = await interview.generateQuestions(
             data.description,
-            data.techPresetId,
+            data.technologyId,
             data.techCategory,
             data.projectContext,
             data.requirementUnderstanding,
@@ -92,13 +92,13 @@ export function WizardStepInterview({
             setLocalError(interview.error || 'Failed to generate interview questions');
             setPhase('error');
         }
-    }, [data.description, data.techPresetId, data.techCategory, interview, onUpdate]);
+    }, [data.description, data.technologyId, data.techCategory, interview, onUpdate]);
 
     /** Handle SKIP path: generate estimate immediately without interview answers */
     const handleSkipToEstimate = useCallback(async () => {
         const result = await interview.generateEstimate(
             data.description,
-            data.techPresetId,
+            data.technologyId,
             data.techCategory,
             data.projectContext,
             data.requirementUnderstanding,
@@ -127,7 +127,7 @@ export function WizardStepInterview({
             setLocalError(result?.error || interview.error || 'Failed to generate estimate');
             setPhase('error');
         }
-    }, [data.description, data.techPresetId, data.techCategory, interview, onUpdate]);
+    }, [data.description, data.technologyId, data.techCategory, interview, onUpdate]);
 
     const handleAnswerQuestion = useCallback((questionId: string, value: string | string[] | number) => {
         interview.answerQuestion(questionId, value);
@@ -145,7 +145,7 @@ export function WizardStepInterview({
 
         const result = await interview.generateEstimate(
             data.description,
-            data.techPresetId,
+            data.technologyId,
             data.techCategory,
             data.projectContext,
             data.requirementUnderstanding,
@@ -177,7 +177,7 @@ export function WizardStepInterview({
             setLocalError(result?.error || interview.error || 'Failed to generate estimate');
             setPhase('error');
         }
-    }, [data.description, data.techPresetId, data.techCategory, interview, onUpdate]);
+    }, [data.description, data.technologyId, data.techCategory, interview, onUpdate]);
 
     const handleConfirmEstimate = useCallback(() => {
         // Move to next step (Drivers & Risks)

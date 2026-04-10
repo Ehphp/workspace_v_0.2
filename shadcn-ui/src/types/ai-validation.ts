@@ -2,9 +2,9 @@ import { z } from 'zod';
 
 // Re-export PipelineActivity from the canonical shared schema
 // This ensures a single source of truth for both frontend and backend
-export type { PipelineActivity } from '@/shared/validation/pipeline-activity.schema';
-export { PipelineActivitySchema } from '@/shared/validation/pipeline-activity.schema';
-import type { PipelineActivity } from '@/shared/validation/pipeline-activity.schema';
+export type { PipelineActivity } from '../shared/validation/pipeline-activity.schema';
+export { PipelineActivitySchema } from '../shared/validation/pipeline-activity.schema';
+import type { PipelineActivity } from '../shared/validation/pipeline-activity.schema';
 
 /**
  * Schema di validazione per le risposte AI

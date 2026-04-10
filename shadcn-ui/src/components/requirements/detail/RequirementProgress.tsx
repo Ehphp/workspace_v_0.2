@@ -64,8 +64,30 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
 
     if (estimationActivities.length === 0) return null;
 
+    // Group activities by phase (matching SelectedActivitiesPanel style)
+    const groupOrder = ['ANALYSIS', 'DEV', 'TEST', 'OPS', 'GOVERNANCE'];
+    const groupLabels: Record<string, string> = {
+        ANALYSIS: 'Analisi',
+        DEV: 'Sviluppo',
+        TEST: 'Testing',
+        OPS: 'Operations',
+        GOVERNANCE: 'Governance',
+    };
+
+    const enrichedActivities = estimationActivities.map(estAct => {
+        const activity = activities.find(a => a.id === estAct.activity_id);
+        return { estAct, activity };
+    }).filter(({ activity }) => activity != null);
+
+    const grouped = enrichedActivities.reduce((acc, item) => {
+        const group = item.activity!.group || 'DEV';
+        if (!acc[group]) acc[group] = [];
+        acc[group].push(item);
+        return acc;
+    }, {} as Record<string, typeof enrichedActivities>);
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             {/* Progress Bar */}
             <div className="space-y-2">
                 <div className="flex justify-between items-end">
@@ -75,64 +97,91 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
                 <Progress value={progress} className="h-2" />
             </div>
 
-            {/* Activity Checklist */}
+            {/* Activity Checklist — grouped by phase */}
             <div className="space-y-3">
                 <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Attività ({estimationActivities.length})
                 </h4>
-                <div className="grid gap-2">
-                    {estimationActivities.map((estAct) => {
-                        const activity = activities.find(a => a.id === estAct.activity_id);
-                        if (!activity) return null;
 
-                        // Use optimistic value if available
-                        const isDone = optimisticUpdates[estAct.id] !== undefined
-                            ? optimisticUpdates[estAct.id]
-                            : estAct.is_done;
+                {groupOrder.map(groupKey => {
+                    const items = grouped[groupKey];
+                    if (!items || items.length === 0) return null;
 
-                        const isUpdating = updating === estAct.id;
+                    const groupHours = items.reduce((sum, { activity }) => sum + (activity?.base_hours || 0), 0);
+                    const groupDone = items.filter(({ estAct }) => {
+                        return optimisticUpdates[estAct.id] !== undefined ? optimisticUpdates[estAct.id] : estAct.is_done;
+                    }).length;
 
-                        return (
-                            <div
-                                key={estAct.id}
-                                className={cn(
-                                    "group flex items-center gap-2 p-2 rounded-md border transition-colors cursor-pointer",
-                                    isDone
-                                        ? "bg-blue-50/50 border-blue-100"
-                                        : "bg-white border-slate-200 hover:border-blue-300"
-                                )}
-                                onClick={() => !isUpdating && handleToggle(estAct.id, isDone)}
-                            >
-                                <div className={cn(
-                                    "shrink-0 transition-colors duration-200",
-                                    isDone ? "text-blue-600" : "text-slate-300 group-hover:text-blue-400"
-                                )}>
-                                    {isDone ? (
-                                        <CheckCircle2 className="w-4 h-4" />
-                                    ) : (
-                                        <Circle className="w-4 h-4" />
-                                    )}
-                                </div>
-
-                                <div className="flex-1 min-w-0">
-                                    <div className={cn(
-                                        "font-medium text-xs transition-colors duration-200 truncate",
-                                        isDone ? "text-slate-500 line-through" : "text-slate-900"
-                                    )}>
-                                        {activity.name}
-                                    </div>
-                                </div>
-
-                                <div className={cn(
-                                    "text-xs font-bold px-1.5 py-0.5 rounded",
-                                    isDone ? "bg-slate-100 text-slate-400" : "bg-blue-50 text-blue-700"
-                                )}>
-                                    {activity.base_hours}h
+                    return (
+                        <div key={groupKey} className="space-y-1.5">
+                            {/* Group header */}
+                            <div className="flex items-center justify-between px-1">
+                                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                                    {groupLabels[groupKey] || groupKey}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-slate-400">
+                                        {groupDone}/{items.length}
+                                    </span>
+                                    <span className="text-[10px] font-medium text-slate-500">
+                                        {groupHours}h
+                                    </span>
                                 </div>
                             </div>
-                        );
-                    })}
-                </div>
+
+                            {/* Group activities */}
+                            <div className="grid gap-1.5">
+                                {items.map(({ estAct, activity }) => {
+                                    const isDone = optimisticUpdates[estAct.id] !== undefined
+                                        ? optimisticUpdates[estAct.id]
+                                        : estAct.is_done;
+                                    const isUpdating = updating === estAct.id;
+
+                                    return (
+                                        <div
+                                            key={estAct.id}
+                                            className={cn(
+                                                "group flex items-center gap-2 p-2 rounded-lg border transition-colors cursor-pointer",
+                                                isDone
+                                                    ? "bg-blue-50/50 border-blue-100"
+                                                    : "bg-white border-slate-200 hover:border-blue-300"
+                                            )}
+                                            onClick={() => !isUpdating && handleToggle(estAct.id, isDone)}
+                                        >
+                                            <div className={cn(
+                                                "shrink-0 transition-colors duration-200",
+                                                isDone ? "text-blue-600" : "text-slate-300 group-hover:text-blue-400"
+                                            )}>
+                                                {isDone ? (
+                                                    <CheckCircle2 className="w-4 h-4" />
+                                                ) : (
+                                                    <Circle className="w-4 h-4" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className={cn(
+                                                    "font-medium text-[11px] transition-colors duration-200 truncate",
+                                                    isDone ? "text-slate-500 line-through" : "text-slate-800"
+                                                )}>
+                                                    {activity!.name}
+                                                </div>
+                                                <div className="text-[9px] text-slate-400 truncate">
+                                                    {activity!.code}
+                                                </div>
+                                            </div>
+                                            <div className={cn(
+                                                "text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0",
+                                                isDone ? "bg-slate-100 text-slate-400" : "bg-blue-50 text-blue-700"
+                                            )}>
+                                                {activity!.base_hours}h
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );

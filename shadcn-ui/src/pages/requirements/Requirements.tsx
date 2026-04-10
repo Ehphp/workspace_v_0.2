@@ -504,7 +504,7 @@ export default function Requirements() {
                         open={showBulkEstimate}
                         onOpenChange={setShowBulkEstimate}
                         requirements={filteredRequirements}
-                        projectTechPresetId={project?.technology_id || project?.tech_preset_id}
+                        projectTechnologyId={project?.technology_id || project?.tech_preset_id}
                         onConfirm={() => bulkEstimation.start(
                             filteredRequirements,
                             project?.technology_id || project?.tech_preset_id || null,

@@ -46,6 +46,21 @@
 [functions."ai-generate-project-from-documentation"]
   timeout = 90
 
+[functions."ai-requirement-understanding"]
+  timeout = 60
+
+[functions."ai-impact-map"]
+  timeout = 60
+
+[functions."ai-estimation-blueprint"]
+  timeout = 90
+
+[functions."ai-validate-requirement"]
+  timeout = 30
+
+[functions."ai-consultant"]
+  timeout = 90
+
 # Redirect all requests to index.html for SPA routing
 [[redirects]]
   from = "/*"

@@ -71,9 +71,6 @@ export async function fetchTechnology(technologyId: string): Promise<Technology 
   return data;
 }
 
-/** @deprecated Use fetchTechnology */
-export const fetchTechnologyPreset = fetchTechnology;
-
 export interface EstimationMasterData {
   technologies: Technology[];
   /** @deprecated Use technologies */
@@ -83,7 +80,16 @@ export interface EstimationMasterData {
   risks: Risk[];
 }
 
+// Session-level cache for master data (avoids triple-fetch during wizard save)
+let _masterDataCache: { data: EstimationMasterData; ts: number } | null = null;
+const MASTER_DATA_TTL_MS = 15_000; // 15 seconds — covers the UI preview → save → snapshot window
+
 export async function fetchEstimationMasterData(): Promise<EstimationMasterData> {
+  // Return cached data if still fresh
+  if (_masterDataCache && Date.now() - _masterDataCache.ts < MASTER_DATA_TTL_MS) {
+    return _masterDataCache.data;
+  }
+
   const [techRes, activitiesRes, driversRes, risksRes, tpaRes] = await Promise.all([
     supabase.from('technologies').select('*').order('name'),
     supabase.from('activities').select('*').eq('active', true).order('group, name'),
@@ -100,13 +106,16 @@ export async function fetchEstimationMasterData(): Promise<EstimationMasterData>
 
   const technologies: Technology[] = techRes.data || [];
 
-  return {
+  const result: EstimationMasterData = {
     technologies,
     presets: technologies, // backward compat
     activities: activitiesRes.data || [],
     drivers: driversRes.data || [],
     risks: risksRes.data || [],
   };
+
+  _masterDataCache = { data: result, ts: Date.now() };
+  return result;
 }
 
 export async function fetchTechnologies(): Promise<Technology[]> {
