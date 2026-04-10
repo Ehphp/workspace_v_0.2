@@ -15,6 +15,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
     RequirementUnderstandingSchema,
     RequirementActorSchema,
+    ActorTypeEnum,
+    ActorInteractionModeEnum,
     StateTransitionSchema,
     ComplexityAssessmentSchema,
 } from '@/types/requirement-understanding';
@@ -29,8 +31,8 @@ const VALID_UNDERSTANDING = {
     ],
     exclusions: ['SSO / login social', 'Autenticazione a due fattori'],
     actors: [
-        { role: 'Utente finale', interaction: 'Compila il form di registrazione' },
-        { role: 'Sistema email', interaction: 'Invia email di conferma' },
+        { type: 'human', role: 'Utente finale', interaction: 'Compila il form di registrazione', interactionMode: 'manual' },
+        { type: 'system', role: 'Sistema email', interaction: 'Invia email di conferma', interactionMode: 'automated' },
     ],
     stateTransition: {
         initialState: 'Nessun account utente presente nel sistema',
@@ -150,8 +152,36 @@ describe('RequirementUnderstandingSchema', () => {
 });
 
 describe('RequirementActorSchema', () => {
-    it('accepts valid actor', () => {
+    it('accepts valid human actor with all fields', () => {
+        expect(RequirementActorSchema.safeParse({
+            type: 'human', role: 'Admin', interaction: 'Manages users', interactionMode: 'manual',
+        }).success).toBe(true);
+    });
+
+    it('accepts valid system actor with api_ingestion', () => {
+        expect(RequirementActorSchema.safeParse({
+            type: 'system', role: 'Talentum', interaction: 'Sends candidate data via API', interactionMode: 'api_ingestion',
+        }).success).toBe(true);
+    });
+
+    it('accepts actor without type (backward compat)', () => {
         expect(RequirementActorSchema.safeParse({ role: 'Admin', interaction: 'Manages users' }).success).toBe(true);
+    });
+
+    it('accepts actor without interactionMode', () => {
+        expect(RequirementActorSchema.safeParse({ type: 'human', role: 'Admin', interaction: 'Manages users' }).success).toBe(true);
+    });
+
+    it('rejects invalid type value', () => {
+        expect(RequirementActorSchema.safeParse({
+            type: 'robot', role: 'Bot', interaction: 'Does things',
+        }).success).toBe(false);
+    });
+
+    it('rejects invalid interactionMode value', () => {
+        expect(RequirementActorSchema.safeParse({
+            type: 'system', role: 'API', interaction: 'Sends data', interactionMode: 'telepathy',
+        }).success).toBe(false);
     });
 
     it('rejects empty role', () => {
@@ -160,6 +190,26 @@ describe('RequirementActorSchema', () => {
 
     it('rejects empty interaction', () => {
         expect(RequirementActorSchema.safeParse({ role: 'Admin', interaction: '' }).success).toBe(false);
+    });
+});
+
+describe('ActorTypeEnum', () => {
+    it.each(['human', 'system'] as const)('accepts %s', (val) => {
+        expect(ActorTypeEnum.safeParse(val).success).toBe(true);
+    });
+
+    it('rejects unknown type', () => {
+        expect(ActorTypeEnum.safeParse('bot').success).toBe(false);
+    });
+});
+
+describe('ActorInteractionModeEnum', () => {
+    it.each(['manual', 'automated', 'api_ingestion'] as const)('accepts %s', (val) => {
+        expect(ActorInteractionModeEnum.safeParse(val).success).toBe(true);
+    });
+
+    it('rejects unknown mode', () => {
+        expect(ActorInteractionModeEnum.safeParse('magic').success).toBe(false);
     });
 });
 

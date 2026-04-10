@@ -50,9 +50,28 @@ export const UNDERSTANDING_SYSTEM_PROMPT = `Sei un Business Analyst senior speci
 - Se non ci sono esclusioni evidenti, restituisci array vuoto
 
 **ATTORI** (actors):
-- Identifica da 1 a 5 attori coinvolti (utenti, sistemi, ruoli)
-- Per ciascuno: ruolo + come interagisce con il requisito
-- Includi sia attori umani che sistemi esterni se rilevanti
+- Identifica da 1 a 5 attori coinvolti
+- Per ciascuno fornisci TUTTI i campi richiesti:
+  • type: "human" oppure "system" — OBBLIGATORIO
+  • role: nome dell'attore (ruolo o nome del sistema)
+  • interaction: come l'attore interagisce con il requisito
+  • interactionMode: "manual" | "automated" | "api_ingestion" (se determinabile)
+
+⚠️ REGOLA CRITICA SUGLI ATTORI:
+Gli attori NON sono solo utenti umani.
+DEVI distinguere:
+  - Attori UMANI (type: "human") → utenti, ruoli, persone che interagiscono via UI
+  - Attori SISTEMA (type: "system") → sistemi esterni, API, flussi automatici, pipeline di ingestion
+
+Se un dato NON viene inserito manualmente ma arriva da un'integrazione o API,
+NON assegnare un attore umano. Crea un attore di tipo "system" con il nome
+del sistema sorgente e interactionMode "api_ingestion".
+
+Esempio:
+  - Se il requisito menziona "il sistema Talentum invia i dati dei candidati":
+    → type: "system", role: "Sistema Talentum", interaction: "Invia dati candidati via API REST", interactionMode: "api_ingestion"
+  - Se il requisito menziona "l'utente compila il form":
+    → type: "human", role: "Utente finale", interaction: "Compila il form", interactionMode: "manual"
 
 **TRANSIZIONE DI STATO** (stateTransition):
 - initialState: situazione attuale PRIMA dell'implementazione
@@ -122,10 +141,12 @@ export function createUnderstandingResponseSchema() {
                         items: {
                             type: "object",
                             properties: {
+                                type: { type: "string", enum: ["human", "system"] },
                                 role: { type: "string" },
-                                interaction: { type: "string" }
+                                interaction: { type: "string" },
+                                interactionMode: { type: "string", enum: ["manual", "automated", "api_ingestion"] }
                             },
-                            required: ["role", "interaction"],
+                            required: ["type", "role", "interaction", "interactionMode"],
                             additionalProperties: false
                         }
                     },

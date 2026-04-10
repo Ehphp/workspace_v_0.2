@@ -18,6 +18,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { ESTIMATE_FROM_INTERVIEW_PROMPT } from './prompt-templates';
 import { QUESTION_GENERATION_SYSTEM_PROMPT } from './prompts/question-generation';
 import { PRESET_GENERATION_SYSTEM_PROMPT } from './prompts/preset-generation';
+import { BLUEPRINT_SYSTEM_PROMPT } from './prompts/blueprint-generation';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fallback map — keyed by prompt_key, value is the raw template string
@@ -38,6 +39,9 @@ const LOCAL_FALLBACKS: Record<string, string> = {
 
     // prompts/preset-generation.ts
     preset_generation: PRESET_GENERATION_SYSTEM_PROMPT,
+
+    // prompts/blueprint-generation.ts
+    estimation_blueprint: BLUEPRINT_SYSTEM_PROMPT,
 
     // Parameterized prompts are NOT stored here as fallbacks because they are
     // built via functions (createActivitySuggestionPrompt, etc.) that embed

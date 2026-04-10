@@ -172,7 +172,11 @@ function formatUnderstandingBlock(ru: RequirementUnderstanding | Record<string, 
             lines.push(`- Esclusioni: ${ru.exclusions.join('; ')}`);
         }
         if (Array.isArray(ru.actors) && ru.actors.length > 0) {
-            const actorStr = ru.actors.map((a: any) => `${a.role} (${a.interaction})`).join(', ');
+            const actorStr = ru.actors.map((a: any) => {
+                const tag = a.type === 'system' ? '[SYSTEM]' : '[HUMAN]';
+                const mode = a.interactionMode ? ` (${a.interactionMode})` : '';
+                return `${tag} ${a.role}${mode} — ${a.interaction}`;
+            }).join('; ');
             lines.push(`- Attori: ${actorStr}`);
         }
         const st = ru.stateTransition as any;
@@ -261,7 +265,7 @@ export async function generateEstimationBlueprint(
 
     // ── 2. Build prompts ────────────────────────────────────────────
     const systemPrompt =
-        (await getPrompt('estimation_blueprint')) ?? BLUEPRINT_SYSTEM_PROMPT;
+        (await getPrompt('estimation_blueprint')) || BLUEPRINT_SYSTEM_PROMPT;
 
     const userPromptParts: string[] = [
         `DESCRIZIONE DEL REQUISITO:\n${description}`,

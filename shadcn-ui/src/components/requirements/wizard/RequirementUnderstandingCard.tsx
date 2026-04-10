@@ -13,6 +13,8 @@ import {
     Target,
     Package,
     Users,
+    User2,
+    Server,
     ArrowRightLeft,
     ShieldCheck,
     Lightbulb,
@@ -25,7 +27,7 @@ import {
     RotateCcw,
     PenLine,
 } from 'lucide-react';
-import type { RequirementUnderstanding } from '@/types/requirement-understanding';
+import type { RequirementUnderstanding, ActorType } from '@/types/requirement-understanding';
 
 interface RequirementUnderstandingCardProps {
     understanding: RequirementUnderstanding;
@@ -272,6 +274,24 @@ function EditableBulletList({
     );
 }
 
+// ── Actor type icon helper ──
+
+const ActorTypeIcon = ({ type }: { type?: ActorType }) => {
+    if (type === 'system') return <Server className="w-3 h-3 text-blue-500 shrink-0" title="Sistema" />;
+    return <User2 className="w-3 h-3 text-slate-500 shrink-0" title="Umano" />;
+};
+
+const interactionModeBadge = (mode?: string) => {
+    if (!mode) return null;
+    const label = mode === 'api_ingestion' ? 'API' : mode === 'automated' ? 'Auto' : 'Manual';
+    const colors = mode === 'api_ingestion'
+        ? 'bg-blue-50 text-blue-600 border-blue-200'
+        : mode === 'automated'
+            ? 'bg-violet-50 text-violet-600 border-violet-200'
+            : 'bg-slate-50 text-slate-500 border-slate-200';
+    return <Badge variant="outline" className={cn('text-[9px] px-1 py-0 leading-tight font-normal', colors)}>{label}</Badge>;
+};
+
 export function RequirementUnderstandingCard({
     understanding,
     originalUnderstanding,
@@ -394,7 +414,9 @@ export function RequirementUnderstandingCard({
                             const isActorItemEdited = o != null && (
                                 i >= o.actors.length ||
                                 a.role !== origActor?.role ||
-                                a.interaction !== origActor?.interaction
+                                a.interaction !== origActor?.interaction ||
+                                a.type !== origActor?.type ||
+                                a.interactionMode !== origActor?.interactionMode
                             );
                             return (
                                 <div key={i} className="flex items-start gap-1 group/item">
@@ -455,8 +477,12 @@ export function RequirementUnderstandingCard({
                                             </button>
                                         </>
                                     ) : (
-                                        <span>
-                                            <span className="font-medium">{a.role}</span> — {a.interaction}
+                                        <span className="flex items-center gap-1">
+                                            <ActorTypeIcon type={a.type} />
+                                            <span className="font-medium">{a.role}</span>
+                                            {interactionModeBadge(a.interactionMode)}
+                                            <span className="text-slate-400 select-none">—</span>
+                                            {a.interaction}
                                         </span>
                                     )}
                                 </div>
@@ -465,7 +491,7 @@ export function RequirementUnderstandingCard({
                         {editable && (
                             <button
                                 type="button"
-                                onClick={() => patch({ actors: [...u.actors, { role: '', interaction: '' }] })}
+                                onClick={() => patch({ actors: [...u.actors, { type: 'human' as const, role: '', interaction: '' }] })}
                                 className="flex items-center gap-0.5 text-[11px] text-emerald-500 hover:text-emerald-700 ml-4 mt-1 transition-colors"
                             >
                                 <Plus className="w-3 h-3" />

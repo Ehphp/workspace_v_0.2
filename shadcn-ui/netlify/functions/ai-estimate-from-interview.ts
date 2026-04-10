@@ -357,7 +357,11 @@ function formatUnderstandingBlock(ru: Record<string, unknown> | undefined): stri
             lines.push(`- Esclusioni: ${ru.exclusions.join('; ')}`);
         }
         if (Array.isArray(ru.actors) && ru.actors.length > 0) {
-            const actorStr = ru.actors.map((a: any) => `${a.role} (${a.interaction})`).join(', ');
+            const actorStr = ru.actors.map((a: any) => {
+                const tag = a.type === 'system' ? '[SYSTEM]' : '[HUMAN]';
+                const mode = a.interactionMode ? ` (${a.interactionMode})` : '';
+                return `${tag} ${a.role}${mode} — ${a.interaction}`;
+            }).join('; ');
             lines.push(`- Attori: ${actorStr}`);
         }
         const st = ru.stateTransition as any;

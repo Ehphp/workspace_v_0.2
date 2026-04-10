@@ -135,8 +135,12 @@ function formatUnderstandingBlock(ru: RequirementUnderstanding | Record<string, 
         }
         if (Array.isArray(ru.actors) && ru.actors.length > 0) {
             const actorList = ru.actors
-                .map((a: any) => `${a?.role ?? '?'} (${a?.interaction ?? '?'})`)
-                .join(', ');
+                .map((a: any) => {
+                    const tag = a?.type === 'system' ? '[SYSTEM]' : '[HUMAN]';
+                    const mode = a?.interactionMode ? ` (${a.interactionMode})` : '';
+                    return `${tag} ${a?.role ?? '?'}${mode} — ${a?.interaction ?? '?'}`;
+                })
+                .join('; ');
             parts.push(`- Attori: ${actorList}`);
         }
         if (ru.stateTransition && typeof ru.stateTransition === 'object') {

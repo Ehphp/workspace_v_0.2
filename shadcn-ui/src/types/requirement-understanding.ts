@@ -16,13 +16,30 @@ import { z } from 'zod';
 // ============================================================================
 
 /**
+ * Actor type — human user or external system
+ */
+export type ActorType = 'human' | 'system';
+
+/**
+ * How the actor interacts with the system
+ *  - manual:         human enters data through a UI
+ *  - automated:      system process runs without human trigger
+ *  - api_ingestion:  external system writes data via API
+ */
+export type ActorInteractionMode = 'manual' | 'automated' | 'api_ingestion';
+
+/**
  * Actor involved in the requirement
  */
 export interface RequirementActor {
-    /** Role name (e.g. "End user", "Admin", "External system") */
+    /** Whether this actor is a human user/role or an external system */
+    type: ActorType;
+    /** Role name (e.g. "End user", "Admin", "Sistema Talentum") */
     role: string;
     /** How the actor interacts with the requirement (e.g. "Submits requests") */
     interaction: string;
+    /** Interaction mode — manual, automated, or api_ingestion */
+    interactionMode?: ActorInteractionMode;
 }
 
 /**
@@ -146,9 +163,14 @@ export interface RequirementUnderstandingResponse {
 // ZOD SCHEMAS FOR VALIDATION
 // ============================================================================
 
+export const ActorTypeEnum = z.enum(['human', 'system']);
+export const ActorInteractionModeEnum = z.enum(['manual', 'automated', 'api_ingestion']);
+
 export const RequirementActorSchema = z.object({
+    type: ActorTypeEnum.optional(),  // optional for backward compat with stored JSONB
     role: z.string().min(1).max(100),
     interaction: z.string().min(1).max(300),
+    interactionMode: ActorInteractionModeEnum.optional(),
 });
 
 export const StateTransitionSchema = z.object({
