@@ -96,6 +96,10 @@ interface AISuggestedDriver {
  * - Deduplicates by `code` (AI wins if both suggest the same code)
  * - Preserves provenance (`source` field)
  * - Does NOT overwrite AI suggestions — rules are additive only
+ *
+ * @deprecated V2 pipeline uses AI as sole source of driver suggestions.
+ *   Rule-based drivers are only used as fallback when AI returns empty.
+ *   See Phase 3 of the AI-Driven Estimation Pipeline V2.
  */
 export function mergeDriverSuggestions(
     aiDrivers: AISuggestedDriver[],
@@ -140,6 +144,10 @@ export function mergeDriverSuggestions(
  * - AI risks are code-only strings; rule risks have full provenance
  * - Deduplicates by code
  * - Rule risks are additive
+ *
+ * @deprecated V2 pipeline uses AI as sole source of risk suggestions.
+ *   Rule-based risks are only used as fallback when AI returns empty.
+ *   See Phase 3 of the AI-Driven Estimation Pipeline V2.
  */
 export function mergeRiskSuggestions(
     aiRisks: string[],

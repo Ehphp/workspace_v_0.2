@@ -42,6 +42,7 @@ import {
 import { keywordToNormalizedSignals } from './lib/domain/pipeline/keyword-signal-adapter';
 import {
     synthesizeCandidates,
+    computeCandidateLimit,
     type SynthesizedCandidateSet,
 } from './lib/domain/pipeline/candidate-synthesizer';
 import type { SignalSet } from './lib/domain/pipeline/signal-types';
@@ -54,6 +55,9 @@ import { mergeDriverSuggestions, mergeRiskSuggestions } from './lib/domain/estim
 import type { ProjectTechnicalBlueprint } from './lib/domain/project/project-technical-blueprint.types';
 import type { EstimationContext } from './lib/domain/types/estimation';
 import { formatProjectTechnicalBlueprintBlock } from './lib/ai/formatters/project-blueprint-formatter';
+import { computeAggregateConfidence } from './lib/domain/estimation/canonical-profile.service';
+import { computePipelineConfig } from './lib/domain/pipeline/pipeline-config';
+import { createPipelineLogger } from './lib/observability/pipeline-logger';
 import { runDecisionEngine } from './lib/domain/pipeline/decision-engine';
 
 // Model configuration - use env variable AI_ESTIMATION_MODEL or default to gpt-4o
@@ -480,6 +484,7 @@ export const handler = createAIHandler<RequestBody>({
     handler: async (body, ctx) => {
         const pipelineStart = Date.now();
         const metrics = createEmptyMetrics();
+        const pipelineLog = createPipelineLogger(ctx.requestId ?? `est-${Date.now()}`);
 
         // Sanitize description
         const sanitizedDescription = ctx.sanitize(body.description);
@@ -558,17 +563,36 @@ export const handler = createAIHandler<RequestBody>({
             activities: fetchResult.activities,
             description: sanitizedDescription,
             answers: body.answers,
-            topN: 30,
+            topN: 30, // keyword adapter topN — independent of candidate limit
             blueprint: body.estimationBlueprint,
             activityBiases: mergedRules.activityBiases,
         }));
 
         // Step 3: Synthesize candidates
+        const aggregateConfidence = computeAggregateConfidence(
+            body.requirementUnderstanding as Record<string, unknown> | null,
+            body.impactMap as Record<string, unknown> | null,
+            (body.estimationBlueprint ?? {}) as Record<string, unknown>,
+            false, // staleness evaluated separately downstream
+        );
+        const candidateLimit = computeCandidateLimit(aggregateConfidence);
+        const pipelineConfig = computePipelineConfig(aggregateConfidence);
+        console.log(`[ai-estimate-from-interview] Dynamic candidate sizing: confidence=${aggregateConfidence}, limit=${candidateLimit}`);
+        console.log(`[ai-estimate-from-interview] PipelineConfig: skipInterview=${pipelineConfig.skipInterview}, skipReflection=${pipelineConfig.skipReflection}, aggressiveExpansion=${pipelineConfig.aggressiveExpansion}`);
+
+        pipelineLog.log('candidate-sizing', {
+            confidence: aggregateConfidence,
+            candidateLimit,
+            skipInterview: pipelineConfig.skipInterview,
+            skipReflection: pipelineConfig.skipReflection,
+            aggressiveExpansion: pipelineConfig.aggressiveExpansion,
+        });
+
         const candidateResult: SynthesizedCandidateSet = synthesizeCandidates({
             signalSets,
             catalog: fetchResult.activities,
             techCategory: techCat,
-            config: { maxCandidates: 30 },
+            config: { maxCandidates: candidateLimit },
         });
 
         const rankedActivities: Activity[] = candidateResult.candidates.map(c => c.activity);
@@ -626,7 +650,7 @@ export const handler = createAIHandler<RequestBody>({
             technologyName: body.techCategory,
             userId: ctx.userId, // Pass through from auth (may be undefined for unauthenticated Quick Estimate)
             flags: {
-                reflectionEnabled: process.env.AI_REFLECTION !== 'false',
+                reflectionEnabled: process.env.AI_REFLECTION !== 'false' && !pipelineConfig.skipReflection,
                 toolUseEnabled: process.env.AI_TOOL_USE !== 'false',
                 maxReflectionIterations: Number(process.env.AI_MAX_REFLECTIONS || 2),
                 reflectionConfidenceThreshold: Number(process.env.AI_REFLECTION_THRESHOLD || 75),
@@ -669,25 +693,49 @@ export const handler = createAIHandler<RequestBody>({
             // Provenance breakdown for observability
             console.log('[ai-estimate-from-interview] Provenance breakdown:', provenanceBreakdown(enrichedActivities));
 
-            // ─── Merge project-context rule suggestions with AI output ──
-            const mergedDrivers = mergeDriverSuggestions(
-                agentResult.suggestedDrivers,
-                contextRules.suggestedDrivers,
-            );
-            const mergedRisks = mergeRiskSuggestions(
-                agentResult.suggestedRisks,
-                contextRules.suggestedRisks,
-            );
-            if (contextRules.suggestedDrivers.length > 0 || contextRules.suggestedRisks.length > 0) {
-                console.log('[ai-estimate-from-interview] Project-context rules merged:', {
+            // ─── AI-first driver/risk suggestions (V2 Phase 3) ────────
+            // AI is the sole source of suggestions. Rule-based suggestions
+            // are used as fallback ONLY when AI returns empty.
+            const aiDrivers = agentResult.suggestedDrivers;
+            const aiRisks = agentResult.suggestedRisks;
+
+            const finalDrivers = aiDrivers.length > 0
+                ? aiDrivers.map(d => ({
+                    code: d.code,
+                    suggestedValue: d.suggestedValue,
+                    reason: d.reason,
+                    source: 'ai' as const,
+                    fromQuestionId: d.fromQuestionId,
+                }))
+                : mergeDriverSuggestions([], contextRules.suggestedDrivers);
+
+            const finalRisks = aiRisks.length > 0
+                ? aiRisks.map(code => ({
+                    code,
+                    reason: 'AI-suggested risk.',
+                    source: 'ai' as const,
+                }))
+                : mergeRiskSuggestions([], contextRules.suggestedRisks);
+
+            if (aiDrivers.length === 0 || aiRisks.length === 0) {
+                console.log('[ai-estimate-from-interview] AI driver/risk fallback to rules:', {
+                    aiDriversEmpty: aiDrivers.length === 0,
+                    aiRisksEmpty: aiRisks.length === 0,
                     ruleDrivers: contextRules.suggestedDrivers.map(d => d.code),
                     ruleRisks: contextRules.suggestedRisks.map(r => r.code),
-                    finalDriverCount: mergedDrivers.length,
-                    finalRiskCount: mergedRisks.length,
                 });
             }
 
             console.log('[ai-estimate-from-interview] METRICS:', JSON.stringify(metrics));
+
+            pipelineLog.log('agent-pipeline', {
+                success: true,
+                activitiesCount: enrichedActivities.length,
+                driverCount: finalDrivers.length,
+                riskCount: finalRisks.length,
+                durationMs: metrics.totalDurationMs,
+            });
+            pipelineLog.flush();
 
             const candidateProvenance = candidateResult.candidates.map(c => ({
                 code: c.activity.code,
@@ -706,8 +754,8 @@ export const handler = createAIHandler<RequestBody>({
                 totalBaseDays: agentResult.totalBaseDays,
                 reasoning: agentResult.reasoning,
                 confidenceScore: agentResult.confidenceScore,
-                suggestedDrivers: mergedDrivers,
-                suggestedRisks: mergedRisks.map(r => r.code),
+                suggestedDrivers: finalDrivers,
+                suggestedRisks: finalRisks.map(r => r.code),
                 candidateProvenance,
                 projectContextNotes: contextRules.notes.length > 0 ? contextRules.notes : undefined,
                 agentMetadata: {

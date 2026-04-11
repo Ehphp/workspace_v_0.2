@@ -25,6 +25,28 @@ export interface CandidateActivity {
     score: number;       // relevance score (0–100)
     confidence: number;  // how sure the source is (0.0–1.0)
     reason?: string;     // optional human-readable justification
+    /** How this candidate entered the set (V2 Phase 5) */
+    selectionType?: SelectionType;
+}
+
+// ─── Element State (V2 Pipeline — Phase 3/5) ───────────────────
+
+/** Status of an element through the AI → user → decision flow */
+export type ElementStatus = 'suggested' | 'accepted' | 'modified';
+
+/** How the element entered the candidate set */
+export type SelectionType = 'core' | 'expanded' | 'custom';
+
+/**
+ * Tracks the provenance and user-interaction state of a single element
+ * (activity, driver, or risk) across the estimation pipeline.
+ */
+export interface SelectedElement {
+    id: string;
+    type: 'activity' | 'driver' | 'risk';
+    status: ElementStatus;
+    selectionType: SelectionType;
+    source: 'ai' | CandidateSource;
 }
 
 // ─── Canonical Profile Types ────────────────────────────────────
@@ -105,6 +127,8 @@ export interface CanonicalProfile {
     conflicts: ConflictEntry[];
     isStale: boolean;
     staleReasons: StaleReasonCode[];
+    /** V2 Phase 6: true if stale artifacts should trigger regeneration */
+    requiresRegeneration: boolean;
 
     // Context snapshots frozen at analysis time
     projectContextSnapshot: Record<string, unknown> | null;
@@ -237,6 +261,12 @@ export interface EstimationDecisionRow {
     warnings: string[];
     assumptions: string[];
     decision_confidence: number | null;
+    /** Per-element provenance and status (V2 Phase 5/8) */
+    element_states?: SelectedElement[];
+    /** Understanding version this decision is based on (V2 Phase 8) */
+    based_on_understanding_version?: number | null;
+    /** Impact map ID this decision is based on (V2 Phase 8) */
+    based_on_impact_map_id?: string | null;
     created_by: string;
     created_at: string;
 }
@@ -250,6 +280,12 @@ export interface CreateEstimationDecisionInput {
     warnings?: string[];
     assumptions?: string[];
     decision_confidence?: number | null;
+    /** Per-element provenance and status (V2 Phase 5/8) */
+    element_states?: SelectedElement[];
+    /** Understanding version this decision is based on (V2 Phase 8) */
+    based_on_understanding_version?: number | null;
+    /** Impact map ID this decision is based on (V2 Phase 8) */
+    based_on_impact_map_id?: string | null;
     created_by: string;
 }
 
@@ -288,6 +324,10 @@ export interface EstimationSnapshotData {
         decision_id: string | null;
         blueprint_id: string | null;
         created_at: string;
+        /** Per-element provenance and status (V2 Phase 5) */
+        element_states?: SelectedElement[];
+        /** Understanding version used by this estimation (V2 Phase 7) */
+        based_on_understanding_version?: number | null;
     };
 }
 

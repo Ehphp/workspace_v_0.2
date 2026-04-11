@@ -54,6 +54,22 @@ const DEFAULT_SYNTHESIZER_CONFIG: SynthesizerConfig = {
     minScore: 0.05,
 };
 
+/**
+ * Compute dynamic candidate limit based on aggregate confidence.
+ *
+ * High confidence → fewer candidates (focused set).
+ * Low confidence  → broader candidate pool (exploratory).
+ *
+ * @param confidence Aggregate confidence 0.0–1.0
+ * @returns Candidate limit (15–50)
+ */
+export function computeCandidateLimit(confidence: number): number {
+    if (confidence >= 0.8) return 15;
+    if (confidence >= 0.6) return 25;
+    if (confidence >= 0.4) return 35;
+    return 50;
+}
+
 export interface SynthesizedCandidateSet {
     /** Scored candidates, sorted by score descending */
     candidates: ScoredCandidate[];

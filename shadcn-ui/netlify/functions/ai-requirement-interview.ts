@@ -46,6 +46,7 @@ import {
 import { keywordToNormalizedSignals } from './lib/domain/pipeline/keyword-signal-adapter';
 import {
     synthesizeCandidates,
+    computeCandidateLimit,
     type SynthesizedCandidateSet,
 } from './lib/domain/pipeline/candidate-synthesizer';
 import type { SignalSet } from './lib/domain/pipeline/signal-types';
@@ -58,6 +59,8 @@ import { mergeProjectAndBlueprintRules } from './lib/domain/estimation/blueprint
 import type { ProjectTechnicalBlueprint } from './lib/domain/project/project-technical-blueprint.types';
 import type { EstimationContext } from './lib/domain/types/estimation';
 import { formatProjectTechnicalBlueprintBlock } from './lib/ai/formatters/project-blueprint-formatter';
+import { computeAggregateConfidence } from './lib/domain/estimation/canonical-profile.service';
+import { computePipelineConfig } from './lib/domain/pipeline/pipeline-config';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration (tunable via env)
@@ -547,11 +550,22 @@ export const handler = createAIHandler<RequestBody>({
         }));
 
         // Step 3: Synthesize candidates
+        const aggregateConfidence = computeAggregateConfidence(
+            body.requirementUnderstanding as Record<string, unknown> | null,
+            body.impactMap as Record<string, unknown> | null,
+            (body.estimationBlueprint ?? {}) as Record<string, unknown>,
+            false,
+        );
+        const candidateLimit = computeCandidateLimit(aggregateConfidence);
+        const pipelineConfig = computePipelineConfig(aggregateConfidence);
+        console.log(`[ai-requirement-interview] Dynamic candidate sizing: confidence=${aggregateConfidence}, limit=${candidateLimit}`);
+        console.log(`[ai-requirement-interview] PipelineConfig: skipInterview=${pipelineConfig.skipInterview}, skipReflection=${pipelineConfig.skipReflection}, aggressiveExpansion=${pipelineConfig.aggressiveExpansion}`);
+
         const candidateResult: SynthesizedCandidateSet = synthesizeCandidates({
             signalSets,
             catalog: fetchResult.activities,
             techCategory: techCat,
-            config: { maxCandidates: 30 },
+            config: { maxCandidates: candidateLimit },
         });
 
         const rankedActivities = candidateResult.candidates.map(c => c.activity);
@@ -685,6 +699,16 @@ Analizza il requisito, produci una pre-stima (minHours/maxHours/confidence), dec
             console.log(
                 '[ai-requirement-interview] RAG auto-SKIP override (ASK→SKIP, similarity=%s%%, confidence=%s)',
                 Math.round(ragTopSimilarity * 100), result.preEstimate.confidence.toFixed(2),
+            );
+            enforcedDecision = 'SKIP';
+        }
+
+        // Pipeline-config driven SKIP: if aggregate artifact confidence is high
+        // enough, skip the interview even if the model said ASK.
+        if (enforcedDecision === 'ASK' && pipelineConfig.skipInterview) {
+            console.log(
+                '[ai-requirement-interview] PipelineConfig auto-SKIP (aggregateConfidence=%s > 0.75)',
+                aggregateConfidence.toFixed(2),
             );
             enforcedDecision = 'SKIP';
         }

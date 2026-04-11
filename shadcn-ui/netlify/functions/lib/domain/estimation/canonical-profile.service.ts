@@ -630,6 +630,16 @@ export async function buildCanonicalProfile(
     });
 
     const isStale = staleReasons.length > 0;
+    const stalenessStrict = process.env.STALENESS_STRICT === 'true';
+    const requiresRegeneration = isStale;
+
+    if (isStale) {
+        console.log(`[canonical-profile] Staleness detected: reasons=[${staleReasons.join(', ')}], strict=${stalenessStrict}, requiresRegeneration=${requiresRegeneration}`);
+        if (stalenessStrict) {
+            throw new Error(`Stale artifacts must be regenerated before estimation. Reasons: ${staleReasons.join(', ')}`);
+        }
+    }
+
     const aggregateConfidence = computeAggregateConfidence(
         understandingPayload,
         impactMapPayload,
@@ -652,6 +662,7 @@ export async function buildCanonicalProfile(
         conflicts,
         isStale,
         staleReasons,
+        requiresRegeneration,
         projectContextSnapshot: (analysis?.project_context_snapshot as Record<string, unknown>) ?? null,
         projectTechnicalBaselineSnapshot: (analysis?.project_technical_baseline_snapshot as Record<string, unknown>) ?? null,
     };

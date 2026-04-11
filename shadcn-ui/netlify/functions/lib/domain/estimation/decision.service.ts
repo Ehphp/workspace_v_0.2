@@ -30,6 +30,9 @@ export async function createEstimationDecision(
             warnings: input.warnings ?? [],
             assumptions: input.assumptions ?? [],
             decision_confidence: input.decision_confidence ?? null,
+            element_states: input.element_states ?? [],
+            based_on_understanding_version: input.based_on_understanding_version ?? null,
+            based_on_impact_map_id: input.based_on_impact_map_id ?? null,
             created_by: input.created_by,
         })
         .select()
