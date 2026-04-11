@@ -103,6 +103,11 @@ export interface DomainSaveInput {
     decisionConfidence?: number;
     /** Decision trace from DecisionEngine (stored in assumptions JSONB) */
     decisionTrace?: unknown[];
+
+    /** Artifact traceability — understanding version at estimation time */
+    basedOnUnderstandingVersion?: number | null;
+    /** Artifact traceability — impact map ID at estimation time */
+    basedOnImpactMapId?: string | null;
 }
 
 export interface DomainSaveResult {
@@ -221,6 +226,8 @@ export async function orchestrateDomainSave(
         assumptions: decisionAssumptions,
         decision_confidence: input.decisionConfidence ?? null,
         created_by: input.userId,
+        based_on_understanding_version: input.basedOnUnderstandingVersion ?? null,
+        based_on_impact_map_id: input.basedOnImpactMapId ?? null,
     });
 
     // 5. Compute estimation via domain engine

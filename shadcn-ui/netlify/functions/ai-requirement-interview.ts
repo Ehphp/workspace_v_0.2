@@ -61,6 +61,7 @@ import type { EstimationContext } from './lib/domain/types/estimation';
 import { formatProjectTechnicalBlueprintBlock } from './lib/ai/formatters/project-blueprint-formatter';
 import { computeAggregateConfidence } from './lib/domain/estimation/canonical-profile.service';
 import { computePipelineConfig } from './lib/domain/pipeline/pipeline-config';
+import { createPipelineLogger } from './lib/observability/pipeline-logger';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration (tunable via env)
@@ -485,6 +486,7 @@ export const handler = createAIHandler<RequestBody>({
         const techCat = body.techCategory || 'MULTI';
         const techCategoryDescription = getTechCategoryDescription(techCat);
         const techSpecificPrompt = getTechSpecificPrompt(techCat);
+        const pipelineLog = createPipelineLogger(ctx.requestId ?? `int-${Date.now()}`);
 
         // ─── Fetch activities server-side (needed for pre-estimate) ─────────
         const fetchResult = await fetchActivitiesServerSide(
@@ -550,16 +552,44 @@ export const handler = createAIHandler<RequestBody>({
         }));
 
         // Step 3: Synthesize candidates
+        // Body-level staleness: if understanding or impactMap was regenerated
+        // AFTER the blueprint, the estimation is based on inconsistent artifacts.
+        const bpGeneratedAt = (body.estimationBlueprint as any)?.metadata?.generatedAt as string | undefined;
+        const uGeneratedAt = (body.requirementUnderstanding as any)?.metadata?.generatedAt as string | undefined;
+        const imGeneratedAt = (body.impactMap as any)?.metadata?.generatedAt as string | undefined;
+        const bodyStaleReasons: string[] = [];
+        if (bpGeneratedAt) {
+            const bpTs = new Date(bpGeneratedAt).getTime();
+            if (uGeneratedAt && new Date(uGeneratedAt).getTime() > bpTs) {
+                bodyStaleReasons.push('UNDERSTANDING_UPDATED');
+            }
+            if (imGeneratedAt && new Date(imGeneratedAt).getTime() > bpTs) {
+                bodyStaleReasons.push('IMPACT_MAP_UPDATED');
+            }
+        }
+        const isStale = bodyStaleReasons.length > 0;
+        if (isStale) {
+            console.warn(`[ai-requirement-interview] Stale artifacts detected: ${bodyStaleReasons.join(', ')}`);
+        }
+
         const aggregateConfidence = computeAggregateConfidence(
             body.requirementUnderstanding as Record<string, unknown> | null,
             body.impactMap as Record<string, unknown> | null,
             (body.estimationBlueprint ?? {}) as Record<string, unknown>,
-            false,
+            isStale,
         );
         const candidateLimit = computeCandidateLimit(aggregateConfidence);
         const pipelineConfig = computePipelineConfig(aggregateConfidence);
         console.log(`[ai-requirement-interview] Dynamic candidate sizing: confidence=${aggregateConfidence}, limit=${candidateLimit}`);
-        console.log(`[ai-requirement-interview] PipelineConfig: skipInterview=${pipelineConfig.skipInterview}, skipReflection=${pipelineConfig.skipReflection}, aggressiveExpansion=${pipelineConfig.aggressiveExpansion}`);
+        console.log(`[ai-requirement-interview] PipelineConfig: skipInterview=${pipelineConfig.skipInterview}, skipReflection=${pipelineConfig.skipReflection}`);
+
+        pipelineLog.log('candidate-sizing', {
+            confidence: aggregateConfidence,
+            candidateLimit,
+            isStale,
+            staleReasons: bodyStaleReasons,
+            skipInterview: pipelineConfig.skipInterview,
+        });
 
         const candidateResult: SynthesizedCandidateSet = synthesizeCandidates({
             signalSets,
@@ -707,7 +737,7 @@ Analizza il requisito, produci una pre-stima (minHours/maxHours/confidence), dec
         // enough, skip the interview even if the model said ASK.
         if (enforcedDecision === 'ASK' && pipelineConfig.skipInterview) {
             console.log(
-                '[ai-requirement-interview] PipelineConfig auto-SKIP (aggregateConfidence=%s > 0.75)',
+                '[ai-requirement-interview] PipelineConfig auto-SKIP (aggregateConfidence=%s > 0.85)',
                 aggregateConfidence.toFixed(2),
             );
             enforcedDecision = 'SKIP';
@@ -735,6 +765,16 @@ Analizza il requisito, produci una pre-stima (minHours/maxHours/confidence), dec
         }
 
         const totalMs = Date.now() - pipelineStart;
+
+        pipelineLog.log('decision-enforcement', {
+            modelDecision,
+            enforcedDecision,
+            ragTopSimilarity: Math.round(ragTopSimilarity * 100),
+            questionCountFiltered: filteredQuestions.length,
+            overridden: modelDecision !== enforcedDecision,
+            totalMs,
+        });
+        pipelineLog.flush();
 
         console.log('[ai-requirement-interview] Planner result:', {
             decision: enforcedDecision,

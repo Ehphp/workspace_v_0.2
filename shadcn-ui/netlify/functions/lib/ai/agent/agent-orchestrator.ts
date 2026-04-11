@@ -172,9 +172,12 @@ function buildUserPrompt(input: AgentInput, refinementPrompt?: string): string {
         .map(a => `- ${a.code}: ${a.name} (${a.base_hours}h)[${a.group} | ${a.tech_category}]`)
         .join('\n');
 
+    // Inject Project Technical Blueprint block (architecture context)
+    const ptbBlock = input.projectTechnicalBlueprintBlock || '';
+
     let prompt = `REQUISITO:
 ${input.description}
-${projectCtxStr}
+${projectCtxStr}${ptbBlock ? '\n' + ptbBlock : ''}
         TECNOLOGIA: ${input.technologyName || input.techCategory}
 
 RISPOSTE INTERVIEW TECNICA:

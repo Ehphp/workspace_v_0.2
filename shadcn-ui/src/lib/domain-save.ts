@@ -183,6 +183,11 @@ export interface WizardDomainSaveInput {
      * When provided, persisted directly instead of the pass-through buildCandidates().
      */
     enrichedCandidates?: CandidateActivity[];
+
+    /** Artifact traceability — understanding version at estimation time */
+    basedOnUnderstandingVersion?: number | null;
+    /** Artifact traceability — impact map ID at estimation time */
+    basedOnImpactMapId?: string | null;
 }
 
 export interface WizardDomainSaveResult {
@@ -276,6 +281,8 @@ async function createDecision(input: {
     warnings: string[];
     assumptions: string[];
     decision_confidence: number | null;
+    based_on_understanding_version?: number | null;
+    based_on_impact_map_id?: string | null;
     created_by: string;
 }): Promise<EstimationDecisionRow> {
     const { data, error } = await supabase
@@ -389,6 +396,8 @@ export async function orchestrateWizardDomainSave(
         warnings: [],
         assumptions: [],
         decision_confidence: null,
+        based_on_understanding_version: input.basedOnUnderstandingVersion ?? null,
+        based_on_impact_map_id: input.basedOnImpactMapId ?? input.artifactImpactMapId ?? null,
         created_by: input.userId,
     });
 

@@ -559,6 +559,14 @@ export const handler = createAIHandler<RequestBody>({
         if (blueprintMappingResult) signalSets.push(blueprintToNormalizedSignals(blueprintMappingResult));
         if (impactMapResult) signalSets.push(impactMapToNormalizedSignals(impactMapResult));
         if (understandingResult) signalSets.push(understandingToNormalizedSignals(understandingResult));
+
+        pipelineLog.log('signal-extraction', {
+            blueprint: !!blueprintMappingResult,
+            impactMap: !!impactMapResult,
+            understanding: !!understandingResult,
+            signalSetCount: signalSets.length + 1, // +1 for keyword (added below)
+        });
+
         signalSets.push(keywordToNormalizedSignals({
             activities: fetchResult.activities,
             description: sanitizedDescription,
@@ -569,23 +577,44 @@ export const handler = createAIHandler<RequestBody>({
         }));
 
         // Step 3: Synthesize candidates
+        // Body-level staleness: if understanding or impactMap was regenerated
+        // AFTER the blueprint, the estimation is based on inconsistent artifacts.
+        const bpGeneratedAt = (body.estimationBlueprint as any)?.metadata?.generatedAt as string | undefined;
+        const uGeneratedAt = (body.requirementUnderstanding as any)?.metadata?.generatedAt as string | undefined;
+        const imGeneratedAt = (body.impactMap as any)?.metadata?.generatedAt as string | undefined;
+        const bodyStaleReasons: string[] = [];
+        if (bpGeneratedAt) {
+            const bpTs = new Date(bpGeneratedAt).getTime();
+            if (uGeneratedAt && new Date(uGeneratedAt).getTime() > bpTs) {
+                bodyStaleReasons.push('UNDERSTANDING_UPDATED');
+            }
+            if (imGeneratedAt && new Date(imGeneratedAt).getTime() > bpTs) {
+                bodyStaleReasons.push('IMPACT_MAP_UPDATED');
+            }
+        }
+        const isStale = bodyStaleReasons.length > 0;
+        if (isStale) {
+            console.warn(`[ai-estimate-from-interview] Stale artifacts detected: ${bodyStaleReasons.join(', ')}`);
+        }
+
         const aggregateConfidence = computeAggregateConfidence(
             body.requirementUnderstanding as Record<string, unknown> | null,
             body.impactMap as Record<string, unknown> | null,
             (body.estimationBlueprint ?? {}) as Record<string, unknown>,
-            false, // staleness evaluated separately downstream
+            isStale,
         );
         const candidateLimit = computeCandidateLimit(aggregateConfidence);
         const pipelineConfig = computePipelineConfig(aggregateConfidence);
-        console.log(`[ai-estimate-from-interview] Dynamic candidate sizing: confidence=${aggregateConfidence}, limit=${candidateLimit}`);
-        console.log(`[ai-estimate-from-interview] PipelineConfig: skipInterview=${pipelineConfig.skipInterview}, skipReflection=${pipelineConfig.skipReflection}, aggressiveExpansion=${pipelineConfig.aggressiveExpansion}`);
+        console.log(`[ai-estimate-from-interview] Dynamic candidate sizing: confidence=${aggregateConfidence}, limit=${candidateLimit}, stale=${isStale}`);
+        console.log(`[ai-estimate-from-interview] PipelineConfig: skipInterview=${pipelineConfig.skipInterview}, skipReflection=${pipelineConfig.skipReflection}`);
 
         pipelineLog.log('candidate-sizing', {
             confidence: aggregateConfidence,
             candidateLimit,
+            isStale,
+            staleReasons: bodyStaleReasons,
             skipInterview: pipelineConfig.skipInterview,
             skipReflection: pipelineConfig.skipReflection,
-            aggressiveExpansion: pipelineConfig.aggressiveExpansion,
         });
 
         const candidateResult: SynthesizedCandidateSet = synthesizeCandidates({
@@ -596,6 +625,11 @@ export const handler = createAIHandler<RequestBody>({
         });
 
         const rankedActivities: Activity[] = candidateResult.candidates.map(c => c.activity);
+
+        pipelineLog.log('candidate-synthesis', {
+            candidateCount: candidateResult.candidates.length,
+            strategy: candidateResult.strategy,
+        });
 
         // Metrics from synthesizer
         metrics.candidateSource = candidateResult.strategy as any;
@@ -649,6 +683,7 @@ export const handler = createAIHandler<RequestBody>({
             } : undefined,
             technologyName: body.techCategory,
             userId: ctx.userId, // Pass through from auth (may be undefined for unauthenticated Quick Estimate)
+            projectTechnicalBlueprintBlock: formatProjectTechnicalBlueprintBlock(body.projectTechnicalBlueprint),
             flags: {
                 reflectionEnabled: process.env.AI_REFLECTION !== 'false' && !pipelineConfig.skipReflection,
                 toolUseEnabled: process.env.AI_TOOL_USE !== 'false',
@@ -707,7 +742,7 @@ export const handler = createAIHandler<RequestBody>({
                     source: 'ai' as const,
                     fromQuestionId: d.fromQuestionId,
                 }))
-                : mergeDriverSuggestions([], contextRules.suggestedDrivers);
+                : mergeDriverSuggestions([], mergedRules.suggestedDrivers);
 
             const finalRisks = aiRisks.length > 0
                 ? aiRisks.map(code => ({
@@ -715,7 +750,15 @@ export const handler = createAIHandler<RequestBody>({
                     reason: 'AI-suggested risk.',
                     source: 'ai' as const,
                 }))
-                : mergeRiskSuggestions([], contextRules.suggestedRisks);
+                : mergeRiskSuggestions([], mergedRules.suggestedRisks);
+
+            pipelineLog.log('driver-risk-merge', {
+                aiDriverCount: aiDrivers.length,
+                aiRiskCount: aiRisks.length,
+                finalDriverCount: finalDrivers.length,
+                finalRiskCount: finalRisks.length,
+                usedFallback: aiDrivers.length === 0 || aiRisks.length === 0,
+            });
 
             if (aiDrivers.length === 0 || aiRisks.length === 0) {
                 console.log('[ai-estimate-from-interview] AI driver/risk fallback to rules:', {
@@ -769,6 +812,7 @@ export const handler = createAIHandler<RequestBody>({
                     engineValidation: agentResult.engineValidation,
                 },
                 metrics,
+                staleReasons: bodyStaleReasons.length > 0 ? bodyStaleReasons : undefined,
             };
         } catch (agentError: any) {
             // If the circuit breaker is open, re-throw immediately so
@@ -828,6 +872,14 @@ export const handler = createAIHandler<RequestBody>({
 
             console.log('[ai-estimate-from-interview] METRICS (fallback):', JSON.stringify(metrics));
 
+            pipelineLog.log('deterministic-fallback', {
+                selectedCount: decisionResult.selectedCandidates.length,
+                confidence: decisionResult.confidence,
+                gapLayers: decisionResult.coverageReport.gapLayers,
+                durationMs: metrics.draftDurationMs,
+            });
+            pipelineLog.flush();
+
             const candidateProvenance = candidateResult.candidates.map(c => ({
                 code: c.activity.code,
                 score: c.score,
@@ -852,6 +904,7 @@ export const handler = createAIHandler<RequestBody>({
                 decisionTrace: decisionResult.decisionTrace,
                 coverageReport: decisionResult.coverageReport,
                 metrics,
+                staleReasons: bodyStaleReasons.length > 0 ? bodyStaleReasons : undefined,
             };
         }
     }

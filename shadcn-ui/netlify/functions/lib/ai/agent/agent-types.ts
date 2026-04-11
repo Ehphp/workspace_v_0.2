@@ -130,6 +130,12 @@ export interface AgentInput {
     /** Override default agent flags */
     flags?: Partial<AgentFlags>;
     /**
+     * Pre-formatted Project Technical Blueprint block.
+     * Injected into the user prompt so the agent knows the project's
+     * architecture (components, integrations, data domains).
+     */
+    projectTechnicalBlueprintBlock?: string;
+    /**
      * Pre-detected conflicts from the canonical profile (v1).
      * Injected into the ReflectionEngine prompt so the Senior Consultant
      * does not re-discover known artifact inconsistencies from scratch.
