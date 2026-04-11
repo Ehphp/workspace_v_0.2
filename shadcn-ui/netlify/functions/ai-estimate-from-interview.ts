@@ -55,8 +55,6 @@ import type { ProjectTechnicalBlueprint } from './lib/domain/project/project-tec
 import type { EstimationContext } from './lib/domain/types/estimation';
 import { formatProjectTechnicalBlueprintBlock } from './lib/ai/formatters/project-blueprint-formatter';
 import { runDecisionEngine } from './lib/domain/pipeline/decision-engine';
-import { explainDecision, type DecisionExplanation } from './lib/ai/actions/explain-decision';
-import type { DecisionExplanationPromptInput } from './lib/ai/prompts/decision-explanation';
 
 // Model configuration - use env variable AI_ESTIMATION_MODEL or default to gpt-4o
 // NOTE: gpt-5 has limitations (no custom temperature, no json_schema response_format)
@@ -79,7 +77,7 @@ interface EstimationMetrics {
     promptTokensEstimate: number;
     activitiesCatalogSize: number;
     activitiesAfterRanking: number;
-    pipelineMode: 'legacy' | 'agentic';
+    pipelineMode: 'agentic' | 'deterministic-fallback';
     timedOut: boolean;
     fallbackUsed: boolean;
     /** How the candidate set was generated */
@@ -109,7 +107,7 @@ function createEmptyMetrics(): EstimationMetrics {
         promptTokensEstimate: 0,
         activitiesCatalogSize: 0,
         activitiesAfterRanking: 0,
-        pipelineMode: 'legacy',
+        pipelineMode: 'agentic',
         timedOut: false,
         fallbackUsed: false,
         candidateSource: 'keyword-ranking',
@@ -599,288 +597,214 @@ export const handler = createAIHandler<RequestBody>({
         // Codes discovered at runtime by agent tool-use get 'agent-discovered'.
         const provenanceMap = buildProvenanceMap(blueprintMappingResult, rankedActivities);
 
-        // ─── Phase 3: Agentic Pipeline ─────────────────────────────────
-        const AI_AGENTIC = process.env.AI_AGENTIC === 'true';
-        console.log(`[ai-estimate-from-interview] DEBUG AI_AGENTIC=${process.env.AI_AGENTIC} → flag=${AI_AGENTIC}`);
-        if (AI_AGENTIC) {
-            console.log('[ai-estimate-from-interview] Using AGENTIC pipeline (Phase 3)');
-            metrics.pipelineMode = 'agentic';
+        // ─── Agentic Pipeline ──────────────────────────────────────────
+        console.log('[ai-estimate-from-interview] Using AGENTIC pipeline');
+        metrics.pipelineMode = 'agentic';
 
-            // Build activities in agent format (already ranked)
-            const agentActivities = rankedActivities.map(a => ({
-                code: a.code,
-                name: a.name,
-                description: a.description ? a.description.substring(0, 80) : '',
-                base_hours: a.base_hours,
-                group: a.group,
-                tech_category: a.tech_category,
-            }));
-            console.log(`[agentic] Ranked activities for agent: ${agentActivities.length}`);
+        // Build activities in agent format (already ranked)
+        const agentActivities = rankedActivities.map(a => ({
+            code: a.code,
+            name: a.name,
+            description: a.description ? a.description.substring(0, 80) : '',
+            base_hours: a.base_hours,
+            group: a.group,
+            tech_category: a.tech_category,
+        }));
+        console.log(`[agentic] Ranked activities for agent: ${agentActivities.length}`);
 
-            const agentInput: AgentInput = {
-                description: sanitizedDescription,
-                answers: body.answers,
-                activities: agentActivities,
-                validActivityCodes: agentActivities.map(a => a.code),
-                techCategory: body.techCategory || 'MULTI',
-                projectContext: body.projectContext ? {
-                    name: ctx.sanitize(body.projectContext.name),
-                    description: ctx.sanitize(body.projectContext.description),
-                    owner: body.projectContext.owner ? ctx.sanitize(body.projectContext.owner) : undefined,
-                } : undefined,
-                technologyName: body.techCategory,
-                userId: ctx.userId, // Pass through from auth (may be undefined for unauthenticated Quick Estimate)
-                flags: {
-                    reflectionEnabled: process.env.AI_REFLECTION !== 'false',
-                    toolUseEnabled: process.env.AI_TOOL_USE !== 'false',
-                    maxReflectionIterations: Number(process.env.AI_MAX_REFLECTIONS || 2),
-                    reflectionConfidenceThreshold: Number(process.env.AI_REFLECTION_THRESHOLD || 75),
-                    autoApproveOnly: false,
-                },
-            };
-
-            try {
-                const agentResult = await runAgentPipeline(agentInput);
-
-                console.log('[ai-estimate-from-interview] Agent pipeline result:', {
-                    success: agentResult.success,
-                    activities: agentResult.activities.length,
-                    totalBaseDays: agentResult.totalBaseDays,
-                    confidence: agentResult.confidenceScore,
-                    iterations: agentResult.agentMetadata.iterations,
-                    toolCalls: agentResult.agentMetadata.toolCallCount,
-                    durationMs: agentResult.agentMetadata.totalDurationMs,
-                    reflectionAssessment: agentResult.agentMetadata.reflectionResult?.assessment,
-                    expandedActivityCodes: agentResult.expandedActivityCodes?.length ?? 0,
-                });
-
-                if (!agentResult.success) {
-                    throw new Error(agentResult.error || 'Agentic pipeline failed');
-                }
-
-                metrics.totalDurationMs = Date.now() - pipelineStart;
-                metrics.draftDurationMs = agentResult.agentMetadata.totalDurationMs;
-                metrics.toolIterations = agentResult.agentMetadata.toolCallCount;
-                metrics.reflectionDurationMs = agentResult.agentMetadata.reflectionResult ? (agentResult.agentMetadata.totalDurationMs * 0.2) : 0; // estimate
-                metrics.timedOut = false;
-
-                // ─── Provenance re-attachment (deterministic post-processing) ───
-                const enrichedActivities = attachProvenance(
-                    agentResult.activities,
-                    provenanceMap,
-                    agentResult.expandedActivityCodes,
-                );
-
-                // Provenance breakdown for observability
-                console.log('[ai-estimate-from-interview] Provenance breakdown:', provenanceBreakdown(enrichedActivities));
-
-                // ─── Merge project-context rule suggestions with AI output ──
-                const mergedDrivers = mergeDriverSuggestions(
-                    agentResult.suggestedDrivers,
-                    contextRules.suggestedDrivers,
-                );
-                const mergedRisks = mergeRiskSuggestions(
-                    agentResult.suggestedRisks,
-                    contextRules.suggestedRisks,
-                );
-                if (contextRules.suggestedDrivers.length > 0 || contextRules.suggestedRisks.length > 0) {
-                    console.log('[ai-estimate-from-interview] Project-context rules merged:', {
-                        ruleDrivers: contextRules.suggestedDrivers.map(d => d.code),
-                        ruleRisks: contextRules.suggestedRisks.map(r => r.code),
-                        finalDriverCount: mergedDrivers.length,
-                        finalRiskCount: mergedRisks.length,
-                    });
-                }
-
-                console.log('[ai-estimate-from-interview] METRICS:', JSON.stringify(metrics));
-
-                // Include candidate provenance from builder (same as legacy path)
-                const candidateProvenance = candidateResult.candidates.map(c => ({
-                    code: c.activity.code,
-                    score: c.score,
-                    sources: c.sources,
-                    contributions: c.contributions,
-                    primarySource: c.primarySource,
-                    provenance: c.provenance,
-                    confidence: c.confidence,
-                }));
-
-                return {
-                    success: true,
-                    generatedTitle: agentResult.generatedTitle,
-                    activities: enrichedActivities,
-                    totalBaseDays: agentResult.totalBaseDays,
-                    reasoning: agentResult.reasoning,
-                    confidenceScore: agentResult.confidenceScore,
-                    suggestedDrivers: mergedDrivers,
-                    suggestedRisks: mergedRisks.map(r => r.code),
-                    candidateProvenance,
-                    projectContextNotes: contextRules.notes.length > 0 ? contextRules.notes : undefined,
-                    // Phase 3 metadata
-                    agentMetadata: {
-                        executionId: agentResult.agentMetadata.executionId,
-                        totalDurationMs: agentResult.agentMetadata.totalDurationMs,
-                        iterations: agentResult.agentMetadata.iterations,
-                        toolCallCount: agentResult.agentMetadata.toolCallCount,
-                        model: agentResult.agentMetadata.model,
-                        reflectionAssessment: agentResult.agentMetadata.reflectionResult?.assessment,
-                        reflectionConfidence: agentResult.agentMetadata.reflectionResult?.confidence,
-                        engineValidation: agentResult.engineValidation,
-                    },
-                    metrics,
-                };
-            } catch (agentError: any) {
-                // S3-3d: Progressive degradation — agentic → legacy → error
-                // If the circuit breaker is open, re-throw immediately so
-                // createAIHandler returns 503 with Retry-After.
-                if (agentError instanceof CircuitOpenError) {
-                    console.warn('[ai-estimate-from-interview] CB open, propagating 503');
-                    throw agentError;
-                }
-                // For other errors (transient LLM failures, parsing, etc.)
-                // fall through to the legacy linear pipeline below.
-                metrics.fallbackUsed = true;
-                console.warn(
-                    '[ai-estimate-from-interview] Agentic pipeline failed, falling back to legacy:',
-                    agentError?.message || agentError,
-                );
-            }
-        }
-
-        // ─── Deterministic Pipeline (replaces Legacy Linear Pipeline) ──
-        console.log('[ai-estimate-from-interview] Using DETERMINISTIC pipeline');
-        metrics.pipelineMode = 'legacy'; // keep backward-compatible metric label
-        const legacyStart = Date.now();
-
-        // ── Phase D1: Run DecisionEngine ────────────────────────────────
-        const techCatForEngine = techCat || body.techCategory || 'POWER_PLATFORM';
-        const decisionResult = runDecisionEngine({
-            candidates: candidateResult.candidates,
-            answers: body.answers,
-            techCategory: techCatForEngine,
-            catalog: fetchResult.activities,
-            description: sanitizedDescription,
-            activityBiases: mergedRules.activityBiases,
-        });
-
-        console.log('[ai-estimate-from-interview] DecisionEngine result:', {
-            selected: decisionResult.selectedCandidates.length,
-            excluded: decisionResult.excludedCandidates.length,
-            mandatory: decisionResult.mandatoryInclusions.length,
-            gaps: decisionResult.coverageReport.gapLayers,
-            confidence: decisionResult.confidence,
-        });
-
-        // ── Phase D2: AI Explanation (post-decision commentary) ─────────
-        const coverageSummaryLines = Object.entries(decisionResult.coverageReport.byLayer)
-            .map(([layer, cov]) => `${layer}: ${cov.covered ? `✓ (${cov.activityCount} attività, top score ${cov.topScore.toFixed(2)})` : '✗ non coperto'}`)
-            .join('\n');
-
-        const explanationPromptInput: DecisionExplanationPromptInput = {
+        const agentInput: AgentInput = {
             description: sanitizedDescription,
             answers: body.answers,
-            selectedActivities: decisionResult.selectedCandidates.map(c => ({
-                code: c.activity.code,
-                name: c.activity.name,
-                score: c.score,
-                sources: c.sources,
-            })),
-            coverageSummary: coverageSummaryLines,
-            mandatoryInclusions: decisionResult.mandatoryInclusions.map(m => ({
-                code: m.code,
-                matchedKeyword: m.matchedKeyword,
-            })),
-            techCategory: techCatForEngine,
+            activities: agentActivities,
+            validActivityCodes: agentActivities.map(a => a.code),
+            techCategory: body.techCategory || 'MULTI',
+            projectContext: body.projectContext ? {
+                name: ctx.sanitize(body.projectContext.name),
+                description: ctx.sanitize(body.projectContext.description),
+                owner: body.projectContext.owner ? ctx.sanitize(body.projectContext.owner) : undefined,
+            } : undefined,
+            technologyName: body.techCategory,
+            userId: ctx.userId, // Pass through from auth (may be undefined for unauthenticated Quick Estimate)
+            flags: {
+                reflectionEnabled: process.env.AI_REFLECTION !== 'false',
+                toolUseEnabled: process.env.AI_TOOL_USE !== 'false',
+                maxReflectionIterations: Number(process.env.AI_MAX_REFLECTIONS || 2),
+                reflectionConfidenceThreshold: Number(process.env.AI_REFLECTION_THRESHOLD || 75),
+                autoApproveOnly: false,
+            },
         };
 
-        let explanation: DecisionExplanation;
         try {
-            explanation = await explainDecision({ promptInput: explanationPromptInput });
-        } catch (explainError: any) {
-            console.warn('[ai-estimate-from-interview] explainDecision failed, using fallback:', explainError?.message);
-            explanation = {
-                reasoning: 'Selezione attività basata su analisi strutturale del requisito e delle risposte.',
-                activityExplanations: decisionResult.selectedCandidates.map(c => ({
-                    code: c.activity.code,
-                    explanation: `Selezionato con score ${c.score.toFixed(2)} da ${c.primarySource}`,
-                })),
-                warnings: [],
-                gaps: decisionResult.coverageReport.gapLayers.map(l => `Layer "${l}" non coperto`),
-                suggestedDrivers: [],
-                suggestedRisks: [],
-            };
-        }
+            const agentResult = await runAgentPipeline(agentInput);
 
-        // ── Build activities array (backward-compatible shape) ──────────
-        const selectedActivities = decisionResult.selectedCandidates.map(c => {
-            const actExplanation = explanation.activityExplanations.find(e => e.code === c.activity.code);
+            console.log('[ai-estimate-from-interview] Agent pipeline result:', {
+                success: agentResult.success,
+                activities: agentResult.activities.length,
+                totalBaseDays: agentResult.totalBaseDays,
+                confidence: agentResult.confidenceScore,
+                iterations: agentResult.agentMetadata.iterations,
+                toolCalls: agentResult.agentMetadata.toolCallCount,
+                durationMs: agentResult.agentMetadata.totalDurationMs,
+                reflectionAssessment: agentResult.agentMetadata.reflectionResult?.assessment,
+                expandedActivityCodes: agentResult.expandedActivityCodes?.length ?? 0,
+            });
+
+            if (!agentResult.success) {
+                throw new Error(agentResult.error || 'Agentic pipeline failed');
+            }
+
+            metrics.totalDurationMs = Date.now() - pipelineStart;
+            metrics.draftDurationMs = agentResult.agentMetadata.totalDurationMs;
+            metrics.toolIterations = agentResult.agentMetadata.toolCallCount;
+            metrics.reflectionDurationMs = agentResult.agentMetadata.reflectionResult ? (agentResult.agentMetadata.totalDurationMs * 0.2) : 0; // estimate
+            metrics.timedOut = false;
+
+            // ─── Provenance re-attachment (deterministic post-processing) ───
+            const enrichedActivities = attachProvenance(
+                agentResult.activities,
+                provenanceMap,
+                agentResult.expandedActivityCodes,
+            );
+
+            // Provenance breakdown for observability
+            console.log('[ai-estimate-from-interview] Provenance breakdown:', provenanceBreakdown(enrichedActivities));
+
+            // ─── Merge project-context rule suggestions with AI output ──
+            const mergedDrivers = mergeDriverSuggestions(
+                agentResult.suggestedDrivers,
+                contextRules.suggestedDrivers,
+            );
+            const mergedRisks = mergeRiskSuggestions(
+                agentResult.suggestedRisks,
+                contextRules.suggestedRisks,
+            );
+            if (contextRules.suggestedDrivers.length > 0 || contextRules.suggestedRisks.length > 0) {
+                console.log('[ai-estimate-from-interview] Project-context rules merged:', {
+                    ruleDrivers: contextRules.suggestedDrivers.map(d => d.code),
+                    ruleRisks: contextRules.suggestedRisks.map(r => r.code),
+                    finalDriverCount: mergedDrivers.length,
+                    finalRiskCount: mergedRisks.length,
+                });
+            }
+
+            console.log('[ai-estimate-from-interview] METRICS:', JSON.stringify(metrics));
+
+            const candidateProvenance = candidateResult.candidates.map(c => ({
+                code: c.activity.code,
+                score: c.score,
+                sources: c.sources,
+                contributions: c.contributions,
+                primarySource: c.primarySource,
+                provenance: c.provenance,
+                confidence: c.confidence,
+            }));
+
             return {
+                success: true,
+                generatedTitle: agentResult.generatedTitle,
+                activities: enrichedActivities,
+                totalBaseDays: agentResult.totalBaseDays,
+                reasoning: agentResult.reasoning,
+                confidenceScore: agentResult.confidenceScore,
+                suggestedDrivers: mergedDrivers,
+                suggestedRisks: mergedRisks.map(r => r.code),
+                candidateProvenance,
+                projectContextNotes: contextRules.notes.length > 0 ? contextRules.notes : undefined,
+                agentMetadata: {
+                    executionId: agentResult.agentMetadata.executionId,
+                    totalDurationMs: agentResult.agentMetadata.totalDurationMs,
+                    iterations: agentResult.agentMetadata.iterations,
+                    toolCallCount: agentResult.agentMetadata.toolCallCount,
+                    model: agentResult.agentMetadata.model,
+                    reflectionAssessment: agentResult.agentMetadata.reflectionResult?.assessment,
+                    reflectionConfidence: agentResult.agentMetadata.reflectionResult?.confidence,
+                    engineValidation: agentResult.engineValidation,
+                },
+                metrics,
+            };
+        } catch (agentError: any) {
+            // If the circuit breaker is open, re-throw immediately so
+            // createAIHandler returns 503 with Retry-After.
+            if (agentError instanceof CircuitOpenError) {
+                console.warn('[ai-estimate-from-interview] CB open, propagating 503');
+                throw agentError;
+            }
+
+            // For transient LLM failures: fall back to pure deterministic selection
+            // (DecisionEngine only — no second LLM call) to guarantee a 200 response.
+            metrics.fallbackUsed = true;
+            metrics.pipelineMode = 'deterministic-fallback';
+            console.warn(
+                '[ai-estimate-from-interview] Agentic pipeline failed, falling back to DecisionEngine:',
+                agentError?.message || agentError,
+            );
+
+            const fallbackStart = Date.now();
+            const decisionResult = runDecisionEngine({
+                candidates: candidateResult.candidates,
+                answers: body.answers,
+                techCategory: techCat,
+                catalog: fetchResult.activities,
+                description: sanitizedDescription,
+                activityBiases: mergedRules.activityBiases,
+            });
+
+            console.log('[ai-estimate-from-interview] Fallback DecisionEngine result:', {
+                selected: decisionResult.selectedCandidates.length,
+                gaps: decisionResult.coverageReport.gapLayers,
+                confidence: decisionResult.confidence,
+            });
+
+            const fallbackActivities = decisionResult.selectedCandidates.map(c => ({
                 code: c.activity.code,
                 name: c.activity.name,
                 baseHours: c.activity.base_hours,
-                reason: actExplanation?.explanation || `Score ${c.score.toFixed(2)} (${c.primarySource})`,
+                reason: `Score ${c.score.toFixed(2)} (${c.primarySource})`,
                 fromAnswer: '',
                 fromQuestionId: '',
+            }));
+
+            const fallbackTotalBaseDays = fallbackActivities.reduce(
+                (sum, a) => sum + (a.baseHours / 8),
+                0,
+            );
+
+            const fallbackEnriched = attachProvenance(fallbackActivities, provenanceMap);
+            console.log('[ai-estimate-from-interview] Fallback provenance breakdown:', provenanceBreakdown(fallbackEnriched));
+
+            const fallbackDrivers = mergeDriverSuggestions([], mergedRules.suggestedDrivers);
+            const fallbackRisks = mergeRiskSuggestions([], mergedRules.suggestedRisks);
+
+            metrics.draftDurationMs = Date.now() - fallbackStart;
+            metrics.totalDurationMs = Date.now() - pipelineStart;
+
+            console.log('[ai-estimate-from-interview] METRICS (fallback):', JSON.stringify(metrics));
+
+            const candidateProvenance = candidateResult.candidates.map(c => ({
+                code: c.activity.code,
+                score: c.score,
+                sources: c.sources,
+                contributions: c.contributions,
+                primarySource: c.primarySource,
+                provenance: c.provenance,
+                confidence: c.confidence,
+            }));
+
+            return {
+                success: true,
+                generatedTitle: '',
+                activities: fallbackEnriched,
+                totalBaseDays: Number(fallbackTotalBaseDays.toFixed(2)),
+                reasoning: 'Selezione attività basata su analisi strutturale del requisito e delle risposte.',
+                confidenceScore: Number(decisionResult.confidence.toFixed(2)),
+                suggestedDrivers: fallbackDrivers,
+                suggestedRisks: fallbackRisks.map(r => r.code),
+                candidateProvenance,
+                projectContextNotes: mergedRules.notes.length > 0 ? mergedRules.notes : undefined,
+                decisionTrace: decisionResult.decisionTrace,
+                coverageReport: decisionResult.coverageReport,
+                metrics,
             };
-        });
-
-        const totalBaseDays = selectedActivities.reduce(
-            (sum, a) => sum + (a.baseHours / 8),
-            0,
-        );
-
-        // ── Provenance re-attachment ────────────────────────────────────
-        const enrichedActivities = attachProvenance(selectedActivities, provenanceMap);
-        console.log('[ai-estimate-from-interview] Deterministic provenance breakdown:', provenanceBreakdown(enrichedActivities));
-
-        // ── Merge project-context + blueprint rule suggestions ──────────
-        const mergedLegacyDrivers = mergeDriverSuggestions(
-            explanation.suggestedDrivers.map(d => ({
-                code: d.name,
-                suggestedValue: 'medium',
-                reason: d.rationale,
-                fromQuestionId: null,
-            })),
-            mergedRules.suggestedDrivers,
-        );
-        const mergedLegacyRisks = mergeRiskSuggestions(
-            explanation.suggestedRisks.map(r => r.name),
-            mergedRules.suggestedRisks,
-        );
-
-        metrics.draftDurationMs = Date.now() - legacyStart;
-        metrics.totalDurationMs = Date.now() - pipelineStart;
-
-        console.log('[ai-estimate-from-interview] METRICS:', JSON.stringify(metrics));
-
-        // ── Build candidate provenance (same shape as before) ───────────
-        const candidateProvenance = candidateResult.candidates.map(c => ({
-            code: c.activity.code,
-            score: c.score,
-            sources: c.sources,
-            contributions: c.contributions,
-            primarySource: c.primarySource,
-            provenance: c.provenance,
-            confidence: c.confidence,
-        }));
-
-        return {
-            success: true,
-            generatedTitle: '',
-            activities: enrichedActivities,
-            totalBaseDays: Number(totalBaseDays.toFixed(2)),
-            reasoning: explanation.reasoning,
-            confidenceScore: Number(decisionResult.confidence.toFixed(2)),
-            suggestedDrivers: mergedLegacyDrivers,
-            suggestedRisks: mergedLegacyRisks.map(r => r.code),
-            candidateProvenance,
-            projectContextNotes: mergedRules.notes.length > 0 ? mergedRules.notes : undefined,
-            // New deterministic pipeline fields (backward-compatible additions)
-            decisionTrace: decisionResult.decisionTrace,
-            coverageReport: decisionResult.coverageReport,
-            explanationWarnings: explanation.warnings.length > 0 ? explanation.warnings : undefined,
-            explanationGaps: explanation.gaps.length > 0 ? explanation.gaps : undefined,
-            metrics,
-        };
+        }
     }
 });

@@ -201,16 +201,22 @@ export async function generateProjectFromDocumentation(
         ? `\n\nCATALOGO TECNOLOGIE DISPONIBILI (usa l'id corrispondente per technologyId):\n${technologyCatalog.map(t => `- id: "${t.id}" | code: "${t.code}" | name: "${t.name}"`).join('\n')}\n`
         : '';
 
-    const pass1UserPrompt = `DOCUMENTAZIONE PROGETTUALE:\n\n${sourceText}${techCatalogBlock}`;
+    // Pass1 only needs metadata — truncate to 5000 chars (enough for name, type, domain, tech)
+    const pass1SourceText = sourceText.length > 5000
+        ? sourceText.slice(0, 5000) + '\n[... documento troncato ...]'
+        : sourceText;
+    const pass1UserPrompt = `DOCUMENTAZIONE PROGETTUALE:\n\n${pass1SourceText}${techCatalogBlock}`;
     const pass1Schema = createProjectDraftResponseSchema();
 
     const pass1Raw = await provider.generateContent({
         model: 'gpt-5-mini',
         temperature: 0.2,
-        maxTokens: 2500,
+        maxTokens: 1200,
         responseFormat: pass1Schema as any,
         systemPrompt: PROJECT_DRAFT_SYSTEM_PROMPT,
         userPrompt: pass1UserPrompt,
+        reasoningEffort: 'minimal',
+        options: { timeout: 25000, maxRetries: 0 },
     });
 
     const pass1Ms = Date.now() - pass1Start;
@@ -279,13 +285,14 @@ export async function generateProjectFromDocumentation(
     const pass2Schema = createTechnicalBlueprintResponseSchema();
 
     const pass2Raw = await provider.generateContent({
-        model: 'gpt-5-mini',
+        model: 'gpt-5',
         temperature: 0.2,
-        maxTokens: 8000,
+        maxTokens: 5000,
         responseFormat: pass2Schema as any,
         systemPrompt: TECHNICAL_BLUEPRINT_SYSTEM_PROMPT,
         userPrompt: pass2UserPrompt,
-        options: { timeout: 90000 },
+        reasoningEffort: 'low',
+        options: { timeout: 60000, maxRetries: 0 },
     });
 
     const pass2Ms = Date.now() - pass2Start;

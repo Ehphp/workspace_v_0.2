@@ -27,6 +27,93 @@ export interface CandidateActivity {
     reason?: string;     // optional human-readable justification
 }
 
+// ─── Canonical Profile Types ────────────────────────────────────
+
+/**
+ * Conflict between two artifact sources detected during canonical profile build.
+ * Persisted as JSONB array in requirement_analyses.conflicts.
+ */
+export type ConflictType =
+    | 'complexity_mismatch'        // understanding.complexityLevel vs blueprint components
+    | 'layer_coverage_mismatch'    // blueprint layers not reflected in impact_map
+    | 'integration_underdeclared'  // bidirectional integrations in blueprint, no integration layer in impact_map
+    | 'data_entity_vs_readonly'    // blueprint creates/writes data, impact_map claims read-only
+    | 'testing_criticality_vs_complexity'; // CRITICAL testing scope on LOW complexity requirement
+
+export type ConflictResolutionHint =
+    | 'prefer_blueprint'    // blueprint is the structural source of truth
+    | 'prefer_impact_map'   // impact_map reflects confirmed architectural impact
+    | 'manual_review';      // ambiguous — surface to user or reflection engine
+
+export interface ConflictEntry {
+    type: ConflictType;
+    severity: 'low' | 'medium' | 'high';
+    description: string;
+    /** Profile field where the conflict surfaces */
+    field: string;
+    sourceA: 'understanding' | 'impact_map' | 'blueprint';
+    valueA: unknown;
+    sourceB: 'understanding' | 'impact_map' | 'blueprint';
+    valueB: unknown;
+    /** |confidence_a - confidence_b| — for ranking and filtering */
+    confidenceDelta: number;
+    resolutionHint: ConflictResolutionHint;
+}
+
+export type StructuralType = 'CRUD' | 'INTEGRATION' | 'WORKFLOW' | 'REPORT' | 'MIXED';
+
+/**
+ * V1 stale reason codes. Evaluated lazily by buildCanonicalProfile();
+ * persisted as materialized cache in requirement_analyses.stale_reasons.
+ */
+export type StaleReasonCode =
+    | 'UNDERSTANDING_UPDATED'
+    | 'IMPACT_MAP_UPDATED'
+    | 'BLUEPRINT_UPDATED'
+    | 'PROJECT_BLUEPRINT_UPDATED'
+    | 'PROJECT_CONTEXT_CHANGED';
+
+/**
+ * Artifact selection strategy for buildCanonicalProfile().
+ * - latest: most recent blueprint version for the requirement
+ * - highest_confidence: blueprint with highest confidence_score
+ * - pinned: use pinned_blueprint_id from requirement_analyses (audit-safe)
+ */
+export type ArtifactSelectionStrategy = 'latest' | 'highest_confidence' | 'pinned';
+
+/**
+ * The canonical profile built at runtime by buildCanonicalProfile().
+ * Not stored as a single row — requirement_analyses is the hub; the profile
+ * is materialized by traversing from the pinned_blueprint_id anchor.
+ */
+export interface CanonicalProfile {
+    // Identity
+    requirementId: string;
+    analysisId: string | null;
+    pinnedBlueprintId: string;
+    pinnedBlueprintVersion: number;
+
+    // Source artifacts (read-only references — do not mutate)
+    understanding: Record<string, unknown> | null;   // RequirementUnderstanding shape
+    impactMap: Record<string, unknown> | null;        // ImpactMap shape
+    blueprint: Record<string, unknown>;               // EstimationBlueprint shape (required)
+
+    // Derived fields (computed by buildCanonicalProfile, not stored)
+    inferredComplexity: 'LOW' | 'MEDIUM' | 'HIGH';
+    aggregateConfidence: number;     // weighted, runtime-only
+    structuralType: StructuralType;
+    conflicts: ConflictEntry[];
+    isStale: boolean;
+    staleReasons: StaleReasonCode[];
+
+    // Context snapshots frozen at analysis time
+    projectContextSnapshot: Record<string, unknown> | null;
+    projectTechnicalBaselineSnapshot: Record<string, unknown> | null;
+
+    // Built on demand by buildCanonicalSearchText() — not always populated
+    canonicalSearchText?: string;
+}
+
 // ─── RequirementAnalysis ─────────────────────────────────────────
 
 export interface RequirementAnalysisRow {
@@ -41,6 +128,36 @@ export interface RequirementAnalysisRow {
     confidence: number | null;
     created_by: string;
     created_at: string;
+
+    // ── Canonical profile hub fields (added 20260411_canonical_profile_hub) ──
+
+    /** Single anchor into the artifact triad. Traversing this UUID gives
+     *  based_on_understanding_id and based_on_impact_map_id for free. */
+    pinned_blueprint_id: string | null;
+    /** Snapshot of estimation_blueprint.version at pin time — for audit. */
+    pinned_blueprint_version: number | null;
+
+    /** Detected conflicts between artifact sources. Persisted as materialized cache.
+     *  Shape: ConflictEntry[] — see canonical-profile.service.ts for conflict rules. */
+    conflicts: ConflictEntry[];
+
+    /** Lazy-evaluated stale flag. True when any stale_reason is present. */
+    is_stale: boolean;
+    /** Set of StaleReasonCode values indicating why the profile is stale. */
+    stale_reasons: StaleReasonCode[];
+
+    /** ProjectContext at the moment this analysis was created. */
+    project_context_snapshot: Record<string, unknown> | null;
+    /** ProjectTechnicalBlueprint at the moment this analysis was created. */
+    project_technical_baseline_snapshot: Record<string, unknown> | null;
+
+    /** Canonical embedding — populated async after canonicalSearchText stabilises.
+     *  NULL until generated; query with AND is_embedding_stale = false. */
+    canonical_embedding: number[] | null;  // vector(1536) serialised as number[]
+    /** Format version of the search text used to generate the embedding. */
+    canonical_embedding_version: number;
+    /** True when source artifacts changed after embedding was generated. */
+    is_embedding_stale: boolean;
 }
 
 export interface CreateRequirementAnalysisInput {
@@ -53,6 +170,15 @@ export interface CreateRequirementAnalysisInput {
     input_tech_category?: string | null;
     confidence?: number | null;
     created_by: string;
+
+    // ── Canonical profile hub fields — optional on create, set after wizard completion ──
+    pinned_blueprint_id?: string | null;
+    pinned_blueprint_version?: number | null;
+    conflicts?: ConflictEntry[];
+    is_stale?: boolean;
+    stale_reasons?: StaleReasonCode[];
+    project_context_snapshot?: Record<string, unknown> | null;
+    project_technical_baseline_snapshot?: Record<string, unknown> | null;
 }
 
 // ─── ImpactMap (domain model, distinct from legacy impact_map table) ──

@@ -328,7 +328,7 @@ export interface EstimationFromInterviewResponse {
         draftDurationMs?: number;
         reflectionDurationMs?: number;
         refineDurationMs?: number;
-        pipeline: 'legacy' | 'agentic';
+        pipeline: 'agentic' | 'deterministic-fallback';
         fallbackUsed?: boolean;
         activitiesRanked?: number;
         activitiesSent?: number;

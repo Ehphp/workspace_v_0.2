@@ -129,6 +129,13 @@ export interface AgentInput {
     userId?: string;
     /** Override default agent flags */
     flags?: Partial<AgentFlags>;
+    /**
+     * Pre-detected conflicts from the canonical profile (v1).
+     * Injected into the ReflectionEngine prompt so the Senior Consultant
+     * does not re-discover known artifact inconsistencies from scratch.
+     * Shape: ConflictEntry[] from canonical-profile.service.ts
+     */
+    canonicalConflicts?: import('../../../../src/types/domain-model').ConflictEntry[];
 }
 
 export interface AgentActivity {

@@ -22,3 +22,17 @@ export {
     mergeRiskSuggestions,
 } from './project-context-integration';
 export type { MergedDriver, MergedRisk } from './project-context-integration';
+
+// Canonical Profile
+export {
+    buildCanonicalProfile,
+    pinAnalysisToBlueprint,
+    linkBlueprintToAnalysis,
+    detectConflicts,
+    evaluateStaleReasons,
+    inferStructuralType,
+    computeAggregateConfidence,
+    buildCanonicalSearchText,
+    formatConflictsBlock,
+} from './canonical-profile.service';
+export type { BuildCanonicalProfileOptions } from './canonical-profile.service';

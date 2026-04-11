@@ -23,6 +23,7 @@ import type {
     AgentFlags
 } from './agent-types';
 import { formatProjectContextBlock } from '../prompt-builder';
+import { formatConflictsBlock } from '../../domain/estimation/canonical-profile.service';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Zod Schema for Reflection Response
@@ -183,6 +184,11 @@ function buildReflectionUserPrompt(
         ? draft.suggestedDrivers.map(d => `  - ${d.code}: ${d.suggestedValue} (${d.reason})`).join('\n')
         : '  Nessun driver suggerito';
 
+    // Canonical conflicts block (medium + high severity only)
+    const conflictsBlock = input.canonicalConflicts && input.canonicalConflicts.length > 0
+        ? formatConflictsBlock(input.canonicalConflicts)
+        : '';
+
     return `REQUISITO ORIGINALE:
 ${input.description}
 
@@ -192,7 +198,7 @@ TECNOLOGIA: ${input.technologyName || input.techCategory}
 
 RISPOSTE INTERVIEW:
 ${answersStr}
-
+${conflictsBlock}
 --- BOZZA DI STIMA DA ANALIZZARE ---
 
 TITOLO GENERATO: ${draft.generatedTitle}

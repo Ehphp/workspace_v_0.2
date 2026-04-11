@@ -111,14 +111,14 @@ export const handler = createAIHandler<RequestBody>({
             },
             metadata: {
                 generatedAt: new Date().toISOString(),
-                model: 'gpt-5-mini+gpt-5-mini',
+                model: 'gpt-5-mini+gpt-5',
                 sourceTextLength: sanitizedText.length,
             },
             metrics: {
                 totalMs,
                 pass1Ms: result.metrics.pass1Ms,
                 pass2Ms: result.metrics.pass2Ms,
-                model: 'gpt-5-mini+gpt-5-mini',
+                model: 'gpt-5-mini+gpt-5',
             },
         };
     },

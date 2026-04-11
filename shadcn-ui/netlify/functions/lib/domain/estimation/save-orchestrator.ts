@@ -26,6 +26,11 @@ import { buildCandidates, createCandidateSet } from './candidate-set.service';
 import { createEstimationDecision } from './decision.service';
 import { computeEstimation, ENGINE_VERSION } from './estimation-engine';
 import { createEstimationSnapshot, buildSnapshotData } from './snapshot.service';
+import {
+    buildCanonicalProfile,
+    pinAnalysisToBlueprint,
+    linkBlueprintToAnalysis,
+} from './canonical-profile.service';
 
 import type { EstimationResult } from '../types/estimation';
 
@@ -44,6 +49,11 @@ export interface DomainSaveInput {
     technologyId?: string | null;
     /** Blueprint UUID (if available) */
     blueprintId?: string | null;
+
+    /** Project context snapshot to persist on the analysis hub */
+    projectContextSnapshot?: Record<string, unknown> | null;
+    /** Project technical baseline snapshot to persist on the analysis hub */
+    projectTechnicalBaselineSnapshot?: Record<string, unknown> | null;
 
     /** Existing understanding artifact (from wizard step) */
     understanding?: Record<string, unknown> | null;
@@ -150,6 +160,35 @@ export async function orchestrateDomainSave(
             confidence: null,
             created_by: input.userId,
         });
+    }
+
+    // 2b. Canonical profile pinning (non-fatal — never blocks estimation save)
+    // Build the profile using the blueprint from step 2 (if available),
+    // then pin the analysis hub and link the blueprint back to the session.
+    if (input.blueprintId) {
+        try {
+            const canonical = await buildCanonicalProfile(input.requirementId, {
+                strategy: 'pinned',  // prefer pinned; falls back to latest if not yet pinned
+                currentProjectContext: input.projectContextSnapshot ?? null,
+            });
+            if (canonical) {
+                await Promise.all([
+                    pinAnalysisToBlueprint(analysis.id, {
+                        ...canonical,
+                        projectContextSnapshot: input.projectContextSnapshot ?? canonical.projectContextSnapshot,
+                        projectTechnicalBaselineSnapshot:
+                            input.projectTechnicalBaselineSnapshot ?? canonical.projectTechnicalBaselineSnapshot,
+                    }),
+                    linkBlueprintToAnalysis(input.blueprintId, analysis.id),
+                ]);
+            } else {
+                // Blueprint exists (input.blueprintId set) but no full profile yet — link only
+                await linkBlueprintToAnalysis(input.blueprintId, analysis.id);
+            }
+        } catch (canonicalErr) {
+            // Non-fatal: canonical profile is a consistency layer, not a hard dependency
+            console.warn('[save-orchestrator] Canonical profile pinning failed (non-fatal):', canonicalErr);
+        }
     }
 
     // 3. Build & persist CandidateSet

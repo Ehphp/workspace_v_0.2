@@ -36,6 +36,8 @@ export interface GenerateContentParams {
     maxTokens?: number;
     responseFormat?: Record<string, any>;
     options?: LLMClientOptions;
+    /** Reasoning effort for gpt-5/o-series models on Responses API */
+    reasoningEffort?: 'high' | 'medium' | 'low' | 'minimal';
 }
 
 /**
@@ -164,16 +166,21 @@ export class OpenAIProvider implements ILLMProvider {
         const instructions = params.systemPrompt;
         const input = params.userPrompt;
 
-        console.log(`[openai-client] Responses API call — model=${model}, max_output_tokens=${tokenLimit}, format=${textFormat.type}`);
+        const reasoningEffort = params.reasoningEffort;
+        console.log(`[openai-client] Responses API call — model=${model}, max_output_tokens=${tokenLimit}, format=${textFormat.type}${reasoningEffort ? `, reasoning_effort=${reasoningEffort}` : ''}`);
 
         // Single attempt — retry logic is now handled by withRetry() in generateContent()
-        const response: any = await (client as any).responses.create({
+        const createParams: Record<string, any> = {
             model,
             instructions,
             input,
             max_output_tokens: tokenLimit,
             text: { format: textFormat },
-        });
+        };
+        if (reasoningEffort) {
+            createParams.reasoning = { effort: reasoningEffort };
+        }
+        const response: any = await (client as any).responses.create(createParams);
 
         // Log request id and status for debugging
         const requestId = response?.id || response?.request_id || 'unknown';
