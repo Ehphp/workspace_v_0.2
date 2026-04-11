@@ -245,6 +245,7 @@ Review ONLY for these issues — respond with JSON:
 4. **Unrealistic hours** — estimatedHours < 1 or > 40 for a single activity
 5. **Invented codes** — existingCode values that are NOT in the provided catalog codes list
 
+
 OUTPUT (valid JSON):
 {
   "pass": true/false,

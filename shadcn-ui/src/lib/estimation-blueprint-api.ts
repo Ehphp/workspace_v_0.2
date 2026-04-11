@@ -64,6 +64,7 @@ export async function generateEstimationBlueprint(
                 projectContext: request.projectContext,
                 requirementUnderstanding: request.requirementUnderstanding,
                 impactMap: request.impactMap,
+                ...(request.projectTechnicalBlueprint ? { projectTechnicalBlueprint: request.projectTechnicalBlueprint } : {}),
             }),
         });
 

@@ -27,6 +27,7 @@ import {
 } from '../ai-cache';
 import type { CacheConfig } from '../ai-cache';
 import { formatProjectContextBlock } from '../prompt-builder';
+import { formatProjectTechnicalBlueprintBlock } from '../formatters/project-blueprint-formatter';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cache profile — 12 h (understanding may evolve with prompt changes)
@@ -58,6 +59,8 @@ export interface GenerateUnderstandingRequest {
         deadlinePressure?: string;
         methodology?: string;
     };
+    /** Project Technical Blueprint for architectural baseline */
+    projectTechnicalBlueprint?: Record<string, unknown>;
     /** Skip cache for testing */
     testMode?: boolean;
 }
@@ -114,14 +117,14 @@ const LLMOutputSchema = z.object({
 export async function generateRequirementUnderstanding(
     request: GenerateUnderstandingRequest
 ): Promise<GenerateUnderstandingResponse> {
-    const { description, techCategory, projectContext, testMode } = request;
+    const { description, techCategory, projectContext, projectTechnicalBlueprint, testMode } = request;
 
     console.log('[generate-understanding] Starting, description length:', description.length);
 
     // ── 1. Cache lookup ─────────────────────────────────────────────
     if (!testMode) {
         const cacheKey = buildCacheKey(
-            [description.slice(0, 300), techCategory ?? ''],
+            [description.slice(0, 300), techCategory ?? '', projectTechnicalBlueprint ? 'ptb:1' : 'ptb:0'],
             CACHE_UNDERSTANDING,
         );
         const cached = await getCachedResponse<GenerateUnderstandingResponse>(
@@ -147,6 +150,15 @@ export async function generateRequirementUnderstanding(
     if (projectContext) {
         userPromptParts.push(formatProjectContextBlock(projectContext));
     }
+
+    // Inject project technical blueprint (if available)
+    const blueprintBlock = formatProjectTechnicalBlueprintBlock(projectTechnicalBlueprint, {
+        instruction: 'Usa questa baseline architetturale per contestualizzare il requisito. Identifica come il requisito si inserisce nell\'architettura esistente.',
+    });
+    if (blueprintBlock) {
+        userPromptParts.push(blueprintBlock);
+    }
+
     const userPrompt = userPromptParts.join('\n');
 
     const responseSchema = createUnderstandingResponseSchema();
@@ -156,7 +168,7 @@ export async function generateRequirementUnderstanding(
 
     const provider = getDefaultProvider();
     const responseContent = await provider.generateContent({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         temperature: 0.2,
         maxTokens: 2000,
         responseFormat: responseSchema as any,

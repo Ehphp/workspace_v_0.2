@@ -33,6 +33,8 @@ import type {
     SelectedActivityWithReason,
     SuggestedDriver,
     PreEstimate,
+    TechnicalQuestion,
+    InterviewAnswer,
 } from '@/types/requirement-interview';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -47,6 +49,7 @@ export type PipelineStep =
     | 'impact-map'
     | 'blueprint'
     | 'interview-planner'
+    | 'micro-interview'
     | 'estimation'
     | 'finalizing'
     | 'done'
@@ -124,6 +127,7 @@ export const STEP_LABELS: Record<PipelineStep, string> = {
     'impact-map': 'Mappa impatto architetturale...',
     'blueprint': 'Decomposizione tecnica...',
     'interview-planner': 'Valutazione complessità...',
+    'micro-interview': 'Domande di chiarimento...',
     'estimation': 'Generazione stima...',
     'finalizing': 'Calcolo finale...',
     'done': 'Completato',
@@ -140,12 +144,15 @@ export function useQuickEstimationV2() {
     const [result, setResult] = useState<QuickEstimationV2Result | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [liveInsights, setLiveInsights] = useState<PipelineInsight[]>([]);
+    const [pendingQuestions, setPendingQuestions] = useState<TechnicalQuestion[] | null>(null);
 
     // Master data (technologies, activities, drivers, risks)
     const [masterData, setMasterData] = useState<EstimationMasterData | null>(null);
 
     // Abort support
     const abortRef = useRef(false);
+    // Micro-interview promise resolution
+    const microInterviewResolveRef = useRef<((answers: Record<string, string | string[] | number>) => void) | null>(null);
 
     // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -254,6 +261,9 @@ export function useQuickEstimationV2() {
                     techCategory,
                     techPresetId: technologyId,
                     projectContext,
+                    projectTechnicalBlueprint: projectTechnicalBlueprint
+                        ? (projectTechnicalBlueprint as unknown as Record<string, unknown>)
+                        : undefined,
                 }),
                 steps,
             );
@@ -289,6 +299,9 @@ export function useQuickEstimationV2() {
                     techPresetId: technologyId,
                     projectContext,
                     requirementUnderstanding: artifacts.understanding,
+                    projectTechnicalBlueprint: projectTechnicalBlueprint
+                        ? (projectTechnicalBlueprint as unknown as Record<string, unknown>)
+                        : undefined,
                 }),
                 steps,
             );
@@ -325,6 +338,9 @@ export function useQuickEstimationV2() {
                     projectContext,
                     requirementUnderstanding: artifacts.understanding,
                     impactMap: artifacts.impactMap,
+                    projectTechnicalBlueprint: projectTechnicalBlueprint
+                        ? (projectTechnicalBlueprint as unknown as Record<string, unknown>)
+                        : undefined,
                 }),
                 steps,
             );
@@ -376,6 +392,8 @@ export function useQuickEstimationV2() {
             let preEstimate: PreEstimate | undefined;
             let plannerDecision: 'ASK' | 'SKIP' = 'SKIP';
 
+            let interviewAnswers: Record<string, string | string[] | number> = {};
+
             if (interviewRes?.success) {
                 preEstimate = (interviewRes as any).preEstimate;
                 plannerDecision = (interviewRes as any).decision || 'SKIP';
@@ -384,30 +402,59 @@ export function useQuickEstimationV2() {
                 const rangeLabel = preEstimate
                     ? `${preEstimate.minHours}–${preEstimate.maxHours}h (conf. ${Math.round((preEstimate.confidence ?? 0) * 100)}%)`
                     : '';
-                setLiveInsights(prev => [...prev, {
-                    step: 'interview-planner',
-                    icon: 'planner',
-                    label: plannerDecision === 'SKIP'
-                        ? 'Requisito chiaro — stima diretta'
-                        : 'Servirebbero domande — stimo comunque',
-                    detail: rangeLabel || (plannerDecision === 'SKIP' ? 'Nessuna domanda necessaria' : 'Proseguo in modalità rapida'),
-                    success: true,
-                }]);
+
+                const questions: TechnicalQuestion[] = (interviewRes as any).questions ?? [];
+                const preEstimateConfidence = preEstimate?.confidence ?? 0;
+
+                // Micro-interview: if planner says ASK, confidence < 0.80,
+                // and there are questions, pause pipeline for user input
+                if (
+                    plannerDecision === 'ASK' &&
+                    preEstimateConfidence < 0.80 &&
+                    questions.length > 0
+                ) {
+                    setLiveInsights(prev => [...prev, {
+                        step: 'interview-planner',
+                        icon: 'planner',
+                        label: 'Servono chiarimenti per una stima accurata',
+                        detail: rangeLabel || `${questions.length} domande da chiarire`,
+                        success: true,
+                    }]);
+
+                    // Pause pipeline: show questions, wait for user answers
+                    setPendingQuestions(questions);
+                    setCurrentStep('micro-interview');
+                    interviewAnswers = await new Promise<Record<string, string | string[] | number>>((resolve) => {
+                        microInterviewResolveRef.current = resolve;
+                    });
+                    setPendingQuestions(null);
+                    microInterviewResolveRef.current = null;
+
+                    if (abortRef.current) return false;
+                } else {
+                    setLiveInsights(prev => [...prev, {
+                        step: 'interview-planner',
+                        icon: 'planner',
+                        label: plannerDecision === 'SKIP'
+                            ? 'Requisito chiaro — stima diretta'
+                            : 'Stima rapida con contesto disponibile',
+                        detail: rangeLabel || (plannerDecision === 'SKIP' ? 'Nessuna domanda necessaria' : 'Proseguo in modalità rapida'),
+                        success: true,
+                    }]);
+                }
             }
 
             if (abortRef.current) return false;
 
             // ─── Step 5: Estimation (full pipeline call) ───────────────
-            // Quick mode: always proceed with empty answers (SKIP path).
-            // Even if planner says ASK, we run the estimation with
-            // the context we have and flag shouldEscalate.
+            // If micro-interview was completed, pass answers; otherwise empty.
             const { result: estimationRes, ok: estimationOk } = await timed(
                 'estimation',
                 () => generateEstimateFromInterview({
                     description,
                     techPresetId: technologyId,
                     techCategory,
-                    answers: {},  // No interview answers in quick mode
+                    answers: interviewAnswers,
                     projectContext,
                     preEstimate,
                     requirementUnderstanding: artifacts.understanding,
@@ -514,22 +561,47 @@ export function useQuickEstimationV2() {
         setResult(null);
         setError(null);
         setLiveInsights([]);
+        setPendingQuestions(null);
+        microInterviewResolveRef.current = null;
     }, []);
 
     // ── Abort (cancel in-flight pipeline) ────────────────────────────────
     const abort = useCallback(() => {
         abortRef.current = true;
+        setPendingQuestions(null);
+        if (microInterviewResolveRef.current) {
+            // Resolve with empty answers to unblock the pipeline (abort will stop it)
+            microInterviewResolveRef.current({});
+            microInterviewResolveRef.current = null;
+        }
         setCurrentStep('idle');
+    }, []);
+
+    // ── Submit micro-interview answers ───────────────────────────────────
+    const submitMicroInterview = useCallback((answers: Record<string, string | string[] | number>) => {
+        if (microInterviewResolveRef.current) {
+            microInterviewResolveRef.current(answers);
+        }
+    }, []);
+
+    // ── Skip micro-interview (proceed without answers) ───────────────────
+    const skipMicroInterview = useCallback(() => {
+        if (microInterviewResolveRef.current) {
+            microInterviewResolveRef.current({});
+        }
     }, []);
 
     return {
         // State
         currentStep,
         stepLabel: STEP_LABELS[currentStep],
-        isRunning: currentStep !== 'idle' && currentStep !== 'done' && currentStep !== 'error',
+        isRunning: currentStep !== 'idle' && currentStep !== 'done' && currentStep !== 'error' && currentStep !== 'micro-interview',
         result,
         error,
         liveInsights,
+
+        // Micro-interview
+        pendingQuestions,
 
         // Master data (for preset selector)
         technologies: masterData?.technologies ?? [],
@@ -539,5 +611,7 @@ export function useQuickEstimationV2() {
         calculate,
         reset,
         abort,
+        submitMicroInterview,
+        skipMicroInterview,
     };
 }

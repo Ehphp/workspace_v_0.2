@@ -27,6 +27,7 @@ import {
 } from '../ai-cache';
 import type { CacheConfig } from '../ai-cache';
 import { formatProjectContextBlock } from '../prompt-builder';
+import { formatProjectTechnicalBlueprintBlock } from '../formatters/project-blueprint-formatter';
 import type { RequirementUnderstanding } from '../../../../../src/types/requirement-understanding';
 import type { ImpactMap } from '../../../../../src/types/impact-map';
 
@@ -64,6 +65,8 @@ export interface GenerateBlueprintRequest {
     requirementUnderstanding?: RequirementUnderstanding | Record<string, unknown>;
     /** Confirmed Impact Map from previous step */
     impactMap?: ImpactMap | Record<string, unknown>;
+    /** Project Technical Blueprint for architectural baseline */
+    projectTechnicalBlueprint?: Record<string, unknown>;
     /** Skip cache for testing */
     testMode?: boolean;
 }
@@ -239,7 +242,7 @@ function formatImpactMapBlock(im: ImpactMap | Record<string, unknown> | undefine
 export async function generateEstimationBlueprint(
     request: GenerateBlueprintRequest
 ): Promise<GenerateBlueprintResponse> {
-    const { description, techCategory, projectContext, requirementUnderstanding, impactMap, testMode } = request;
+    const { description, techCategory, projectContext, requirementUnderstanding, impactMap, projectTechnicalBlueprint, testMode } = request;
 
     console.log('[generate-blueprint] Starting, description length:', description.length);
 
@@ -249,6 +252,7 @@ export async function generateEstimationBlueprint(
         techCategory ?? '',
         requirementUnderstanding ? 'ru:1' : 'ru:0',
         impactMap ? 'im:1' : 'im:0',
+        projectTechnicalBlueprint ? 'ptb:1' : 'ptb:0',
     ];
 
     if (!testMode) {
@@ -290,6 +294,14 @@ export async function generateEstimationBlueprint(
         userPromptParts.push(formatProjectContextBlock(projectContext));
     }
 
+    // Inject project technical blueprint (if available)
+    const ptbBlock = formatProjectTechnicalBlueprintBlock(projectTechnicalBlueprint, {
+        instruction: 'Usa questa baseline architetturale per decomporre il requisito. Identifica quali componenti esistenti vengono modificati e quali sono nuovi.',
+    });
+    if (ptbBlock) {
+        userPromptParts.push(ptbBlock);
+    }
+
     const userPrompt = userPromptParts.join('\n');
     const responseSchema = createBlueprintResponseSchema();
 
@@ -298,7 +310,7 @@ export async function generateEstimationBlueprint(
 
     const provider = getDefaultProvider();
     const responseContent = await provider.generateContent({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         temperature: 0.2,
         maxTokens: 3000,
         responseFormat: responseSchema as any,

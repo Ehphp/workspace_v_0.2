@@ -195,6 +195,8 @@ export interface EstimationBlueprintRequest {
     requirementUnderstanding?: RequirementUnderstanding;
     /** Optional confirmed Impact Map */
     impactMap?: ImpactMap;
+    /** Optional Project Technical Blueprint for architectural baseline */
+    projectTechnicalBlueprint?: Record<string, unknown>;
 }
 
 /**

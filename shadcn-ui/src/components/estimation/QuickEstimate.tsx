@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useQuickEstimationV2 } from '@/hooks/useQuickEstimationV2';
 import { QuickEstimateInput } from '@/components/estimation/quick-estimate/QuickEstimateInput';
 import { QuickEstimateResultV2 } from '@/components/estimation/quick-estimate/QuickEstimateResultV2';
 import { QuickEstimateProgress } from '@/components/estimation/quick-estimate/QuickEstimateProgress';
-import { Zap, Sparkles, ArrowLeft } from 'lucide-react';
+import { TechnicalQuestionCard } from '@/components/estimation/interview';
+import { Zap, Sparkles, ArrowLeft, MessageCircleQuestion, SkipForward } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ProjectTechnicalBlueprint } from '@/types/project-technical-blueprint';
 
@@ -15,12 +16,13 @@ interface QuickEstimateProps {
     projectTechnicalBlueprint?: ProjectTechnicalBlueprint;
 }
 
-type ViewState = 'input' | 'running' | 'result';
+type ViewState = 'input' | 'running' | 'micro-interview' | 'result';
 
 export function QuickEstimate({ open, onOpenChange, projectTechnicalBlueprint }: QuickEstimateProps) {
     const [view, setView] = useState<ViewState>('input');
     const [description, setDescription] = useState('');
     const [technologyId, setTechnologyId] = useState('');
+    const [microAnswers, setMicroAnswers] = useState<Record<string, string | string[] | number>>({});
 
     const {
         currentStep,
@@ -29,11 +31,14 @@ export function QuickEstimate({ open, onOpenChange, projectTechnicalBlueprint }:
         result,
         error,
         liveInsights,
+        pendingQuestions,
         technologies: presets,
         loadMasterData,
         calculate,
         reset,
         abort,
+        submitMicroInterview,
+        skipMicroInterview,
     } = useQuickEstimationV2();
 
     useEffect(() => {
@@ -43,19 +48,43 @@ export function QuickEstimate({ open, onOpenChange, projectTechnicalBlueprint }:
                 setView('input');
                 setDescription('');
                 setTechnologyId('');
+                setMicroAnswers({});
             }
         }
     }, [open]);
+
+    // Switch to micro-interview view when questions arrive
+    useEffect(() => {
+        if (pendingQuestions && pendingQuestions.length > 0) {
+            setMicroAnswers({});
+            setView('micro-interview');
+        }
+    }, [pendingQuestions]);
 
     const handleCalculate = async () => {
         setView('running');
         const success = await calculate(description, technologyId, undefined, projectTechnicalBlueprint);
         if (success) {
             setView('result');
-        } else {
+        } else if (currentStep !== 'micro-interview') {
+            // Only go back to input if we're not paused on micro-interview
             setView('input');
         }
     };
+
+    const handleMicroAnswer = useCallback((questionId: string, value: string | string[] | number) => {
+        setMicroAnswers(prev => ({ ...prev, [questionId]: value }));
+    }, []);
+
+    const handleMicroSubmit = useCallback(async () => {
+        setView('running');
+        submitMicroInterview(microAnswers);
+    }, [microAnswers, submitMicroInterview]);
+
+    const handleMicroSkip = useCallback(async () => {
+        setView('running');
+        skipMicroInterview();
+    }, [skipMicroInterview]);
 
     const handleReset = () => {
         setDescription('');
@@ -134,6 +163,37 @@ export function QuickEstimate({ open, onOpenChange, projectTechnicalBlueprint }:
                                     liveInsights={liveInsights}
                                 />
                             </motion.div>
+                        ) : view === 'micro-interview' && pendingQuestions ? (
+                            <motion.div
+                                key="micro-interview"
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                transition={{ duration: 0.25 }}
+                                className="space-y-4"
+                            >
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center">
+                                        <MessageCircleQuestion className="w-5 h-5 text-amber-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-semibold text-slate-800">Domande di chiarimento</h3>
+                                        <p className="text-xs text-slate-500">Rispondi per migliorare la precisione della stima, oppure salta.</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                                    {pendingQuestions.map((q) => (
+                                        <TechnicalQuestionCard
+                                            key={q.id}
+                                            question={q}
+                                            value={microAnswers[q.id]}
+                                            onChange={(value) => handleMicroAnswer(q.id, value)}
+                                            compact
+                                            showContext={false}
+                                        />
+                                    ))}
+                                </div>
+                            </motion.div>
                         ) : (
                             <motion.div
                                 key="result"
@@ -164,6 +224,20 @@ export function QuickEstimate({ open, onOpenChange, projectTechnicalBlueprint }:
                                 <ArrowLeft className="w-4 h-4 ml-2 rotate-180" />
                             </Button>
                         </>
+                    ) : view === 'micro-interview' ? (
+                        <div className="flex gap-3 w-full justify-between">
+                            <Button variant="ghost" onClick={handleMicroSkip} className="text-slate-500 hover:text-slate-900 hover:bg-slate-100/80">
+                                <SkipForward className="w-4 h-4 mr-2" />
+                                Salta
+                            </Button>
+                            <Button
+                                onClick={handleMicroSubmit}
+                                className="bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-600 hover:from-blue-700 hover:via-indigo-700 hover:to-fuchsia-700 text-white shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 transition-all px-8 h-11 rounded-lg font-medium"
+                            >
+                                Conferma e stima
+                                <ArrowLeft className="w-4 h-4 ml-2 rotate-180" />
+                            </Button>
+                        </div>
                     ) : view === 'running' ? (
                         <div className="flex w-full justify-center">
                             <Button variant="ghost" onClick={handleReset} className="text-slate-500 hover:text-slate-900 hover:bg-slate-100/80">

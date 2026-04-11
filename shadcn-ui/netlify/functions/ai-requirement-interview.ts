@@ -57,6 +57,7 @@ import { evaluateProjectTechnicalBlueprintRules } from './lib/domain/estimation/
 import { mergeProjectAndBlueprintRules } from './lib/domain/estimation/blueprint-context-integration';
 import type { ProjectTechnicalBlueprint } from './lib/domain/project/project-technical-blueprint.types';
 import type { EstimationContext } from './lib/domain/types/estimation';
+import { formatProjectTechnicalBlueprintBlock } from './lib/ai/formatters/project-blueprint-formatter';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration (tunable via env)
@@ -447,37 +448,7 @@ function formatBlueprintBlock(bp: Record<string, unknown> | undefined): string {
     }
 }
 
-function formatProjectTechnicalBlueprintBlock(ptb: Record<string, unknown> | undefined): string {
-    if (!ptb || typeof ptb !== 'object') return '';
-    try {
-        const lines: string[] = [];
-        lines.push('\nBASELINE ARCHITETTURA PROGETTO (dal blueprint tecnico del progetto — usa per contestualizzare il requisito rispetto ai componenti esistenti):');
-        if (ptb.summary && typeof ptb.summary === 'string') {
-            lines.push(`Sintesi progetto: ${ptb.summary}`);
-        }
-        if (Array.isArray(ptb.components) && ptb.components.length > 0) {
-            lines.push('Componenti progetto: ' + ptb.components.map((c: any) => `${c?.name ?? '?'} (${c?.type ?? '?'})`).join(', '));
-        }
-        if (Array.isArray(ptb.integrations) && ptb.integrations.length > 0) {
-            lines.push('Integrazioni progetto: ' + ptb.integrations.map((i: any) => `${i?.systemName ?? i?.system ?? '?'} [${i?.direction ?? '?'}]`).join(', '));
-        }
-        if (Array.isArray(ptb.dataDomains) && ptb.dataDomains.length > 0) {
-            lines.push('Domini dati: ' + ptb.dataDomains.map((d: any) => d?.name ?? '?').join(', '));
-        }
-        if (Array.isArray(ptb.architecturalNotes) && ptb.architecturalNotes.length > 0) {
-            lines.push(`Note architetturali: ${ptb.architecturalNotes.join('; ')}`);
-        } else if (ptb.architecturalNotes && typeof ptb.architecturalNotes === 'string') {
-            lines.push(`Note architetturali: ${ptb.architecturalNotes}`);
-        }
-        lines.push('ISTRUZIONE: Questa baseline descrive il progetto esistente. Le domande devono riguardare il NUOVO requisito, non ripetere ciò che il progetto già possiede.');
-        const result = lines.length > 1 ? lines.join('\n') : '';
-        // Truncate to avoid prompt weight imbalance with small requirements
-        const MAX_PTB_CHARS = 2000;
-        return result.length > MAX_PTB_CHARS ? result.slice(0, MAX_PTB_CHARS) + '\n[…baseline troncata]' : result;
-    } catch {
-        return '';
-    }
-}
+// formatProjectTechnicalBlueprintBlock — imported from lib/ai/formatters/project-blueprint-formatter
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Handler
@@ -580,7 +551,7 @@ export const handler = createAIHandler<RequestBody>({
             signalSets,
             catalog: fetchResult.activities,
             techCategory: techCat,
-            config: { maxCandidates: 20 },
+            config: { maxCandidates: 30 },
         });
 
         const rankedActivities = candidateResult.candidates.map(c => c.activity);

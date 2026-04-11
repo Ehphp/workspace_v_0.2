@@ -35,6 +35,7 @@ interface RequestBody {
     techCategory?: string;
     techPresetId?: string;
     projectContext?: ProjectContext;
+    projectTechnicalBlueprint?: Record<string, unknown>;
     normalizationResult?: {
         normalizedDescription: string;
     };
@@ -83,6 +84,7 @@ export const handler = createAIHandler<RequestBody>({
             description: semanticDescription,
             techCategory: body.techCategory,
             projectContext: body.projectContext,
+            projectTechnicalBlueprint: body.projectTechnicalBlueprint,
             testMode: body.testMode,
         });
 

@@ -64,6 +64,7 @@ export async function generateRequirementUnderstanding(
                 techPresetId: request.techPresetId,
                 projectContext: request.projectContext,
                 normalizationResult: request.normalizationResult,
+                ...(request.projectTechnicalBlueprint ? { projectTechnicalBlueprint: request.projectTechnicalBlueprint } : {}),
             }),
         });
 

@@ -140,6 +140,8 @@ export interface RequirementUnderstandingRequest {
     normalizationResult?: {
         normalizedDescription: string;
     };
+    /** Optional Project Technical Blueprint for architectural baseline */
+    projectTechnicalBlueprint?: Record<string, unknown>;
 }
 
 /**

@@ -37,6 +37,7 @@ interface RequestBody {
     techCategory?: string;
     techPresetId?: string;
     projectContext?: ProjectContext;
+    projectTechnicalBlueprint?: Record<string, unknown>;
     requirementUnderstanding?: Record<string, unknown>;
     impactMap?: Record<string, unknown>;
     testMode?: boolean;
@@ -81,6 +82,7 @@ export const handler = createAIHandler<RequestBody>({
             description: semanticDescription,
             techCategory: body.techCategory,
             projectContext: body.projectContext,
+            projectTechnicalBlueprint: body.projectTechnicalBlueprint,
             requirementUnderstanding: body.requirementUnderstanding,
             impactMap: body.impactMap,
             testMode: body.testMode,

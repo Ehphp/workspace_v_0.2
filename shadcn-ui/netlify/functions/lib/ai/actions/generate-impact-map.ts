@@ -27,6 +27,7 @@ import {
 } from '../ai-cache';
 import type { CacheConfig } from '../ai-cache';
 import { formatProjectContextBlock } from '../prompt-builder';
+import { formatProjectTechnicalBlueprintBlock } from '../formatters/project-blueprint-formatter';
 import type { RequirementUnderstanding } from '../../../../../src/types/requirement-understanding';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -162,57 +163,7 @@ function formatUnderstandingBlock(ru: RequirementUnderstanding | Record<string, 
     }
 }
 
-/**
- * Format a Project Technical Blueprint as an Italian-language block
- * for prompt injection. Provides architectural baseline context so the
- * AI can distinguish new-requirement impacts from existing project structure.
- */
-function formatProjectBlueprintBlock(blueprint: Record<string, unknown> | undefined): string {
-    if (!blueprint) return '';
-
-    try {
-        const parts: string[] = [];
-        parts.push('\nBASELINE ARCHITETTURA PROGETTO (dal blueprint tecnico del progetto):');
-
-        if (blueprint.summary && typeof blueprint.summary === 'string') {
-            parts.push(`- Sintesi: ${blueprint.summary}`);
-        }
-
-        if (Array.isArray(blueprint.components) && blueprint.components.length > 0) {
-            const compList = blueprint.components
-                .map((c: any) => `${c?.name ?? '?'} (${c?.type ?? '?'})`)
-                .join(', ');
-            parts.push(`- Componenti esistenti: ${compList}`);
-        }
-
-        if (Array.isArray(blueprint.integrations) && blueprint.integrations.length > 0) {
-            const intList = blueprint.integrations
-                .map((i: any) => `${i?.systemName ?? i?.system ?? '?'} [${i?.direction ?? '?'}]`)
-                .join(', ');
-            parts.push(`- Integrazioni esistenti: ${intList}`);
-        }
-
-        if (Array.isArray(blueprint.dataDomains) && blueprint.dataDomains.length > 0) {
-            parts.push(`- Domini dati: ${blueprint.dataDomains.map((d: any) => d?.name ?? '?').join(', ')}`);
-        }
-
-        if (Array.isArray(blueprint.architecturalNotes) && blueprint.architecturalNotes.length > 0) {
-            parts.push(`- Note architetturali: ${blueprint.architecturalNotes.join('; ')}`);
-        } else if (blueprint.architecturalNotes && typeof blueprint.architecturalNotes === 'string') {
-            parts.push(`- Note architetturali: ${blueprint.architecturalNotes}`);
-        }
-
-        parts.push('ISTRUZIONE: Distingui gli impatti relativi al NUOVO requisito dai componenti già esistenti nel progetto. Segnala solo ciò che il requisito aggiunge o modifica.');
-
-        const result = parts.join('\n');
-        // Truncate to avoid prompt weight imbalance with small requirements
-        const MAX_PTB_CHARS = 2000;
-        return result.length > MAX_PTB_CHARS ? result.slice(0, MAX_PTB_CHARS) + '\n[…baseline troncata]' : result;
-    } catch {
-        console.warn('[generate-impact-map] Failed to format blueprint block, skipping');
-        return '';
-    }
-}
+// formatProjectBlueprintBlock — replaced by shared formatProjectTechnicalBlueprintBlock from formatters/project-blueprint-formatter
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public API
@@ -266,7 +217,9 @@ export async function generateImpactMap(
     }
 
     // Inject project technical blueprint (if available)
-    const blueprintBlock = formatProjectBlueprintBlock(projectTechnicalBlueprint);
+    const blueprintBlock = formatProjectTechnicalBlueprintBlock(projectTechnicalBlueprint, {
+        instruction: 'Distingui gli impatti relativi al NUOVO requisito dai componenti già esistenti nel progetto. Segnala solo ciò che il requisito aggiunge o modifica.',
+    });
     if (blueprintBlock) {
         userPromptParts.push(blueprintBlock);
     }
@@ -286,7 +239,7 @@ export async function generateImpactMap(
 
     const provider = getDefaultProvider();
     const responseContent = await provider.generateContent({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         temperature: 0.2,
         maxTokens: 2000,
         responseFormat: responseSchema as any,
