@@ -1,9 +1,9 @@
 /**
  * AI Action: Generate Project from Documentation
  *
- * Two-pass pipeline using gpt-4o-mini:
- *   Pass 1 → Extract project draft metadata
- *   Pass 2 → Extract technical blueprint (using sourceText + pass 1 output)
+ * Two-pass pipeline:
+ *   Pass 1 (gpt-4o-mini) → Extract project draft metadata
+ *   Pass 2 (gpt-4o)      → Extract technical blueprint (using sourceText + pass 1 output)
  *
  * Follows the same pattern as generate-impact-map.ts and generate-understanding.ts.
  * Does NOT persist anything — returns structured output for user review.
@@ -38,9 +38,16 @@ export interface TechnologyCatalogEntry {
     name: string;
 }
 
+export interface ActivityCatalogEntry {
+    code: string;
+    name: string;
+    group: string;
+}
+
 export interface GenerateProjectFromDocRequest {
     sourceText: string;
     technologyCatalog?: TechnologyCatalogEntry[];
+    activityCatalog?: ActivityCatalogEntry[];
     testMode?: boolean;
 }
 
@@ -106,8 +113,17 @@ const ProjectDraftSchema = z.object({
 });
 
 const ComponentTypeEnum = z.enum([
+    // Generic types
     'frontend', 'backend', 'database', 'integration', 'workflow',
     'reporting', 'security', 'infrastructure', 'external_system', 'other',
+    // Power Platform specific
+    'canvas_app', 'model_driven_app', 'dataverse_table', 'custom_connector',
+    'cloud_flow', 'power_automate_desktop', 'pcf_control',
+    // Backend specific
+    'api_controller', 'service_layer', 'repository', 'middleware',
+    'queue_processor', 'scheduled_job',
+    // Frontend specific
+    'page', 'component_library', 'state_manager', 'form', 'data_grid',
 ]);
 
 const DirectionEnum = z.enum(['inbound', 'outbound', 'bidirectional', 'unknown']).nullable().optional();
@@ -169,12 +185,13 @@ const TechnicalBlueprintSchema = z.object({
 export async function generateProjectFromDocumentation(
     request: GenerateProjectFromDocRequest,
 ): Promise<GenerateProjectFromDocResponse> {
-    const { sourceText, technologyCatalog } = request;
+    const { sourceText, technologyCatalog, activityCatalog } = request;
     const totalStart = Date.now();
     const provider = getDefaultProvider();
 
     console.log('[generate-project-from-doc] Starting, source text length:', sourceText.length,
-        'technologies:', technologyCatalog?.length ?? 0);
+        'technologies:', technologyCatalog?.length ?? 0,
+        'activities:', activityCatalog?.length ?? 0);
 
     // ── Pass 1: Project Draft Extraction ────────────────────────────
     const pass1Start = Date.now();
@@ -188,9 +205,9 @@ export async function generateProjectFromDocumentation(
     const pass1Schema = createProjectDraftResponseSchema();
 
     const pass1Raw = await provider.generateContent({
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-mini',
         temperature: 0.2,
-        maxTokens: 2000,
+        maxTokens: 2500,
         responseFormat: pass1Schema as any,
         systemPrompt: PROJECT_DRAFT_SYSTEM_PROMPT,
         userPrompt: pass1UserPrompt,
@@ -222,8 +239,32 @@ export async function generateProjectFromDocumentation(
     // ── Pass 2: Technical Blueprint Extraction ──────────────────────
     const pass2Start = Date.now();
 
+    // Resolve technology name from Pass1 technologyId
+    const resolvedTechName = projectDraft.technologyId && technologyCatalog
+        ? technologyCatalog.find(t => t.id === projectDraft.technologyId)?.name ?? null
+        : null;
+
+    // Build activity vocabulary block (max ~50 activities, grouped)
+    let activityVocabBlock = '';
+    if (activityCatalog && activityCatalog.length > 0) {
+        const grouped = new Map<string, string[]>();
+        for (const a of activityCatalog) {
+            const group = a.group || 'OTHER';
+            if (!grouped.has(group)) grouped.set(group, []);
+            grouped.get(group)!.push(a.name);
+        }
+        const lines = Array.from(grouped.entries())
+            .map(([group, names]) => `  ${group}: ${names.join(', ')}`)
+            .join('\n');
+        activityVocabBlock = `\n\nCATALOGO ATTIVITÀ DISPONIBILI (usa terminologia coerente con queste attività quando nomini componenti e integrazioni):\n${lines}`;
+    }
+
+    const pass2SourceText = sourceText.length > 12000
+        ? sourceText.slice(0, 12000) + '\n[... documento troncato per limiti di contesto ...]'
+        : sourceText;
+
     const pass2UserPrompt = [
-        `DOCUMENTAZIONE PROGETTUALE:\n\n${sourceText}`,
+        `DOCUMENTAZIONE PROGETTUALE:\n\n${pass2SourceText}`,
         `\nMETADATI PROGETTO ESTRATTI (dal pass precedente):`,
         `- Nome: ${projectDraft.name}`,
         `- Descrizione: ${projectDraft.description}`,
@@ -231,17 +272,20 @@ export async function generateProjectFromDocumentation(
         projectDraft.domain ? `- Dominio: ${projectDraft.domain}` : null,
         projectDraft.scope ? `- Scope: ${projectDraft.scope}` : null,
         projectDraft.methodology ? `- Metodologia: ${projectDraft.methodology}` : null,
+        resolvedTechName ? `- Tecnologia primaria: ${resolvedTechName}` : null,
+        activityVocabBlock || null,
     ].filter(Boolean).join('\n');
 
     const pass2Schema = createTechnicalBlueprintResponseSchema();
 
     const pass2Raw = await provider.generateContent({
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-mini',
         temperature: 0.2,
-        maxTokens: 3000,
+        maxTokens: 8000,
         responseFormat: pass2Schema as any,
         systemPrompt: TECHNICAL_BLUEPRINT_SYSTEM_PROMPT,
         userPrompt: pass2UserPrompt,
+        options: { timeout: 90000 },
     });
 
     const pass2Ms = Date.now() - pass2Start;

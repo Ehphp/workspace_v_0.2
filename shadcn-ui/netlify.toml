@@ -44,7 +44,7 @@
   timeout = 90
 
 [functions."ai-generate-project-from-documentation"]
-  timeout = 90
+  timeout = 120
 
 [functions."ai-requirement-understanding"]
   timeout = 60

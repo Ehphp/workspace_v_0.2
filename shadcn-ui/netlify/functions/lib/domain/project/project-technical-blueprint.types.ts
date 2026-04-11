@@ -23,7 +23,28 @@ export type BlueprintComponentType =
     | 'security'
     | 'infrastructure'
     | 'external_system'
-    | 'other';
+    | 'other'
+    // Power Platform specific
+    | 'canvas_app'
+    | 'model_driven_app'
+    | 'dataverse_table'
+    | 'custom_connector'
+    | 'cloud_flow'
+    | 'power_automate_desktop'
+    | 'pcf_control'
+    // Backend specific
+    | 'api_controller'
+    | 'service_layer'
+    | 'repository'
+    | 'middleware'
+    | 'queue_processor'
+    | 'scheduled_job'
+    // Frontend specific
+    | 'page'
+    | 'component_library'
+    | 'state_manager'
+    | 'form'
+    | 'data_grid';
 
 export type IntegrationDirection =
     | 'inbound'

@@ -198,6 +198,16 @@ COMPONENT TYPES AMMESSI:
 frontend, backend, database, workflow, reporting, security, infrastructure, other
 (NON usare "integration" o "external_system" come tipo componente → metti in integrations)
 
+TIPI SPECIFICI PER TECNOLOGIA (usa quando la tecnologia è nota):
+- Power Platform: canvas_app, model_driven_app, dataverse_table, custom_connector, cloud_flow, power_automate_desktop, pcf_control
+- Backend (.NET, Java, Node.js): api_controller, service_layer, repository, middleware, queue_processor, scheduled_job
+- Frontend (React, Angular, Vue): page, component_library, state_manager, form, data_grid
+
+ISTRUZIONE TECNOLOGIA:
+Se i metadati del progetto specificano una tecnologia primaria, DEVI usare i tipi specifici sopra indicati anziché i tipi generici.
+Ad esempio: per un progetto Power Platform, usa "canvas_app" invece di "frontend", "cloud_flow" invece di "workflow".
+Se la tecnologia non è tra quelle elencate, usa i tipi generici.
+
 Rispondi SOLO con JSON strutturato, senza testo aggiuntivo.`;
 
 export function createTechnicalBlueprintResponseSchema() {
@@ -229,9 +239,20 @@ export function createTechnicalBlueprintResponseSchema() {
                                 type: {
                                     type: 'string',
                                     enum: [
+                                        // Generic types
                                         'frontend', 'backend', 'database', 'integration',
                                         'workflow', 'reporting', 'security', 'infrastructure',
                                         'external_system', 'other',
+                                        // Power Platform specific
+                                        'canvas_app', 'model_driven_app', 'dataverse_table',
+                                        'custom_connector', 'cloud_flow', 'power_automate_desktop',
+                                        'pcf_control',
+                                        // Backend specific
+                                        'api_controller', 'service_layer', 'repository',
+                                        'middleware', 'queue_processor', 'scheduled_job',
+                                        // Frontend specific
+                                        'page', 'component_library', 'state_manager',
+                                        'form', 'data_grid',
                                     ],
                                 },
                                 description: { type: ['string', 'null'] },

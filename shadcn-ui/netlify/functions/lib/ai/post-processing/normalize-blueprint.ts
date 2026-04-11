@@ -241,6 +241,7 @@ function normalizeName(s: string): string {
 const INTEGRATION_COMPONENT_TYPES: Set<BlueprintComponentType> = new Set([
     'integration',
     'external_system',
+    'custom_connector',
 ]);
 
 /** Known external system name patterns → should be integrations, not components */
