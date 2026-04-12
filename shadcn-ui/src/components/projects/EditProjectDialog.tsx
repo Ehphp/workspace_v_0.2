@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FormFieldBlock } from '@/components/shared/FormFieldBlock';
 import { ProjectBlueprintTab } from './blueprint/ProjectBlueprintTab';
+import { ProjectActivitiesTab } from './activities/ProjectActivitiesTab';
 import { toast } from 'sonner';
 import type { Project, Technology } from '@/types/database';
 
@@ -114,9 +115,10 @@ export function EditProjectDialog({ open, onOpenChange, project, onSuccess }: Ed
                 </DialogHeader>
 
                 <Tabs defaultValue="general" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="general">General</TabsTrigger>
                         <TabsTrigger value="blueprint">Technical Blueprint</TabsTrigger>
+                        <TabsTrigger value="activities">Attività</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="general">
@@ -282,6 +284,10 @@ export function EditProjectDialog({ open, onOpenChange, project, onSuccess }: Ed
 
                     <TabsContent value="blueprint">
                         {project && <ProjectBlueprintTab projectId={project.id} />}
+                    </TabsContent>
+
+                    <TabsContent value="activities">
+                        {project && <ProjectActivitiesTab projectId={project.id} />}
                     </TabsContent>
                 </Tabs>
             </DialogContent>

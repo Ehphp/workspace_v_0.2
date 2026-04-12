@@ -136,11 +136,12 @@ export async function createProjectActivities(
  */
 export async function updateProjectActivity(
     id: string,
-    updates: Partial<Pick<CreateProjectActivityInput, 'name' | 'description' | 'baseHours' | 'interventionType' | 'effortModifier' | 'isEnabled' | 'position'>>,
+    updates: Partial<Pick<CreateProjectActivityInput, 'name' | 'description' | 'group' | 'baseHours' | 'interventionType' | 'effortModifier' | 'isEnabled' | 'position'>>,
 ): Promise<ProjectActivity> {
     const payload: Record<string, unknown> = {};
     if (updates.name !== undefined) payload.name = updates.name;
     if (updates.description !== undefined) payload.description = updates.description;
+    if (updates.group !== undefined) payload.group = updates.group;
     if (updates.baseHours !== undefined) payload.base_hours = updates.baseHours;
     if (updates.interventionType !== undefined) payload.intervention_type = updates.interventionType;
     if (updates.effortModifier !== undefined) payload.effort_modifier = updates.effortModifier;
