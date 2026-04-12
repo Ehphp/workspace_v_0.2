@@ -67,6 +67,9 @@ export function isActivityCompatible(
         // so existing call-sites that don't pass `technologies` still work.
     }
 
+    // ── Project-scoped activities are always compatible ──
+    if (activity.tech_category === 'PROJECT') return true;
+
     // ── Legacy string path ───────────────────────────
     return (
         activity.tech_category === technology.tech_category ||

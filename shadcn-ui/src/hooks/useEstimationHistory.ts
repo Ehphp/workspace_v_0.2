@@ -16,9 +16,11 @@ export interface EstimationHistoryItem {
     created_at: string;
     estimation_activities?: Array<{
         id: string;
-        activity_id: string;
+        activity_id: string | null;
+        project_activity_id?: string | null;
         is_ai_suggested: boolean;
         is_done: boolean;
+        project_activities?: { id: string; code: string; name: string; base_hours: number; group: string | null } | null;
     }>;
     estimation_drivers?: Array<{
         driver_id: string;
@@ -65,7 +67,7 @@ export function useEstimationHistory(
                 .from('estimations')
                 .select(`
                     *,
-                    estimation_activities (id, activity_id, is_ai_suggested, is_done),
+                    estimation_activities (id, activity_id, project_activity_id, is_ai_suggested, is_done, project_activities(id, code, name, base_hours, group)),
                     estimation_drivers (driver_id, selected_value),
                     estimation_risks (risk_id)
                 `, { count: 'exact' })

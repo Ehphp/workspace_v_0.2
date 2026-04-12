@@ -227,9 +227,11 @@ export function RequirementHeader({ requirement, onBack, refetchRequirement, pre
             },
             technology: techPreset ? { name: techPreset.name, category: techPreset.code } : undefined,
             activities: (latestEstimation.estimation_activities || []).map(ea => {
-                const activity = activities.find(a => a.id === ea.activity_id);
+                const activity = activities.find(a => a.id === ea.activity_id)
+                    ?? ea.project_activities
+                    ?? null;
                 return {
-                    code: activity?.code || ea.activity_id,
+                    code: activity?.code || ea.activity_id || ea.project_activity_id || '',
                     name: activity?.name || 'Unknown',
                     group: activity?.group || 'DEV',
                     hours: activity?.base_hours || 0,

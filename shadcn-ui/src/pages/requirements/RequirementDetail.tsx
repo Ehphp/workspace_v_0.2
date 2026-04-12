@@ -27,7 +27,7 @@ import {
 } from '@/lib/domain-save';
 import { filterActivitiesByTechnology } from '@/lib/technology-helpers';
 import { PageShell } from '@/components/layout/PageShell';
-import type { EstimationWithDetails } from '@/types/database';
+import type { Activity, EstimationWithDetails } from '@/types/database';
 import type { SeniorConsultantAnalysis } from '@/types/estimation';
 import type { RequirementUnderstanding } from '@/types/requirement-understanding';
 
@@ -61,10 +61,50 @@ export default function RequirementDetail() {
 
     // Load estimation master data
     const {
-        data: { presets, activities, drivers, risks },
+        data: { presets, activities: globalActivities, drivers, risks },
         loading: dataLoading,
         error: dataError
     } = useEstimationData();
+
+    // Fetch project-scoped activities (PRJ_*) and merge with global catalog
+    const [projectActivities, setProjectActivities] = useState<Activity[]>([]);
+    const [projectActivitiesReady, setProjectActivitiesReady] = useState(false);
+    useEffect(() => {
+        console.log('[PRJ_ACT] effect fired — requirementLoading:', requirementLoading, 'project?.id:', project?.id);
+        // Wait until requirement/project data is loaded before deciding
+        if (requirementLoading) return;
+        const pid = project?.id;
+        if (!pid) {
+            console.log('[PRJ_ACT] no project id — marking ready with 0 project activities');
+            setProjectActivities([]);
+            setProjectActivitiesReady(true);
+            return;
+        }
+        setProjectActivitiesReady(false);
+        supabase
+            .from('project_activities')
+            .select('id, code, name, base_hours, "group", intervention_type')
+            .eq('project_id', pid)
+            .eq('is_enabled', true)
+            .then(({ data: paRows }) => {
+                console.log('[PRJ_ACT] fetched', paRows?.length ?? 0, 'rows:', paRows?.map(p => p.code));
+                if (paRows && paRows.length > 0) {
+                    setProjectActivities(paRows.map(pa => ({
+                        ...pa,
+                        tech_category: 'PROJECT',
+                    })) as unknown as Activity[]);
+                } else {
+                    setProjectActivities([]);
+                }
+            })
+            .catch((err) => { console.error('[PRJ_ACT] fetch error:', err); setProjectActivities([]); })
+            .finally(() => { console.log('[PRJ_ACT] marking ready'); setProjectActivitiesReady(true); });
+    }, [requirementLoading, project?.id]);
+
+    const activities = useMemo(
+        () => [...globalActivities, ...projectActivities],
+        [globalActivities, projectActivities],
+    );
 
     // Estimation State Management
     const estimationState = useEstimationState({
@@ -184,26 +224,39 @@ export default function RequirementDetail() {
     // Hydrate estimation state from assigned/latest saved estimation
     // Uses the same logic as OverviewTab: assigned estimation first, then latest history
     useEffect(() => {
-        // Wait for master data to be loaded
-        if (activities.length === 0) return;
+        console.log('[HYDRATE] effect fired — activities:', activities.length,
+            'projReady:', projectActivitiesReady,
+            'hasSelections:', hasSelections,
+            'assignedEst:', !!assignedEstimation,
+            'historyLen:', estimationHistory.length,
+            'projActivities in merge:', activities.filter(a => (a as any).tech_category === 'PROJECT').length);
+        // Wait for master data AND project activities to be loaded
+        if (activities.length === 0) { console.log('[HYDRATE] skip: no activities'); return; }
+        if (!projectActivitiesReady) { console.log('[HYDRATE] skip: project activities not ready'); return; }
         // Don't overwrite user's in-progress selections
-        if (hasSelections) return;
+        if (hasSelections) { console.log('[HYDRATE] skip: hasSelections=true'); return; }
 
         const savedEstimation = assignedEstimation || (estimationHistory[0] as unknown as EstimationWithDetails) || null;
-        if (!savedEstimation?.estimation_activities?.length) return;
+        if (!savedEstimation?.estimation_activities?.length) { console.log('[HYDRATE] skip: no savedEstimation or no activities in it'); return; }
 
-        const activityIds = savedEstimation.estimation_activities.map(a => a.activity_id);
+        const activityIds = savedEstimation.estimation_activities
+            .map(a => a.activity_id ?? a.project_activity_id)
+            .filter((id): id is string => id != null);
         const aiSuggestedActivityIds = savedEstimation.estimation_activities
-            .filter(a => a.is_ai_suggested)
-            .map(a => a.activity_id);
+            .filter(a => a.is_ai_suggested && (a.activity_id != null || a.project_activity_id != null))
+            .map(a => (a.activity_id ?? a.project_activity_id) as string);
         const driverValues: Record<string, string> = {};
         (savedEstimation.estimation_drivers || []).forEach(d => {
             driverValues[d.driver_id] = d.selected_value;
         });
         const riskIds = (savedEstimation.estimation_risks || []).map(r => r.risk_id);
 
-        estimationState.hydrateFromEstimation({ activityIds, aiSuggestedActivityIds, driverValues, riskIds });
-    }, [assignedEstimation, estimationHistory, activities, hasSelections, estimationState]);
+        console.log('[HYDRATE] calling hydrateFromEstimation with', activityIds.length, 'IDs:', activityIds,
+            '— activities array has', activities.length, 'items,',
+            'matching:', activityIds.map(id => activities.find(a => a.id === id)?.code ?? 'NOT_FOUND'));
+
+        estimationState.hydrateFromEstimation({ activityIds, aiSuggestedActivityIds, driverValues, riskIds }, activities);
+    }, [assignedEstimation, estimationHistory, activities, projectActivitiesReady, hasSelections, estimationState]);
 
     // Apply requirement-scoped driver defaults when available (only if no saved estimation to hydrate from)
     useEffect(() => {
@@ -237,8 +290,8 @@ export default function RequirementDetail() {
         // If any significant difference, mark as unsaved
         if (totalDiff > 0.01 || multiplierDiff > 0.001 || riskDiff > 0) return true;
 
-        // Compare selected activities - check both count AND actual IDs
-        const savedActivityIds = (lastSaved.estimation_activities || []).map(a => a.activity_id);
+        // Compare selected activities - check both count AND actual IDs (exclude PRJ_* which use project_activity_id)
+        const savedActivityIds = (lastSaved.estimation_activities || []).map(a => a.activity_id).filter(Boolean) as string[];
         if (selectedActivityIds.length !== savedActivityIds.length) return true;
         const activityIdsMatch = selectedActivityIds.every(id => savedActivityIds.includes(id));
         if (!activityIdsMatch) return true;

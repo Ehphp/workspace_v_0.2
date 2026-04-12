@@ -159,7 +159,9 @@ export function HistoryTab({
                                                     </div>
                                                     <div className="space-y-1.5">
                                                         {selectedEstimations.single.estimation_activities?.map((estAct) => {
-                                                            const activity = activities.find(a => a.id === estAct.activity_id);
+                                                            const activity = activities.find(a => a.id === estAct.activity_id)
+                                                                ?? estAct.project_activities
+                                                                ?? null;
                                                             if (!activity) return null;
 
                                                             return (

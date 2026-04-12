@@ -14,11 +14,13 @@ import {
     resolveWizardDrivers,
     resolveWizardRisks,
 } from '@/lib/domain-save';
+import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { EstimationResult } from '@/types/estimation';
+import type { Activity } from '@/types/database';
 
 /** Project context for AI to avoid redundant questions */
 export interface ProjectContext {
@@ -186,10 +188,28 @@ export function RequirementWizard({ projectId, projectContext, onSuccess, onCanc
 
             // 2d. Domain orchestration — build traceability chain
             const masterData = await fetchEstimationMasterData();
+
+            // Merge project-scoped activities so PRJ_* codes resolve correctly
+            let allActivities: Activity[] = masterData.activities;
+            if (data.projectId) {
+                const { data: paRows } = await supabase
+                    .from('project_activities')
+                    .select('id, code, name, base_hours, "group", intervention_type')
+                    .eq('project_id', data.projectId)
+                    .eq('is_enabled', true);
+                if (paRows && paRows.length > 0) {
+                    const projActs = paRows.map(pa => ({
+                        ...pa,
+                        tech_category: 'PROJECT',
+                    })) as unknown as Activity[];
+                    allActivities = [...allActivities, ...projActs];
+                }
+            }
+
             const resolvedActivities = resolveWizardActivities(
                 data.selectedActivityCodes,
                 data.aiSuggestedActivityCodes,
-                masterData.activities,
+                allActivities,
             );
             const resolvedDrivers = resolveWizardDrivers(
                 data.selectedDriverValues,

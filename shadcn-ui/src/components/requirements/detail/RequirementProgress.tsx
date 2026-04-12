@@ -76,7 +76,9 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
     };
 
     const enrichedActivities = estimationActivities.map(estAct => {
-        const activity = activities.find(a => a.id === estAct.activity_id);
+        const activity = activities.find(a => a.id === estAct.activity_id)
+            ?? estAct.project_activities
+            ?? null;
         return { estAct, activity };
     }).filter(({ activity }) => activity != null);
 

@@ -182,10 +182,13 @@ export interface Estimation {
 export interface EstimationActivity {
   id: string;
   estimation_id: string;
-  activity_id: string;
+  activity_id: string | null;
+  project_activity_id?: string | null;
   is_ai_suggested: boolean;
   is_done: boolean;
   notes: string;
+  // Embedded via PostgREST join (populated when fetchEstimationDetails is called)
+  project_activities?: { id: string; code: string; name: string; base_hours: number; group: string | null; intervention_type: string | null } | null;
 }
 
 export interface EstimationDriver {

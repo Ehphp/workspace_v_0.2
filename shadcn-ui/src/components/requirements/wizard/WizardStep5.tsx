@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { fetchEstimationMasterData } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { calculateEstimation } from '@/lib/estimationEngine';
 import type { Activity, Driver, Risk } from '@/types/database';
 import type { WizardData } from '@/hooks/useWizardState';
@@ -42,7 +43,25 @@ export function WizardStep5({ data, onUpdate, onBack, onReset, onSave }: WizardS
   const loadMasterData = async () => {
     try {
       const masterData = await fetchEstimationMasterData();
-      setActivities(masterData.activities);
+      let allActivities: Activity[] = masterData.activities;
+
+      // Merge project-scoped activities so PRJ_* codes resolve to their base_hours
+      if (data.projectId) {
+        const { data: paRows } = await supabase
+          .from('project_activities')
+          .select('id, code, name, base_hours, "group", intervention_type')
+          .eq('project_id', data.projectId)
+          .eq('is_enabled', true);
+        if (paRows && paRows.length > 0) {
+          const projActs = paRows.map(pa => ({
+            ...pa,
+            tech_category: 'PROJECT',
+          })) as unknown as Activity[];
+          allActivities = [...allActivities, ...projActs];
+        }
+      }
+
+      setActivities(allActivities);
       setDrivers(masterData.drivers);
       setRisks(masterData.risks);
     } catch (err) {
@@ -340,8 +359,8 @@ export function WizardStep5({ data, onUpdate, onBack, onReset, onSave }: WizardS
                 <div
                   key={risk.code}
                   className={`group flex items-start space-x-2 p-2 border rounded-xl transition-all cursor-pointer ${isSelected
-                      ? 'border-rose-300 bg-gradient-to-r from-rose-50 to-red-50 shadow-sm'
-                      : 'border-slate-200 hover:border-rose-200 hover:bg-rose-50/30'
+                    ? 'border-rose-300 bg-gradient-to-r from-rose-50 to-red-50 shadow-sm'
+                    : 'border-slate-200 hover:border-rose-200 hover:bg-rose-50/30'
                     }`}
                   onClick={() => toggleRisk(risk.code)}
                 >

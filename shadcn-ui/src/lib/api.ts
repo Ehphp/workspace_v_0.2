@@ -229,7 +229,7 @@ export async function fetchEstimationDetails(estimationId: string) {
     .from('estimations')
     .select(`
       *,
-      estimation_activities(*),
+      estimation_activities(*, project_activities(id, code, name, base_hours, group, intervention_type)),
       estimation_drivers(*),
       estimation_risks(*)
     `)
@@ -416,6 +416,18 @@ export async function saveEstimationByIds(input: SaveEstimationByIdsInput): Prom
     throw new ApiError('Cannot save an estimation without activities', 400);
   }
 
+  // Guard: the live RPC only supports activity_id (global activities).
+  // Once the DB migration 20260412_rpc_project_activity_id.sql is applied,
+  // project_activity_id rows will be saved too. Until then, skip them
+  // to prevent the chk_activity_or_project_activity constraint violation.
+  // After DB migration applied: accept both activity_id and project_activity_id
+  const validActivities = input.activities.filter(
+    (a) => a.activity_id != null || (a.project_activity_id != null && a.project_activity_id !== '')
+  );
+  if (validActivities.length === 0) {
+    throw new ApiError('Cannot save: no resolvable activities', 400);
+  }
+
   const { data, error } = await supabase.rpc('save_estimation_atomic', {
     p_requirement_id: input.requirementId,
     p_user_id: input.userId,
@@ -425,7 +437,7 @@ export async function saveEstimationByIds(input: SaveEstimationByIdsInput): Prom
     p_risk_score: input.riskScore,
     p_contingency_percent: input.contingencyPercent,
     p_scenario_name: input.scenarioName,
-    p_activities: input.activities.map(a => ({
+    p_activities: validActivities.map(a => ({
       activity_id: a.activity_id,
       ...(a.project_activity_id ? { project_activity_id: a.project_activity_id } : {}),
       is_ai_suggested: a.is_ai_suggested,

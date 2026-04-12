@@ -43,7 +43,7 @@ export interface UseEstimationStateReturn {
         aiSuggestedActivityIds: string[];
         driverValues: Record<string, string>;
         riskIds: string[];
-    }) => void;
+    }, currentActivities?: Activity[]) => void;
     resetSelections: () => void;
 
     // Computed
@@ -189,14 +189,22 @@ export function useEstimationState({
         aiSuggestedActivityIds: string[];
         driverValues: Record<string, string>;
         riskIds: string[];
-    }) => {
+    }, currentActivities?: Activity[]) => {
         const { activityIds, aiSuggestedActivityIds, driverValues, riskIds } = params;
+        // Use caller-provided activities to avoid stale closure
+        const activityList = currentActivities ?? activities;
+
+        console.log('[hydrateFromEstimation] called with', activityIds.length, 'IDs',
+            'activityList:', activityList.length, '(closure:', activities.length, 'passed:', (currentActivities?.length ?? 'none') + ')',
+            'selectedTech:', (selectedTechnology?.code ?? 'null'));
 
         // Filter activities by technology compatibility
         const allowedActivityIds = activityIds.filter((id) => {
-            const activity = activities.find((a) => a.id === id);
-            if (!activity) return false;
-            return isActivityCompatible(activity, selectedTechnology, techs);
+            const activity = activityList.find((a) => a.id === id);
+            if (!activity) { console.log('[hydrateFromEstimation] NOT FOUND:', id); return false; }
+            const compat = isActivityCompatible(activity, selectedTechnology, techs);
+            if (!compat) { console.log('[hydrateFromEstimation] INCOMPATIBLE:', activity.code, 'tech_category:', activity.tech_category); }
+            return compat;
         });
 
         const removed = activityIds.length - allowedActivityIds.length;

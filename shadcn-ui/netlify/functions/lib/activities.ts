@@ -308,16 +308,19 @@ export async function fetchProjectActivities(
         return { activities: [], fetchMs: 0 };
     }
 
-    const supabase = getServerSupabase();
-    if (!supabase) {
-        console.warn('[project-activities] No Supabase client — skipping project activity fetch');
+    // Use service role key to bypass RLS — server-side trusted context
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+    if (!url || !key) {
+        console.warn('[project-activities] No Supabase credentials — skipping project activity fetch');
         return { activities: [], fetchMs: Date.now() - start };
     }
+    const supabase = createClient(url, key);
 
     try {
         const { data, error } = await supabase
             .from('project_activities')
-            .select('id, project_id, code, name, description, base_hours, "group", tech_category, sm_multiplier, lg_multiplier, intervention_type, effort_modifier, source_activity_code, blueprint_node_name, blueprint_node_type, ai_rationale, confidence')
+            .select('id, project_id, code, name, description, base_hours, "group", sm_multiplier, lg_multiplier, intervention_type, effort_modifier, source_activity_code, blueprint_node_name, blueprint_node_type, ai_rationale, confidence')
             .eq('project_id', projectId)
             .eq('is_enabled', true)
             .order('position', { ascending: true });
@@ -327,7 +330,11 @@ export async function fetchProjectActivities(
             return { activities: [], fetchMs: Date.now() - start };
         }
 
-        const activities = (data ?? []) as ProjectActivity[];
+        // project_activities table has no tech_category column — inject default
+        const activities = (data ?? []).map(row => ({
+            ...row,
+            tech_category: 'PROJECT' as string,
+        })) as ProjectActivity[];
 
         console.log('[project-activities] Fetched', {
             projectId,
