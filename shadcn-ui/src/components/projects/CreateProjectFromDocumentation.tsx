@@ -64,6 +64,7 @@ import type {
     BlueprintIntegration,
     BlueprintComponentType,
     IntegrationDirection,
+    StructuredDocumentDigest,
 } from '@/types/project-technical-blueprint';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -154,6 +155,7 @@ export function CreateProjectFromDocumentation({
     const [assumptions, setAssumptions] = useState<string[]>([]);
     const [missingInformation, setMissingInformation] = useState<string[]>([]);
     const [blueprintConfidence, setBlueprintConfidence] = useState<number>(0);
+    const [structuredDigest, setStructuredDigest] = useState<StructuredDocumentDigest | undefined>();
 
     // Step 2: Review — Project Activities (Pass 3)
     const [projectActivities, setProjectActivities] = useState<GeneratedProjectActivity[]>([]);
@@ -177,10 +179,13 @@ export function CreateProjectFromDocumentation({
                 return;
             }
 
-            const { projectDraft, technicalBlueprint } = response.result;
+            const { projectDraft, technicalBlueprint, structuredDigest: sdd } = response.result;
 
             // Populate draft state
             setDraft(projectDraft);
+
+            // Capture structured digest
+            setStructuredDigest(sdd ?? undefined);
 
             // Populate blueprint state
             setBlueprintSourceText(technicalBlueprint.sourceText ?? sourceText);
@@ -345,6 +350,7 @@ export function CreateProjectFromDocumentation({
                 assumptions,
                 missingInformation,
                 confidence: blueprintConfidence || undefined,
+                structuredDigest,
             });
 
             // 3. Save project custom activities (only enabled ones)
@@ -982,11 +988,10 @@ export function CreateProjectFromDocumentation({
                                 return (
                                     <div
                                         key={i}
-                                        className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${
-                                            isDisabled
-                                                ? 'bg-slate-50 border-slate-200 opacity-50'
-                                                : 'bg-white border-slate-200 hover:border-teal-200 hover:shadow-sm'
-                                        }`}
+                                        className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${isDisabled
+                                            ? 'bg-slate-50 border-slate-200 opacity-50'
+                                            : 'bg-white border-slate-200 hover:border-teal-200 hover:shadow-sm'
+                                            }`}
                                     >
                                         {/* Toggle */}
                                         <button

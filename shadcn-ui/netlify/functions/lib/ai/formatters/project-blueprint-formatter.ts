@@ -108,7 +108,31 @@ export function formatProjectTechnicalBlueprintBlock(
         const structuredBlock = lines.length > 1 ? lines.join('\n') : '';
         if (!structuredBlock) return '';
 
-        // ── 2. Append sourceText with budget logic ──────────────────
+        // ── 2. Try SDD (Structured Document Digest) first ───────────
+        const sdd = resolveSDD(ptb);
+        if (sdd) {
+            const sddBlock = formatSDDBlock(sdd);
+            if (sddBlock) {
+                const SDD_HEADER = '\n\nDIGEST STRUTTURATO DEL PROGETTO (analisi AI del documento sorgente — contesto fattuale per la stima):\n<<<PROJECT_DIGEST_START>>>\n';
+                const SDD_FOOTER = '\n<<<PROJECT_DIGEST_END>>>';
+
+                const overhead = SDD_HEADER.length + SDD_FOOTER.length;
+                const remaining = Math.max(0, MAX_TOTAL_CHARS - structuredBlock.length - overhead);
+
+                if (remaining >= 200) {
+                    const snippet = sddBlock.length > remaining
+                        ? sddBlock.slice(0, remaining) + '\n[…digest troncato]'
+                        : sddBlock;
+
+                    const fullBlock = structuredBlock + SDD_HEADER + snippet + SDD_FOOTER;
+                    return fullBlock.length > MAX_TOTAL_CHARS
+                        ? fullBlock.slice(0, MAX_TOTAL_CHARS) + '\n[…troncato]'
+                        : fullBlock;
+                }
+            }
+        }
+
+        // ── 3. Fallback: append sourceText with budget logic ────────
         const sourceText = resolveSourceText(ptb);
 
         if (!sourceText) {
@@ -164,4 +188,81 @@ function resolveSourceText(ptb: Record<string, unknown>): string | null {
         null;
 
     return text || null;
+}
+
+/**
+ * Resolve the Structured Document Digest from the PTB object.
+ * Handles both camelCase (domain) and snake_case (raw DB row) field names.
+ */
+function resolveSDD(ptb: Record<string, unknown>): Record<string, unknown> | null {
+    const sdd = ptb.structuredDigest ?? ptb.structured_digest;
+    if (sdd && typeof sdd === 'object' && !Array.isArray(sdd)) {
+        return sdd as Record<string, unknown>;
+    }
+    return null;
+}
+
+/**
+ * Format the SDD as readable Italian text for prompt injection.
+ * Produces a compact, structured summary with sections.
+ */
+function formatSDDBlock(sdd: Record<string, unknown>): string {
+    const sections: string[] = [];
+
+    // Functional areas
+    if (Array.isArray(sdd.functionalAreas) && sdd.functionalAreas.length > 0) {
+        const areaLines = sdd.functionalAreas.map((a: any) => {
+            const passages = Array.isArray(a?.keyPassages) && a.keyPassages.length > 0
+                ? ` [Evidenze: ${a.keyPassages.map((p: string) => `"${p}"`).join('; ')}]`
+                : '';
+            return `  • ${a?.title ?? '?'}: ${a?.description ?? ''}${passages}`;
+        });
+        sections.push(`AREE FUNZIONALI:\n${areaLines.join('\n')}`);
+    }
+
+    // Business entities
+    if (Array.isArray(sdd.businessEntities) && sdd.businessEntities.length > 0) {
+        const entityLines = sdd.businessEntities.map((e: any) =>
+            `  • ${e?.name ?? '?'}: ${e?.role ?? ''}`,
+        );
+        sections.push(`ENTITÀ DI BUSINESS:\n${entityLines.join('\n')}`);
+    }
+
+    // External systems
+    if (Array.isArray(sdd.externalSystems) && sdd.externalSystems.length > 0) {
+        const extLines = sdd.externalSystems.map((s: any) =>
+            `  • ${s?.name ?? '?'}: ${s?.interactionDescription ?? ''}`,
+        );
+        sections.push(`SISTEMI ESTERNI:\n${extLines.join('\n')}`);
+    }
+
+    // Technical constraints
+    if (Array.isArray(sdd.technicalConstraints) && sdd.technicalConstraints.length > 0) {
+        sections.push(`VINCOLI TECNICI:\n${sdd.technicalConstraints.map((c: string) => `  • ${c}`).join('\n')}`);
+    }
+
+    // Non-functional requirements
+    if (Array.isArray(sdd.nonFunctionalRequirements) && sdd.nonFunctionalRequirements.length > 0) {
+        sections.push(`REQUISITI NON FUNZIONALI:\n${sdd.nonFunctionalRequirements.map((r: string) => `  • ${r}`).join('\n')}`);
+    }
+
+    // Key passages (verbatim quotes)
+    if (Array.isArray(sdd.keyPassages) && sdd.keyPassages.length > 0) {
+        const passageLines = sdd.keyPassages.map((p: any) =>
+            `  • [${p?.label ?? '?'}]: "${p?.text ?? ''}"`,
+        );
+        sections.push(`PASSAGGI CHIAVE DAL DOCUMENTO:\n${passageLines.join('\n')}`);
+    }
+
+    // Ambiguities
+    if (Array.isArray(sdd.ambiguities) && sdd.ambiguities.length > 0) {
+        sections.push(`AMBIGUITÀ RILEVATE:\n${sdd.ambiguities.map((a: string) => `  • ${a}`).join('\n')}`);
+    }
+
+    // Document quality
+    if (sdd.documentQuality && typeof sdd.documentQuality === 'string') {
+        sections.push(`QUALITÀ DOCUMENTO: ${sdd.documentQuality}`);
+    }
+
+    return sections.join('\n\n');
 }

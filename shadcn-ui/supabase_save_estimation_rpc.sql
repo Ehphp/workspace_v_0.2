@@ -72,10 +72,13 @@ BEGIN
     RETURNING id INTO v_estimation_id;
 
     -- Step 2: Insert activities (required)
-    INSERT INTO estimation_activities (estimation_id, activity_id, is_ai_suggested, notes)
+    -- Supports both global activity_id and project-scoped project_activity_id
+    INSERT INTO estimation_activities (estimation_id, activity_id, project_activity_id, is_ai_suggested, notes)
     SELECT 
         v_estimation_id,
-        (item->>'activity_id')::UUID,
+        CASE WHEN (item->>'project_activity_id') IS NOT NULL THEN NULL
+             ELSE (item->>'activity_id')::UUID END,
+        (item->>'project_activity_id')::UUID,
         COALESCE((item->>'is_ai_suggested')::BOOLEAN, false),
         COALESCE(item->>'notes', '')
     FROM jsonb_array_elements(p_activities) AS item;

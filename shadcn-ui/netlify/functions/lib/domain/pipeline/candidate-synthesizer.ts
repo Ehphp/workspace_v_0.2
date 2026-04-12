@@ -36,6 +36,8 @@ export interface SynthesizerInput {
     signalSets: SignalSet[];
     /** Full activity catalog (pre-filtered by technology) */
     catalog: Activity[];
+    /** Optional project-scoped activities (merged into catalog for lookup) */
+    projectCatalog?: Activity[];
     /** Technology category code (e.g. 'POWER_PLATFORM') */
     techCategory: string;
     /** Optional configuration overrides */
@@ -131,6 +133,7 @@ export interface SynthesisDiagnostics {
     fromUnderstanding: number;
     fromKeyword: number;
     fromContext: number;
+    fromProjectActivity: number;
     /** Activities that had signals from multiple sources */
     mergedOverlaps: number;
     /** Final candidate count after scoring and cap */
@@ -169,9 +172,16 @@ export function synthesizeCandidates(input: SynthesizerInput): SynthesizedCandid
     const config = { ...DEFAULT_SYNTHESIZER_CONFIG, ...input.config };
 
     // Build catalog index for O(1) lookup
+    // Merge global catalog + project-scoped activities (project activities
+    // can shadow global ones by code — project-specific calibration wins)
     const catalogByCode = new Map<string, Activity>();
     for (const act of input.catalog) {
         catalogByCode.set(act.code, act);
+    }
+    if (input.projectCatalog) {
+        for (const act of input.projectCatalog) {
+            catalogByCode.set(act.code, act);
+        }
     }
 
     // ── Step 1+2: Collect and group signals by activityCode ──────────
@@ -211,6 +221,7 @@ export function synthesizeCandidates(input: SynthesizerInput): SynthesizedCandid
         keyword: new Set(),
         context: new Set(),
         manual: new Set(),
+        'project-activity': new Set(),
     };
 
     for (const entry of validEntries) {
@@ -231,6 +242,7 @@ export function synthesizeCandidates(input: SynthesizerInput): SynthesizedCandid
             understanding: 0,
             keyword: 0,
             projectContext: 0,
+            projectActivity: 0,
         };
 
         for (const [source, signals] of bySource) {
@@ -246,6 +258,7 @@ export function synthesizeCandidates(input: SynthesizerInput): SynthesizedCandid
                 case 'understanding': contributions.understanding = bestScore; break;
                 case 'keyword': contributions.keyword = bestScore; break;
                 case 'context': contributions.projectContext = bestScore; break;
+                case 'project-activity': contributions.projectActivity = bestScore; break;
             }
 
             // Track per-source activity counts
@@ -306,7 +319,7 @@ export function synthesizeCandidates(input: SynthesizerInput): SynthesizedCandid
     const totalSignals = input.signalSets.reduce((sum, ss) => sum + ss.signals.length, 0);
     const bySource: Record<ProvenanceSource, number> = {
         blueprint: 0, 'impact-map': 0, understanding: 0,
-        keyword: 0, context: 0, manual: 0,
+        keyword: 0, context: 0, manual: 0, 'project-activity': 0,
     };
     for (const ss of input.signalSets) {
         bySource[ss.source] = (bySource[ss.source] || 0) + ss.signals.length;
@@ -349,6 +362,7 @@ export function synthesizeCandidates(input: SynthesizerInput): SynthesizedCandid
             fromUnderstanding: sourceActivityCounts.understanding.size,
             fromKeyword: sourceActivityCounts.keyword.size,
             fromContext: sourceActivityCounts.context.size,
+            fromProjectActivity: sourceActivityCounts['project-activity'].size,
             mergedOverlaps,
             finalCount: capped.length,
         },

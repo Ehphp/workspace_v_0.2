@@ -66,6 +66,8 @@ export interface ScoreContributions {
     keyword: number;
     /** Score from project context biases (0 if not present) */
     projectContext: number;
+    /** Score from project-scoped activities (0 if not present) */
+    projectActivity: number;
 }
 
 /** A candidate activity with mandatory provenance */

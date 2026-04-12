@@ -201,7 +201,7 @@ export async function getPromptWithMeta(key: string): Promise<PromptResult> {
     // 3. Local fallback
     const fallback = LOCAL_FALLBACKS[key] ?? null;
     if (fallback) {
-        console.log(`[prompt-registry] Using local fallback for key "${key}".`);
+        console.debug(`[prompt-registry] Using local fallback for key "${key}".`);
         // Cache as single-record array
         const record: PromptRecord = {
             id: `local-${key}`,

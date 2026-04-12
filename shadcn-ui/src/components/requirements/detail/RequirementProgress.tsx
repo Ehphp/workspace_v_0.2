@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { CheckCircle2, Circle, Sparkles } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import type { EstimationWithDetails, Activity } from '@/types/database';
@@ -87,107 +88,138 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
     }, {} as Record<string, typeof enrichedActivities>);
 
     return (
-        <div className="space-y-4">
-            {/* Progress Bar */}
-            <div className="space-y-2">
-                <div className="flex justify-between items-end">
-                    <h3 className="text-sm font-medium text-slate-700">Progresso Implementazione</h3>
-                    <span className="text-2xl font-bold text-blue-600">{progress}%</span>
+        <TooltipProvider delayDuration={300}>
+            <div className="space-y-4">
+                {/* Progress Bar */}
+                <div className="space-y-2">
+                    <div className="flex justify-between items-end">
+                        <h3 className="text-sm font-medium text-slate-700">Progresso Implementazione</h3>
+                        <span className="text-2xl font-bold text-blue-600">{progress}%</span>
+                    </div>
+                    <Progress value={progress} className="h-2" />
                 </div>
-                <Progress value={progress} className="h-2" />
-            </div>
 
-            {/* Activity Checklist — grouped by phase */}
-            <div className="space-y-3">
-                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Attività ({estimationActivities.length})
-                </h4>
+                {/* Activity Checklist — grouped by phase */}
+                <div className="space-y-3">
+                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Attività ({estimationActivities.length})
+                    </h4>
 
-                {groupOrder.map(groupKey => {
-                    const items = grouped[groupKey];
-                    if (!items || items.length === 0) return null;
+                    {groupOrder.map(groupKey => {
+                        const items = grouped[groupKey];
+                        if (!items || items.length === 0) return null;
 
-                    const groupHours = items.reduce((sum, { activity }) => sum + (activity?.base_hours || 0), 0);
-                    const groupDone = items.filter(({ estAct }) => {
-                        return optimisticUpdates[estAct.id] !== undefined ? optimisticUpdates[estAct.id] : estAct.is_done;
-                    }).length;
+                        const groupHours = items.reduce((sum, { activity }) => sum + (activity?.base_hours || 0), 0);
+                        const groupDone = items.filter(({ estAct }) => {
+                            return optimisticUpdates[estAct.id] !== undefined ? optimisticUpdates[estAct.id] : estAct.is_done;
+                        }).length;
 
-                    return (
-                        <div key={groupKey} className="space-y-1.5">
-                            {/* Group header */}
-                            <div className="flex items-center justify-between px-1">
-                                <span className="text-[10px] font-semibold text-purple-400 uppercase tracking-wider">
-                                    {groupLabels[groupKey] || groupKey}
-                                </span>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] text-slate-400">
-                                        {groupDone}/{items.length}
+                        return (
+                            <div key={groupKey} className="space-y-1.5">
+                                {/* Group header */}
+                                <div className="flex items-center justify-between px-1">
+                                    <span className="text-[10px] font-semibold text-purple-400 uppercase tracking-wider">
+                                        {groupLabels[groupKey] || groupKey}
                                     </span>
-                                    <span className="text-[10px] font-medium text-slate-500">
-                                        {groupHours}h
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] text-slate-400">
+                                            {groupDone}/{items.length}
+                                        </span>
+                                        <span className="text-[10px] font-medium text-slate-500">
+                                            {groupHours}h
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
 
-                            {/* Group activities */}
-                            <div className="grid gap-1.5">
-                                {items.map(({ estAct, activity }) => {
-                                    const isDone = optimisticUpdates[estAct.id] !== undefined
-                                        ? optimisticUpdates[estAct.id]
-                                        : estAct.is_done;
-                                    const isUpdating = updating === estAct.id;
+                                {/* Group activities */}
+                                <div className="grid gap-1.5">
+                                    {items.map(({ estAct, activity }) => {
+                                        const isDone = optimisticUpdates[estAct.id] !== undefined
+                                            ? optimisticUpdates[estAct.id]
+                                            : estAct.is_done;
+                                        const isUpdating = updating === estAct.id;
+                                        const aiReason = estAct.notes && estAct.notes.trim().length > 0
+                                            ? estAct.notes
+                                            : activity!.description || null;
+                                        const hasReason = estAct.is_ai_suggested && aiReason;
 
-                                    return (
-                                        <div
-                                            key={estAct.id}
-                                            className={cn(
-                                                "group flex items-center gap-2 p-2 rounded-lg border transition-colors cursor-pointer",
-                                                isDone
-                                                    ? "bg-purple-50/50 border-purple-100"
-                                                    : "bg-white border-purple-200 hover:border-purple-300"
-                                            )}
-                                            onClick={() => !isUpdating && handleToggle(estAct.id, isDone)}
-                                        >
-                                            <div className={cn(
-                                                "shrink-0 transition-colors duration-200",
-                                                isDone ? "text-purple-600" : "text-slate-300 group-hover:text-purple-400"
-                                            )}>
-                                                {isDone ? (
-                                                    <CheckCircle2 className="w-4 h-4" />
-                                                ) : (
-                                                    <Circle className="w-4 h-4" />
+                                        const card = (
+                                            <div
+                                                key={estAct.id}
+                                                className={cn(
+                                                    "group flex items-center gap-2 p-2 rounded-lg border transition-colors cursor-pointer",
+                                                    isDone
+                                                        ? "bg-purple-50/50 border-purple-100"
+                                                        : "bg-white border-purple-200 hover:border-purple-300"
                                                 )}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
+                                                onClick={() => !isUpdating && handleToggle(estAct.id, isDone)}
+                                            >
                                                 <div className={cn(
-                                                    "font-medium text-[11px] transition-colors duration-200 truncate",
-                                                    isDone ? "text-slate-500 line-through" : "text-slate-800"
+                                                    "shrink-0 transition-colors duration-200",
+                                                    isDone ? "text-purple-600" : "text-slate-300 group-hover:text-purple-400"
                                                 )}>
-                                                    <span className="truncate">{activity!.name}</span>
-                                                    {estAct.is_ai_suggested && (
-                                                        <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-purple-500 text-white shrink-0 flex items-center gap-0.5">
-                                                            <Sparkles className="h-2 w-2" /> AI
-                                                        </span>
+                                                    {isDone ? (
+                                                        <CheckCircle2 className="w-4 h-4" />
+                                                    ) : (
+                                                        <Circle className="w-4 h-4" />
                                                     )}
                                                 </div>
-                                                <div className="text-[9px] text-slate-400 truncate">
-                                                    {activity!.code}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className={cn(
+                                                        "font-medium text-[11px] transition-colors duration-200 truncate",
+                                                        isDone ? "text-slate-500 line-through" : "text-slate-800"
+                                                    )}>
+                                                        <span className="truncate">{activity!.name}</span>
+                                                        {estAct.is_ai_suggested && (
+                                                            <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-purple-500 text-white shrink-0 flex items-center gap-0.5">
+                                                                <Sparkles className="h-2 w-2" /> AI
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-[9px] text-slate-400 truncate">
+                                                        {activity!.code}
+                                                    </div>
+                                                </div>
+                                                <div className={cn(
+                                                    "text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0",
+                                                    isDone ? "bg-slate-100 text-slate-400" : "bg-purple-50 text-purple-700"
+                                                )}>
+                                                    {activity!.base_hours}h
                                                 </div>
                                             </div>
-                                            <div className={cn(
-                                                "text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0",
-                                                isDone ? "bg-slate-100 text-slate-400" : "bg-purple-50 text-purple-700"
-                                            )}>
-                                                {activity!.base_hours}h
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                                        );
+
+                                        if (!hasReason) return card;
+
+                                        return (
+                                            <Tooltip key={estAct.id}>
+                                                <TooltipTrigger asChild>
+                                                    {card}
+                                                </TooltipTrigger>
+                                                <TooltipContent
+                                                    side="left"
+                                                    align="center"
+                                                    className="max-w-xs bg-white border border-purple-200 shadow-lg p-3"
+                                                >
+                                                    <div className="flex items-start gap-2">
+                                                        <Sparkles className="w-3.5 h-3.5 text-purple-500 shrink-0 mt-0.5" />
+                                                        <div>
+                                                            <p className="text-[10px] font-semibold text-purple-700 mb-1">Perché questa attività</p>
+                                                            <p className="text-[11px] text-slate-600 leading-relaxed">
+                                                                {aiReason}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })}
+                </div>
             </div>
-        </div>
+        </TooltipProvider>
     );
 }

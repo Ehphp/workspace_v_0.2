@@ -134,6 +134,8 @@ export interface ToolExecutionContext {
     activitiesCatalog: AgentActivity[];
     /** User ID for personalized RAG */
     userId?: string;
+    /** Project ID for scoped vector search of project_activities */
+    projectId?: string;
     /** Pre-fetched RAG context (avoids duplicate calls when agent uses query_history) */
     prefetchedRAG?: {
         hasExamples: boolean;
@@ -232,7 +234,8 @@ async function executeSearchCatalog(
             query,
             categories,
             limit,
-            0.4 // Lower threshold for broader discovery
+            0.4, // Lower threshold for broader discovery
+            ctx.projectId
         );
 
         console.log(`[tools]   pgvector: ${results.length} risultati (metodo: ${metrics.method}, ${metrics.latencyMs}ms)`);

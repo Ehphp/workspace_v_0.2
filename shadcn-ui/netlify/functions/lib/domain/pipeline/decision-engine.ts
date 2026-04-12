@@ -181,7 +181,7 @@ function mandatoryEnforcement(
                 activity,
                 score: 0.1,
                 sources: ['keyword-fallback'],
-                contributions: { blueprint: 0, impactMap: 0, understanding: 0, keyword: 0.1, projectContext: 0 },
+                contributions: { blueprint: 0, impactMap: 0, understanding: 0, keyword: 0.1, projectContext: 0, projectActivity: 0 },
                 provenance: [`mandatory-rule:${inclusion.matchedKeyword}`],
                 primarySource: 'keyword-fallback',
                 confidence: 0.5,
@@ -254,7 +254,8 @@ function coverageEnforcement(
 /**
  * Phase 4: Redundancy elimination.
  * If two selected candidates map to the same group prefix + same layer,
- * keep the higher-scored one.
+ * keep the higher-scored one. Exception: project-scoped activities (PRJ_ prefix)
+ * are preferred over global activities for the same group+layer, regardless of score.
  */
 function redundancyElimination(
     selected: ScoredCandidate[],
@@ -264,7 +265,7 @@ function redundancyElimination(
     const trace: DecisionTraceEntry[] = [];
     const seen = new Map<string, ScoredCandidate>(); // key = group+layer
 
-    // Sort by score descending so we keep the best
+    // Sort by score descending so we keep the best by default
     const sorted = [...selected].sort((a, b) => b.score - a.score);
     const kept: ScoredCandidate[] = [];
 
@@ -272,10 +273,32 @@ function redundancyElimination(
         const group = resolveGroupPrefix(candidate.activity.code);
         const layer = resolveLayer(candidate.activity.code, prefixMap) || 'unknown';
         const key = `${group}::${layer}`;
+        const isProjectActivity = candidate.activity.code.startsWith('PRJ_');
 
         const existing = seen.get(key);
         if (existing) {
-            // Redundant — remove the lower-scored one (current candidate, since sorted)
+            const existingIsProject = existing.activity.code.startsWith('PRJ_');
+
+            // Project activity replaces global activity for same slot
+            if (isProjectActivity && !existingIsProject) {
+                // Swap: evict the global, keep the project activity
+                const evictIdx = kept.indexOf(existing);
+                if (evictIdx >= 0) kept.splice(evictIdx, 1);
+                excluded.push(existing);
+                seen.set(key, candidate);
+                kept.push(candidate);
+                trace.push({
+                    step: 'redundancy-elimination',
+                    action: 'exclude',
+                    code: existing.activity.code,
+                    reason: `Sostituito da attività di progetto ${candidate.activity.code} (stesso gruppo "${group}" + layer "${layer}")`,
+                    score: existing.score,
+                    layer: layer as PipelineLayer,
+                });
+                continue;
+            }
+
+            // Otherwise: standard redundancy — remove the lower-scored one
             excluded.push(candidate);
             trace.push({
                 step: 'redundancy-elimination',
@@ -296,7 +319,8 @@ function redundancyElimination(
 
 /**
  * Phase 5: Top-K cap.
- * Remove lowest-scored candidates that aren't coverage-enforced or mandatory.
+ * Remove lowest-scored candidates that aren't coverage-enforced, mandatory,
+ * or project-scoped (PRJ_ prefix). Project activities get priority retention.
  */
 function topKCap(
     selected: ScoredCandidate[],
@@ -319,7 +343,11 @@ function topKCap(
 
     for (const candidate of sorted) {
         const code = candidate.activity.code;
-        if (removed < targetRemoval && !coverageCodes.has(code) && !mandatoryCodes.has(code)) {
+        const isProtected = coverageCodes.has(code)
+            || mandatoryCodes.has(code)
+            || code.startsWith('PRJ_');
+
+        if (removed < targetRemoval && !isProtected) {
             excluded.push(candidate);
             removed++;
             trace.push({

@@ -49,12 +49,15 @@ export function RequirementWizard({ projectId, projectContext, onSuccess, onCanc
     const { toast } = useToast();
     const [saving, setSaving] = useState(false);
 
-    // Store project context in wizard state on first render
+    // Store project context and projectId in wizard state on first render
     useEffect(() => {
         if (projectContext && !data.projectContext) {
             updateData({ projectContext });
         }
-    }, [projectContext, data.projectContext, updateData]);
+        if (projectId && !data.projectId) {
+            updateData({ projectId });
+        }
+    }, [projectContext, data.projectContext, projectId, data.projectId, updateData]);
 
     // Inherit technology from project — resolve code from id
     useEffect(() => {
@@ -248,10 +251,15 @@ export function RequirementWizard({ projectId, projectContext, onSuccess, onCanc
                 blueprintId: savedBlueprintId,
                 analysisId: domainResult.analysisId,
                 decisionId: domainResult.decisionId,
-                activities: data.selectedActivityCodes.map(code => ({
-                    code,
-                    isAiSuggested: data.aiSuggestedActivityCodes.includes(code)
-                })),
+                projectId: data.projectId,
+                activities: data.selectedActivityCodes.map(code => {
+                    const breakdown = data.activityBreakdown?.find(ab => ab.code === code);
+                    return {
+                        code,
+                        isAiSuggested: data.aiSuggestedActivityCodes.includes(code),
+                        reason: breakdown?.reason,
+                    };
+                }),
                 drivers: Object.entries(data.selectedDriverValues).map(([code, value]) => ({
                     code,
                     value

@@ -27,6 +27,7 @@ import { createAIHandler } from './lib/handler';
 import { getDefaultProvider } from './lib/ai/openai-client';
 import {
     fetchActivitiesServerSide,
+    fetchProjectActivities,
     formatActivitiesSummary,
 } from './lib/activities';
 import {
@@ -59,6 +60,7 @@ import { mergeProjectAndBlueprintRules } from './lib/domain/estimation/blueprint
 import type { ProjectTechnicalBlueprint } from './lib/domain/project/project-technical-blueprint.types';
 import type { EstimationContext } from './lib/domain/types/estimation';
 import { formatProjectTechnicalBlueprintBlock } from './lib/ai/formatters/project-blueprint-formatter';
+import { formatProjectActivitiesBlock } from './lib/ai/formatters/project-activities-formatter';
 import { computeAggregateConfidence } from './lib/domain/estimation/canonical-profile.service';
 import { computePipelineConfig } from './lib/domain/pipeline/pipeline-config';
 import { createPipelineLogger } from './lib/observability/pipeline-logger';
@@ -106,6 +108,8 @@ interface RequestBody {
     description: string;
     techPresetId: string;
     techCategory: string;
+    /** Project ID — used to fetch project-scoped activities */
+    projectId?: string;
     projectContext?: ProjectContext;
     /** Optional structured understanding from Requirement Understanding step */
     requirementUnderstanding?: Record<string, unknown>;
@@ -494,6 +498,12 @@ export const handler = createAIHandler<RequestBody>({
             body.techPresetId,
         );
 
+        // ─── Fetch project-scoped activities (for prompt enrichment) ────────
+        const projectActivityResult = await fetchProjectActivities(body.projectId);
+        const projectActivitiesBlock = formatProjectActivitiesBlock(
+            projectActivityResult.activities.length > 0 ? projectActivityResult.activities : undefined,
+        );
+
         // ─── Project Context Rules (deterministic, pre-AI) ──────────
         const interviewEstCtx: EstimationContext = {
             technologyId: body.techPresetId ?? null,
@@ -664,7 +674,7 @@ export const handler = createAIHandler<RequestBody>({
                 '\n(informazioni già note, NON chiedere domande su questi aspetti)\n';
         }
 
-        const userPrompt = `${projectContextSection}${formatUnderstandingBlock(body.requirementUnderstanding)}${formatImpactMapBlock(body.impactMap)}${formatBlueprintBlock(body.estimationBlueprint)}${formatProjectTechnicalBlueprintBlock(body.projectTechnicalBlueprint)}
+        const userPrompt = `${projectContextSection}${formatUnderstandingBlock(body.requirementUnderstanding)}${formatImpactMapBlock(body.impactMap)}${formatBlueprintBlock(body.estimationBlueprint)}${formatProjectTechnicalBlueprintBlock(body.projectTechnicalBlueprint)}${projectActivitiesBlock ? '\n' + projectActivitiesBlock : ''}
 STACK: ${techCategoryDescription}
 
 CATALOGO ATTIVITÀ DISPONIBILI (per ancorare la pre-stima):

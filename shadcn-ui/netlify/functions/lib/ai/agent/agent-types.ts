@@ -136,6 +136,14 @@ export interface AgentInput {
      */
     projectTechnicalBlueprintBlock?: string;
     /**
+     * Pre-formatted block listing project-scoped activities (PRJ_* codes).
+     * Injected into the user prompt so the agent PRIORITISES these
+     * project-specific activities over generic catalog entries.
+     */
+    projectScopedActivitiesBlock?: string;
+    /** Project ID for scoped vector search of project_activities */
+    projectId?: string;
+    /**
      * Pre-detected conflicts from the canonical profile (v1).
      * Injected into the ReflectionEngine prompt so the Senior Consultant
      * does not re-discover known artifact inconsistencies from scratch.

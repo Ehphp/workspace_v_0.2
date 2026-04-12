@@ -44,6 +44,40 @@ export interface ActivityFetchResult {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Project-scoped activity type
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A project-scoped activity (from `project_activities` table).
+ * Extends the base Activity shape with project-specific metadata.
+ */
+export interface ProjectActivity extends Activity {
+    /** UUID from project_activities.id */
+    id: string;
+    /** The project this activity belongs to */
+    project_id: string;
+    /** Intervention type: NEW, MODIFY, CONFIGURE, MIGRATE */
+    intervention_type: string;
+    /** Effort adjustment multiplier (0–2) */
+    effort_modifier: number;
+    /** Soft link to global activity code (traceability) */
+    source_activity_code: string | null;
+    /** Blueprint component this maps to */
+    blueprint_node_name: string | null;
+    /** Type of blueprint node */
+    blueprint_node_type: 'component' | 'dataDomain' | 'integration' | null;
+    /** AI reasoning for creation */
+    ai_rationale: string | null;
+    /** Confidence score 0–1 */
+    confidence: number | null;
+}
+
+export interface ProjectActivityFetchResult {
+    activities: ProjectActivity[];
+    fetchMs: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Supabase client (lazy singleton)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -253,6 +287,58 @@ export async function fetchActivitiesServerSide(
         }
 
         throw new Error('Activity fetch failed — no DB, no client fallback');
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Project-scoped Activity Fetch
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch project-scoped activities for a given projectId.
+ * Returns an empty array if projectId is missing or no project activities exist.
+ * These are domain-calibrated activities that should receive priority in estimation.
+ */
+export async function fetchProjectActivities(
+    projectId: string | undefined | null,
+): Promise<ProjectActivityFetchResult> {
+    const start = Date.now();
+
+    if (!projectId) {
+        return { activities: [], fetchMs: 0 };
+    }
+
+    const supabase = getServerSupabase();
+    if (!supabase) {
+        console.warn('[project-activities] No Supabase client — skipping project activity fetch');
+        return { activities: [], fetchMs: Date.now() - start };
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('project_activities')
+            .select('id, project_id, code, name, description, base_hours, "group", tech_category, sm_multiplier, lg_multiplier, intervention_type, effort_modifier, source_activity_code, blueprint_node_name, blueprint_node_type, ai_rationale, confidence')
+            .eq('project_id', projectId)
+            .eq('is_enabled', true)
+            .order('position', { ascending: true });
+
+        if (error) {
+            console.error('[project-activities] Supabase error:', error.message);
+            return { activities: [], fetchMs: Date.now() - start };
+        }
+
+        const activities = (data ?? []) as ProjectActivity[];
+
+        console.log('[project-activities] Fetched', {
+            projectId,
+            count: activities.length,
+            fetchMs: Date.now() - start,
+        });
+
+        return { activities, fetchMs: Date.now() - start };
+    } catch (err) {
+        console.error('[project-activities] Unexpected error:', err);
+        return { activities: [], fetchMs: Date.now() - start };
     }
 }
 

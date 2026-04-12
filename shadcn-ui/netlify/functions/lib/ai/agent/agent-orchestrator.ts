@@ -174,10 +174,12 @@ function buildUserPrompt(input: AgentInput, refinementPrompt?: string): string {
 
     // Inject Project Technical Blueprint block (architecture context)
     const ptbBlock = input.projectTechnicalBlueprintBlock || '';
+    // Inject project-scoped activities block (highest-priority activities)
+    const psaBlock = input.projectScopedActivitiesBlock || '';
 
     let prompt = `REQUISITO:
 ${input.description}
-${projectCtxStr}${ptbBlock ? '\n' + ptbBlock : ''}
+${projectCtxStr}${ptbBlock ? '\n' + ptbBlock : ''}${psaBlock ? '\n' + psaBlock : ''}
         TECNOLOGIA: ${input.technologyName || input.techCategory}
 
 RISPOSTE INTERVIEW TECNICA:
@@ -700,6 +702,7 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
         const toolCtx: ToolExecutionContext = {
             activitiesCatalog: input.activities,
             userId: input.userId,
+            projectId: input.projectId,
             prefetchedRAG: prefetchedRAGCtx ? {
                 hasExamples: prefetchedRAGCtx.hasExamples,
                 examples: prefetchedRAGCtx.examples,

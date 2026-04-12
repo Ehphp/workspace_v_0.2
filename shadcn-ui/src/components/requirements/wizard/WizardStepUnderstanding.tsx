@@ -69,6 +69,9 @@ export function WizardStepUnderstanding({
                 techCategory: data.techCategory || undefined,
                 techPresetId: data.technologyId || undefined,
                 projectContext: data.projectContext || undefined,
+                projectTechnicalBlueprint: data.projectTechnicalBlueprint
+                    ? (data.projectTechnicalBlueprint as unknown as Record<string, unknown>)
+                    : undefined,
             });
 
             if (result.success && result.understanding) {
@@ -89,7 +92,7 @@ export function WizardStepUnderstanding({
         } finally {
             generatingRef.current = false;
         }
-    }, [data.description, data.techCategory, data.technologyId, data.projectContext, onUpdate]);
+    }, [data.description, data.techCategory, data.technologyId, data.projectContext, data.projectTechnicalBlueprint, onUpdate]);
 
     const handleRegenerate = useCallback(() => {
         setOriginalUnderstanding(null);

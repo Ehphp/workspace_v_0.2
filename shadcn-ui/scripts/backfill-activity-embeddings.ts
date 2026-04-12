@@ -91,39 +91,63 @@ async function main() {
     const supabase = getSupabase();
     const openai = getOpenAI();
 
-    // Fetch activities without embeddings
-    const { data: activities, error } = await supabase
-        .from('activities')
+    // ─── Global activities ───────────────────────────────────────────────────
+    await backfillTable(supabase, openai, {
+        table: 'activities',
+        label: 'global activities',
+        filter: (q) => q.eq('active', true).is('embedding', null),
+    });
+
+    // ─── Project activities ──────────────────────────────────────────────────
+    await backfillTable(supabase, openai, {
+        table: 'project_activities',
+        label: 'project activities',
+        filter: (q) => q.eq('is_enabled', true).is('embedding', null),
+    });
+}
+
+interface BackfillOptions {
+    table: string;
+    label: string;
+    filter: (query: any) => any;
+}
+
+async function backfillTable(supabase: ReturnType<typeof getSupabase>, openai: OpenAI, opts: BackfillOptions) {
+    console.log(`\n── ${opts.label} ──────────────────────────────────────────\n`);
+
+    // Fetch rows without embeddings
+    let query = supabase
+        .from(opts.table)
         .select('id, code, name, description, group, tech_category, embedding')
-        .eq('active', true)
-        .is('embedding', null)
-        .order('tech_category')
-        .order('group');
+        .order('code');
+    query = opts.filter(query);
+    const { data: activities, error } = await query;
 
     if (error) {
-        console.error('❌ Failed to fetch activities:', error.message);
-        process.exit(1);
-    }
-
-    if (!activities || activities.length === 0) {
-        console.log('✅ All active activities already have embeddings. Nothing to do.');
+        console.error(`❌ Failed to fetch ${opts.label}:`, error.message);
         return;
     }
 
-    console.log(`📊 Found ${activities.length} activities without embeddings:\n`);
+    if (!activities || activities.length === 0) {
+        console.log(`✅ All ${opts.label} already have embeddings. Nothing to do.`);
+        return;
+    }
+
+    console.log(`📊 Found ${activities.length} ${opts.label} without embeddings:\n`);
 
     // Group by tech_category for reporting
     const byCategory = activities.reduce((acc, a) => {
-        acc[a.tech_category] = (acc[a.tech_category] || 0) + 1;
+        const cat = a.tech_category || 'PROJECT';
+        acc[cat] = (acc[cat] || 0) + 1;
         return acc;
     }, {} as Record<string, number>);
     Object.entries(byCategory).forEach(([cat, count]) => {
-        console.log(`   ${cat}: ${count} activities`);
+        console.log(`   ${cat}: ${count}`);
     });
     console.log();
 
     if (DRY_RUN) {
-        console.log('🏁 Dry run complete. Re-run without --dry-run to apply.\n');
+        console.log(`🏁 Dry run for ${opts.label} complete. Re-run without --dry-run to apply.\n`);
         return;
     }
 
@@ -136,16 +160,16 @@ async function main() {
         const batchNum = Math.floor(i / BATCH_SIZE) + 1;
         const totalBatches = Math.ceil(activities.length / BATCH_SIZE);
 
-        console.log(`⏳ Batch ${batchNum}/${totalBatches} (${batch.length} activities)...`);
+        console.log(`⏳ Batch ${batchNum}/${totalBatches} (${batch.length} ${opts.label})...`);
 
         try {
             const texts = batch.map(a => createSearchText(a));
             const embeddings = await generateBatch(openai, texts);
 
-            // Update each activity with its embedding
+            // Update each row with its embedding
             for (let j = 0; j < batch.length; j++) {
                 const { error: updateError } = await supabase
-                    .from('activities')
+                    .from(opts.table)
                     .update({
                         embedding: `[${embeddings[j].join(',')}]`,
                         embedding_updated_at: new Date().toISOString(),
@@ -172,7 +196,7 @@ async function main() {
         }
     }
 
-    console.log(`\n🏁 Backfill complete: ${successCount} updated, ${errorCount} errors\n`);
+    console.log(`\n🏁 ${opts.label} backfill: ${successCount} updated, ${errorCount} errors\n`);
 }
 
 main().catch(err => {

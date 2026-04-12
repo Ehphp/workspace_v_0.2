@@ -109,6 +109,7 @@ export const handler = createAIHandler<RequestBody>({
                 projectDraft: result.projectDraft,
                 technicalBlueprint: result.technicalBlueprint,
                 projectActivities: result.projectActivities,
+                structuredDigest: result.structuredDigest,
             },
             metadata: {
                 generatedAt: new Date().toISOString(),

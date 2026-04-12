@@ -20,9 +20,11 @@ import { retrieveRAGContext, getRAGSystemPromptAddition } from './lib/ai/rag';
 import { runAgentPipeline, AgentInput } from './lib/ai/agent';
 import {
     fetchActivitiesServerSide,
+    fetchProjectActivities,
     formatActivitiesCatalog,
     type Activity,
     type InterviewAnswerRecord,
+    type ProjectActivity,
 } from './lib/activities';
 import {
     mapBlueprintToActivities,
@@ -40,6 +42,7 @@ import {
     understandingToNormalizedSignals,
 } from './lib/understanding-signal-extractor';
 import { keywordToNormalizedSignals } from './lib/domain/pipeline/keyword-signal-adapter';
+import { projectActivitiesToSignals } from './lib/domain/pipeline/project-activity-signal-adapter';
 import {
     synthesizeCandidates,
     computeCandidateLimit,
@@ -55,6 +58,7 @@ import { mergeDriverSuggestions, mergeRiskSuggestions } from './lib/domain/estim
 import type { ProjectTechnicalBlueprint } from './lib/domain/project/project-technical-blueprint.types';
 import type { EstimationContext } from './lib/domain/types/estimation';
 import { formatProjectTechnicalBlueprintBlock } from './lib/ai/formatters/project-blueprint-formatter';
+import { formatProjectActivitiesBlock } from './lib/ai/formatters/project-activities-formatter';
 import { computeAggregateConfidence } from './lib/domain/estimation/canonical-profile.service';
 import { computePipelineConfig } from './lib/domain/pipeline/pipeline-config';
 import { createPipelineLogger } from './lib/observability/pipeline-logger';
@@ -159,6 +163,8 @@ interface RequestBody {
     answers: Record<string, InterviewAnswer>;
     /** @deprecated Activities are now fetched server-side. Kept for backward compat. */
     activities?: Activity[];
+    /** Project ID — used to fetch project-scoped activities */
+    projectId?: string;
     projectContext?: ProjectContext;
     /** Optional pre-estimate from Round 0 planner — used as anchoring context */
     preEstimate?: PreEstimate;
@@ -503,6 +509,10 @@ export const handler = createAIHandler<RequestBody>({
             throw new Error('Nessuna attività disponibile per questa tecnologia.');
         }
 
+        // ─── Project-scoped activity fetch ─────────────────────────────
+        const projectActivityResult = await fetchProjectActivities(body.projectId);
+        const projectActivities: ProjectActivity[] = projectActivityResult.activities;
+
         // ─── Project Context Rules (deterministic, pre-AI) ──────────
         const estimationCtx: EstimationContext = {
             technologyId: body.techPresetId ?? null,
@@ -576,6 +586,15 @@ export const handler = createAIHandler<RequestBody>({
             activityBiases: mergedRules.activityBiases,
         }));
 
+        // Step 2b: Project-scoped activity signals (highest weight: 4.0)
+        if (projectActivities.length > 0) {
+            signalSets.push(projectActivitiesToSignals(
+                projectActivities,
+                body.estimationBlueprint as Record<string, unknown> | undefined,
+            ));
+            console.log(`[ai-estimate-from-interview] Project activities injected: ${projectActivities.length} activities as signals`);
+        }
+
         // Step 3: Synthesize candidates
         // Body-level staleness: if understanding or impactMap was regenerated
         // AFTER the blueprint, the estimation is based on inconsistent artifacts.
@@ -620,6 +639,7 @@ export const handler = createAIHandler<RequestBody>({
         const candidateResult: SynthesizedCandidateSet = synthesizeCandidates({
             signalSets,
             catalog: fetchResult.activities,
+            projectCatalog: projectActivities.length > 0 ? projectActivities : undefined,
             techCategory: techCat,
             config: { maxCandidates: candidateLimit },
         });
@@ -684,6 +704,8 @@ export const handler = createAIHandler<RequestBody>({
             technologyName: body.techCategory,
             userId: ctx.userId, // Pass through from auth (may be undefined for unauthenticated Quick Estimate)
             projectTechnicalBlueprintBlock: formatProjectTechnicalBlueprintBlock(body.projectTechnicalBlueprint),
+            projectScopedActivitiesBlock: formatProjectActivitiesBlock(projectActivities.length > 0 ? projectActivities : undefined),
+            projectId: body.projectId,
             flags: {
                 reflectionEnabled: process.env.AI_REFLECTION !== 'false' && !pipelineConfig.skipReflection,
                 toolUseEnabled: process.env.AI_TOOL_USE !== 'false',

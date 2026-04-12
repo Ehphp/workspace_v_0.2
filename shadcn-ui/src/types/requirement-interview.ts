@@ -113,6 +113,8 @@ export interface RequirementInterviewRequest {
     techPresetId: string;
     /** Technology category (BACKEND_API, FRONTEND_WEB, etc.) */
     techCategory: string;
+    /** Optional project ID — used to include project-scoped activities */
+    projectId?: string;
     /** Optional project context to avoid redundant questions */
     projectContext?: {
         name: string;
@@ -191,6 +193,8 @@ export interface EstimationFromInterviewRequest {
     techCategory: string;
     /** All interview answers */
     answers: Record<string, InterviewAnswer>;
+    /** Optional project ID — used to include project-scoped activities */
+    projectId?: string;
     /** Optional project context to improve AI understanding */
     projectContext?: {
         name: string;

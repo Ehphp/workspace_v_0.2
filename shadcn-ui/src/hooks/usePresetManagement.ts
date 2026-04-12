@@ -369,7 +369,16 @@ export function usePresetManagement(userId: string | undefined) {
                 .eq('id', preset.id)
                 .eq('created_by', userId || '');
 
-            if (error) throw error;
+            if (error) {
+                // 409 = FK conflict — technology is referenced by requirements/projects
+                if (error.code === '23503' || error.message?.includes('violates foreign key')) {
+                    toast.error('Impossibile eliminare', {
+                        description: 'Questa tecnologia è utilizzata da uno o più requisiti o progetti. Rimuovi prima i riferimenti.',
+                    });
+                    return false;
+                }
+                throw error;
+            }
 
             toast.success('Tecnologia eliminata');
             loadData();

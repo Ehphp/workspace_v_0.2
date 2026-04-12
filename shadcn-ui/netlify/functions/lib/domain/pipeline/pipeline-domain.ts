@@ -84,6 +84,7 @@ export const SIGNAL_KINDS = [
     'project-context',
     'multi-crosscutting',
     'agent-discovered',
+    'project-activity-match',
 ] as const;
 export type SignalKind = (typeof SIGNAL_KINDS)[number];
 export const SignalKindSchema = z.enum(SIGNAL_KINDS);
@@ -98,6 +99,7 @@ export const PROVENANCE_SOURCES = [
     'keyword',
     'context',
     'manual',
+    'project-activity',
 ] as const;
 export type ProvenanceSource = (typeof PROVENANCE_SOURCES)[number];
 export const ProvenanceSourceSchema = z.enum(PROVENANCE_SOURCES);
@@ -130,6 +132,7 @@ export const LAYER_PRIORITY: Record<PipelineLayer, 'HIGH' | 'MEDIUM' | 'LOW'> = 
  * Keyword is lowest (heuristic).
  */
 export const SOURCE_WEIGHTS: Record<ProvenanceSource, number> = {
+    'project-activity': 4.0,
     blueprint: 3.0,
     'impact-map': 2.0,
     understanding: 1.5,

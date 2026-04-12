@@ -285,9 +285,12 @@ export interface SaveEstimationInput {
   analysisId?: string;
   decisionId?: string;
   seniorConsultantAnalysis?: Record<string, unknown>;
+  /** When set, PRJ_* activity codes are resolved from project_activities */
+  projectId?: string;
   activities: {
     code: string;
     isAiSuggested: boolean;
+    reason?: string;
   }[];
   drivers: {
     code: string;
@@ -307,11 +310,29 @@ export async function saveEstimation(input: SaveEstimationInput): Promise<string
   // 1. Get master data to map codes to IDs
   const masterData = await fetchEstimationMasterData();
 
-  // 2. Map codes → IDs
+  // 1b. Fetch project activities when projectId is provided (for PRJ_* codes)
+  let projectActivities: { id: string; code: string }[] = [];
+  if (input.projectId) {
+    const { data: paRows } = await supabase
+      .from('project_activities')
+      .select('id, code')
+      .eq('project_id', input.projectId)
+      .eq('is_enabled', true);
+    if (paRows) projectActivities = paRows;
+  }
+
+  // 2. Map codes → IDs (project activities for PRJ_* codes, global otherwise)
   const activities = input.activities.map((a) => {
+    // Check project activities first for PRJ_* codes
+    if (a.code.startsWith('PRJ_') && projectActivities.length > 0) {
+      const pa = projectActivities.find((p) => p.code === a.code);
+      if (pa) {
+        return { activity_id: null, project_activity_id: pa.id, is_ai_suggested: a.isAiSuggested, notes: a.reason || '', complexity_variant: null };
+      }
+    }
     const activity = masterData.activities.find((ma) => ma.code === a.code);
     if (!activity) return null;
-    return { activity_id: activity.id, is_ai_suggested: a.isAiSuggested, notes: '', complexity_variant: null };
+    return { activity_id: activity.id, project_activity_id: null, is_ai_suggested: a.isAiSuggested, notes: a.reason || '', complexity_variant: null };
   }).filter((i): i is NonNullable<typeof i> => i !== null);
 
   const drivers = input.drivers.map((d) => {
@@ -385,7 +406,7 @@ export interface SaveEstimationByIdsInput {
   blueprintId?: string | null;
   analysisId?: string | null;
   decisionId?: string | null;
-  activities: { activity_id: string; is_ai_suggested: boolean; notes?: string | null; complexity_variant?: string | null }[];
+  activities: { activity_id: string | null; project_activity_id?: string | null; is_ai_suggested: boolean; notes?: string | null; complexity_variant?: string | null }[];
   drivers?: { driver_id: string; selected_value: string }[] | null;
   risks?: { risk_id: string }[] | null;
 }
@@ -406,6 +427,7 @@ export async function saveEstimationByIds(input: SaveEstimationByIdsInput): Prom
     p_scenario_name: input.scenarioName,
     p_activities: input.activities.map(a => ({
       activity_id: a.activity_id,
+      ...(a.project_activity_id ? { project_activity_id: a.project_activity_id } : {}),
       is_ai_suggested: a.is_ai_suggested,
       notes: a.notes || '',
     })),

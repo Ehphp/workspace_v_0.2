@@ -74,6 +74,7 @@ import type {
     BlueprintComponentType,
     IntegrationDirection,
     ReviewStatus,
+    StructuredDocumentDigest,
 } from '@/types/project-technical-blueprint';
 import { BlueprintNodeReviewCard } from './blueprint/BlueprintNodeReviewCard';
 import { BlueprintRelationReviewCard, AddRelationInline } from './blueprint/BlueprintRelationReviewCard';
@@ -178,6 +179,7 @@ export function CreateProjectFromSources({
     const [assumptions, setAssumptions] = useState<string[]>([]);
     const [missingInformation, setMissingInformation] = useState<string[]>([]);
     const [blueprintConfidence, setBlueprintConfidence] = useState<number>(0);
+    const [structuredDigest, setStructuredDigest] = useState<StructuredDocumentDigest | undefined>();
     // v2 fields
     const [relations, setRelations] = useState<BlueprintRelation[]>([]);
     const [qualityFlags, setQualityFlags] = useState<string[]>([]);
@@ -291,6 +293,9 @@ export function CreateProjectFromSources({
 
             // Populate draft state
             setDraft(projectDraft);
+
+            // Capture structured digest
+            setStructuredDigest(response.result.structuredDigest ?? undefined);
 
             // Populate blueprint state
             setBlueprintSourceText(bundle.combinedSourceText);
@@ -466,6 +471,7 @@ export function CreateProjectFromSources({
                 coverage,
                 qualityFlags: qualityFlags.length > 0 ? qualityFlags : undefined,
                 reviewStatus: blueprintReviewStatus,
+                structuredDigest,
             });
 
             // 3. Save project custom activities (only enabled ones)
@@ -1253,11 +1259,10 @@ export function CreateProjectFromSources({
                                 return (
                                     <div
                                         key={i}
-                                        className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${
-                                            isDisabled
-                                                ? 'bg-slate-50 border-slate-200 opacity-50'
-                                                : 'bg-white border-slate-200 hover:border-teal-200 hover:shadow-sm'
-                                        }`}
+                                        className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${isDisabled
+                                            ? 'bg-slate-50 border-slate-200 opacity-50'
+                                            : 'bg-white border-slate-200 hover:border-teal-200 hover:shadow-sm'
+                                            }`}
                                     >
                                         <button
                                             onClick={() => toggleActivity(i)}

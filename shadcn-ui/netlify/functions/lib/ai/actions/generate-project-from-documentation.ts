@@ -49,6 +49,7 @@ export interface ActivityCatalogEntry {
     code: string;
     name: string;
     group: string;
+    base_hours?: number;
 }
 
 export interface GenerateProjectFromDocRequest {
@@ -92,7 +93,7 @@ export interface GenerateProjectFromDocResponse {
         confidence?: number;
     };
     projectActivities: GeneratedProjectActivity[];
-    structuredDigest: StructuredDocumentDigest;
+    structuredDigest?: StructuredDocumentDigest;
     metrics: {
         pass1Ms: number;
         pass2Ms: number;
@@ -257,9 +258,9 @@ export async function generateProjectFromDocumentation(
         ? `\n\nCATALOGO TECNOLOGIE DISPONIBILI (usa l'id corrispondente per technologyId):\n${technologyCatalog.map(t => `- id: "${t.id}" | code: "${t.code}" | name: "${t.name}"`).join('\n')}\n`
         : '';
 
-    // Pass1 only needs metadata — truncate to 5000 chars (enough for name, type, domain, tech)
-    const pass1SourceText = sourceText.length > 5000
-        ? sourceText.slice(0, 5000) + '\n[... documento troncato ...]'
+    // Pass1 now digests the full document (up to 20K chars) to produce metadata + SDD
+    const pass1SourceText = sourceText.length > 20000
+        ? sourceText.slice(0, 20000) + '\n[... documento troncato per limiti di contesto ...]'
         : sourceText;
     const pass1UserPrompt = `DOCUMENTAZIONE PROGETTUALE:\n\n${pass1SourceText}${techCatalogBlock}`;
     const pass1Schema = createProjectDraftResponseSchema();
@@ -267,12 +268,12 @@ export async function generateProjectFromDocumentation(
     const pass1Raw = await provider.generateContent({
         model: 'gpt-4o-mini',
         temperature: 0.2,
-        maxTokens: 1200,
+        maxTokens: 4000,
         responseFormat: pass1Schema as any,
         systemPrompt: PROJECT_DRAFT_SYSTEM_PROMPT,
         userPrompt: pass1UserPrompt,
-        reasoningEffort: 'minimal',
-        options: { timeout: 25000, maxRetries: 0 },
+        reasoningEffort: 'low',
+        options: { timeout: 90000, maxRetries: 0 },
     });
 
     const pass1Ms = Date.now() - pass1Start;
@@ -296,7 +297,13 @@ export async function generateProjectFromDocumentation(
         throw new Error('LLM output failed schema validation for project draft');
     }
 
-    const projectDraft = pass1Validation.data as ProjectDraftBlueprint;
+    const { structuredDigest, ...projectDraftFields } = pass1Validation.data;
+    const projectDraft = projectDraftFields as ProjectDraftBlueprint;
+
+    console.log('[generate-project-from-doc] SDD extracted:',
+        structuredDigest?.functionalAreas?.length ?? 0, 'functional areas,',
+        structuredDigest?.keyPassages?.length ?? 0, 'key passages,',
+        'quality:', structuredDigest?.documentQuality ?? 'N/A');
 
     // ── Pass 2: Technical Blueprint Extraction ──────────────────────
     const pass2Start = Date.now();
@@ -321,22 +328,37 @@ export async function generateProjectFromDocumentation(
         activityVocabBlock = `\n\nCATALOGO ATTIVITÀ DISPONIBILI (usa terminologia coerente con queste attività quando nomini componenti e integrazioni):\n${lines}`;
     }
 
-    const pass2SourceText = sourceText.length > 12000
-        ? sourceText.slice(0, 12000) + '\n[... documento troncato per limiti di contesto ...]'
-        : sourceText;
+    const pass2SourceText = structuredDigest
+        ? JSON.stringify(structuredDigest, null, 2)
+        : (sourceText.length > 12000
+            ? sourceText.slice(0, 12000) + '\n[... documento troncato per limiti di contesto ...]'
+            : sourceText);
 
-    const pass2UserPrompt = [
-        `DOCUMENTAZIONE PROGETTUALE:\n\n${pass2SourceText}`,
-        `\nMETADATI PROGETTO ESTRATTI (dal pass precedente):`,
-        `- Nome: ${projectDraft.name}`,
-        `- Descrizione: ${projectDraft.description}`,
-        projectDraft.projectType ? `- Tipo: ${projectDraft.projectType}` : null,
-        projectDraft.domain ? `- Dominio: ${projectDraft.domain}` : null,
-        projectDraft.scope ? `- Scope: ${projectDraft.scope}` : null,
-        projectDraft.methodology ? `- Metodologia: ${projectDraft.methodology}` : null,
-        resolvedTechName ? `- Tecnologia primaria: ${resolvedTechName}` : null,
-        activityVocabBlock || null,
-    ].filter(Boolean).join('\n');
+    const pass2UserPrompt = structuredDigest
+        ? [
+            `DIGEST STRUTTURATO DEL DOCUMENTO:\n\n${pass2SourceText}`,
+            `\nMETADATI PROGETTO ESTRATTI (dal pass precedente):`,
+            `- Nome: ${projectDraft.name}`,
+            `- Descrizione: ${projectDraft.description}`,
+            projectDraft.projectType ? `- Tipo: ${projectDraft.projectType}` : null,
+            projectDraft.domain ? `- Dominio: ${projectDraft.domain}` : null,
+            projectDraft.scope ? `- Scope: ${projectDraft.scope}` : null,
+            projectDraft.methodology ? `- Metodologia: ${projectDraft.methodology}` : null,
+            resolvedTechName ? `- Tecnologia primaria: ${resolvedTechName}` : null,
+            activityVocabBlock || null,
+        ].filter(Boolean).join('\n')
+        : [
+            `DOCUMENTAZIONE PROGETTUALE:\n\n${pass2SourceText}`,
+            `\nMETADATI PROGETTO ESTRATTI (dal pass precedente):`,
+            `- Nome: ${projectDraft.name}`,
+            `- Descrizione: ${projectDraft.description}`,
+            projectDraft.projectType ? `- Tipo: ${projectDraft.projectType}` : null,
+            projectDraft.domain ? `- Dominio: ${projectDraft.domain}` : null,
+            projectDraft.scope ? `- Scope: ${projectDraft.scope}` : null,
+            projectDraft.methodology ? `- Metodologia: ${projectDraft.methodology}` : null,
+            resolvedTechName ? `- Tecnologia primaria: ${resolvedTechName}` : null,
+            activityVocabBlock || null,
+        ].filter(Boolean).join('\n');
 
     const pass2Schema = createTechnicalBlueprintResponseSchema();
 
@@ -348,7 +370,7 @@ export async function generateProjectFromDocumentation(
         systemPrompt: TECHNICAL_BLUEPRINT_SYSTEM_PROMPT,
         userPrompt: pass2UserPrompt,
         reasoningEffort: 'low',
-        options: { timeout: 100000, maxRetries: 0 },
+        options: { timeout: 80000, maxRetries: 0 },
     });
 
     const pass2Ms = Date.now() - pass2Start;
@@ -455,12 +477,34 @@ export async function generateProjectFromDocumentation(
         ...normalizedBlueprint.integrations.map(i => `  - ${i.systemName} (${i.direction ?? '?'})`),
     ];
 
-    const pass3SourceText = sourceText.length > 2000
-        ? sourceText.slice(0, 2000) + '\n[... troncato ...]'
-        : sourceText;
+    // Build digest summary for Pass 3 (compact text from SDD or fallback to truncated source)
+    let pass3ContextBlock: string;
+    if (structuredDigest) {
+        const areaLines = (structuredDigest.functionalAreas ?? [])
+            .map(a => `  - ${a.title}: ${a.description}`).join('\n');
+        const entityLines = (structuredDigest.businessEntities ?? [])
+            .map(e => `  - ${e.name}: ${e.role}`).join('\n');
+        const extLines = (structuredDigest.externalSystems ?? [])
+            .map(s => `  - ${s.name}: ${s.interactionDescription}`).join('\n');
+        pass3ContextBlock = [
+            `CONTESTO DOCUMENTO (dal digest strutturato):`,
+            areaLines ? `\nAREE FUNZIONALI:\n${areaLines}` : null,
+            entityLines ? `\nENTITÀ DI BUSINESS:\n${entityLines}` : null,
+            extLines ? `\nSISTEMI ESTERNI:\n${extLines}` : null,
+            structuredDigest.technicalConstraints?.length
+                ? `\nVINCOLI TECNICI: ${structuredDigest.technicalConstraints.join('; ')}` : null,
+            structuredDigest.nonFunctionalRequirements?.length
+                ? `\nREQUISITI NON FUNZIONALI: ${structuredDigest.nonFunctionalRequirements.join('; ')}` : null,
+        ].filter(Boolean).join('\n');
+    } else {
+        const pass3SourceText = sourceText.length > 2000
+            ? sourceText.slice(0, 2000) + '\n[... troncato ...]'
+            : sourceText;
+        pass3ContextBlock = `DOCUMENTAZIONE PROGETTUALE (estratto):\n\n${pass3SourceText}`;
+    }
 
     const pass3UserPrompt = [
-        `DOCUMENTAZIONE PROGETTUALE (estratto):\n\n${pass3SourceText}`,
+        pass3ContextBlock,
         `\nMETADATI PROGETTO:`,
         `- Nome: ${projectDraft.name}`,
         `- Descrizione: ${projectDraft.description}`,
@@ -528,6 +572,7 @@ export async function generateProjectFromDocumentation(
             missingInformation: normalizedBlueprint.missingInformation,
             confidence: normalizedBlueprint.confidence,
         },
+        structuredDigest: structuredDigest ?? undefined,
         projectActivities,
         metrics: { pass1Ms, pass2Ms, pass3Ms, totalMs },
     };

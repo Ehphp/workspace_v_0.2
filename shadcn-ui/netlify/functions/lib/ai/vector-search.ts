@@ -72,7 +72,8 @@ export async function searchSimilarActivities(
     queryText: string,
     techCategories: string[],
     matchCount: number = DEFAULT_MATCH_COUNT,
-    matchThreshold: number = DEFAULT_MATCH_THRESHOLD
+    matchThreshold: number = DEFAULT_MATCH_THRESHOLD,
+    projectId?: string
 ): Promise<{ results: ActivitySearchResult[]; metrics: VectorSearchMetrics }> {
     const startTime = Date.now();
     const metrics: VectorSearchMetrics = {
@@ -113,6 +114,7 @@ export async function searchSimilarActivities(
             match_threshold: matchThreshold,
             match_count: matchCount,
             tech_categories: techCategories,
+            ...(projectId ? { p_project_id: projectId } : {}),
         });
 
         if (error) {

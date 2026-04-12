@@ -33,6 +33,8 @@ export interface WizardData {
   description: string;
   technologyId: string;
   techCategory: string;
+  /** Project (list) ID — used to fetch project-scoped activities */
+  projectId?: string;
   selectedActivityCodes: string[];
   aiSuggestedActivityCodes: string[];
   selectedDriverValues: Record<string, string>;
