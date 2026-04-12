@@ -13,7 +13,7 @@
   # Timeout for local development functions (in seconds)
   # patch-netlify-timeout.cjs is the primary mechanism;
   # this value is a fallback for CLI versions that read [dev].timeout
-  timeout = 120
+  timeout = 300
 
 [functions]
   # Configuration for all functions (including AI generation)
@@ -44,7 +44,7 @@
   timeout = 90
 
 [functions."ai-generate-project-from-documentation"]
-  timeout = 120
+  timeout = 300
 
 [functions."ai-requirement-understanding"]
   timeout = 60

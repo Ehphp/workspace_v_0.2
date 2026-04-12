@@ -23,6 +23,11 @@ export type {
     ProjectFromDocumentationResult,
     ProjectTechnicalBlueprintRow,
     CreateProjectTechnicalBlueprintInput,
+    StructuredDocumentDigest,
+    SDDFunctionalArea,
+    SDDBusinessEntity,
+    SDDExternalSystem,
+    SDDKeyPassage,
 } from '../../netlify/functions/lib/domain/project/project-technical-blueprint.types';
 
 // ============================================================================
@@ -41,6 +46,8 @@ export interface GenerateProjectFromDocumentationResponse {
             import('../../netlify/functions/lib/domain/project/project-technical-blueprint.types').ProjectTechnicalBlueprint,
             'projectId' | 'version' | 'id' | 'createdAt'
         >;
+        projectActivities?: import('../../netlify/functions/lib/domain/project/project-activity.types').GeneratedProjectActivity[];
+        structuredDigest?: import('../../netlify/functions/lib/domain/project/project-technical-blueprint.types').StructuredDocumentDigest;
     };
     error?: string;
     metadata?: {
@@ -52,6 +59,7 @@ export interface GenerateProjectFromDocumentationResponse {
         totalMs: number;
         pass1Ms: number;
         pass2Ms: number;
+        pass3Ms?: number;
         model: string;
     };
 }

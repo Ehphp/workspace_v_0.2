@@ -38,6 +38,7 @@ import { sanitizePromptInput, sanitizeDocumentInput } from '../sanitize';
 export interface AIHandlerContext {
     /** Validated user ID (if auth enabled and successful) */
     userId?: string;
+    requestId?: string;
     /** Original request event */
     event: HandlerEvent;
     /** Netlify context */

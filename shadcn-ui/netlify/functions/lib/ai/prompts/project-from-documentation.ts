@@ -2,18 +2,25 @@
  * System prompt and JSON schemas for the "Generate Project from Documentation"
  * AI pipeline.
  *
- * Two-pass pipeline:
- *   Pass 1 → Project Draft extraction (admin/context fields)
- *   Pass 2 → Technical Blueprint extraction (architectural baseline)
+ * Three-pass pipeline:
+ *   Pass 1 → Project Draft extraction + Structured Document Digest (SDD)
+ *   Pass 2 → Technical Blueprint extraction (from SDD, not raw text)
+ *   Pass 3 → Project Activities generation
  */
 
 // ============================================================================
-// Pass 1 — Project Draft Extraction
+// Pass 1 — Project Draft + Structured Document Digest (SDD)
 // ============================================================================
 
 export const PROJECT_DRAFT_SYSTEM_PROMPT = `Sei un analista senior specializzato nell'analisi di documentazione progettuale.
 
-Il tuo compito è estrarre i metadati strutturati di un progetto software da un testo di documentazione fornito dall'utente.
+Il tuo compito è DUPLICE:
+1. Estrarre i metadati strutturati di un progetto software dal documento
+2. Produrre un DIGEST STRUTTURATO del documento che catturi tutte le informazioni architetturalmente rilevanti
+
+═══════════════════════════════════════════════════════════════════
+PARTE A — METADATI PROGETTO
+═══════════════════════════════════════════════════════════════════
 
 REGOLE OBBLIGATORIE:
 - NON inventare dettagli non presenti nel testo
@@ -31,6 +38,68 @@ REGOLE OBBLIGATORIE:
 - Per "methodology" usa solo: AGILE, WATERFALL, HYBRID
 - "reasoning" spiega brevemente il processo di estrazione
 
+═══════════════════════════════════════════════════════════════════
+PARTE B — STRUCTURED DOCUMENT DIGEST (SDD)
+═══════════════════════════════════════════════════════════════════
+
+Il digest è una rappresentazione strutturata dell'INTERO documento che
+verrà usata da un altro modello AI (che NON avrà accesso al testo originale)
+per costruire il blueprint tecnico. Deve essere COMPLETO e ACCURATO.
+
+CAMPI DEL DIGEST:
+
+1. "functionalAreas" — Le aree funzionali principali del sistema.
+   Ogni area ha:
+   - "title": nome dell'area (es. "Gestione Candidature", "Reportistica")
+   - "description": descrizione sintetica (max 200 caratteri)
+   - "keyPassages": 1-3 citazioni VERBATIM dal documento (max 200 char ciascuna)
+   Estrai TUTTE le aree funzionali rilevanti, non solo le più evidenti.
+   Minimo 2, massimo 8 aree.
+
+2. "businessEntities" — Entità di business menzionate nel documento.
+   Ogni entità ha:
+   - "name": nome dell'entità (es. "Candidato", "Fattura", "Ordine")
+   - "role": ruolo nel sistema (es. "Entità principale", "Riferimento esterno")
+   Estrai TUTTE le entità di dominio chiaramente identificabili.
+
+3. "externalSystems" — Sistemi esterni o servizi di terze parti menzionati.
+   Ogni sistema ha:
+   - "name": nome del sistema (es. "SAP", "Outlook", "Active Directory")
+   - "interactionDescription": come interagisce col sistema (max 150 caratteri)
+   Includi SOLO sistemi chiaramente menzionati come esterni.
+
+4. "technicalConstraints" — Vincoli tecnici espliciti (es. "Must run on Azure",
+   "Deve supportare 1000 utenti concorrenti"). Array di stringhe.
+
+5. "nonFunctionalRequirements" — Requisiti non funzionali menzionati
+   (performance, security, scalability, compliance). Array di stringhe.
+
+6. "keyPassages" — Le 10-15 citazioni PIÙ IMPORTANTI dal documento originale.
+   Ogni passage ha:
+   - "label": etichetta di contesto (es. "architettura", "requisito-chiave", "vincolo")
+   - "text": citazione VERBATIM dal documento (max 200 caratteri)
+   REGOLE CRITICHE:
+   - Le citazioni DEVONO essere copiate ESATTAMENTE dal testo originale
+   - NON parafrasare, NON riassumere, NON inventare
+   - Seleziona passaggi che descrivono architettura, flussi, vincoli, decisioni tecniche
+   - Questi passaggi verranno usati come EVIDENCE dal modello successivo
+   - Minimo 5, massimo 15 passaggi
+
+7. "ambiguities" — Ambiguità o contraddizioni rilevate nel documento.
+   Array di stringhe descrittive.
+
+8. "documentQuality" — Valutazione della qualità/completezza del documento:
+   - "high": documento dettagliato con requisiti chiari e architettura definita
+   - "medium": documento parziale, alcuni requisiti chiari ma molte lacune
+   - "low": documento vago, poche informazioni tecniche concrete
+
+REGOLE DIGEST:
+- Il digest deve coprire TUTTO il documento, non solo le prime sezioni
+- Le keyPassages DEVONO essere citazioni VERBATIM (copiate esattamente)
+- NON omettere informazioni architetturalmente rilevanti
+- Se il documento è breve/vago, il digest sarà più corto — va bene
+- Il digest è l'UNICA fonte di informazione per il pass successivo
+
 Rispondi SOLO con JSON strutturato, senza testo aggiuntivo.`;
 
 export function createProjectDraftResponseSchema() {
@@ -42,6 +111,7 @@ export function createProjectDraftResponseSchema() {
             schema: {
                 type: 'object',
                 properties: {
+                    // ── Part A: Project Metadata ──
                     name: { type: 'string' },
                     description: { type: 'string' },
                     owner: { type: ['string', 'null'] },
@@ -56,12 +126,78 @@ export function createProjectDraftResponseSchema() {
                     assumptions: { type: 'array', items: { type: 'string' } },
                     missingFields: { type: 'array', items: { type: 'string' } },
                     reasoning: { type: ['string', 'null'] },
+                    // ── Part B: Structured Document Digest (SDD) ──
+                    structuredDigest: {
+                        type: 'object',
+                        properties: {
+                            functionalAreas: {
+                                type: 'array',
+                                items: {
+                                    type: 'object',
+                                    properties: {
+                                        title: { type: 'string' },
+                                        description: { type: 'string' },
+                                        keyPassages: { type: 'array', items: { type: 'string' } },
+                                    },
+                                    required: ['title', 'description', 'keyPassages'],
+                                    additionalProperties: false,
+                                },
+                            },
+                            businessEntities: {
+                                type: 'array',
+                                items: {
+                                    type: 'object',
+                                    properties: {
+                                        name: { type: 'string' },
+                                        role: { type: 'string' },
+                                    },
+                                    required: ['name', 'role'],
+                                    additionalProperties: false,
+                                },
+                            },
+                            externalSystems: {
+                                type: 'array',
+                                items: {
+                                    type: 'object',
+                                    properties: {
+                                        name: { type: 'string' },
+                                        interactionDescription: { type: 'string' },
+                                    },
+                                    required: ['name', 'interactionDescription'],
+                                    additionalProperties: false,
+                                },
+                            },
+                            technicalConstraints: { type: 'array', items: { type: 'string' } },
+                            nonFunctionalRequirements: { type: 'array', items: { type: 'string' } },
+                            keyPassages: {
+                                type: 'array',
+                                items: {
+                                    type: 'object',
+                                    properties: {
+                                        label: { type: 'string' },
+                                        text: { type: 'string' },
+                                    },
+                                    required: ['label', 'text'],
+                                    additionalProperties: false,
+                                },
+                            },
+                            ambiguities: { type: 'array', items: { type: 'string' } },
+                            documentQuality: { type: 'string', enum: ['high', 'medium', 'low'] },
+                        },
+                        required: [
+                            'functionalAreas', 'businessEntities', 'externalSystems',
+                            'technicalConstraints', 'nonFunctionalRequirements',
+                            'keyPassages', 'ambiguities', 'documentQuality',
+                        ],
+                        additionalProperties: false,
+                    },
                 },
                 required: [
                     'name', 'description', 'owner', 'technologyId',
                     'projectType', 'domain', 'scope', 'teamSize',
                     'deadlinePressure', 'methodology', 'confidence',
                     'assumptions', 'missingFields', 'reasoning',
+                    'structuredDigest',
                 ],
                 additionalProperties: false,
             },
@@ -73,11 +209,15 @@ export function createProjectDraftResponseSchema() {
 // Pass 2 — Technical Blueprint Extraction
 // ============================================================================
 
-export const TECHNICAL_BLUEPRINT_SYSTEM_PROMPT = `Sei un architetto software senior. Il tuo compito è estrarre un blueprint tecnico strutturato da un documento progettuale.
+export const TECHNICAL_BLUEPRINT_SYSTEM_PROMPT = `Sei un architetto software senior. Il tuo compito è estrarre un blueprint tecnico strutturato da un DIGEST STRUTTURATO di documentazione progettuale.
 
 Hai a disposizione:
-1. Il testo originale della documentazione
+1. Un Structured Document Digest (SDD) — prodotto da un analista che ha letto il documento originale
 2. I metadati del progetto già estratti (pass precedente)
+
+IMPORTANTE: NON hai accesso al documento originale. L'SDD è la tua UNICA fonte di informazione.
+L'SDD contiene aree funzionali, entità di business, sistemi esterni, vincoli tecnici, e
+citazioni verbatim (keyPassages) dal documento originale che puoi usare come evidence.
 
 ═══════════════════════════════════════════════════════════════════
 CLASSIFICAZIONE OBBLIGATORIA — 3 CATEGORIE SEPARATE
@@ -120,17 +260,18 @@ Ogni elemento DEVE apparire in UNA SOLA categoria. NESSUNA sovrapposizione.
 └─────────────────┴────────────────────────────────────────────────┘
 
 ═══════════════════════════════════════════════════════════════════
-EVIDENCE — ANCORAGGIO AL TESTO SORGENTE
+EVIDENCE — ANCORAGGIO AI KEY PASSAGES DEL DIGEST
 ═══════════════════════════════════════════════════════════════════
 
 Per ogni nodo (component, dataDomain, integration) DEVI fornire da 1 a 3
-evidenze testuali brevi estratte dal documento sorgente.
+evidenze testuali. Le evidenze DEVONO provenire dai keyPassages del digest
+(sia quelli globali che quelli nelle functionalAreas).
 
 REGOLE EVIDENCE:
 - Ogni evidence è un oggetto { sourceType: "source_text", snippet: "..." }
-- Lo snippet deve essere una citazione diretta dal documento (max 200 caratteri)
-- NON inventare snippet: se non c'è appoggio testuale, NON creare il nodo
-- Se un nodo è ragionevolmente deducibile ma senza citazione diretta,
+- Lo snippet deve essere copiato da un keyPassage del digest (max 200 caratteri)
+- NON inventare snippet: usa SOLO testo presente nei keyPassages
+- Se un nodo è ragionevolmente deducibile dall'SDD ma senza keyPassage diretto,
   puoi crearlo con evidence vuoto [] — verrà flaggato come weak_evidence
 
 ═══════════════════════════════════════════════════════════════════
@@ -146,7 +287,7 @@ Ogni relazione ha:
 - evidence: [] (array di EvidenceRef, opzionale)
 
 REGOLE RELATIONS:
-- Produci solo relazioni inferibili dal testo, NON inventare
+- Produci solo relazioni inferibili dal digest, NON inventare
 - Nessun self-loop (fromNodeId === toNodeId)
 - Se non riesci a produrre relazioni ragionevoli, restituisci array vuoto []
 - Massimo 20 relazioni
@@ -156,12 +297,12 @@ COVERAGE & QUALITY FLAGS
 ═══════════════════════════════════════════════════════════════════
 
 - "coverage": numero 0-1 che indica quanto il blueprint copre l'architettura
-  descritta nel documento. 1.0 = copertura completa, 0.3 = molto parziale.
+  descritta nel digest. 1.0 = copertura completa, 0.3 = molto parziale.
 - "qualityFlags": array di stringhe che segnalano problemi rilevati.
   Usa questi flag se applicabili:
   - "missing_relations" — nessuna relazione prodotta
   - "weak_evidence" — nodi senza citazioni testuali dirette
-  - "low_architectural_coverage" — il documento è troppo vago
+  - "low_architectural_coverage" — il digest è troppo vago
   - "empty_column_components" — nessun component trovato
   - "empty_column_data_domains" — nessun data domain trovato
   - "empty_column_integrations" — nessuna integration trovata
@@ -174,14 +315,14 @@ REGOLE OBBLIGATORIE
 STRUTTURA:
 - Lo STESSO elemento NON PUÒ apparire in multiple categorie
 - Minimo 2 components, massimo 10
-- Se il testo menziona dati di business → almeno 1 dataDomain
-- Se il testo menziona sistemi esterni → almeno 1 integration
+- Se il digest menziona dati di business (businessEntities) → almeno 1 dataDomain
+- Se il digest menziona sistemi esterni (externalSystems) → almeno 1 integration
 - Se non ci sono dati di business chiari → dataDomains può essere vuoto
 - Se non ci sono sistemi esterni chiari → integrations può essere vuoto
 
 QUALITÀ:
 - Resta a livello MACRO, project-level
-- NON inventare dettagli non presenti nel testo
+- NON inventare dettagli non presenti nel digest
 - NO endpoint specifici, NO classi, NO implementazioni fini
 - Ogni elemento deve essere significativo per un diagramma architetturale
 - NON generare elementi generici come "Database", "API", "Sistema"
@@ -190,9 +331,9 @@ QUALITÀ:
 
 METADATI:
 - "summary" deve essere un riassunto architetturale conciso (max 300 caratteri)
-- "architecturalNotes" cattura decisioni architetturali rilevanti dedotte dal testo
+- "architecturalNotes" cattura decisioni architetturali rilevanti dedotte dal digest
 - "assumptions" elenca ipotesi architetturali fatte
-- "missingInformation" deve SEMPRE essere valorizzato se ci sono ambiguità
+- "missingInformation" deve SEMPRE essere valorizzato se ci sono ambiguità (controlla il campo ambiguities del digest)
 
 COMPONENT TYPES AMMESSI:
 frontend, backend, database, workflow, reporting, security, infrastructure, other

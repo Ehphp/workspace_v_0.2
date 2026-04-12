@@ -17,7 +17,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DESIRED_TIMEOUT = 120; // seconds
+const DESIRED_TIMEOUT = 300; // seconds
 
 // Locate the Netlify CLI dev.js file
 // Support both direct and pnpm .pnpm store layouts

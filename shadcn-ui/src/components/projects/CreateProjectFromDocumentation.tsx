@@ -46,11 +46,16 @@ import {
     StickyNote,
     HelpCircle,
     RefreshCw,
+    ClipboardList,
+    ToggleLeft,
+    ToggleRight,
 } from 'lucide-react';
 import { generateProjectFromDocumentation } from '@/lib/project-documentation-api';
 import { createProject, fetchPresets } from '@/lib/api';
 import { createProjectTechnicalBlueprint } from '@/lib/project-technical-blueprint-repository';
+import { createProjectActivities } from '@/lib/project-activity-repository';
 import type { Technology } from '@/types/database';
+import type { GeneratedProjectActivity, InterventionType, ActivityGroup } from '@/types/project-activity';
 import type {
     ProjectDraftBlueprint,
     ProjectFromDocumentationResult,
@@ -150,6 +155,10 @@ export function CreateProjectFromDocumentation({
     const [missingInformation, setMissingInformation] = useState<string[]>([]);
     const [blueprintConfidence, setBlueprintConfidence] = useState<number>(0);
 
+    // Step 2: Review — Project Activities (Pass 3)
+    const [projectActivities, setProjectActivities] = useState<GeneratedProjectActivity[]>([]);
+    const [disabledActivities, setDisabledActivities] = useState<Set<number>>(new Set());
+
     // ── Generate ────────────────────────────────────────────────────
     const handleGenerate = useCallback(async () => {
         setPhase('generating');
@@ -183,6 +192,11 @@ export function CreateProjectFromDocumentation({
             setAssumptions(technicalBlueprint.assumptions ?? []);
             setMissingInformation(technicalBlueprint.missingInformation ?? []);
             setBlueprintConfidence(technicalBlueprint.confidence ?? 0);
+
+            // Populate project activities (Pass 3)
+            console.log('[CreateProjectFromDoc] Raw response.result.projectActivities:', response.result.projectActivities);
+            console.log('[CreateProjectFromDoc] Activities count from API:', response.result.projectActivities?.length ?? 'undefined/null');
+            setProjectActivities(response.result.projectActivities ?? []);
 
             setPhase('review');
         } catch (err) {
@@ -251,6 +265,50 @@ export function CreateProjectFromDocumentation({
         setDataDomains((prev) => prev.filter((_, i) => i !== index));
     };
 
+    // ── Project Activity CRUD ───────────────────────────────────────
+    const toggleActivity = (index: number) => {
+        setDisabledActivities((prev) => {
+            const next = new Set(prev);
+            if (next.has(index)) next.delete(index);
+            else next.add(index);
+            return next;
+        });
+    };
+
+    const updateActivity = <K extends keyof GeneratedProjectActivity>(
+        index: number,
+        field: K,
+        value: GeneratedProjectActivity[K],
+    ) => {
+        setProjectActivities((prev) =>
+            prev.map((a, i) => (i === index ? { ...a, [field]: value } : a)),
+        );
+    };
+
+    const removeActivity = (index: number) => {
+        setProjectActivities((prev) => prev.filter((_, i) => i !== index));
+    };
+
+    const addActivity = () => {
+        setProjectActivities((prev) => [
+            ...prev,
+            {
+                code: `CUSTOM_${prev.length + 1}`,
+                name: '',
+                description: '',
+                group: 'DEV' as ActivityGroup,
+                baseHours: 1.0,
+                interventionType: 'NEW' as InterventionType,
+                effortModifier: 1.0,
+                sourceActivityCode: null,
+                blueprintNodeName: null,
+                blueprintNodeType: null,
+                aiRationale: 'Aggiunta manuale dall\'utente',
+                confidence: 1.0,
+            },
+        ]);
+    };
+
     // ── Save ────────────────────────────────────────────────────────
     const handleSave = useCallback(async () => {
         if (!user || !currentOrganization || !draft) return;
@@ -289,6 +347,35 @@ export function CreateProjectFromDocumentation({
                 confidence: blueprintConfidence || undefined,
             });
 
+            // 3. Save project custom activities (only enabled ones)
+            console.log('[CreateProjectFromDoc] projectActivities state:', projectActivities.length, 'items');
+            console.log('[CreateProjectFromDoc] disabledActivities:', [...disabledActivities]);
+            const enabledActivities = projectActivities
+                .filter((_, i) => !disabledActivities.has(i))
+                .map((a, i) => ({
+                    code: a.code,
+                    name: a.name,
+                    description: a.description,
+                    group: a.group,
+                    baseHours: a.baseHours,
+                    interventionType: a.interventionType,
+                    effortModifier: a.effortModifier,
+                    sourceActivityCode: a.sourceActivityCode,
+                    blueprintNodeName: a.blueprintNodeName,
+                    blueprintNodeType: a.blueprintNodeType,
+                    aiRationale: a.aiRationale,
+                    confidence: a.confidence,
+                    isEnabled: true,
+                    position: i,
+                }));
+            console.log('[CreateProjectFromDoc] enabledActivities to save:', enabledActivities.length);
+            if (enabledActivities.length > 0) {
+                const savedActivities = await createProjectActivities(project.id, enabledActivities);
+                console.log('[CreateProjectFromDoc] Saved activities:', savedActivities.length);
+            } else {
+                console.warn('[CreateProjectFromDoc] No enabled activities to save');
+            }
+
             toast.success('Progetto creato con successo da documentazione');
             onSuccess();
         } catch (err) {
@@ -299,7 +386,8 @@ export function CreateProjectFromDocumentation({
     }, [
         user, currentOrganization, draft, blueprintSourceText, summary,
         components, dataDomains, integrations, architecturalNotes,
-        assumptions, missingInformation, blueprintConfidence, onSuccess,
+        assumptions, missingInformation, blueprintConfidence,
+        projectActivities, disabledActivities, onSuccess,
     ]);
 
     // ── Render: Input Phase ─────────────────────────────────────────
@@ -816,6 +904,216 @@ export function CreateProjectFromDocumentation({
                             <p className="text-xs text-slate-400 italic py-2">No data domains extracted.</p>
                         )}
                     </div>
+                </div>
+
+                {/* Section C: Project Activities */}
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <Label className="text-slate-700 text-sm font-medium flex items-center gap-1.5">
+                            <ClipboardList className="w-3.5 h-3.5 text-teal-500" />
+                            Attività Progetto ({projectActivities.length})
+                        </Label>
+                        <Button size="sm" variant="outline" onClick={addActivity} className="h-7 text-xs">
+                            <Plus className="w-3 h-3 mr-1" /> Aggiungi
+                        </Button>
+                    </div>
+
+                    {/* Summary bar */}
+                    {projectActivities.length > 0 && (() => {
+                        const enabledActs = projectActivities.filter((_, i) => !disabledActivities.has(i));
+                        const totalEffective = enabledActs.reduce((s, a) => s + a.baseHours * a.effortModifier, 0);
+                        const byGroup = (['ANALYSIS', 'DEV', 'TEST', 'OPS', 'GOVERNANCE'] as ActivityGroup[]).map(g => ({
+                            group: g,
+                            count: enabledActs.filter(a => a.group === g).length,
+                            hours: enabledActs.filter(a => a.group === g).reduce((s, a) => s + a.baseHours * a.effortModifier, 0),
+                        })).filter(g => g.count > 0);
+                        const groupColors: Record<string, string> = {
+                            ANALYSIS: 'bg-amber-100 text-amber-700',
+                            DEV: 'bg-blue-100 text-blue-700',
+                            TEST: 'bg-green-100 text-green-700',
+                            OPS: 'bg-purple-100 text-purple-700',
+                            GOVERNANCE: 'bg-slate-200 text-slate-700',
+                        };
+                        return (
+                            <div className="p-3 rounded-lg bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-100 space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-semibold text-teal-700">
+                                        {enabledActs.length} attive / {projectActivities.length} totali
+                                    </span>
+                                    <span className="text-sm font-bold text-teal-800">
+                                        {totalEffective.toFixed(1)}h stimate
+                                    </span>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {byGroup.map(g => (
+                                        <span key={g.group} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${groupColors[g.group]}`}>
+                                            {g.group} {g.count} · {g.hours.toFixed(1)}h
+                                        </span>
+                                    ))}
+                                </div>
+                                {/* Effort bar */}
+                                <div className="flex h-2 rounded-full overflow-hidden bg-slate-200">
+                                    {byGroup.map(g => (
+                                        <div
+                                            key={g.group}
+                                            className={`${groupColors[g.group].split(' ')[0].replace('100', '400')}`}
+                                            style={{ width: `${(g.hours / totalEffective) * 100}%` }}
+                                            title={`${g.group}: ${g.hours.toFixed(1)}h`}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    {projectActivities.length > 0 ? (
+                        <div className="space-y-1.5">
+                            {projectActivities.map((act, i) => {
+                                const isDisabled = disabledActivities.has(i);
+                                const interventionColors: Record<string, string> = {
+                                    NEW: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                                    MODIFY: 'bg-amber-100 text-amber-700 border-amber-200',
+                                    CONFIGURE: 'bg-sky-100 text-sky-700 border-sky-200',
+                                    MIGRATE: 'bg-violet-100 text-violet-700 border-violet-200',
+                                };
+                                const groupIcons: Record<string, string> = {
+                                    ANALYSIS: '🔍', DEV: '⚙️', TEST: '🧪', OPS: '🚀', GOVERNANCE: '📋',
+                                };
+                                return (
+                                    <div
+                                        key={i}
+                                        className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${
+                                            isDisabled
+                                                ? 'bg-slate-50 border-slate-200 opacity-50'
+                                                : 'bg-white border-slate-200 hover:border-teal-200 hover:shadow-sm'
+                                        }`}
+                                    >
+                                        {/* Toggle */}
+                                        <button
+                                            onClick={() => toggleActivity(i)}
+                                            className="mt-0.5 shrink-0"
+                                            title={isDisabled ? 'Attiva' : 'Disattiva'}
+                                        >
+                                            {isDisabled ? (
+                                                <ToggleLeft className="w-5 h-5 text-slate-300" />
+                                            ) : (
+                                                <ToggleRight className="w-5 h-5 text-teal-500" />
+                                            )}
+                                        </button>
+
+                                        {/* Main content */}
+                                        <div className="flex-1 min-w-0 space-y-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="text-base" title={act.group}>{groupIcons[act.group] ?? '📌'}</span>
+                                                <Input
+                                                    value={act.name}
+                                                    onChange={(e) => updateActivity(i, 'name', e.target.value)}
+                                                    disabled={isDisabled}
+                                                    className="text-sm h-7 font-semibold flex-1 min-w-[200px] border-transparent hover:border-slate-200 focus:border-slate-300 bg-transparent px-1"
+                                                    placeholder="Nome attività"
+                                                />
+                                                <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 shrink-0 ${interventionColors[act.interventionType]}`}>
+                                                    {act.interventionType}
+                                                </Badge>
+                                                <span className="text-xs font-mono font-bold text-slate-600 shrink-0">
+                                                    {(act.baseHours * act.effortModifier).toFixed(1)}h
+                                                </span>
+                                            </div>
+                                            <Input
+                                                value={act.description}
+                                                onChange={(e) => updateActivity(i, 'description', e.target.value)}
+                                                disabled={isDisabled}
+                                                className="text-xs h-6 text-slate-500 border-transparent hover:border-slate-200 focus:border-slate-300 bg-transparent px-1"
+                                                placeholder="Descrizione"
+                                            />
+                                            {/* Metadata row */}
+                                            <div className="flex items-center gap-3 text-[10px] text-slate-400 px-1">
+                                                <span className="font-mono">{act.code}</span>
+                                                {act.sourceActivityCode && (
+                                                    <span>← {act.sourceActivityCode}</span>
+                                                )}
+                                                {act.blueprintNodeName && (
+                                                    <span className="text-teal-500">⚓ {act.blueprintNodeName}</span>
+                                                )}
+                                                {act.confidence != null && (
+                                                    <span title="Confidence AI">
+                                                        {'●'.repeat(Math.round(act.confidence * 5))}{'○'.repeat(5 - Math.round(act.confidence * 5))}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Inline edit controls */}
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            <Select
+                                                value={act.group}
+                                                onValueChange={(v) => updateActivity(i, 'group', v as ActivityGroup)}
+                                                disabled={isDisabled}
+                                            >
+                                                <SelectTrigger className="text-[10px] h-6 w-[90px] border-slate-200">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {(['ANALYSIS', 'DEV', 'TEST', 'OPS', 'GOVERNANCE'] as ActivityGroup[]).map((g) => (
+                                                        <SelectItem key={g} value={g}>{g}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <Select
+                                                value={act.interventionType}
+                                                onValueChange={(v) => updateActivity(i, 'interventionType', v as InterventionType)}
+                                                disabled={isDisabled}
+                                            >
+                                                <SelectTrigger className="text-[10px] h-6 w-[80px] border-slate-200">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {(['NEW', 'MODIFY', 'CONFIGURE', 'MIGRATE'] as InterventionType[]).map((t) => (
+                                                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <Input
+                                                type="number"
+                                                step="0.125"
+                                                min="0.125"
+                                                max="40"
+                                                value={act.baseHours}
+                                                onChange={(e) => updateActivity(i, 'baseHours', parseFloat(e.target.value) || 0.125)}
+                                                disabled={isDisabled}
+                                                className="text-[10px] h-6 w-[55px] text-center border-slate-200"
+                                                title="Ore base"
+                                            />
+                                            <span className="text-[10px] text-slate-400">×</span>
+                                            <Input
+                                                type="number"
+                                                step="0.1"
+                                                min="0.1"
+                                                max="3.0"
+                                                value={act.effortModifier}
+                                                onChange={(e) => updateActivity(i, 'effortModifier', parseFloat(e.target.value) || 1.0)}
+                                                disabled={isDisabled}
+                                                className="text-[10px] h-6 w-[50px] text-center border-slate-200"
+                                                title="Effort modifier"
+                                            />
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-6 w-6 p-0 text-slate-300 hover:text-red-500"
+                                                onClick={() => removeActivity(i)}
+                                            >
+                                                <Trash2 className="w-3 h-3" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <p className="text-xs text-slate-400 italic py-2">
+                            Nessuna attività generata. Aggiungi manualmente o rigenera.
+                        </p>
+                    )}
                 </div>
 
                 {/* Architectural Notes */}

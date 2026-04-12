@@ -50,6 +50,7 @@ export function mapBlueprintRowToDomain(row: ProjectTechnicalBlueprintRow): Proj
         reviewStatus: (row.review_status as ReviewStatus) ?? undefined,
         changeSummary: row.change_summary ?? undefined,
         diffFromPrevious: row.diff_from_previous ?? undefined,
+        structuredDigest: row.structured_digest ?? undefined,
     };
 }
 
@@ -77,6 +78,7 @@ function mapInputToRow(
         review_status: input.reviewStatus ?? null,
         change_summary: input.changeSummary ?? null,
         diff_from_previous: input.diffFromPrevious ?? null,
+        structured_digest: input.structuredDigest ?? null,
     };
 }
 
@@ -228,7 +230,7 @@ export async function updateProjectTechnicalBlueprint(
         ProjectTechnicalBlueprint,
         'summary' | 'components' | 'dataDomains' | 'integrations' |
         'architecturalNotes' | 'assumptions' | 'missingInformation' | 'confidence' |
-        'relations' | 'coverage' | 'qualityFlags' | 'qualityScore' | 'reviewStatus' | 'changeSummary' | 'diffFromPrevious'
+        'relations' | 'coverage' | 'qualityFlags' | 'qualityScore' | 'reviewStatus' | 'changeSummary' | 'diffFromPrevious' | 'structuredDigest'
     >>,
 ): Promise<ProjectTechnicalBlueprint> {
     const row: Record<string, unknown> = {};
@@ -248,6 +250,7 @@ export async function updateProjectTechnicalBlueprint(
     if (patch.reviewStatus !== undefined) row.review_status = patch.reviewStatus;
     if (patch.changeSummary !== undefined) row.change_summary = patch.changeSummary;
     if (patch.diffFromPrevious !== undefined) row.diff_from_previous = patch.diffFromPrevious;
+    if (patch.structuredDigest !== undefined) row.structured_digest = patch.structuredDigest;
 
     const { data, error } = await supabase
         .from(TABLE)

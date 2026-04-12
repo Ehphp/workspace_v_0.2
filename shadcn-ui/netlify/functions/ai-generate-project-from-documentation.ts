@@ -108,6 +108,7 @@ export const handler = createAIHandler<RequestBody>({
             result: {
                 projectDraft: result.projectDraft,
                 technicalBlueprint: result.technicalBlueprint,
+                projectActivities: result.projectActivities,
             },
             metadata: {
                 generatedAt: new Date().toISOString(),
@@ -118,6 +119,7 @@ export const handler = createAIHandler<RequestBody>({
                 totalMs,
                 pass1Ms: result.metrics.pass1Ms,
                 pass2Ms: result.metrics.pass2Ms,
+                pass3Ms: result.metrics.pass3Ms,
                 model: 'gpt-5-mini+gpt-5',
             },
         };

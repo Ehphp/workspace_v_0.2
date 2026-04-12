@@ -88,6 +88,8 @@ export async function generateProjectFromDocumentation(
             draftConfidence: data.result?.projectDraft?.confidence,
             blueprintConfidence: data.result?.technicalBlueprint?.confidence,
             componentsCount: data.result?.technicalBlueprint?.components?.length,
+            activitiesCount: data.result?.projectActivities?.length ?? 0,
+            activitiesSample: data.result?.projectActivities?.slice(0, 2)?.map((a: any) => ({ code: a.code, name: a.name, baseHours: a.baseHours })),
         });
 
         return data as GenerateProjectFromDocumentationResponse;

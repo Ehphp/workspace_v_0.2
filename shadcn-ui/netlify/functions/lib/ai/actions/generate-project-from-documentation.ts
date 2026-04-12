@@ -1,9 +1,10 @@
 /**
  * AI Action: Generate Project from Documentation
  *
- * Two-pass pipeline:
- *   Pass 1 (gpt-4o-mini) → Extract project draft metadata
- *   Pass 2 (gpt-4o)      → Extract technical blueprint (using sourceText + pass 1 output)
+ * Three-pass pipeline:
+ *   Pass 1 (gpt-5-mini) → Extract project draft metadata
+ *   Pass 2 (gpt-5)      → Extract technical blueprint (using sourceText + pass 1 output)
+ *   Pass 3 (gpt-5-mini) → Generate custom project activities from blueprint + catalog
  *
  * Follows the same pattern as generate-impact-map.ts and generate-understanding.ts.
  * Does NOT persist anything — returns structured output for user review.
@@ -18,6 +19,11 @@ import {
     createTechnicalBlueprintResponseSchema,
 } from '../prompts/project-from-documentation';
 import {
+    PROJECT_ACTIVITIES_SYSTEM_PROMPT,
+    createProjectActivitiesResponseSchema,
+} from '../prompts/project-activities-generation';
+import type { GeneratedProjectActivity } from '../../domain/project/project-activity.types';
+import {
     normalizeProjectTechnicalBlueprint,
 } from '../post-processing/normalize-blueprint';
 import type {
@@ -26,6 +32,7 @@ import type {
     IntegrationDirection,
     EvidenceRef,
     BlueprintRelation,
+    StructuredDocumentDigest,
 } from '../../domain/project/project-technical-blueprint.types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,9 +91,12 @@ export interface GenerateProjectFromDocResponse {
         missingInformation: string[];
         confidence?: number;
     };
+    projectActivities: GeneratedProjectActivity[];
+    structuredDigest: StructuredDocumentDigest;
     metrics: {
         pass1Ms: number;
         pass2Ms: number;
+        pass3Ms: number;
         totalMs: number;
     };
 }
@@ -94,6 +104,30 @@ export interface GenerateProjectFromDocResponse {
 // ─────────────────────────────────────────────────────────────────────────────
 // Zod validation schemas
 // ─────────────────────────────────────────────────────────────────────────────
+
+const StructuredDocumentDigestSchema = z.object({
+    functionalAreas: z.array(z.object({
+        title: z.string().min(1).max(200),
+        description: z.string().min(1).max(500),
+        keyPassages: z.array(z.string().max(300)).max(5),
+    })).min(1).max(10),
+    businessEntities: z.array(z.object({
+        name: z.string().min(1).max(200),
+        role: z.string().min(1).max(300),
+    })).max(20),
+    externalSystems: z.array(z.object({
+        name: z.string().min(1).max(200),
+        interactionDescription: z.string().min(1).max(300),
+    })).max(15),
+    technicalConstraints: z.array(z.string().max(500)).max(10),
+    nonFunctionalRequirements: z.array(z.string().max(500)).max(10),
+    keyPassages: z.array(z.object({
+        label: z.string().min(1).max(100),
+        text: z.string().min(1).max(300),
+    })).min(3).max(20),
+    ambiguities: z.array(z.string().max(500)).max(10),
+    documentQuality: z.enum(['high', 'medium', 'low']),
+});
 
 const ProjectDraftSchema = z.object({
     name: z.string().min(1).max(200),
@@ -110,6 +144,7 @@ const ProjectDraftSchema = z.object({
     assumptions: z.array(z.string()),
     missingFields: z.array(z.string()),
     reasoning: z.string().nullable().optional(),
+    structuredDigest: StructuredDocumentDigestSchema,
 });
 
 const ComponentTypeEnum = z.enum([
@@ -127,6 +162,27 @@ const ComponentTypeEnum = z.enum([
 ]);
 
 const DirectionEnum = z.enum(['inbound', 'outbound', 'bidirectional', 'unknown']).nullable().optional();
+
+// ── Pass 3 Zod schema ───────────────────────────────────────────────────────
+
+const GeneratedActivitySchema = z.object({
+    code: z.string().min(1).max(80).regex(/^PRJ_/),
+    name: z.string().min(1).max(255),
+    description: z.string().min(1).max(1000),
+    group: z.enum(['ANALYSIS', 'DEV', 'TEST', 'OPS', 'GOVERNANCE']),
+    baseHours: z.number().min(0.125).max(40),
+    interventionType: z.enum(['NEW', 'MODIFY', 'CONFIGURE', 'MIGRATE']),
+    effortModifier: z.number().min(0.1).max(2.0),
+    sourceActivityCode: z.string().nullable(),
+    blueprintNodeName: z.string().nullable(),
+    blueprintNodeType: z.enum(['component', 'dataDomain', 'integration']).nullable(),
+    aiRationale: z.string().min(1).max(500),
+    confidence: z.number().min(0).max(1),
+});
+
+const ProjectActivitiesResponseSchema = z.object({
+    activities: z.array(GeneratedActivitySchema).min(1).max(30),
+});
 
 const EvidenceRefSchema = z.object({
     sourceType: z.literal('source_text'),
@@ -209,7 +265,7 @@ export async function generateProjectFromDocumentation(
     const pass1Schema = createProjectDraftResponseSchema();
 
     const pass1Raw = await provider.generateContent({
-        model: 'gpt-5-mini',
+        model: 'gpt-4o-mini',
         temperature: 0.2,
         maxTokens: 1200,
         responseFormat: pass1Schema as any,
@@ -287,12 +343,12 @@ export async function generateProjectFromDocumentation(
     const pass2Raw = await provider.generateContent({
         model: 'gpt-5',
         temperature: 0.2,
-        maxTokens: 5000,
+        maxTokens: 8000,
         responseFormat: pass2Schema as any,
         systemPrompt: TECHNICAL_BLUEPRINT_SYSTEM_PROMPT,
         userPrompt: pass2UserPrompt,
         reasoningEffort: 'low',
-        options: { timeout: 60000, maxRetries: 0 },
+        options: { timeout: 100000, maxRetries: 0 },
     });
 
     const pass2Ms = Date.now() - pass2Start;
@@ -372,6 +428,87 @@ export async function generateProjectFromDocumentation(
         `${normalizedBlueprint.integrations.length} integrations`,
     );
 
+    // ── Pass 3: Project Activities Generation ───────────────────
+    const pass3Start = Date.now();
+
+    // Build grouped activity catalog block for effort calibration (compact: code + base_hours only)
+    let catalogBlock = '';
+    if (activityCatalog && activityCatalog.length > 0) {
+        const grouped = new Map<string, string[]>();
+        for (const a of activityCatalog) {
+            const group = a.group || 'OTHER';
+            if (!grouped.has(group)) grouped.set(group, []);
+            grouped.get(group)!.push(`${a.code} (${a.base_hours ?? '?'}h)`);
+        }
+        catalogBlock = Array.from(grouped.entries())
+            .map(([group, items]) => `${group}: ${items.join(', ')}`)
+            .join('\n');
+    }
+
+    // Build blueprint summary for Pass 3 (compact)
+    const blueprintSummaryLines = [
+        'COMPONENTS:',
+        ...normalizedBlueprint.components.map(c => `  - ${c.name} (${c.type})`),
+        'DATA DOMAINS:',
+        ...normalizedBlueprint.dataDomains.map(d => `  - ${d.name}`),
+        'INTEGRATIONS:',
+        ...normalizedBlueprint.integrations.map(i => `  - ${i.systemName} (${i.direction ?? '?'})`),
+    ];
+
+    const pass3SourceText = sourceText.length > 2000
+        ? sourceText.slice(0, 2000) + '\n[... troncato ...]'
+        : sourceText;
+
+    const pass3UserPrompt = [
+        `DOCUMENTAZIONE PROGETTUALE (estratto):\n\n${pass3SourceText}`,
+        `\nMETADATI PROGETTO:`,
+        `- Nome: ${projectDraft.name}`,
+        `- Descrizione: ${projectDraft.description}`,
+        projectDraft.projectType ? `- Tipo progetto: ${projectDraft.projectType}` : null,
+        projectDraft.domain ? `- Dominio: ${projectDraft.domain}` : null,
+        projectDraft.scope ? `- Scope: ${projectDraft.scope}` : null,
+        projectDraft.methodology ? `- Metodologia: ${projectDraft.methodology}` : null,
+        resolvedTechName ? `- Tecnologia: ${resolvedTechName}` : null,
+        `\nBLUEPRINT TECNICO:\n${blueprintSummaryLines.join('\n')}`,
+        catalogBlock ? `\nCATALOGO ATTIVITÀ STANDARD (riferimento scala effort):\n${catalogBlock}` : null,
+    ].filter(Boolean).join('\n');
+
+    const pass3Schema = createProjectActivitiesResponseSchema();
+
+    let projectActivities: GeneratedProjectActivity[] = [];
+    try {
+        const pass3Raw = await provider.generateContent({
+            model: 'gpt-4o-mini',
+            temperature: 0.3,
+            maxTokens: 3000,
+            responseFormat: pass3Schema as any,
+            systemPrompt: PROJECT_ACTIVITIES_SYSTEM_PROMPT,
+            userPrompt: pass3UserPrompt,
+            options: { timeout: 60000, maxRetries: 0 },
+        });
+
+        if (pass3Raw) {
+            const pass3Parsed = JSON.parse(pass3Raw);
+            const pass3Validation = ProjectActivitiesResponseSchema.safeParse(pass3Parsed);
+            if (pass3Validation.success) {
+                // Deduplicate codes — keep first occurrence
+                const seenCodes = new Set<string>();
+                projectActivities = pass3Validation.data.activities.filter(a => {
+                    if (seenCodes.has(a.code)) return false;
+                    seenCodes.add(a.code);
+                    return true;
+                });
+            } else {
+                console.warn('[generate-project-from-doc] Pass 3 validation failed:', pass3Validation.error.issues);
+            }
+        }
+    } catch (pass3Err) {
+        console.warn('[generate-project-from-doc] Pass 3 failed (non-blocking):', pass3Err);
+    }
+
+    const pass3Ms = Date.now() - pass3Start;
+    console.log('[generate-project-from-doc] Pass 3 completed in', pass3Ms, 'ms,', projectActivities.length, 'activities');
+
     const totalMs = Date.now() - totalStart;
     console.log('[generate-project-from-doc] Complete in', totalMs, 'ms');
 
@@ -391,6 +528,7 @@ export async function generateProjectFromDocumentation(
             missingInformation: normalizedBlueprint.missingInformation,
             confidence: normalizedBlueprint.confidence,
         },
-        metrics: { pass1Ms, pass2Ms, totalMs },
+        projectActivities,
+        metrics: { pass1Ms, pass2Ms, pass3Ms, totalMs },
     };
 }

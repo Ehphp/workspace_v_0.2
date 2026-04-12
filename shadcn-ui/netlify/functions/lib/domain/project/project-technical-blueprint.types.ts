@@ -146,6 +146,42 @@ export interface BlueprintIntegration {
 }
 
 // ============================================================================
+// Structured Document Digest (SDD) — AI-extracted summary of source docs
+// ============================================================================
+
+export interface SDDFunctionalArea {
+    title: string;
+    description: string;
+    keyPassages: string[];
+}
+
+export interface SDDBusinessEntity {
+    name: string;
+    role: string;
+}
+
+export interface SDDExternalSystem {
+    name: string;
+    interactionDescription: string;
+}
+
+export interface SDDKeyPassage {
+    label: string;
+    text: string;
+}
+
+export interface StructuredDocumentDigest {
+    functionalAreas: SDDFunctionalArea[];
+    businessEntities: SDDBusinessEntity[];
+    externalSystems: SDDExternalSystem[];
+    technicalConstraints: string[];
+    nonFunctionalRequirements: string[];
+    keyPassages: SDDKeyPassage[];
+    ambiguities: string[];
+    documentQuality: 'high' | 'medium' | 'low';
+}
+
+// ============================================================================
 // Persisted Blueprint (DB row → domain)
 // ============================================================================
 
@@ -171,6 +207,7 @@ export interface ProjectTechnicalBlueprint {
     reviewStatus?: ReviewStatus;
     changeSummary?: string;
     diffFromPrevious?: BlueprintDiffSummary;
+    structuredDigest?: StructuredDocumentDigest;
 }
 
 // ============================================================================
@@ -228,6 +265,7 @@ export interface ProjectTechnicalBlueprintRow {
     review_status: string | null;
     change_summary: string | null;
     diff_from_previous: BlueprintDiffSummary | null;
+    structured_digest: StructuredDocumentDigest | null;
 }
 
 // ============================================================================
@@ -253,4 +291,5 @@ export interface CreateProjectTechnicalBlueprintInput {
     reviewStatus?: ReviewStatus;
     changeSummary?: string;
     diffFromPrevious?: BlueprintDiffSummary;
+    structuredDigest?: StructuredDocumentDigest;
 }
