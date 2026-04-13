@@ -483,11 +483,18 @@ export default function RequirementDetail() {
                 scenarioName: 'Manual Edit',
                 analysisId: domainResult.analysisId,
                 decisionId: domainResult.decisionId,
-                activities: selectedActivityIds.map(id => ({
-                    activity_id: id,
-                    is_ai_suggested: aiSuggestedIds.includes(id),
-                    notes: null,
-                })),
+                activities: (() => {
+                    const projIds = new Set(projectActivities.map(pa => pa.id));
+                    return selectedActivityIds.map(id => {
+                        const isProject = projIds.has(id);
+                        return {
+                            activity_id: isProject ? null : id,
+                            project_activity_id: isProject ? id : null,
+                            is_ai_suggested: aiSuggestedIds.includes(id),
+                            notes: null,
+                        };
+                    });
+                })(),
                 drivers: Object.entries(selectedDriverValues).map(([driverId, value]) => ({
                     driver_id: driverId,
                     selected_value: value,
