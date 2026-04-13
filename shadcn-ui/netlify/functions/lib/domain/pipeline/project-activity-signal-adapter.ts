@@ -40,6 +40,7 @@ function extractBlueprintNodeNames(blueprint?: Record<string, unknown>): Set<str
     addNames(blueprint.components as unknown[] ?? [], 'name');
     addNames(blueprint.integrations as unknown[] ?? [], 'systemName');
     addNames(blueprint.dataEntities as unknown[] ?? [], 'name');
+    addNames(blueprint.workflows as unknown[] ?? [], 'name');
 
     return names;
 }
@@ -60,12 +61,13 @@ function inferLayerFromGroup(group: string): PipelineLayer | undefined {
 }
 
 function inferLayerFromBlueprintNodeType(
-    nodeType: 'component' | 'dataDomain' | 'integration' | null,
+    nodeType: 'component' | 'dataDomain' | 'integration' | 'workflow' | null,
 ): PipelineLayer | undefined {
     switch (nodeType) {
         case 'component': return 'frontend';
         case 'dataDomain': return 'data';
         case 'integration': return 'integration';
+        case 'workflow': return 'logic';
         default: return undefined;
     }
 }

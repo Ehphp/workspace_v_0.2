@@ -24,7 +24,6 @@ import { MAX_FILE_SIZE_BYTES, ACCEPTED_EXTENSIONS } from '@/types/project-source
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-const MAX_DOCUMENT_CHARS = 20_000;
 const HEADING_FONT_SIZE_RATIO = 1.3;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -365,16 +364,7 @@ async function extractPdfContent(file: File): Promise<ExtractedContent> {
     };
 
     // Derive text projection from blocks
-    let textContent = blocksToText(blocks);
-
-    // Truncation warning (applied to text projection, blocks remain intact)
-    if (textContent.length > MAX_DOCUMENT_CHARS) {
-        textContent = textContent.slice(0, MAX_DOCUMENT_CHARS);
-        parsedDocument.metadata.warnings.push({
-            code: 'content_truncated',
-            message: `Document text truncated to ${MAX_DOCUMENT_CHARS.toLocaleString()} characters`,
-        });
-    }
+    const textContent = blocksToText(blocks);
 
     return {
         textContent,
@@ -462,15 +452,7 @@ async function extractDocxContent(file: File): Promise<ExtractedContent> {
     };
 
     // Derive text projection from blocks
-    let textContent = blocksToText(blocks);
-
-    if (textContent.length > MAX_DOCUMENT_CHARS) {
-        textContent = textContent.slice(0, MAX_DOCUMENT_CHARS);
-        parsedDocument.metadata.warnings.push({
-            code: 'content_truncated',
-            message: `Document text truncated to ${MAX_DOCUMENT_CHARS.toLocaleString()} characters`,
-        });
-    }
+    const textContent = blocksToText(blocks);
 
     return {
         textContent,

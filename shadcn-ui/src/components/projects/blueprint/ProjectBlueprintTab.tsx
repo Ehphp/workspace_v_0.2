@@ -119,7 +119,8 @@ export function ProjectBlueprintTab({ projectId }: ProjectBlueprintTabProps) {
     const isEmpty =
         blueprint.components.length === 0 &&
         blueprint.dataDomains.length === 0 &&
-        blueprint.integrations.length === 0;
+        blueprint.integrations.length === 0 &&
+        (blueprint.workflows?.length ?? 0) === 0;
 
     if (isEmpty) {
         return (
@@ -154,7 +155,7 @@ export function ProjectBlueprintTab({ projectId }: ProjectBlueprintTabProps) {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search components, domains, integrations…"
+                    placeholder="Search components, domains, workflows, integrations…"
                     className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-400"
                 />
                 {searchQuery.length > 0 && (
@@ -189,8 +190,9 @@ export function ProjectBlueprintTab({ projectId }: ProjectBlueprintTabProps) {
                             className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-blue-50 transition-colors"
                         >
                             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${r.kind === 'component' ? 'bg-blue-500' :
-                                    r.kind === 'data_domain' ? 'bg-emerald-500' :
-                                        r.kind === 'integration' ? 'bg-violet-500' :
+                                r.kind === 'data_domain' ? 'bg-emerald-500' :
+                                    r.kind === 'integration' ? 'bg-violet-500' :
+                                        r.kind === 'workflow' ? 'bg-amber-500' :
                                             'bg-indigo-500'
                                 }`} />
                             <span className="text-xs font-medium text-slate-700 truncate">{r.label}</span>

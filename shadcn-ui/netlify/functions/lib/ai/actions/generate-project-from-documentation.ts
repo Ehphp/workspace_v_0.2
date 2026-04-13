@@ -135,6 +135,12 @@ const StructuredDocumentDigestSchema = z.object({
         label: z.string().min(1).max(100),
         text: z.string().min(1).max(300),
     })).min(3).max(20),
+    operationalWorkflows: z.array(z.object({
+        name: z.string().min(1).max(200),
+        trigger: z.string().min(1).max(300),
+        actors: z.array(z.string().min(1).max(200)).max(10),
+        keySteps: z.string().min(1).max(500),
+    })).min(0).max(10),
     ambiguities: z.array(z.string().max(500)).max(10),
     documentQuality: z.enum(['high', 'medium', 'low']),
 });
@@ -159,7 +165,7 @@ const ProjectDraftSchema = z.object({
 
 const ComponentTypeEnum = z.enum([
     // Generic types
-    'frontend', 'backend', 'database', 'integration', 'workflow',
+    'frontend', 'backend', 'database', 'integration',
     'reporting', 'security', 'infrastructure', 'external_system', 'other',
     // Power Platform specific
     'canvas_app', 'model_driven_app', 'dataverse_table', 'custom_connector',
@@ -185,7 +191,7 @@ const GeneratedActivitySchema = z.object({
     effortModifier: z.number().min(0.1).max(2.0),
     sourceActivityCode: z.string().nullable(),
     blueprintNodeName: z.string().nullable(),
-    blueprintNodeType: z.enum(['component', 'dataDomain', 'integration']).nullable(),
+    blueprintNodeType: z.enum(['component', 'dataDomain', 'integration', 'workflow']).nullable(),
     aiRationale: z.string().min(1).max(500),
     confidence: z.number().min(0).max(1),
 });
@@ -235,6 +241,22 @@ const TechnicalBlueprintSchema = z.object({
         confidence: z.number().min(0).max(1).nullable().optional(),
         evidence: EvidenceArraySchema,
     })).max(15),
+    workflows: z.array(z.object({
+        name: z.string().min(1).max(200),
+        description: z.string().nullable().optional(),
+        trigger: z.string().min(1).max(300),
+        steps: z.array(z.object({
+            order: z.number().int().min(1),
+            action: z.string().min(1).max(300),
+            actor: z.enum(['user', 'system', 'external']).nullable().optional(),
+            component: z.string().nullable().optional(),
+        })).min(1).max(20),
+        involvedComponents: z.array(z.string()).optional().default([]),
+        involvedDataDomains: z.array(z.string()).optional().default([]),
+        complexity: z.enum(['low', 'medium', 'high']).nullable().optional(),
+        confidence: z.number().min(0).max(1).nullable().optional(),
+        evidence: EvidenceArraySchema,
+    })).max(15).optional().default([]),
     relations: z.array(RelationSchema).max(20).optional().default([]),
     coverage: z.number().min(0).max(1).optional(),
     qualityFlags: z.array(z.string()).optional().default([]),
@@ -267,9 +289,10 @@ export async function generateProjectFromDocumentation(
         ? `\n\nCATALOGO TECNOLOGIE DISPONIBILI (usa l'id corrispondente per technologyId):\n${technologyCatalog.map(t => `- id: "${t.id}" | code: "${t.code}" | name: "${t.name}"`).join('\n')}\n`
         : '';
 
-    // Pass1 now digests the full document (up to 20K chars) to produce metadata + SDD
-    const pass1SourceText = sourceText.length > 20000
-        ? sourceText.slice(0, 20000) + '\n[... documento troncato per limiti di contesto ...]'
+    // Pass1 digests up to CHUNKED_THRESHOLD chars for metadata + SDD;
+    // for larger documents the chunked pipeline (below) produces a richer SDD.
+    const pass1SourceText = sourceText.length > CHUNKED_THRESHOLD
+        ? sourceText.slice(0, CHUNKED_THRESHOLD) + '\n[... documento troncato per limiti di contesto ...]'
         : sourceText;
     const pass1UserPrompt = `DOCUMENTAZIONE PROGETTUALE:\n\n${pass1SourceText}${techCatalogBlock}`;
     const pass1Schema = createProjectDraftResponseSchema();
@@ -312,6 +335,7 @@ export async function generateProjectFromDocumentation(
     console.log('[generate-project-from-doc] SDD extracted:',
         structuredDigest?.functionalAreas?.length ?? 0, 'functional areas,',
         structuredDigest?.keyPassages?.length ?? 0, 'key passages,',
+        structuredDigest?.operationalWorkflows?.length ?? 0, 'workflows,',
         'quality:', structuredDigest?.documentQuality ?? 'N/A');
 
     // ── Chunked SDD pipeline (large documents) ─────────────────────
@@ -513,6 +537,8 @@ export async function generateProjectFromDocumentation(
         ...normalizedBlueprint.dataDomains.map(d => `  - ${d.name}`),
         'INTEGRATIONS:',
         ...normalizedBlueprint.integrations.map(i => `  - ${i.systemName} (${i.direction ?? '?'})`),
+        'WORKFLOWS:',
+        ...(normalizedBlueprint.workflows ?? []).map(w => `  - ${w.name}: ${w.trigger}`),
     ];
 
     // Build digest summary for Pass 3 (compact text from SDD or fallback to truncated source)
@@ -524,11 +550,14 @@ export async function generateProjectFromDocumentation(
             .map(e => `  - ${e.name}: ${e.role}`).join('\n');
         const extLines = (structuredDigest.externalSystems ?? [])
             .map(s => `  - ${s.name}: ${s.interactionDescription}`).join('\n');
+        const workflowLines = (structuredDigest.operationalWorkflows ?? [])
+            .map(w => `  - ${w.name} (trigger: ${w.trigger})`).join('\n');
         pass3ContextBlock = [
             `CONTESTO DOCUMENTO (dal digest strutturato):`,
             areaLines ? `\nAREE FUNZIONALI:\n${areaLines}` : null,
             entityLines ? `\nENTITÀ DI BUSINESS:\n${entityLines}` : null,
             extLines ? `\nSISTEMI ESTERNI:\n${extLines}` : null,
+            workflowLines ? `\nWORKFLOW OPERATIVI:\n${workflowLines}` : null,
             structuredDigest.technicalConstraints?.length
                 ? `\nVINCOLI TECNICI: ${structuredDigest.technicalConstraints.join('; ')}` : null,
             structuredDigest.nonFunctionalRequirements?.length
@@ -604,6 +633,7 @@ export async function generateProjectFromDocumentation(
             components: normalizedBlueprint.components,
             dataDomains: normalizedBlueprint.dataDomains,
             integrations: normalizedBlueprint.integrations,
+            workflows: normalizedBlueprint.workflows ?? [],
             relations: normalizedBlueprint.relations ?? [],
             coverage: normalizedBlueprint.coverage,
             qualityFlags: normalizedBlueprint.qualityFlags ?? [],

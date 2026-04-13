@@ -48,7 +48,6 @@ const COMPONENT_TYPES: { value: BlueprintComponentType; label: string }[] = [
     { value: 'backend', label: 'Backend' },
     { value: 'database', label: 'Database' },
     { value: 'integration', label: 'Integration' },
-    { value: 'workflow', label: 'Workflow' },
     { value: 'reporting', label: 'Reporting' },
     { value: 'security', label: 'Security' },
     { value: 'infrastructure', label: 'Infrastructure' },

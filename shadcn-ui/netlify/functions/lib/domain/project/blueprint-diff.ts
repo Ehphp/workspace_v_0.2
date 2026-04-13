@@ -140,7 +140,7 @@ export function formatChangeSummary(diff: BlueprintDiffSummary): string {
 
 interface NodeInfo {
     id: string;
-    kind: 'component' | 'data_domain' | 'integration';
+    kind: 'component' | 'data_domain' | 'integration' | 'workflow';
     label: string;
     type?: string;
     description?: string;
@@ -164,6 +164,10 @@ function buildNodeMap(bp: ProjectTechnicalBlueprint): Map<string, NodeInfo> {
     for (const i of bp.integrations) {
         const id = i.id || `int_${normalizeName(i.systemName)}`;
         map.set(id, { id, kind: 'integration', label: i.systemName, description: i.description });
+    }
+    for (const w of (bp.workflows ?? [])) {
+        const id = w.id || `wf_${normalizeName(w.name)}`;
+        map.set(id, { id, kind: 'workflow', label: w.name, description: w.description });
     }
 
     return map;

@@ -120,6 +120,13 @@ export function Header() {
                             </span>
                         </>
                     )}
+
+                    {!params.reqId && pathParts.includes('activities') && (
+                        <>
+                            <span className="text-slate-300">/</span>
+                            <span className="text-slate-900 font-medium">attività</span>
+                        </>
+                    )}
                 </div>
             );
         }

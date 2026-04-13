@@ -97,6 +97,15 @@ export function formatProjectTechnicalBlueprintBlock(
             );
         }
 
+        if (Array.isArray(ptb.workflows) && ptb.workflows.length > 0) {
+            lines.push(
+                'Workflow operativi: ' +
+                ptb.workflows
+                    .map((w: any) => `${w?.name ?? '?'}: ${w?.trigger ?? '?'}`)
+                    .join(', '),
+            );
+        }
+
         if (Array.isArray(ptb.architecturalNotes) && ptb.architecturalNotes.length > 0) {
             lines.push(`Note architetturali: ${ptb.architecturalNotes.join('; ')}`);
         } else if (ptb.architecturalNotes && typeof ptb.architecturalNotes === 'string') {
@@ -257,6 +266,15 @@ function formatSDDBlock(sdd: Record<string, unknown>): string {
     // Ambiguities
     if (Array.isArray(sdd.ambiguities) && sdd.ambiguities.length > 0) {
         sections.push(`AMBIGUITÀ RILEVATE:\n${sdd.ambiguities.map((a: string) => `  • ${a}`).join('\n')}`);
+    }
+
+    // Operational workflows
+    if (Array.isArray(sdd.operationalWorkflows) && sdd.operationalWorkflows.length > 0) {
+        const wfLines = sdd.operationalWorkflows.map((w: any) => {
+            const actors = Array.isArray(w?.actors) ? w.actors.join(', ') : '';
+            return `  • ${w?.name ?? '?'} (trigger: ${w?.trigger ?? '?'}, attori: ${actors}) — ${w?.keySteps ?? ''}`;
+        });
+        sections.push(`WORKFLOW OPERATIVI:\n${wfLines.join('\n')}`);
     }
 
     // Document quality

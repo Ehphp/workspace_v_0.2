@@ -18,7 +18,6 @@ export type BlueprintComponentType =
     | 'backend'
     | 'database'
     | 'integration'
-    | 'workflow'
     | 'reporting'
     | 'security'
     | 'infrastructure'
@@ -118,6 +117,9 @@ export interface BlueprintComponent {
     estimationImpact?: CriticalityLevel;
     reviewStatus?: ReviewStatus;
     evidence?: EvidenceRef[];
+    canonicalName?: string;
+    aliases?: string[];
+    deduplicationNotes?: string;
 }
 
 export interface BlueprintDataDomain {
@@ -130,6 +132,9 @@ export interface BlueprintDataDomain {
     estimationImpact?: CriticalityLevel;
     reviewStatus?: ReviewStatus;
     evidence?: EvidenceRef[];
+    canonicalName?: string;
+    aliases?: string[];
+    deduplicationNotes?: string;
 }
 
 export interface BlueprintIntegration {
@@ -143,6 +148,40 @@ export interface BlueprintIntegration {
     estimationImpact?: CriticalityLevel;
     reviewStatus?: ReviewStatus;
     evidence?: EvidenceRef[];
+    canonicalName?: string;
+    aliases?: string[];
+    deduplicationNotes?: string;
+}
+
+// ============================================================================
+// Workflow types (first-class 4th category)
+// ============================================================================
+
+export interface WorkflowStep {
+    order: number;
+    action: string;
+    actor?: 'user' | 'system' | 'external';
+    component?: string;
+}
+
+export interface BlueprintWorkflow {
+    id?: string;
+    name: string;
+    description: string;
+    trigger: string;
+    steps: WorkflowStep[];
+    involvedComponents: string[];
+    involvedDataDomains: string[];
+    complexity?: CriticalityLevel;
+    confidence?: number;
+    businessCriticality?: CriticalityLevel;
+    changeLikelihood?: CriticalityLevel;
+    estimationImpact?: CriticalityLevel;
+    reviewStatus?: ReviewStatus;
+    evidence?: EvidenceRef[];
+    canonicalName?: string;
+    aliases?: string[];
+    deduplicationNotes?: string;
 }
 
 // ============================================================================
@@ -170,6 +209,13 @@ export interface SDDKeyPassage {
     text: string;
 }
 
+export interface SDDOperationalWorkflow {
+    name: string;
+    trigger: string;
+    actors: string[];
+    keySteps: string;
+}
+
 export interface StructuredDocumentDigest {
     functionalAreas: SDDFunctionalArea[];
     businessEntities: SDDBusinessEntity[];
@@ -177,6 +223,7 @@ export interface StructuredDocumentDigest {
     technicalConstraints: string[];
     nonFunctionalRequirements: string[];
     keyPassages: SDDKeyPassage[];
+    operationalWorkflows: SDDOperationalWorkflow[];
     ambiguities: string[];
     documentQuality: 'high' | 'medium' | 'low';
 }
@@ -194,6 +241,7 @@ export interface ProjectTechnicalBlueprint {
     components: BlueprintComponent[];
     dataDomains: BlueprintDataDomain[];
     integrations: BlueprintIntegration[];
+    workflows?: BlueprintWorkflow[];
     architecturalNotes: string[];
     assumptions: string[];
     missingInformation: string[];
@@ -251,6 +299,7 @@ export interface ProjectTechnicalBlueprintRow {
     components: BlueprintComponent[];
     data_domains: BlueprintDataDomain[];
     integrations: BlueprintIntegration[];
+    workflows: BlueprintWorkflow[] | null;
     architectural_notes: string[];
     assumptions: string[];
     missing_information: string[];
@@ -279,6 +328,7 @@ export interface CreateProjectTechnicalBlueprintInput {
     components: BlueprintComponent[];
     dataDomains: BlueprintDataDomain[];
     integrations: BlueprintIntegration[];
+    workflows?: BlueprintWorkflow[];
     architecturalNotes: string[];
     assumptions: string[];
     missingInformation: string[];

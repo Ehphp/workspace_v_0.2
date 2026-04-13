@@ -47,7 +47,11 @@ REGOLE DI CONSOLIDAMENTO
 6. ambiguities: mantieni contraddizioni tra frammenti come ambiguità esplicite.
    Aggiungi nuove ambiguità se emergono dal confronto tra frammenti.
 
-7. documentQuality: valutazione GLOBALE basata sulla copertura complessiva dei frammenti.
+7. operationalWorkflows: UNIFICA workflow operativi semanticamente equivalenti.
+   Es. "Processo Approvazione" da frammento 1 e "Approval Flow" da frammento 4 → un solo workflow.
+   Usa il nome più descrittivo. Combina actors e keySteps. Mantieni il trigger più preciso.
+
+8. documentQuality: valutazione GLOBALE basata sulla copertura complessiva dei frammenti.
    Se la maggioranza dei frammenti è "high" → "high". Se misti → "medium".
    Se la maggioranza è "low" → "low".
 
@@ -82,7 +86,10 @@ CAMPI OUTPUT
 
 7. "ambiguities" — Ambiguità e contraddizioni (max 10)
 
-8. "documentQuality" — Valutazione globale: "high" | "medium" | "low"
+8. "operationalWorkflows" — Workflow operativi unificati (min 0, max 10)
+   { "name", "trigger" max 300 chars, "actors" array di attori, "keySteps" max 500 chars }
+
+9. "documentQuality" — Valutazione globale: "high" | "medium" | "low"
 
 Rispondi SOLO con JSON strutturato, senza testo aggiuntivo.`;
 
@@ -152,12 +159,26 @@ export function createConsolidationResponseSchema() {
                         },
                     },
                     ambiguities: { type: 'array', items: { type: 'string' } },
+                    operationalWorkflows: {
+                        type: 'array',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                name: { type: 'string' },
+                                trigger: { type: 'string' },
+                                actors: { type: 'array', items: { type: 'string' } },
+                                keySteps: { type: 'string' },
+                            },
+                            required: ['name', 'trigger', 'actors', 'keySteps'],
+                            additionalProperties: false,
+                        },
+                    },
                     documentQuality: { type: 'string', enum: ['high', 'medium', 'low'] },
                 },
                 required: [
                     'functionalAreas', 'businessEntities', 'externalSystems',
                     'technicalConstraints', 'nonFunctionalRequirements',
-                    'keyPassages', 'ambiguities', 'documentQuality',
+                    'keyPassages', 'ambiguities', 'operationalWorkflows', 'documentQuality',
                 ],
                 additionalProperties: false,
             },

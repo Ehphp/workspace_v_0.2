@@ -134,7 +134,7 @@ function applyWorkflowExternalRules(
     bp: ProjectTechnicalBlueprint,
     r: BlueprintRuleResult,
 ): void {
-    const hasWorkflow = bp.components.some((c) => c.type === 'workflow');
+    const hasWorkflow = (bp.workflows?.length ?? 0) > 0;
     const hasExternalSystems = bp.integrations.length > 0;
     const hasReporting = bp.components.some((c) => c.type === 'reporting');
 
@@ -189,6 +189,7 @@ function applyEvidenceWeightRules(
         ...bp.components,
         ...bp.dataDomains,
         ...bp.integrations,
+        ...(bp.workflows ?? []),
     ];
     const nodesWithoutEvidence = allNodes.filter(
         (n) => !n.evidence || n.evidence.length === 0,
@@ -251,6 +252,7 @@ function applyCriticalityRules(
         ...bp.components,
         ...bp.dataDomains,
         ...bp.integrations,
+        ...(bp.workflows ?? []),
     ].filter((n) => n.businessCriticality === 'high').length;
 
     if (highCriticalityCount >= 3) {

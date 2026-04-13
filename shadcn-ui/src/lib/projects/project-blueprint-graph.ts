@@ -2,8 +2,8 @@
  * Blueprint Graph Model — Types & Mapper
  *
  * Transforms a ProjectTechnicalBlueprint into a React Flow graph model
- * with a structured 3-column layout:
- *   LEFT: Data Domains  |  CENTER: Core Components  |  RIGHT: Integrations
+ * with a structured 4-column layout:
+ *   LEFT: Data Domains  |  CENTER-LEFT: Core Components  |  CENTER-RIGHT: Workflows  |  RIGHT: Integrations
  *
  * The graph is a VIEW-ONLY projection;
  * the blueprint structured data remains the source of truth.
@@ -22,7 +22,7 @@ import type {
 // Graph Node Data
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type BlueprintNodeKind = 'component' | 'integration' | 'data_domain';
+export type BlueprintNodeKind = 'component' | 'integration' | 'data_domain' | 'workflow';
 
 export interface BlueprintGraphNodeData {
     kind: BlueprintNodeKind;
@@ -87,14 +87,16 @@ const HEADER_Y = 0;
 const FIRST_NODE_Y = 60;
 
 const COLUMN_X = {
-    left: 0,        // Data Domains
-    center: 400,    // Core Components
-    right: 800,     // Integrations
+    left: 0,          // Data Domains
+    centerLeft: 300,  // Core Components
+    centerRight: 600, // Workflows
+    right: 900,       // Integrations
 } as const;
 
 const NODE_DIMENSIONS: Record<BlueprintNodeKind, { width: number; height: number }> = {
     component: { width: 240, height: 80 },
     data_domain: { width: 180, height: 64 },
+    workflow: { width: 240, height: 88 },
     integration: { width: 200, height: 72 },
 };
 
@@ -110,12 +112,14 @@ export const NODE_STYLES: Record<BlueprintNodeKind, {
     component: { bg: '#eff6ff', border: '#3b82f6', badge: 'bg-blue-100 text-blue-800', edgeColor: '#3b82f6' },
     integration: { bg: '#faf5ff', border: '#a855f7', badge: 'bg-purple-100 text-purple-800', edgeColor: '#a855f7' },
     data_domain: { bg: '#f0fdf4', border: '#22c55e', badge: 'bg-green-100 text-green-800', edgeColor: '#22c55e' },
+    workflow: { bg: '#fffbeb', border: '#f59e0b', badge: 'bg-amber-100 text-amber-800', edgeColor: '#f59e0b' },
 };
 
 /** Column header labels exported for the canvas overlay */
 export const COLUMN_HEADERS: { key: BlueprintNodeKind; label: string; x: number }[] = [
     { key: 'data_domain', label: 'Data Domains', x: COLUMN_X.left },
-    { key: 'component', label: 'Core Components', x: COLUMN_X.center },
+    { key: 'component', label: 'Core Components', x: COLUMN_X.centerLeft },
+    { key: 'workflow', label: 'Workflows', x: COLUMN_X.centerRight },
     { key: 'integration', label: 'External Systems', x: COLUMN_X.right },
 ];
 
@@ -158,7 +162,8 @@ export function buildProjectBlueprintGraph(
 
     // ── Column trackers ─────────────────────────────────────────────
     let leftY = FIRST_NODE_Y;
-    let centerY = FIRST_NODE_Y;
+    let centerLeftY = FIRST_NODE_Y;
+    let centerRightY = FIRST_NODE_Y;
     let rightY = FIRST_NODE_Y;
 
     // ── Components → CENTER column ──────────────────────────────────
@@ -170,7 +175,7 @@ export function buildProjectBlueprintGraph(
         nodes.push({
             id: graphId,
             type: 'blueprintNode',
-            position: { x: COLUMN_X.center, y: centerY },
+            position: { x: COLUMN_X.centerLeft, y: centerLeftY },
             sourcePosition: Position.Right,
             targetPosition: Position.Left,
             data: {
@@ -190,7 +195,7 @@ export function buildProjectBlueprintGraph(
                 hasNoEvidence: !comp.evidence || comp.evidence.length === 0,
             },
         });
-        centerY += dim.height + VERTICAL_GAP;
+        centerLeftY += dim.height + VERTICAL_GAP;
     });
 
     // ── Data Domains → LEFT column ──────────────────────────────────
@@ -251,6 +256,35 @@ export function buildProjectBlueprintGraph(
             },
         });
         rightY += dim.height + VERTICAL_GAP;
+    });
+
+    // ── Workflows → CENTER-RIGHT column ─────────────────────────────
+    const workflows = blueprint.workflows ?? [];
+    workflows.forEach((wf, i) => {
+        const dim = NODE_DIMENSIONS.workflow;
+        const graphId = `wf-${i}`;
+        if (wf.id) domainIdToGraphId.set(wf.id, graphId);
+        nodes.push({
+            id: graphId,
+            type: 'blueprintNode',
+            position: { x: COLUMN_X.centerRight, y: centerRightY },
+            sourcePosition: Position.Right,
+            targetPosition: Position.Left,
+            data: {
+                kind: 'workflow',
+                label: wf.name || 'Unnamed',
+                description: wf.description,
+                confidence: wf.confidence,
+                typeLabel: wf.trigger ?? 'workflow',
+                sourceIndex: i,
+                nodeId: wf.id,
+                evidence: wf.evidence,
+                businessCriticality: wf.complexity as CriticalityLevel | undefined,
+                reviewStatus: wf.reviewStatus,
+                hasNoEvidence: !wf.evidence || wf.evidence.length === 0,
+            },
+        });
+        centerRightY += dim.height + VERTICAL_GAP;
     });
 
     // ── Typed relation edges (v2) ───────────────────────────────────
@@ -322,6 +356,43 @@ export function buildProjectBlueprintGraph(
             });
         });
     }
+
+    // Workflows → involved components & data domains (dashed edges)
+    workflows.forEach((wf, wfIdx) => {
+        const wfGraphId = `wf-${wfIdx}`;
+        // Link to involved components by name match
+        for (const compRef of wf.involvedComponents ?? []) {
+            const compIdx = blueprint.components.findIndex(
+                (c) => c.name === compRef || c.id === compRef,
+            );
+            if (compIdx >= 0) {
+                edges.push({
+                    id: `e-wf-${wfIdx}-comp-${compIdx}`,
+                    source: wfGraphId,
+                    target: `comp-${compIdx}`,
+                    style: { stroke: NODE_STYLES.workflow.edgeColor, strokeWidth: 1.5, strokeDasharray: '5,5', opacity: 0.7 },
+                    type: 'smoothstep',
+                    data: { kind: 'structural' as BlueprintEdgeKind },
+                });
+            }
+        }
+        // Link to involved data domains by name match
+        for (const ddRef of wf.involvedDataDomains ?? []) {
+            const ddIdx = blueprint.dataDomains.findIndex(
+                (d) => d.name === ddRef || d.id === ddRef,
+            );
+            if (ddIdx >= 0) {
+                edges.push({
+                    id: `e-wf-${wfIdx}-dd-${ddIdx}`,
+                    source: wfGraphId,
+                    target: `dd-${ddIdx}`,
+                    style: { stroke: NODE_STYLES.workflow.edgeColor, strokeWidth: 1.5, strokeDasharray: '5,5', opacity: 0.7 },
+                    type: 'smoothstep',
+                    data: { kind: 'structural' as BlueprintEdgeKind },
+                });
+            }
+        }
+    });
 
     // ── Build adjacency map ─────────────────────────────────────────
     const adjacency = new Map<string, Set<string>>();

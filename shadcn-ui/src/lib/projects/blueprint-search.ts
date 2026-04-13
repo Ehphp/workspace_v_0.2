@@ -15,13 +15,14 @@ import type {
     BlueprintDataDomain,
     BlueprintIntegration,
     BlueprintRelation,
+    BlueprintWorkflow,
 } from '@/types/project-technical-blueprint';
 
 // ─── Types ──────────────────────────────────────────────────────
 
 export interface BlueprintSearchResult {
     nodeId: string;
-    kind: 'component' | 'data_domain' | 'integration' | 'relation';
+    kind: 'component' | 'data_domain' | 'integration' | 'workflow' | 'relation';
     label: string;
     /** Graph node id (comp-0, dd-1, etc.) for cross-referencing with the graph */
     graphNodeId?: string;
@@ -98,6 +99,22 @@ export function searchBlueprint(
         }
     });
 
+    // Workflows
+    (blueprint.workflows ?? []).forEach((wf, i) => {
+        const score = scoreWorkflow(wf, q);
+        if (score > 0) {
+            results.push({
+                nodeId: wf.id ?? `wf_${i}`,
+                kind: 'workflow',
+                label: wf.name,
+                graphNodeId: `wf-${i}`,
+                sourceIndex: i,
+                matchSnippet: findMatchSnippetWorkflow(wf, q),
+                score,
+            });
+        }
+    });
+
     // Relations
     (blueprint.relations ?? []).forEach((rel, i) => {
         const score = scoreRelation(rel, q, blueprint);
@@ -147,6 +164,16 @@ function scoreIntegration(integ: BlueprintIntegration, q: string): number {
     return score;
 }
 
+function scoreWorkflow(wf: BlueprintWorkflow, q: string): number {
+    let score = 0;
+    if (wf.name.toLowerCase().includes(q)) score += 1.0;
+    if (wf.description?.toLowerCase().includes(q)) score += 0.6;
+    if (wf.trigger?.toLowerCase().includes(q)) score += 0.5;
+    if (wf.steps?.some((s) => s.action.toLowerCase().includes(q))) score += 0.4;
+    if (wf.evidence?.some((e) => e.snippet.toLowerCase().includes(q))) score += 0.3;
+    return score;
+}
+
 function scoreRelation(rel: BlueprintRelation, q: string, bp: ProjectTechnicalBlueprint): number {
     let score = 0;
     if (rel.type.toLowerCase().includes(q)) score += 0.8;
@@ -186,12 +213,24 @@ function findMatchSnippetInteg(integ: BlueprintIntegration, q: string): string {
     return integ.systemName;
 }
 
+function findMatchSnippetWorkflow(wf: BlueprintWorkflow, q: string): string {
+    if (wf.name.toLowerCase().includes(q)) return wf.name;
+    if (wf.description?.toLowerCase().includes(q)) return truncate(wf.description, 80);
+    if (wf.trigger?.toLowerCase().includes(q)) return `Trigger: ${wf.trigger}`;
+    const step = wf.steps?.find((s) => s.action.toLowerCase().includes(q));
+    if (step) return truncate(step.action, 80);
+    const ev = wf.evidence?.find((e) => e.snippet.toLowerCase().includes(q));
+    if (ev) return truncate(ev.snippet, 80);
+    return wf.name;
+}
+
 // ─── Utilities ──────────────────────────────────────────────────
 
 function resolveLabel(nodeId: string, bp: ProjectTechnicalBlueprint): string {
     for (const c of bp.components) if (c.id === nodeId) return c.name;
     for (const d of bp.dataDomains) if (d.id === nodeId) return d.name;
     for (const i of bp.integrations) if (i.id === nodeId) return i.systemName;
+    for (const w of (bp.workflows ?? [])) if (w.id === nodeId) return w.name;
     return nodeId;
 }
 

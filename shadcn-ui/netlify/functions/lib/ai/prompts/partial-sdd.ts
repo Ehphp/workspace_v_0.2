@@ -42,7 +42,7 @@ REGOLE CRITICHE
 5. Se un concetto è solo accennato, includilo con una description breve
 6. Le keyPassages DEVONO essere citazioni VERBATIM copiate esattamente dal frammento
 7. È NORMALE che questo digest sia parziale o incompleto — verrà consolidato con altri
-
+8. Cerca di capire se il progetto descritto è gia stato implementato e quindi le attivita legate ad esso saranno di tipo manutentivo o evolutivo. Se il progetto è in fase di ideazione o sviluppo, le attivita saranno di tipo Creazione.
 ═══════════════════════════════════════════════════════════════════
 CAMPI DEL DIGEST PARZIALE
 ═══════════════════════════════════════════════════════════════════
@@ -70,7 +70,11 @@ CAMPI DEL DIGEST PARZIALE
 
 7. "ambiguities" — Ambiguità o contraddizioni rilevate in questo frammento. Array di stringhe. (max 10)
 
-8. "documentQuality" — Qualità di QUESTO frammento (non del documento intero):
+8. "operationalWorkflows" — Workflow operativi / processi di business menzionati in questo frammento, spesso abbreviati in WF,FLussi o simili.
+   Ogni workflow: { "name": nome processo, "trigger": evento scatenante, "actors": array attori coinvolti, "keySteps": riassunto passi max 300 chars }
+   Se il frammento non descrive workflow, array VUOTO. (min 0, max 10)
+
+9. "documentQuality" — Qualità di QUESTO frammento (non del documento intero):
    "high": dettagliato, requisiti chiari
    "medium": parziale, alcune lacune
    "low": vago, poche info tecniche
@@ -101,6 +105,12 @@ export const PartialSDDSchema = z.object({
         label: z.string().min(1).max(100),
         text: z.string().min(1).max(300),
     })).min(0).max(20),
+    operationalWorkflows: z.array(z.object({
+        name: z.string().min(1).max(200),
+        trigger: z.string().min(1).max(300),
+        actors: z.array(z.string().min(1).max(200)).max(10),
+        keySteps: z.string().min(1).max(500),
+    })).min(0).max(10),
     ambiguities: z.array(z.string().max(500)).max(10),
     documentQuality: z.enum(['high', 'medium', 'low']),
 });
@@ -172,12 +182,26 @@ export function createPartialSDDResponseSchema() {
                         },
                     },
                     ambiguities: { type: 'array', items: { type: 'string' } },
+                    operationalWorkflows: {
+                        type: 'array',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                name: { type: 'string' },
+                                trigger: { type: 'string' },
+                                actors: { type: 'array', items: { type: 'string' } },
+                                keySteps: { type: 'string' },
+                            },
+                            required: ['name', 'trigger', 'actors', 'keySteps'],
+                            additionalProperties: false,
+                        },
+                    },
                     documentQuality: { type: 'string', enum: ['high', 'medium', 'low'] },
                 },
                 required: [
                     'functionalAreas', 'businessEntities', 'externalSystems',
                     'technicalConstraints', 'nonFunctionalRequirements',
-                    'keyPassages', 'ambiguities', 'documentQuality',
+                    'keyPassages', 'ambiguities', 'operationalWorkflows', 'documentQuality',
                 ],
                 additionalProperties: false,
             },

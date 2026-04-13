@@ -1,6 +1,7 @@
 import type React from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { FileText, Zap, Plus, Settings, Loader2 } from 'lucide-react';
+import { FileText, Zap, Plus, Settings, Loader2, ListChecks } from 'lucide-react';
 import type { Project } from '@/types/database';
 
 interface RequirementsHeaderProps {
@@ -69,6 +70,18 @@ export function RequirementsHeader({
 
                     {/* Right side: Actions */}
                     <div className="flex items-center gap-2">
+                        {project && (
+                            <Link to={`/dashboard/${project.id}/activities`}>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 rounded-xl h-9 px-3 text-sm"
+                                >
+                                    <ListChecks className="mr-1.5 h-3.5 w-3.5" />
+                                    Attività
+                                </Button>
+                            </Link>
+                        )}
                         <Button
                             disabled={filteredRequirementsCount === 0 || isBulkRunning}
                             onClick={onBulkEstimate}

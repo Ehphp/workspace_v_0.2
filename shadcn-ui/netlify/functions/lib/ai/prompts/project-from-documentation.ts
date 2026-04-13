@@ -88,7 +88,16 @@ CAMPI DEL DIGEST:
 7. "ambiguities" — Ambiguità o contraddizioni rilevate nel documento.
    Array di stringhe descrittive.
 
-8. "documentQuality" — Valutazione della qualità/completezza del documento:
+8. "operationalWorkflows" — Workflow operativi / processi di business descritti nel documento.
+   Ogni workflow ha:
+   - "name": nome del processo (es. "Approvazione Ordine", "Onboarding Cliente")
+   - "trigger": evento che avvia il processo (es. "Ricezione ordine", "Registrazione utente")
+   - "actors": array di attori coinvolti (es. ["Responsabile Vendite", "Sistema ERP", "Cliente"])
+   - "keySteps": riassunto sintetico dei passi principali (max 300 caratteri)
+   Estrai TUTTI i flussi operativi e processi di business chiaramente descritti.
+   Se il documento non descrive workflow, array VUOTO. (min 0, max 10)
+
+9. "documentQuality" — Valutazione della qualità/completezza del documento:
    - "high": documento dettagliato con requisiti chiari e architettura definita
    - "medium": documento parziale, alcuni requisiti chiari ma molte lacune
    - "low": documento vago, poche informazioni tecniche concrete
@@ -182,12 +191,26 @@ export function createProjectDraftResponseSchema() {
                                 },
                             },
                             ambiguities: { type: 'array', items: { type: 'string' } },
+                            operationalWorkflows: {
+                                type: 'array',
+                                items: {
+                                    type: 'object',
+                                    properties: {
+                                        name: { type: 'string' },
+                                        trigger: { type: 'string' },
+                                        actors: { type: 'array', items: { type: 'string' } },
+                                        keySteps: { type: 'string' },
+                                    },
+                                    required: ['name', 'trigger', 'actors', 'keySteps'],
+                                    additionalProperties: false,
+                                },
+                            },
                             documentQuality: { type: 'string', enum: ['high', 'medium', 'low'] },
                         },
                         required: [
                             'functionalAreas', 'businessEntities', 'externalSystems',
                             'technicalConstraints', 'nonFunctionalRequirements',
-                            'keyPassages', 'ambiguities', 'documentQuality',
+                            'keyPassages', 'ambiguities', 'operationalWorkflows', 'documentQuality',
                         ],
                         additionalProperties: false,
                     },
@@ -220,15 +243,17 @@ L'SDD contiene aree funzionali, entità di business, sistemi esterni, vincoli te
 citazioni verbatim (keyPassages) dal documento originale che puoi usare come evidence.
 
 ═══════════════════════════════════════════════════════════════════
-CLASSIFICAZIONE OBBLIGATORIA — 3 CATEGORIE SEPARATE
+CLASSIFICAZIONE OBBLIGATORIA — 4 CATEGORIE SEPARATE
 ═══════════════════════════════════════════════════════════════════
 
-Il blueprint DEVE separare gli elementi in 3 categorie distinte.
+Il blueprint DEVE separare gli elementi in 4 categorie distinte.
 Ogni elemento DEVE apparire in UNA SOLA categoria. NESSUNA sovrapposizione.
 
 ┌─────────────────┬────────────────────────────────────────────────┐
 │ COMPONENTS      │ Blocchi costruttivi INTERNI del sistema.       │
 │                 │ Unità architetturali stabili e significative.  │
+│                 │ COMPONENT = unità di logica o responsabilità   │
+│                 │ tecnica (ha un tipo). NON dati puri.           │
 │                 │ Es: Frontend App, Workflow Engine, Reporting   │
 │                 │ Module, Security Layer, Backend API.           │
 │                 │                                                │
@@ -241,13 +266,30 @@ Ogni elemento DEVE apparire in UNA SOLA categoria. NESSUNA sovrapposizione.
 │                 │ → usa nomi descrittivi ("Servizio Notifiche"). │
 ├─────────────────┼────────────────────────────────────────────────┤
 │ DATA DOMAINS    │ Aree di dato BUSINESS del sistema.             │
-│                 │ Entità di dominio gestite dal progetto.        │
+│                 │ DATA DOMAIN = insieme coerente di dati/entità. │
+│                 │ NON contiene comportamento.                    │
 │                 │ Es: Candidati, Posizioni Lavorative,           │
 │                 │ Fatture, Ordini, Utenti, Contratti.            │
 │                 │                                                │
 │                 │ NON inserire qui: tecnologie (Dataverse, SQL), │
 │                 │ infrastruttura, servizi o componenti.          │
 │                 │ SOLO concetti di business/dominio.             │
+│                 │                                                │
+│                 │ ESEMPIO CORRETTO: "Anagrafica Clienti" →       │
+│                 │   dataDomain (sono dati puri, no logica)       │
+│                 │ ESEMPIO ERRATO: "Anagrafica Clienti" →         │
+│                 │   component (NON ha logica propria)            │
+├─────────────────┼────────────────────────────────────────────────┤
+│ WORKFLOWS       │ Flussi operativi e processi di business.       │
+│                 │ Sequenze di passi che coinvolgono componenti   │
+│                 │ e/o domini dati. Hanno un trigger e step.      │
+│                 │ Es: "Processo Approvazione Ordine",            │
+│                 │ "Flusso Onboarding Dipendente",                │
+│                 │ "Ciclo Fatturazione Mensile".                  │
+│                 │                                                │
+│                 │ DISTINGUI da component: un workflow descrive   │
+│                 │ un PROCESSO (chi fa cosa in che ordine),        │
+│                 │ NON un modulo tecnico.                         │
 ├─────────────────┼────────────────────────────────────────────────┤
 │ INTEGRATIONS    │ Sistemi ESTERNI o servizi di terze parti.      │
 │                 │ Tutto ciò che è FUORI dal confine del sistema. │
@@ -306,6 +348,7 @@ COVERAGE & QUALITY FLAGS
   - "empty_column_components" — nessun component trovato
   - "empty_column_data_domains" — nessun data domain trovato
   - "empty_column_integrations" — nessuna integration trovata
+  - "empty_column_workflows" — nessun workflow trovato
   - "too_many_generic_nodes" — troppi nodi con nomi generici
 
 ═══════════════════════════════════════════════════════════════════
@@ -317,8 +360,10 @@ STRUTTURA:
 - Minimo 2 components, massimo 10
 - Se il digest menziona dati di business (businessEntities) → almeno 1 dataDomain
 - Se il digest menziona sistemi esterni (externalSystems) → almeno 1 integration
+- Se il digest descrive flussi operativi o processi → almeno 1 workflow
 - Se non ci sono dati di business chiari → dataDomains può essere vuoto
 - Se non ci sono sistemi esterni chiari → integrations può essere vuoto
+- Se non ci sono flussi operativi chiari → workflows può essere vuoto
 
 QUALITÀ:
 - Resta a livello MACRO, project-level
@@ -336,8 +381,9 @@ METADATI:
 - "missingInformation" deve SEMPRE essere valorizzato se ci sono ambiguità (controlla il campo ambiguities del digest)
 
 COMPONENT TYPES AMMESSI:
-frontend, backend, database, workflow, reporting, security, infrastructure, other
+frontend, backend, database, reporting, security, infrastructure, other
 (NON usare "integration" o "external_system" come tipo componente → metti in integrations)
+(NON usare "workflow" come tipo componente → metti in workflows)
 
 TIPI SPECIFICI PER TECNOLOGIA (usa quando la tecnologia è nota):
 - Power Platform: canvas_app, model_driven_app, dataverse_table, custom_connector, cloud_flow, power_automate_desktop, pcf_control
@@ -382,7 +428,7 @@ export function createTechnicalBlueprintResponseSchema() {
                                     enum: [
                                         // Generic types
                                         'frontend', 'backend', 'database', 'integration',
-                                        'workflow', 'reporting', 'security', 'infrastructure',
+                                        'reporting', 'security', 'infrastructure',
                                         'external_system', 'other',
                                         // Power Platform specific
                                         'canvas_app', 'model_driven_app', 'dataverse_table',
@@ -436,6 +482,38 @@ export function createTechnicalBlueprintResponseSchema() {
                             additionalProperties: false,
                         },
                     },
+                    workflows: {
+                        type: 'array',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                name: { type: 'string' },
+                                description: { type: ['string', 'null'] },
+                                trigger: { type: 'string' },
+                                steps: {
+                                    type: 'array',
+                                    items: {
+                                        type: 'object',
+                                        properties: {
+                                            order: { type: 'number' },
+                                            action: { type: 'string' },
+                                            actor: { type: ['string', 'null'], enum: ['user', 'system', 'external', null] },
+                                            component: { type: ['string', 'null'] },
+                                        },
+                                        required: ['order', 'action', 'actor', 'component'],
+                                        additionalProperties: false,
+                                    },
+                                },
+                                involvedComponents: { type: 'array', items: { type: 'string' } },
+                                involvedDataDomains: { type: 'array', items: { type: 'string' } },
+                                complexity: { type: ['string', 'null'], enum: ['low', 'medium', 'high', null] },
+                                confidence: { type: ['number', 'null'] },
+                                evidence: { type: 'array', items: evidenceItemSchema },
+                            },
+                            required: ['name', 'description', 'trigger', 'steps', 'involvedComponents', 'involvedDataDomains', 'complexity', 'confidence', 'evidence'],
+                            additionalProperties: false,
+                        },
+                    },
                     relations: {
                         type: 'array',
                         items: {
@@ -462,7 +540,7 @@ export function createTechnicalBlueprintResponseSchema() {
                     confidence: { type: 'number' },
                 },
                 required: [
-                    'summary', 'components', 'dataDomains', 'integrations',
+                    'summary', 'components', 'dataDomains', 'integrations', 'workflows',
                     'relations', 'coverage', 'qualityFlags',
                     'architecturalNotes', 'assumptions', 'missingInformation', 'confidence',
                 ],

@@ -15,6 +15,7 @@ const KIND_LABELS: Record<string, string> = {
     component: 'Component',
     integration: 'External System',
     data_domain: 'Data Domain',
+    workflow: 'Workflow',
 };
 
 export function ProjectBlueprintInspector({ blueprint, selectedNode, selectedNodeId, graphModel }: ProjectBlueprintInspectorProps) {
@@ -294,6 +295,9 @@ function generateInsights(data: BlueprintGraphNodeData): string[] {
     } else if (kind === 'data_domain') {
         insights.push('Represents a core business data entity');
         insights.push('Changes to this domain may affect multiple components');
+    } else if (kind === 'workflow') {
+        insights.push('Operational workflow — defines end-to-end business process');
+        insights.push('Orchestrates multiple components and data domains');
     }
 
     return insights;
@@ -306,8 +310,9 @@ function BlueprintOverview({ blueprint }: { blueprint: ProjectTechnicalBlueprint
         ...blueprint.components,
         ...blueprint.dataDomains,
         ...blueprint.integrations,
+        ...(blueprint.workflows ?? []),
     ].filter((n) => n.reviewStatus === 'approved' || n.reviewStatus === 'reviewed').length;
-    const totalNodes = blueprint.components.length + blueprint.dataDomains.length + blueprint.integrations.length;
+    const totalNodes = blueprint.components.length + blueprint.dataDomains.length + blueprint.integrations.length + (blueprint.workflows ?? []).length;
 
     return (
         <ScrollArea className="h-full">
@@ -350,6 +355,7 @@ function BlueprintOverview({ blueprint }: { blueprint: ProjectTechnicalBlueprint
                     <div className="space-y-2">
                         <CountRow label="Components" count={blueprint.components.length} kind="component" />
                         <CountRow label="Data Domains" count={blueprint.dataDomains.length} kind="data_domain" />
+                        <CountRow label="Workflows" count={(blueprint.workflows ?? []).length} kind="workflow" />
                         <CountRow label="External Systems" count={blueprint.integrations.length} kind="integration" />
                         {(blueprint.relations?.length ?? 0) > 0 && (
                             <div className="flex items-center justify-between text-sm">
@@ -407,9 +413,9 @@ function BlueprintOverview({ blueprint }: { blueprint: ProjectTechnicalBlueprint
                                         <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
                                             <div
                                                 className={`h-full rounded-full ${blueprint.qualityScore >= 0.85 ? 'bg-emerald-500' :
-                                                        blueprint.qualityScore >= 0.65 ? 'bg-blue-500' :
-                                                            blueprint.qualityScore >= 0.45 ? 'bg-amber-500' :
-                                                                'bg-red-500'
+                                                    blueprint.qualityScore >= 0.65 ? 'bg-blue-500' :
+                                                        blueprint.qualityScore >= 0.45 ? 'bg-amber-500' :
+                                                            'bg-red-500'
                                                     }`}
                                                 style={{ width: `${Math.round(blueprint.qualityScore * 100)}%` }}
                                             />
@@ -418,9 +424,9 @@ function BlueprintOverview({ blueprint }: { blueprint: ProjectTechnicalBlueprint
                                             {Math.round(blueprint.qualityScore * 100)}%
                                         </span>
                                         <Badge className={`text-[9px] px-1 py-0 h-3.5 ${blueprint.qualityScore >= 0.85 ? 'bg-emerald-100 text-emerald-700' :
-                                                blueprint.qualityScore >= 0.65 ? 'bg-blue-100 text-blue-700' :
-                                                    blueprint.qualityScore >= 0.45 ? 'bg-amber-100 text-amber-700' :
-                                                        'bg-red-100 text-red-700'
+                                            blueprint.qualityScore >= 0.65 ? 'bg-blue-100 text-blue-700' :
+                                                blueprint.qualityScore >= 0.45 ? 'bg-amber-100 text-amber-700' :
+                                                    'bg-red-100 text-red-700'
                                             }`}>
                                             {blueprint.qualityScore >= 0.85 ? 'excellent' :
                                                 blueprint.qualityScore >= 0.65 ? 'good' :

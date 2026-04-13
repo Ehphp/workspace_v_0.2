@@ -18,6 +18,7 @@ import Profile from './pages/configuration/Profile';
 import { OrganizationSettings } from './pages/configuration/OrganizationSettings';
 import EstimationAccuracy from './pages/analytics/EstimationAccuracy';
 import PromptManagement from './pages/admin/PromptManagement';
+import ProjectActivitiesPage from './pages/activities/ProjectActivitiesPage';
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,14 @@ const App = () => (
             element={
               <AuthGuard>
                 <RequirementDetail />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/dashboard/:projectId/activities"
+            element={
+              <AuthGuard>
+                <ProjectActivitiesPage />
               </AuthGuard>
             }
           />

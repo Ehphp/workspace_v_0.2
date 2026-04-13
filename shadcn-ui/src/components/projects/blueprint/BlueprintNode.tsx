@@ -30,6 +30,7 @@ export const BlueprintNode = memo(function BlueprintNode({
     const isComponent = data.kind === 'component';
     const isIntegration = data.kind === 'integration';
     const isDataDomain = data.kind === 'data_domain';
+    const isWorkflow = data.kind === 'workflow';
     const isPrimary = data.isPrimary === true;
     const hasNoEvidence = data.hasNoEvidence === true;
     const reviewStatus = data.reviewStatus ?? 'draft';
@@ -40,7 +41,9 @@ export const BlueprintNode = memo(function BlueprintNode({
         ? 'min-w-[220px] max-w-[260px] px-4 py-3'
         : isIntegration
             ? 'min-w-[180px] max-w-[220px] px-3 py-2.5'
-            : 'min-w-[160px] max-w-[200px] px-3 py-2';
+            : isWorkflow
+                ? 'min-w-[200px] max-w-[260px] px-3 py-2.5'
+                : 'min-w-[160px] max-w-[200px] px-3 py-2';
 
     const borderWidth = isPrimary || isHighCriticality ? 'border-[3px]' : 'border-2';
 
@@ -125,6 +128,28 @@ export const BlueprintNode = memo(function BlueprintNode({
                 <span className={`block text-xs font-medium truncate leading-snug ${hasNoEvidence ? 'text-slate-500' : 'text-slate-700'}`}>
                     {data.label}
                 </span>
+            )}
+
+            {/* ── Workflow layout ─── */}
+            {isWorkflow && (
+                <>
+                    <div className="flex items-center gap-1.5 mb-1">
+                        <Badge className={`${style.badge} text-[10px] px-1.5 py-0 h-4 font-semibold`}>
+                            workflow
+                        </Badge>
+                        {isHighCriticality && (
+                            <span className="text-[9px] font-bold text-red-500 uppercase tracking-wider">Critical</span>
+                        )}
+                    </div>
+                    <span className="block text-xs font-semibold text-slate-800 truncate leading-snug">
+                        {data.label}
+                    </span>
+                    {data.typeLabel && data.typeLabel !== 'workflow' && (
+                        <span className="block text-[10px] text-slate-500 truncate mt-0.5">
+                            {data.typeLabel}
+                        </span>
+                    )}
+                </>
             )}
 
             <Handle type="source" position={Position.Right} className="!w-2 !h-2 !bg-slate-400" />

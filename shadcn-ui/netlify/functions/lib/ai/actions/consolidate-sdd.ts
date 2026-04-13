@@ -38,6 +38,12 @@ const StructuredDocumentDigestSchema = z.object({
         label: z.string().min(1).max(100),
         text: z.string().min(1).max(300),
     })).min(3).max(20),
+    operationalWorkflows: z.array(z.object({
+        name: z.string().min(1).max(200),
+        trigger: z.string().min(1).max(300),
+        actors: z.array(z.string().min(1).max(200)).max(10),
+        keySteps: z.string().min(1).max(500),
+    })).min(0).max(10),
     ambiguities: z.array(z.string().max(500)).max(10),
     documentQuality: z.enum(['high', 'medium', 'low']),
 });
@@ -180,6 +186,8 @@ interface PartialCounts {
     totalSystems: number;
     uniqueSystemNames: number;
     totalPassages: number;
+    totalWorkflows: number;
+    uniqueWorkflowNames: number;
 }
 
 function buildConsolidationPrompt(
@@ -197,6 +205,7 @@ function buildConsolidationPrompt(
         `- Aree funzionali: ${counts.totalAreas} totali, ${counts.uniqueAreaTitles} titoli unici`,
         `- Business entities: ${counts.totalEntities} totali, ${counts.uniqueEntityNames} nomi unici`,
         `- Sistemi esterni: ${counts.totalSystems} totali, ${counts.uniqueSystemNames} nomi unici`,
+        `- Workflow operativi: ${counts.totalWorkflows} totali, ${counts.uniqueWorkflowNames} nomi unici`,
         `- Key passages: ${counts.totalPassages} totali`,
         ``,
         `ASSICURATI di non perdere informazione significativa. Il digest finale deve coprire`,
@@ -269,10 +278,12 @@ function computePartialCounts(partials: PartialSDD[]): PartialCounts {
     const areaTitles = new Set<string>();
     const entityNames = new Set<string>();
     const systemNames = new Set<string>();
+    const workflowNames = new Set<string>();
     let totalAreas = 0;
     let totalEntities = 0;
     let totalSystems = 0;
     let totalPassages = 0;
+    let totalWorkflows = 0;
 
     for (const p of partials) {
         totalAreas += p.functionalAreas.length;
@@ -285,6 +296,9 @@ function computePartialCounts(partials: PartialSDD[]): PartialCounts {
         for (const s of p.externalSystems) systemNames.add(s.name.toLowerCase().trim());
 
         totalPassages += p.keyPassages.length;
+
+        totalWorkflows += p.operationalWorkflows.length;
+        for (const w of p.operationalWorkflows) workflowNames.add(w.name.toLowerCase().trim());
     }
 
     return {
@@ -295,6 +309,8 @@ function computePartialCounts(partials: PartialSDD[]): PartialCounts {
         totalSystems,
         uniqueSystemNames: systemNames.size,
         totalPassages,
+        totalWorkflows,
+        uniqueWorkflowNames: workflowNames.size,
     };
 }
 
@@ -327,22 +343,26 @@ function runPostConsolidationChecks(
     const partialAreaTitles = new Set<string>();
     const partialEntityNames = new Set<string>();
     const partialSystemNames = new Set<string>();
+    const partialWorkflowNames = new Set<string>();
     for (const p of partials) {
         for (const a of p.functionalAreas) partialAreaTitles.add(a.title.toLowerCase().trim());
         for (const e of p.businessEntities) partialEntityNames.add(e.name.toLowerCase().trim());
         for (const s of p.externalSystems) partialSystemNames.add(s.name.toLowerCase().trim());
+        for (const w of p.operationalWorkflows) partialWorkflowNames.add(w.name.toLowerCase().trim());
     }
 
     const finalAreaTitles = new Set(sdd.functionalAreas.map(a => a.title.toLowerCase().trim()));
     const finalEntityNames = new Set(sdd.businessEntities.map(e => e.name.toLowerCase().trim()));
     const finalSystemNames = new Set(sdd.externalSystems.map(s => s.name.toLowerCase().trim()));
+    const finalWorkflowNames = new Set(sdd.operationalWorkflows.map(w => w.name.toLowerCase().trim()));
 
-    const totalUnique = partialAreaTitles.size + partialEntityNames.size + partialSystemNames.size;
+    const totalUnique = partialAreaTitles.size + partialEntityNames.size + partialSystemNames.size + partialWorkflowNames.size;
     if (totalUnique > 0) {
         let covered = 0;
         for (const t of partialAreaTitles) if (finalAreaTitles.has(t)) covered++;
         for (const n of partialEntityNames) if (finalEntityNames.has(n)) covered++;
         for (const s of partialSystemNames) if (finalSystemNames.has(s)) covered++;
+        for (const w of partialWorkflowNames) if (finalWorkflowNames.has(w)) covered++;
 
         const coverageRatio = covered / totalUnique;
         if (coverageRatio < 0.7) {
@@ -379,6 +399,11 @@ function runPostConsolidationChecks(
                 name: 'keyPassages',
                 countInPartials: partials.filter(p => p.keyPassages.length > 0).length,
                 countInFinal: sdd.keyPassages.length,
+            },
+            {
+                name: 'operationalWorkflows',
+                countInPartials: partials.filter(p => p.operationalWorkflows.length > 0).length,
+                countInFinal: sdd.operationalWorkflows.length,
             },
         ];
 

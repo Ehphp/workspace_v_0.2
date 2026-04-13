@@ -6,7 +6,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { FolderOpen, MoreVertical, Edit, Trash2, Calendar, User } from 'lucide-react';
+import { FolderOpen, MoreVertical, Edit, Trash2, Calendar, User, ListChecks } from 'lucide-react';
 import { Project } from '@/types/database';
 
 interface ProjectCardProps {
@@ -88,6 +88,9 @@ export function ProjectCard({ project, onEdit, onDelete, layout = 'grid' }: Proj
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/${project.id}/activities`); }}>
+                                <ListChecks className="mr-2 h-4 w-4" /> Attività
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(project); }}>
                                 <Edit className="mr-2 h-4 w-4" /> Modifica
                             </DropdownMenuItem>
@@ -123,6 +126,9 @@ export function ProjectCard({ project, onEdit, onDelete, layout = 'grid' }: Proj
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/${project.id}/activities`); }}>
+                                <ListChecks className="mr-2 h-4 w-4" /> Attività
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(project); }}>
                                 <Edit className="mr-2 h-4 w-4" /> Modifica
                             </DropdownMenuItem>

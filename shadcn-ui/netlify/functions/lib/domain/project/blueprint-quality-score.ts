@@ -34,6 +34,8 @@ const PENALTIES = {
     veryLowCoverage: 0.08,
     /** Very low confidence (< 0.3) */
     veryLowConfidence: 0.06,
+    /** Boundary violations detected by normalizer (components↔dataDomains misclassification) */
+    boundaryViolation: 0.04,
 } as const;
 
 // ─── Output type ────────────────────────────────────────────────
@@ -72,6 +74,9 @@ export function computeBlueprintQualityScore(
     if (blueprint.integrations.length === 0) {
         penalize('empty_column_integrations', PENALTIES.emptyColumn);
     }
+    if ((blueprint.workflows ?? []).length === 0) {
+        penalize('empty_column_workflows', PENALTIES.emptyColumn);
+    }
 
     // ── Generic nodes ───────────────────────────────────────────
     if (flags.has('too_many_generic_nodes')) {
@@ -83,6 +88,7 @@ export function computeBlueprintQualityScore(
         ...blueprint.components,
         ...blueprint.dataDomains,
         ...blueprint.integrations,
+        ...(blueprint.workflows ?? []),
     ];
     const coreWithoutEvidence = allNodes.filter(
         (n) => n.businessCriticality === 'high' && (!n.evidence || n.evidence.length === 0),
@@ -119,6 +125,11 @@ export function computeBlueprintQualityScore(
     // ── Disconnected integrations ───────────────────────────────
     if (flags.has('integration_without_connected_component')) {
         penalize('integration_without_connected_component', PENALTIES.integrationWithoutComponent);
+    }
+
+    // ── Boundary violations ──────────────────────────────────────
+    if (flags.has('boundary_violation_detected')) {
+        penalize('boundary_violation_detected', PENALTIES.boundaryViolation);
     }
 
     // ── Very low signal from AI ─────────────────────────────────

@@ -18,6 +18,8 @@ export type {
     BlueprintComponent,
     BlueprintDataDomain,
     BlueprintIntegration,
+    WorkflowStep,
+    BlueprintWorkflow,
     ProjectTechnicalBlueprint,
     ProjectDraftBlueprint,
     ProjectFromDocumentationResult,

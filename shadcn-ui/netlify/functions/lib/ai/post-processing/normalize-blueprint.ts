@@ -6,14 +6,15 @@
  * node IDs, validate relations, consolidate evidence, and produce
  * deterministic quality flags.
  *
- * Ensures the blueprint is consistent with the 3-column visualization:
- *   LEFT: Data Domains  |  CENTER: Components  |  RIGHT: Integrations
+ * Ensures the blueprint is consistent with the 4-column visualization:
+ *   LEFT: Data Domains | CENTER-LEFT: Components | CENTER-RIGHT: Workflows | RIGHT: Integrations
  */
 
 import type {
     BlueprintComponent,
     BlueprintDataDomain,
     BlueprintIntegration,
+    BlueprintWorkflow,
     BlueprintComponentType,
     BlueprintRelation,
     EvidenceRef,
@@ -28,6 +29,7 @@ export interface RawBlueprint {
     components: BlueprintComponent[];
     dataDomains: BlueprintDataDomain[];
     integrations: BlueprintIntegration[];
+    workflows?: BlueprintWorkflow[];
     relations?: BlueprintRelation[];
     coverage?: number;
     qualityFlags?: string[];
@@ -81,15 +83,27 @@ export function normalizeProjectTechnicalBlueprint(raw: RawBlueprint): Normaliza
     let components = [...raw.components];
     let dataDomains = [...raw.dataDomains];
     let integrations = [...raw.integrations];
+    let workflows = [...(raw.workflows ?? [])];
     let relations = [...(raw.relations ?? [])];
 
     // ── Step 1: Reclassify misplaced components ─────────────────────
+    // 1a: component type='integration'/'external_system' → integrations
     const { kept, movedToIntegrations } = reclassifyComponents(components);
     components = kept;
     if (movedToIntegrations.length > 0) {
         integrations.push(...movedToIntegrations);
         warnings.push(
             `Reclassified ${movedToIntegrations.length} component(s) to integrations: ${movedToIntegrations.map((i) => i.systemName).join(', ')}`,
+        );
+    }
+
+    // 1b: component type='workflow' → workflows (new in v3)
+    const { keptComponents, movedToWorkflows } = reclassifyWorkflowComponents(components);
+    components = keptComponents;
+    if (movedToWorkflows.length > 0) {
+        workflows.push(...movedToWorkflows);
+        warnings.push(
+            `Reclassified ${movedToWorkflows.length} component(s) to workflows: ${movedToWorkflows.map((w) => w.name).join(', ')}`,
         );
     }
 
@@ -102,23 +116,39 @@ export function normalizeProjectTechnicalBlueprint(raw: RawBlueprint): Normaliza
         warnings.push(`Removed ${dedup.removedCount} duplicate(s) across categories`);
     }
 
-    // ── Step 3: Semantic deduplication within categories ─────────────
-    const compsBefore = components.length;
-    components = semanticDeduplicateArray(components, (c) => c.name);
-    if (components.length < compsBefore) {
-        warnings.push(`Removed ${compsBefore - components.length} duplicate component(s)`);
+    // ── Step 2.5: Cross-boundary reclassification ───────────────────
+    const boundaryResult = enforceBoundaries(components, dataDomains);
+    if (boundaryResult.reclassifiedCount > 0) {
+        components = boundaryResult.components;
+        dataDomains = boundaryResult.dataDomains;
+        warnings.push(
+            `Boundary enforcement: reclassified ${boundaryResult.reclassifiedCount} node(s): ${boundaryResult.details.join('; ')}`,
+        );
     }
 
-    const ddBefore = dataDomains.length;
-    dataDomains = semanticDeduplicateArray(dataDomains, (d) => d.name);
-    if (dataDomains.length < ddBefore) {
-        warnings.push(`Removed ${ddBefore - dataDomains.length} duplicate data domain(s)`);
+    // ── Step 3: Semantic deduplication within categories (enhanced) ──
+    const compDedup = semanticDeduplicateWithAliases(components, (c) => c.name);
+    components = compDedup.result;
+    if (compDedup.mergedCount > 0) {
+        warnings.push(`Removed ${compDedup.mergedCount} duplicate component(s)`);
     }
 
-    const integBefore = integrations.length;
-    integrations = semanticDeduplicateArray(integrations, (i) => i.systemName);
-    if (integrations.length < integBefore) {
-        warnings.push(`Removed ${integBefore - integrations.length} duplicate integration(s)`);
+    const ddDedup = semanticDeduplicateWithAliases(dataDomains, (d) => d.name);
+    dataDomains = ddDedup.result;
+    if (ddDedup.mergedCount > 0) {
+        warnings.push(`Removed ${ddDedup.mergedCount} duplicate data domain(s)`);
+    }
+
+    const integDedup = semanticDeduplicateWithAliases(integrations, (i) => i.systemName);
+    integrations = integDedup.result;
+    if (integDedup.mergedCount > 0) {
+        warnings.push(`Removed ${integDedup.mergedCount} duplicate integration(s)`);
+    }
+
+    const wfDedup = semanticDeduplicateWithAliases(workflows, (w) => w.name);
+    workflows = wfDedup.result;
+    if (wfDedup.mergedCount > 0) {
+        warnings.push(`Removed ${wfDedup.mergedCount} duplicate workflow(s)`);
     }
 
     // ── Step 4: Remove useless/generic nodes ────────────────────────
@@ -140,18 +170,32 @@ export function normalizeProjectTechnicalBlueprint(raw: RawBlueprint): Normaliza
         warnings.push(`Removed generic integration(s): ${filteredIntegs.removed.join(', ')}`);
     }
 
-    // ── Step 5: Stabilize node IDs ──────────────────────────────────
+    const filteredWfs = removeUselessNodes(workflows, (w) => w.name);
+    if (filteredWfs.removed.length > 0) {
+        workflows = filteredWfs.kept;
+        warnings.push(`Removed generic workflow(s): ${filteredWfs.removed.join(', ')}`);
+    }
+
+    // ── Step 5: Stabilize node IDs + populate canonicalName ─────────
     components = components.map((c) => ({
         ...c,
         id: c.id || generateNodeId('cmp_', c.name),
+        canonicalName: c.canonicalName || resolveCanonicalName(c.name),
     }));
     dataDomains = dataDomains.map((d) => ({
         ...d,
         id: d.id || generateNodeId('dom_', d.name),
+        canonicalName: d.canonicalName || resolveCanonicalName(d.name),
     }));
     integrations = integrations.map((i) => ({
         ...i,
         id: i.id || generateNodeId('int_', i.systemName),
+        canonicalName: i.canonicalName || resolveCanonicalName(i.systemName),
+    }));
+    workflows = workflows.map((w) => ({
+        ...w,
+        id: w.id || generateNodeId('wf_', w.name),
+        canonicalName: w.canonicalName || resolveCanonicalName(w.name),
     }));
 
     // Build lookup of all valid node IDs and names
@@ -169,8 +213,41 @@ export function normalizeProjectTechnicalBlueprint(raw: RawBlueprint): Normaliza
         validNodeIds.add(i.id!);
         nameToIdMap.set(normalizeName(i.systemName), i.id!);
     }
+    for (const w of workflows) {
+        validNodeIds.add(w.id!);
+        nameToIdMap.set(normalizeName(w.name), w.id!);
+    }
+
+    // ── Step 5b: Validate workflow references ───────────────────────
+    workflows = workflows.map((w) => ({
+        ...w,
+        involvedComponents: (w.involvedComponents ?? []).filter((ref) => {
+            const resolved = validNodeIds.has(ref) || nameToIdMap.has(normalizeName(ref));
+            return resolved;
+        }),
+        involvedDataDomains: (w.involvedDataDomains ?? []).filter((ref) => {
+            const resolved = validNodeIds.has(ref) || nameToIdMap.has(normalizeName(ref));
+            return resolved;
+        }),
+    }));
 
     // ── Step 6: Validate & clean relations ──────────────────────────
+    // 6a: Generate implicit workflow→component orchestrates relations
+    for (const w of workflows) {
+        for (const compRef of w.involvedComponents) {
+            const compId = validNodeIds.has(compRef) ? compRef : nameToIdMap.get(normalizeName(compRef));
+            if (compId && w.id) {
+                relations.push({
+                    id: '',
+                    fromNodeId: w.id,
+                    toNodeId: compId,
+                    type: 'orchestrates',
+                    confidence: 0.7,
+                });
+            }
+        }
+    }
+
     const relResult = validateRelations(relations, validNodeIds, nameToIdMap);
     relations = relResult.relations;
     if (relResult.removedCount > 0) {
@@ -181,20 +258,22 @@ export function normalizeProjectTechnicalBlueprint(raw: RawBlueprint): Normaliza
     components = components.map((c) => ({ ...c, evidence: consolidateEvidence(c.evidence) }));
     dataDomains = dataDomains.map((d) => ({ ...d, evidence: consolidateEvidence(d.evidence) }));
     integrations = integrations.map((i) => ({ ...i, evidence: consolidateEvidence(i.evidence) }));
+    workflows = workflows.map((w) => ({ ...w, evidence: consolidateEvidence(w.evidence) }));
     relations = relations.map((r) => ({ ...r, evidence: consolidateEvidence(r.evidence) }));
 
     // ── Step 8: Deterministic quality flags ─────────────────────────
     const qualityFlags = computeQualityFlags(
-        components, dataDomains, integrations, relations,
+        components, dataDomains, integrations, workflows, relations,
         raw.qualityFlags ?? [],
+        boundaryResult.reclassifiedCount > 0,
     );
 
     // ── Step 9: Deterministic coverage ──────────────────────────────
-    const coverage = computeCoverage(raw.coverage, components, dataDomains, integrations, relations);
+    const coverage = computeCoverage(raw.coverage, components, dataDomains, integrations, workflows, relations);
 
     // ── Step 10: Structural validation warnings ─────────────────────
     if (components.length === 0) {
-        warnings.push('WARN: No components found — graph will have empty center column');
+        warnings.push('WARN: No components found — graph will have empty components column');
     }
     if (components.length > 10) {
         warnings.push(`WARN: Too many components (${components.length}) — consider merging related ones`);
@@ -204,6 +283,18 @@ export function normalizeProjectTechnicalBlueprint(raw: RawBlueprint): Normaliza
     }
     if (integrations.length === 0) {
         warnings.push('INFO: No integrations found — right column will be empty');
+    }
+    if (workflows.length === 0) {
+        warnings.push('INFO: No workflows found — workflows column will be empty');
+    }
+
+    // Check workflows referencing non-existent components/domains
+    for (const w of workflows) {
+        for (const ref of [...w.involvedComponents, ...w.involvedDataDomains]) {
+            if (!validNodeIds.has(ref) && !nameToIdMap.has(normalizeName(ref))) {
+                warnings.push(`WARN: Workflow "${w.name}" references unknown node "${ref}"`);
+            }
+        }
     }
 
     const emptyDescComps = components.filter((c) => !c.description?.trim());
@@ -217,6 +308,7 @@ export function normalizeProjectTechnicalBlueprint(raw: RawBlueprint): Normaliza
             components,
             dataDomains,
             integrations,
+            workflows,
             relations,
             coverage,
             qualityFlags,
@@ -289,6 +381,41 @@ function reclassifyComponents(components: BlueprintComponent[]): {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Step 1b: Reclassify workflow-type components to workflows
+// ─────────────────────────────────────────────────────────────────────────────
+
+function reclassifyWorkflowComponents(components: BlueprintComponent[]): {
+    keptComponents: BlueprintComponent[];
+    movedToWorkflows: BlueprintWorkflow[];
+} {
+    const keptComponents: BlueprintComponent[] = [];
+    const movedToWorkflows: BlueprintWorkflow[] = [];
+
+    for (const comp of components) {
+        if ((comp.type as string) === 'workflow') {
+            movedToWorkflows.push({
+                name: comp.name,
+                description: comp.description ?? '',
+                trigger: 'unknown',
+                steps: [],
+                involvedComponents: [],
+                involvedDataDomains: [],
+                confidence: comp.confidence,
+                businessCriticality: comp.businessCriticality,
+                changeLikelihood: comp.changeLikelihood,
+                estimationImpact: comp.estimationImpact,
+                reviewStatus: comp.reviewStatus,
+                evidence: comp.evidence,
+            });
+        } else {
+            keptComponents.push(comp);
+        }
+    }
+
+    return { keptComponents, movedToWorkflows };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Step 2: Deduplicate across categories
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -334,7 +461,85 @@ function deduplicateAcrossCategories(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Step 3: Semantic deduplication within arrays
+// Step 2.5: Cross-boundary reclassification
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Patterns that indicate a node is data-like (should be dataDomain, not component) */
+const DATA_LIKE_PATTERNS = /\b(anagraf|catalogo|registro|registr[iy]|archivio|entit[àa]|tabella|record|master\s*data|data\s*domain|elenco|listino|rubrica|scheda|repository\s*dati|fattur[ae]|ordin[ei]|contratt[oi]|inventario)\b/i;
+
+/** Patterns that indicate a node is logic-like (should be component, not dataDomain) */
+const LOGIC_LIKE_PATTERNS = /\b(engine|processor|handler|manager|controller|gateway|service|scheduler|orchestrat|dispatcher|pipeline|worker|daemon|listener|middleware|validator|parser|router|adapter)\b/i;
+
+/** Component types considered data-storage that may indicate a misplaced dataDomain */
+const DATA_STORAGE_TYPES: Set<string> = new Set(['database', 'dataverse_table', 'other']);
+
+function enforceBoundaries(
+    components: BlueprintComponent[],
+    dataDomains: BlueprintDataDomain[],
+): {
+    components: BlueprintComponent[];
+    dataDomains: BlueprintDataDomain[];
+    reclassifiedCount: number;
+    details: string[];
+} {
+    const keptComponents: BlueprintComponent[] = [];
+    const keptDataDomains = [...dataDomains];
+    const movedToDomains: BlueprintDataDomain[] = [];
+    const movedToComponents: BlueprintComponent[] = [];
+    const details: string[] = [];
+
+    // Components whose name matches DATA_LIKE_PATTERNS and type is data-storage → dataDomains
+    for (const comp of components) {
+        const nameAndDesc = `${comp.name} ${comp.description ?? ''}`;
+        if (DATA_STORAGE_TYPES.has(comp.type) && DATA_LIKE_PATTERNS.test(nameAndDesc)) {
+            movedToDomains.push({
+                name: comp.name,
+                description: comp.description,
+                confidence: comp.confidence,
+                businessCriticality: comp.businessCriticality,
+                changeLikelihood: comp.changeLikelihood,
+                estimationImpact: comp.estimationImpact,
+                reviewStatus: comp.reviewStatus,
+                evidence: comp.evidence,
+            });
+            details.push(`${comp.name}: component→dataDomain`);
+        } else {
+            keptComponents.push(comp);
+        }
+    }
+
+    // DataDomains whose name matches LOGIC_LIKE_PATTERNS → components
+    const finalDataDomains: BlueprintDataDomain[] = [];
+    for (const dd of keptDataDomains) {
+        const nameAndDesc = `${dd.name} ${dd.description ?? ''}`;
+        if (LOGIC_LIKE_PATTERNS.test(nameAndDesc)) {
+            movedToComponents.push({
+                name: dd.name,
+                type: 'other',
+                description: dd.description,
+                confidence: dd.confidence,
+                businessCriticality: dd.businessCriticality,
+                changeLikelihood: dd.changeLikelihood,
+                estimationImpact: dd.estimationImpact,
+                reviewStatus: dd.reviewStatus,
+                evidence: dd.evidence,
+            });
+            details.push(`${dd.name}: dataDomain→component`);
+        } else {
+            finalDataDomains.push(dd);
+        }
+    }
+
+    return {
+        components: [...keptComponents, ...movedToComponents],
+        dataDomains: [...finalDataDomains, ...movedToDomains],
+        reclassifiedCount: movedToDomains.length + movedToComponents.length,
+        details,
+    };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 3: Semantic deduplication within arrays (enhanced with aliases)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Common aliases for well-known systems */
@@ -343,23 +548,60 @@ const KNOWN_ALIASES: Map<string, string> = new Map([
     ['o365', 'microsoft365'],
     ['ms365', 'microsoft365'],
     ['mssql', 'sqlserver'],
+    ['mssqlserver', 'sqlserver'],
     ['postgres', 'postgresql'],
     ['mongo', 'mongodb'],
     ['ad', 'activedirectory'],
     ['gcp', 'googlecloudplatform'],
     ['aws', 'amazonwebservices'],
+    ['react', 'reactjs'],
+    ['angular', 'angularjs'],
+    ['vue', 'vuejs'],
+    ['node', 'nodejs'],
+    ['dotnet', 'net'],
+    ['csharp', 'net'],
 ]);
 
-function semanticDeduplicateArray<T>(items: T[], getName: (item: T) => string): T[] {
-    const seen = new Set<string>();
-    return items.filter((item) => {
-        let key = normalizeName(getName(item));
-        // Resolve known aliases
+function resolveCanonicalName(name: string): string {
+    let key = normalizeName(name);
+    return KNOWN_ALIASES.get(key) ?? key;
+}
+
+/**
+ * Enhanced semantic deduplication that populates aliases[] and deduplicationNotes
+ * on the surviving item when duplicates are merged.
+ */
+function semanticDeduplicateWithAliases<T extends { aliases?: string[]; deduplicationNotes?: string }>(
+    items: T[],
+    getName: (item: T) => string,
+): { result: T[]; mergedCount: number } {
+    const seen = new Map<string, number>(); // canonicalKey → index in result
+    const result: T[] = [];
+    let mergedCount = 0;
+
+    for (const item of items) {
+        const rawName = getName(item);
+        let key = normalizeName(rawName);
         key = KNOWN_ALIASES.get(key) ?? key;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-    });
+
+        const existingIdx = seen.get(key);
+        if (existingIdx !== undefined) {
+            // Merge: absorb this item's name into the survivor's aliases
+            const survivor = result[existingIdx];
+            const aliases = [...(survivor.aliases ?? [])];
+            if (!aliases.includes(rawName)) aliases.push(rawName);
+            const note = survivor.deduplicationNotes
+                ? `${survivor.deduplicationNotes}; merged '${rawName}'`
+                : `merged from '${getName(result[existingIdx])}' + '${rawName}'`;
+            result[existingIdx] = { ...survivor, aliases, deduplicationNotes: note };
+            mergedCount++;
+        } else {
+            seen.set(key, result.length);
+            result.push(item);
+        }
+    }
+
+    return { result, mergedCount };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -484,14 +726,18 @@ function computeQualityFlags(
     components: BlueprintComponent[],
     dataDomains: BlueprintDataDomain[],
     integrations: BlueprintIntegration[],
+    workflows: BlueprintWorkflow[],
     relations: BlueprintRelation[],
     aiFlags: string[],
+    boundaryViolationDetected: boolean,
 ): string[] {
     const flags = new Set<string>(aiFlags);
 
     if (components.length === 0) flags.add('empty_column_components');
     if (dataDomains.length === 0) flags.add('empty_column_data_domains');
     if (integrations.length === 0) flags.add('empty_column_integrations');
+    if (workflows.length === 0) flags.add('empty_column_workflows');
+    if (boundaryViolationDetected) flags.add('boundary_violation_detected');
 
     if (relations.length === 0) flags.add('missing_relations');
 
@@ -500,6 +746,7 @@ function computeQualityFlags(
         ...components.map((c) => c.evidence),
         ...dataDomains.map((d) => d.evidence),
         ...integrations.map((i) => i.evidence),
+        ...workflows.map((w) => w.evidence),
     ];
     const nodesWithoutEvidence = allNodes.filter((e) => !e || e.length === 0).length;
     if (nodesWithoutEvidence > 0 && allNodes.length > 0) {
@@ -559,33 +806,31 @@ function computeCoverage(
     components: BlueprintComponent[],
     dataDomains: BlueprintDataDomain[],
     integrations: BlueprintIntegration[],
+    workflows: BlueprintWorkflow[],
     relations: BlueprintRelation[],
 ): number {
     // Heuristic coverage based on structural completeness
     let score = 0;
-    let factors = 0;
 
-    // Factor 1: Has components (0.3 weight)
-    factors++;
-    if (components.length >= 2) score += 0.3;
-    else if (components.length === 1) score += 0.15;
+    // Factor 1: Has components (0.25 weight)
+    if (components.length >= 2) score += 0.25;
+    else if (components.length === 1) score += 0.12;
 
-    // Factor 2: Has data domains (0.2 weight)
-    factors++;
-    if (dataDomains.length >= 1) score += 0.2;
+    // Factor 2: Has data domains (0.20 weight)
+    if (dataDomains.length >= 1) score += 0.20;
 
-    // Factor 3: Has integrations (0.2 weight)
-    factors++;
-    if (integrations.length >= 1) score += 0.2;
+    // Factor 3: Has integrations (0.15 weight)
+    if (integrations.length >= 1) score += 0.15;
 
-    // Factor 4: Has relations (0.15 weight)
-    factors++;
+    // Factor 4: Has workflows (0.10 weight)
+    if (workflows.length >= 1) score += 0.10;
+
+    // Factor 5: Has relations (0.15 weight)
     if (relations.length >= 3) score += 0.15;
     else if (relations.length >= 1) score += 0.08;
 
-    // Factor 5: Evidence coverage (0.15 weight)
-    factors++;
-    const allNodes = [...components, ...dataDomains, ...integrations];
+    // Factor 6: Evidence coverage (0.15 weight)
+    const allNodes = [...components, ...dataDomains, ...integrations, ...workflows];
     if (allNodes.length > 0) {
         const withEvidence = allNodes.filter((n) =>
             ('evidence' in n) && (n as any).evidence && (n as any).evidence.length > 0,
