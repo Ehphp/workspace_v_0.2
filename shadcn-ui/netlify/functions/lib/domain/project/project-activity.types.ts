@@ -18,7 +18,7 @@ export type InterventionType = 'NEW' | 'MODIFY' | 'CONFIGURE' | 'MIGRATE';
 
 export type ActivityGroup = 'ANALYSIS' | 'DEV' | 'TEST' | 'OPS' | 'GOVERNANCE';
 
-export type BlueprintNodeType = 'component' | 'dataDomain' | 'integration';
+export type BlueprintNodeType = 'component' | 'dataDomain' | 'integration' | 'workflow';
 
 // ============================================================================
 // Domain Type (camelCase)

@@ -88,6 +88,7 @@ export interface GenerateProjectFromDocResponse {
             confidence?: number;
             evidence?: EvidenceRef[];
         }>;
+        relations?: BlueprintRelation[];
         workflows?: Array<{
             name: string;
             description?: string;
@@ -95,16 +96,15 @@ export interface GenerateProjectFromDocResponse {
             steps: Array<{
                 order: number;
                 action: string;
-                actor?: 'user' | 'system' | 'external';
-                component?: string;
+                actor?: 'user' | 'system' | 'external' | null;
+                component?: string | null;
             }>;
             involvedComponents?: string[];
             involvedDataDomains?: string[];
-            complexity?: 'low' | 'medium' | 'high';
-            confidence?: number;
+            complexity?: 'low' | 'medium' | 'high' | null;
+            confidence?: number | null;
             evidence?: EvidenceRef[];
         }>;
-        relations?: BlueprintRelation[];
         coverage?: number;
         qualityFlags?: string[];
         architecturalNotes: string[];
@@ -207,7 +207,7 @@ const GeneratedActivitySchema = z.object({
     effortModifier: z.number().min(0.1).max(2.0),
     sourceActivityCode: z.string().nullable(),
     blueprintNodeName: z.string().nullable(),
-    blueprintNodeType: z.enum(['component', 'dataDomain', 'integration']).nullable(),
+    blueprintNodeType: z.enum(['component', 'dataDomain', 'integration', 'workflow']).nullable(),
     aiRationale: z.string().min(1).max(500),
     confidence: z.number().min(0).max(1),
 });
@@ -381,7 +381,7 @@ export async function generateProjectFromDocumentation(
                 console.warn(`[generate-project-from-doc] Partial SDD success rate ${(successRate * 100).toFixed(0)}% below 50% threshold — keeping Pass 1 SDD`);
             } else {
                 // 4. Consolidate partial SDDs into final SDD
-                    const consolidationResult = await consolidatePartialSDDs(successfulPartials, provider as any);
+                const consolidationResult = await consolidatePartialSDDs(successfulPartials, provider);
                 chunkedMetrics.consolidationMs = Date.now() - chunkStart;
                 chunkedMetrics.consolidationWarnings = consolidationResult.warnings;
 
@@ -694,7 +694,7 @@ async function generateAllPartialSDDs(
         const batch = chunks.slice(i, i + CONCURRENCY);
         const batchResults = await Promise.allSettled(
             batch.map((chunk, idx) =>
-                generatePartialSDD(chunk, provider as any)
+                generatePartialSDD(chunk, provider)
                     .then(result => { results[i + idx] = result; })
             ),
         );

@@ -26,7 +26,7 @@ interface LLMProvider {
         responseFormat: any;
         systemPrompt: string;
         userPrompt: string;
-        reasoningEffort?: string;
+        reasoningEffort?: 'high' | 'medium' | 'low' | 'minimal';
         options?: { timeout: number; maxRetries: number };
     }): Promise<string>;
 }
