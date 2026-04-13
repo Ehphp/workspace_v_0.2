@@ -34,6 +34,10 @@ import type {
     BlueprintRelation,
     StructuredDocumentDigest,
 } from '../../domain/project/project-technical-blueprint.types';
+import { splitDocumentIntoChunks, CHUNKED_THRESHOLD } from '../chunking/document-chunker';
+import { generatePartialSDD } from './generate-partial-sdd';
+import { consolidatePartialSDDs } from './consolidate-sdd';
+import { trimSDDForBudget, trimContextForBudget } from '../prompt-budget-guard';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Request / Response types
@@ -99,6 +103,11 @@ export interface GenerateProjectFromDocResponse {
         pass2Ms: number;
         pass3Ms: number;
         totalMs: number;
+        /** Present only when chunked SDD pipeline was used */
+        chunkCount?: number;
+        partialSuccessCount?: number;
+        consolidationMs?: number;
+        consolidationWarnings?: string[];
     };
 }
 
@@ -273,7 +282,7 @@ export async function generateProjectFromDocumentation(
         systemPrompt: PROJECT_DRAFT_SYSTEM_PROMPT,
         userPrompt: pass1UserPrompt,
         reasoningEffort: 'low',
-        options: { timeout: 90000, maxRetries: 0 },
+        options: { timeout: 120_000, maxRetries: 0 },
     });
 
     const pass1Ms = Date.now() - pass1Start;
@@ -297,13 +306,59 @@ export async function generateProjectFromDocumentation(
         throw new Error('LLM output failed schema validation for project draft');
     }
 
-    const { structuredDigest, ...projectDraftFields } = pass1Validation.data;
+    let { structuredDigest, ...projectDraftFields } = pass1Validation.data;
     const projectDraft = projectDraftFields as ProjectDraftBlueprint;
 
     console.log('[generate-project-from-doc] SDD extracted:',
         structuredDigest?.functionalAreas?.length ?? 0, 'functional areas,',
         structuredDigest?.keyPassages?.length ?? 0, 'key passages,',
         'quality:', structuredDigest?.documentQuality ?? 'N/A');
+
+    // ── Chunked SDD pipeline (large documents) ─────────────────────
+    const chunkedEnabled = process.env.AI_CHUNKED_SDD_ENABLED === 'true';
+    let chunkedMetrics: { chunkCount?: number; partialSuccessCount?: number; consolidationMs?: number; consolidationWarnings?: string[] } = {};
+
+    if (chunkedEnabled && sourceText.length > CHUNKED_THRESHOLD) {
+        console.log(`[generate-project-from-doc] Chunked SDD path: document ${sourceText.length} chars > ${CHUNKED_THRESHOLD} threshold`);
+        const chunkStart = Date.now();
+
+        try {
+            // 1. Split document into chunks
+            const chunks = splitDocumentIntoChunks(sourceText);
+            console.log(`[generate-project-from-doc] Split into ${chunks.length} chunks`);
+            chunkedMetrics.chunkCount = chunks.length;
+
+            // 2. Generate partial SDDs with concurrency=2
+            const partialResults = await generateAllPartialSDDs(chunks, provider);
+            const successfulPartials = partialResults.filter(r => r !== null);
+            chunkedMetrics.partialSuccessCount = successfulPartials.length;
+
+            console.log(`[generate-project-from-doc] Partial SDDs: ${successfulPartials.length}/${chunks.length} succeeded`);
+
+            // 3. Check minimum success threshold (50%)
+            const successRate = successfulPartials.length / chunks.length;
+            if (successRate < 0.5) {
+                console.warn(`[generate-project-from-doc] Partial SDD success rate ${(successRate * 100).toFixed(0)}% below 50% threshold — keeping Pass 1 SDD`);
+            } else {
+                // 4. Consolidate partial SDDs into final SDD
+                const consolidationResult = await consolidatePartialSDDs(successfulPartials, provider);
+                chunkedMetrics.consolidationMs = Date.now() - chunkStart;
+                chunkedMetrics.consolidationWarnings = consolidationResult.warnings;
+
+                // Replace Pass 1 SDD with consolidated SDD
+                structuredDigest = consolidationResult.sdd;
+
+                console.log(`[generate-project-from-doc] Consolidated SDD replaces Pass 1 SDD (${chunkedMetrics.consolidationMs}ms, ${consolidationResult.warnings.length} warnings)`);
+                if (consolidationResult.warnings.length > 0) {
+                    console.log('[generate-project-from-doc] Consolidation warnings:', consolidationResult.warnings);
+                }
+            }
+        } catch (chunkErr) {
+            // Consolidation failure = pipeline failure (locked decision)
+            console.error('[generate-project-from-doc] Chunked SDD pipeline failed:', chunkErr);
+            throw new Error(`Chunked SDD pipeline failed: ${chunkErr instanceof Error ? chunkErr.message : String(chunkErr)}`);
+        }
+    }
 
     // ── Pass 2: Technical Blueprint Extraction ──────────────────────
     const pass2Start = Date.now();
@@ -313,23 +368,8 @@ export async function generateProjectFromDocumentation(
         ? technologyCatalog.find(t => t.id === projectDraft.technologyId)?.name ?? null
         : null;
 
-    // Build activity vocabulary block (max ~50 activities, grouped)
-    let activityVocabBlock = '';
-    if (activityCatalog && activityCatalog.length > 0) {
-        const grouped = new Map<string, string[]>();
-        for (const a of activityCatalog) {
-            const group = a.group || 'OTHER';
-            if (!grouped.has(group)) grouped.set(group, []);
-            grouped.get(group)!.push(a.name);
-        }
-        const lines = Array.from(grouped.entries())
-            .map(([group, names]) => `  ${group}: ${names.join(', ')}`)
-            .join('\n');
-        activityVocabBlock = `\n\nCATALOGO ATTIVITÀ DISPONIBILI (usa terminologia coerente con queste attività quando nomini componenti e integrazioni):\n${lines}`;
-    }
-
     const pass2SourceText = structuredDigest
-        ? JSON.stringify(structuredDigest, null, 2)
+        ? trimSDDForBudget(JSON.stringify(structuredDigest, null, 2))
         : (sourceText.length > 12000
             ? sourceText.slice(0, 12000) + '\n[... documento troncato per limiti di contesto ...]'
             : sourceText);
@@ -345,7 +385,6 @@ export async function generateProjectFromDocumentation(
             projectDraft.scope ? `- Scope: ${projectDraft.scope}` : null,
             projectDraft.methodology ? `- Metodologia: ${projectDraft.methodology}` : null,
             resolvedTechName ? `- Tecnologia primaria: ${resolvedTechName}` : null,
-            activityVocabBlock || null,
         ].filter(Boolean).join('\n')
         : [
             `DOCUMENTAZIONE PROGETTUALE:\n\n${pass2SourceText}`,
@@ -357,7 +396,6 @@ export async function generateProjectFromDocumentation(
             projectDraft.scope ? `- Scope: ${projectDraft.scope}` : null,
             projectDraft.methodology ? `- Metodologia: ${projectDraft.methodology}` : null,
             resolvedTechName ? `- Tecnologia primaria: ${resolvedTechName}` : null,
-            activityVocabBlock || null,
         ].filter(Boolean).join('\n');
 
     const pass2Schema = createTechnicalBlueprintResponseSchema();
@@ -370,7 +408,7 @@ export async function generateProjectFromDocumentation(
         systemPrompt: TECHNICAL_BLUEPRINT_SYSTEM_PROMPT,
         userPrompt: pass2UserPrompt,
         reasoningEffort: 'low',
-        options: { timeout: 80000, maxRetries: 0 },
+        options: { timeout: 150_000, maxRetries: 0 },
     });
 
     const pass2Ms = Date.now() - pass2Start;
@@ -503,6 +541,8 @@ export async function generateProjectFromDocumentation(
         pass3ContextBlock = `DOCUMENTAZIONE PROGETTUALE (estratto):\n\n${pass3SourceText}`;
     }
 
+    pass3ContextBlock = trimContextForBudget(pass3ContextBlock);
+
     const pass3UserPrompt = [
         pass3ContextBlock,
         `\nMETADATI PROGETTO:`,
@@ -574,6 +614,52 @@ export async function generateProjectFromDocumentation(
         },
         structuredDigest: structuredDigest ?? undefined,
         projectActivities,
-        metrics: { pass1Ms, pass2Ms, pass3Ms, totalMs },
+        metrics: {
+            pass1Ms, pass2Ms, pass3Ms, totalMs,
+            ...(chunkedMetrics.chunkCount != null ? {
+                chunkCount: chunkedMetrics.chunkCount,
+                partialSuccessCount: chunkedMetrics.partialSuccessCount,
+                consolidationMs: chunkedMetrics.consolidationMs,
+                consolidationWarnings: chunkedMetrics.consolidationWarnings,
+            } : {}),
+        },
     };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Chunked pipeline helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+import type { DocumentChunk } from '../chunking/document-chunker';
+import type { PartialSDD } from './generate-partial-sdd';
+
+/**
+ * Generate partial SDDs for all chunks with concurrency=2.
+ * Returns array with null for failed chunks.
+ */
+async function generateAllPartialSDDs(
+    chunks: DocumentChunk[],
+    provider: ReturnType<typeof getDefaultProvider>,
+): Promise<PartialSDD[]> {
+    const results: (PartialSDD | null)[] = new Array(chunks.length).fill(null);
+    const CONCURRENCY = 2;
+
+    for (let i = 0; i < chunks.length; i += CONCURRENCY) {
+        const batch = chunks.slice(i, i + CONCURRENCY);
+        const batchResults = await Promise.allSettled(
+            batch.map((chunk, idx) =>
+                generatePartialSDD(chunk, provider)
+                    .then(result => { results[i + idx] = result; })
+            ),
+        );
+
+        for (let j = 0; j < batchResults.length; j++) {
+            if (batchResults[j].status === 'rejected') {
+                console.warn(`[generate-project-from-doc] Chunk ${i + j + 1}/${chunks.length} failed:`,
+                    (batchResults[j] as PromiseRejectedResult).reason);
+            }
+        }
+    }
+
+    return results.filter((r): r is PartialSDD => r !== null);
 }

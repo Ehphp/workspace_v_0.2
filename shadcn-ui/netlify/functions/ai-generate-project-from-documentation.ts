@@ -46,8 +46,8 @@ export const handler = createAIHandler<RequestBody>({
         if (trimmed.length < 50) {
             return 'Source text must be at least 50 characters (Il testo deve contenere almeno 50 caratteri)';
         }
-        if (trimmed.length > 20000) {
-            return 'Source text must be at most 20000 characters (Il testo è troppo lungo, max 20000 caratteri)';
+        if (trimmed.length > 200000) {
+            return 'Source text must be at most 200000 characters (Il testo è troppo lungo, max 200000 caratteri)';
         }
         return null;
     },
@@ -55,7 +55,9 @@ export const handler = createAIHandler<RequestBody>({
     handler: async (body, ctx) => {
         const startMs = Date.now();
 
-        const sanitizedText = ctx.sanitizeDocument(body.sourceText);
+        // Use higher limit (200K) for this handler — chunked SDD pipeline handles long documents
+        const { sanitizeDocumentInput } = await import('./lib/sanitize');
+        const sanitizedText = sanitizeDocumentInput(body.sourceText, 200000);
 
         // Load technology catalog from Supabase for AI matching
         let technologyCatalog: Array<{ id: string; code: string; name: string }> = [];

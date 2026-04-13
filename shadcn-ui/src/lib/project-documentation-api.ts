@@ -30,10 +30,10 @@ export async function generateProjectFromDocumentation(
         };
     }
 
-    if (sanitizedText.length > 20000) {
+    if (sanitizedText.length > 200000) {
         return {
             success: false,
-            error: 'Il testo è troppo lungo (max 20000 caratteri).',
+            error: 'Il testo è troppo lungo (max 200000 caratteri).',
         };
     }
 

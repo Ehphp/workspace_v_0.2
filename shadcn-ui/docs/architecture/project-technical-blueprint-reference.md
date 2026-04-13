@@ -220,7 +220,7 @@ interface BlueprintDiffSummary {
 
 ```
 ┌──────────────────────────┐
-│ 1. DOCUMENTAZIONE        │  L'utente incolla testo documentale (max 20K chars)
+│ 1. DOCUMENTAZIONE        │  L'utente incolla testo documentale (max 200K chars)
 └────────────┬─────────────┘
              │
 ┌────────────▼─────────────┐
@@ -604,7 +604,19 @@ Added: Workflow Engine, SAP Connector | Removed: Legacy API | +2 relation(s) | �
 
 ## 12. Utilizzo Downstream: Pipeline di Stima
 
-Il blueprint viene consumato dalla pipeline di stima in **tre modi distinti**.
+Il PTB viene consumato dalla pipeline di stima in **quattro modi indiretti**.
+
+> **Distinzione critica:** Nel Candidate Set della pipeline di stima esiste una sorgente chiamata `blueprint` con peso 3.0 (`SOURCE_WEIGHTS` in `pipeline-domain.ts`). Quella sorgente si riferisce all'**Estimation Blueprint** (livello requisito), **non** al Project Technical Blueprint. Il PTB non partecipa mai direttamente come sorgente di segnali nel Candidate Set. La sua influenza è sempre mediata dai quattro canali descritti sotto.
+
+**Gerarchia pesi `SOURCE_WEIGHTS`** (per chiarezza):
+| Sorgente | Peso | Artefatto di origine |
+|----------|------|---------------------|
+| `project-activity` | **4.0** | Project Activities (PRJ\_*) — derivate dal PTB |
+| `blueprint` | 3.0 | **Estimation Blueprint** (livello requisito, NON il PTB) |
+| `impact-map` | 2.0 | Impact Map (livello requisito) |
+| `understanding` | 1.5 | Requirement Understanding (livello requisito) |
+| `keyword` | 1.0 | Keyword matching euristica |
+| `context` | 0.5 | Project context rules |
 
 ### 12.1 Blueprint Rules Engine
 
@@ -698,13 +710,13 @@ score = confidence (0–1, default 0.7)
 
 ---
 
-## 13. Blueprint Activity Mapper
+## 13. Blueprint Activity Mapper (Estimation Blueprint — NON PTB)
 
 **File:** [netlify/functions/lib/blueprint-activity-mapper.ts](netlify/functions/lib/blueprint-activity-mapper.ts)
 
-Mapper **deterministico** separato dalla generazione AI. Mappa i nodi del blueprint (dell'Estimation Blueprint, non del Project Technical Blueprint) a attività del catalogo standard.
+> **⚠️ Questo modulo NON opera sul Project Technical Blueprint.** Opera sull'**Estimation Blueprint**, un artefatto distinto generato a livello di singolo requisito durante il flusso di stima. È incluso qui per completezza e per chiarire la distinzione tra i due blueprint.
 
-**Attenzione:** Questo mapper opera sull'Estimation Blueprint (livello requisito), non direttamente sul PTB. Tuttavia la logica di mapping per layer/tech è condivisa e il PTB influenza il contesto.
+Mapper **deterministico** separato dalla generazione AI. Mappa i nodi dell'Estimation Blueprint a attività del catalogo standard. Il PTB influenza indirettamente questo processo: il `blueprint-formatter` inietta la baseline architetturale del PTB nel prompt che genera l'Estimation Blueprint.
 
 **Flow:**
 ```

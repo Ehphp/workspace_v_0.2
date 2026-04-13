@@ -425,7 +425,7 @@ export function CreateProjectFromDocumentation({
                         className="min-h-[300px] bg-slate-50/50 border-slate-200 focus:bg-white transition-all font-mono text-sm"
                     />
                     <p className="text-xs text-slate-400">
-                        Min 50 characters · Max 20,000 characters · {sourceText.length} chars
+                        Min 50 characters · Max 200,000 characters · {sourceText.length} chars
                     </p>
                 </div>
 
