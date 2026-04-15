@@ -1,0 +1,324 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Scenario A — Keyword-only pipeline > decision engine — selected codes match snapshot 1`] = `
+[
+  "BE_ANL_ALIGN_SM",
+  "BE_API_SIMPLE",
+  "BE_DB_MIGRATION_SM",
+  "BE_UNIT_TEST",
+  "BE_LOGGING_SM",
+  "BE_DEPLOY",
+]
+`;
+
+exports[`Scenario A — Keyword-only pipeline > decision engine — selected codes match snapshot 2`] = `0.55`;
+
+exports[`Scenario A — Keyword-only pipeline > decision engine — trace phases match snapshot 1`] = `
+[
+  {
+    "action": "select",
+    "code": "BE_ANL_ALIGN_SM",
+    "reason": "Score 0.90 >= threshold 0.3",
+    "step": "score-gate",
+  },
+  {
+    "action": "select",
+    "code": "BE_API_SIMPLE",
+    "reason": "Score 0.80 >= threshold 0.3",
+    "step": "score-gate",
+  },
+  {
+    "action": "select",
+    "code": "BE_DB_MIGRATION_SM",
+    "reason": "Score 0.60 >= threshold 0.3",
+    "step": "score-gate",
+  },
+  {
+    "action": "select",
+    "code": "BE_UNIT_TEST",
+    "reason": "Score 0.50 >= threshold 0.3",
+    "step": "score-gate",
+  },
+  {
+    "action": "select",
+    "code": "BE_LOGGING_SM",
+    "reason": "Score 0.45 >= threshold 0.3",
+    "step": "score-gate",
+  },
+  {
+    "action": "select",
+    "code": "BE_DEPLOY",
+    "reason": "Score 0.30 >= threshold 0.3",
+    "step": "score-gate",
+  },
+  {
+    "action": "select",
+    "code": "BE_API_SIMPLE",
+    "reason": "Già selezionato, confermato da regola mandatoria: "rest"",
+    "step": "mandatory-keyword",
+  },
+  {
+    "action": "select",
+    "code": "",
+    "reason": "Layer "frontend" (priority HIGH) non coperto — nessun candidato disponibile",
+    "step": "coverage-enforcement",
+  },
+]
+`;
+
+exports[`Scenario A — Keyword-only pipeline > synthesizer — candidate order and scores match snapshot 1`] = `
+[
+  {
+    "code": "BE_ANL_ALIGN_SM",
+    "primarySource": "keyword",
+    "score": 0.9,
+  },
+  {
+    "code": "BE_API_SIMPLE",
+    "primarySource": "keyword",
+    "score": 0.8,
+  },
+  {
+    "code": "BE_DB_MIGRATION_SM",
+    "primarySource": "keyword",
+    "score": 0.6,
+  },
+  {
+    "code": "BE_UNIT_TEST",
+    "primarySource": "keyword",
+    "score": 0.5,
+  },
+  {
+    "code": "BE_LOGGING_SM",
+    "primarySource": "keyword",
+    "score": 0.45,
+  },
+  {
+    "code": "BE_DEPLOY",
+    "primarySource": "keyword",
+    "score": 0.3,
+  },
+]
+`;
+
+exports[`Scenario A — Keyword-only pipeline > synthesizer — strategy is keyword-based 1`] = `"keyword"`;
+
+exports[`Scenario B — Blueprint + Understanding > decision engine — selected codes match snapshot 1`] = `
+[
+  "BE_ANL_ALIGN",
+  "BE_API_COMPLEX_SM",
+  "BE_DB_MIGRATION",
+  "BE_DB_MIGRATION_SM",
+  "BE_API_SIMPLE",
+  "BE_UNIT_TEST",
+  "BE_INT_TEST_SM",
+  "BE_LOGGING",
+  "BE_DEPLOY",
+  "BE_INT_TEST",
+]
+`;
+
+exports[`Scenario B — Blueprint + Understanding > synthesizer — candidate order and scores match snapshot 1`] = `
+[
+  {
+    "code": "BE_ANL_ALIGN",
+    "primarySource": "blueprint-component",
+    "score": 0.867,
+  },
+  {
+    "code": "BE_API_COMPLEX_SM",
+    "primarySource": "blueprint-component",
+    "score": 0.85,
+  },
+  {
+    "code": "BE_DB_MIGRATION",
+    "primarySource": "blueprint-component",
+    "score": 0.8,
+  },
+  {
+    "code": "BE_DB_MIGRATION_SM",
+    "primarySource": "understanding",
+    "score": 0.7,
+  },
+  {
+    "code": "BE_API_SIMPLE",
+    "primarySource": "understanding",
+    "score": 0.6,
+  },
+  {
+    "code": "BE_UNIT_TEST",
+    "primarySource": "blueprint-component",
+    "score": 0.567,
+  },
+  {
+    "code": "BE_INT_TEST_SM",
+    "primarySource": "blueprint-component",
+    "score": 0.55,
+  },
+  {
+    "code": "BE_LOGGING",
+    "primarySource": "blueprint-component",
+    "score": 0.4,
+  },
+  {
+    "code": "BE_DEPLOY",
+    "primarySource": "understanding",
+    "score": 0.3,
+  },
+]
+`;
+
+exports[`Scenario B — Blueprint + Understanding > synthesizer — signal summary matches snapshot 1`] = `
+{
+  "bySource": {
+    "blueprint": 6,
+    "context": 0,
+    "impact-map": 0,
+    "keyword": 0,
+    "manual": 0,
+    "project-activity": 0,
+    "understanding": 5,
+  },
+  "totalSignals": 11,
+  "totalUnmapped": 0,
+  "uniqueActivities": 9,
+}
+`;
+
+exports[`Scenario C — Full pipeline (all 6 sources) > decision engine — full pipeline selection matches snapshot 1`] = `
+[
+  "BE_DB_MIGRATION_SM",
+  "BE_INT_WEBHOOK",
+  "BE_INT_EXTAPI",
+  "BE_INT_QUEUE",
+  "BE_DB_MIGRATION",
+  "BE_ENV_CONFIG",
+  "BE_API_COMPLEX_SM",
+  "BE_INT_TEST",
+  "BE_LOGGING",
+  "BE_ANL_ALIGN_SM",
+  "BE_CRON_JOB",
+  "BE_UNIT_TEST",
+  "BE_API_SIMPLE",
+]
+`;
+
+exports[`Scenario C — Full pipeline (all 6 sources) > decision engine — full pipeline selection matches snapshot 2`] = `0.71`;
+
+exports[`Scenario C — Full pipeline (all 6 sources) > synthesizer — full candidate scores match snapshot 1`] = `
+[
+  {
+    "code": "BE_DB_MIGRATION_SM",
+    "primarySource": "project-activity",
+    "score": 0.9,
+    "sourceCount": 1,
+  },
+  {
+    "code": "BE_INT_WEBHOOK",
+    "primarySource": "project-activity",
+    "score": 0.898,
+    "sourceCount": 5,
+  },
+  {
+    "code": "BE_INT_EXTAPI",
+    "primarySource": "blueprint-component",
+    "score": 0.85,
+    "sourceCount": 2,
+  },
+  {
+    "code": "BE_INT_QUEUE",
+    "primarySource": "project-activity",
+    "score": 0.8,
+    "sourceCount": 2,
+  },
+  {
+    "code": "BE_DB_MIGRATION",
+    "primarySource": "blueprint-component",
+    "score": 0.735,
+    "sourceCount": 3,
+  },
+  {
+    "code": "BE_ENV_CONFIG",
+    "primarySource": "context",
+    "score": 0.7,
+    "sourceCount": 1,
+  },
+  {
+    "code": "BE_API_COMPLEX_SM",
+    "primarySource": "project-activity",
+    "score": 0.66,
+    "sourceCount": 4,
+  },
+  {
+    "code": "BE_INT_TEST",
+    "primarySource": "blueprint-component",
+    "score": 0.56,
+    "sourceCount": 2,
+  },
+  {
+    "code": "BE_LOGGING",
+    "primarySource": "project-activity",
+    "score": 0.557,
+    "sourceCount": 2,
+  },
+  {
+    "code": "BE_ANL_ALIGN_SM",
+    "primarySource": "keyword",
+    "score": 0.5,
+    "sourceCount": 1,
+  },
+  {
+    "code": "BE_CRON_JOB",
+    "primarySource": "understanding",
+    "score": 0.4,
+    "sourceCount": 1,
+  },
+  {
+    "code": "BE_UNIT_TEST",
+    "primarySource": "keyword",
+    "score": 0.35,
+    "sourceCount": 1,
+  },
+]
+`;
+
+exports[`Scenario C — Full pipeline (all 6 sources) > synthesizer — layer coverage matches snapshot 1`] = `
+{
+  "automation": {
+    "count": 2,
+    "covered": true,
+    "priority": "MEDIUM",
+  },
+  "configuration": {
+    "count": 2,
+    "covered": true,
+    "priority": "LOW",
+  },
+  "data": {
+    "count": 2,
+    "covered": true,
+    "priority": "HIGH",
+  },
+  "frontend": {
+    "count": 0,
+    "covered": false,
+    "priority": "HIGH",
+  },
+  "integration": {
+    "count": 3,
+    "covered": true,
+    "priority": "MEDIUM",
+  },
+  "logic": {
+    "count": 3,
+    "covered": true,
+    "priority": "HIGH",
+  },
+}
+`;
+
+exports[`Scenario C — Full pipeline (all 6 sources) > synthesizer — layer coverage matches snapshot 2`] = `
+[
+  "frontend",
+]
+`;
