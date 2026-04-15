@@ -19,7 +19,7 @@
  * @module decision-engine
  */
 
-import type { ScoredCandidate } from '../../candidate-builder';
+import type { ScoredCandidate } from './candidate.types';
 import type { Activity } from '../../activities';
 import { LAYER_TECH_PATTERNS } from '../../blueprint-activity-mapper';
 import {

@@ -38,55 +38,22 @@ import {
 import type { ImpactMap } from '../../../src/types/impact-map';
 import type { RequirementUnderstanding } from '../../../src/types/requirement-understanding';
 import type { ActivityBiases } from './domain/estimation/project-context-rules';
-import type { SignalKind } from './domain/pipeline/pipeline-domain';
+import type {
+    CandidateSource,
+    ScoreContributions,
+    ScoredCandidate,
+} from './domain/pipeline/candidate.types';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Types
+// Types — canonical definitions live in domain/pipeline/candidate.types.ts
+// Re-exported here for backward compatibility with existing callers.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * @internal Signal source type used by the candidate builder.
- * Production code uses SignalKind from pipeline-domain.ts.
- */
-export type CandidateSource =
-    | SignalKind
-    | 'impact-map'
-    | 'impact-map-exclusive'
-    | 'understanding';
-
-/** Contribution breakdown by signal source */
-export interface ScoreContributions {
-    /** Score from Blueprint mapping (0 if not present) */
-    blueprint: number;
-    /** Score from ImpactMap signal extraction (0 if not present) */
-    impactMap: number;
-    /** Score from Understanding signal extraction (0 if not present) */
-    understanding: number;
-    /** Score from keyword ranking (0 if not present) */
-    keyword: number;
-    /** Score from project context biases (0 if not present) */
-    projectContext: number;
-    /** Score from project-scoped activities (0 if not present) */
-    projectActivity: number;
-}
-
-/** A candidate activity with mandatory provenance */
-export interface ScoredCandidate {
-    /** Activity from catalog */
-    activity: Activity;
-    /** Final merged score (higher = more relevant) */
-    score: number;
-    /** All sources that contributed to this candidate */
-    sources: CandidateSource[];
-    /** Numeric contribution breakdown */
-    contributions: ScoreContributions;
-    /** Human-readable provenance chain */
-    provenance: string[];
-    /** Primary source (highest contributor) */
-    primarySource: CandidateSource;
-    /** Mapping confidence (0–1) */
-    confidence: number;
-}
+export type {
+    CandidateSource,
+    ScoreContributions,
+    ScoredCandidate,
+} from './domain/pipeline/candidate.types';
 
 /** Full result from the candidate builder */
 export interface CandidateSetResult {

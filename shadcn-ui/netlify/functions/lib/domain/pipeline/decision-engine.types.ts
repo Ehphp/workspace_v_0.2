@@ -9,7 +9,7 @@
 
 import type { Activity } from '../../activities';
 import type { ActivityBiases } from '../estimation/project-context-rules';
-import type { ScoredCandidate } from '../../candidate-builder';
+import type { ScoredCandidate } from './candidate.types';
 
 import type { PipelineLayer } from './pipeline-domain';
 

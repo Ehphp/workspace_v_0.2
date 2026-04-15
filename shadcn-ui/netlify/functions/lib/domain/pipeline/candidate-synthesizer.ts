@@ -18,7 +18,7 @@
 
 import type { Activity } from '../../activities';
 import type { NormalizedSignal, SignalSet } from './signal-types';
-import type { ScoredCandidate, ScoreContributions, CandidateSource } from '../../candidate-builder';
+import type { ScoredCandidate, ScoreContributions, CandidateSource } from './candidate.types';
 import {
     type PipelineLayer,
     type ProvenanceSource,
