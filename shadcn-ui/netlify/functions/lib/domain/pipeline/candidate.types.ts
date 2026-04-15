@@ -2,14 +2,13 @@
  * candidate.types.ts — Canonical candidate types for the estimation pipeline
  *
  * Single source of truth for ScoredCandidate, ScoreContributions, CandidateSource.
- * These were previously defined in candidate-builder.ts (a top-level lib file),
- * causing domain/pipeline modules to reach UP and OUT of the domain layer.
+ * Previously defined in the now-deleted candidate-builder.ts, moved here
+ * so domain/pipeline modules no longer reach outside the domain layer.
  *
  * Consumers:
  *   - candidate-synthesizer.ts  (produces ScoredCandidate[])
  *   - decision-engine.ts        (consumes ScoredCandidate[])
  *   - decision-engine.types.ts  (DecisionEngineInput/Output contracts)
- *   - candidate-builder.ts      (legacy builder, re-exports from here)
  */
 
 import type { Activity } from '../../activities';
@@ -21,7 +20,7 @@ import type { SignalKind } from './pipeline-domain';
 
 /**
  * All possible signal source labels on a ScoredCandidate.
- * Extends SignalKind with legacy values still present in candidate-builder.ts.
+ * Extends SignalKind with values used in the old candidate-builder (now deleted).
  */
 export type CandidateSource =
     | SignalKind
