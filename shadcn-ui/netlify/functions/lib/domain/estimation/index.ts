@@ -38,3 +38,7 @@ export type { BuildCanonicalProfileOptions } from './canonical-profile.service';
 
 // Hot-path confidence computation (pure function, no I/O)
 export { computeAggregateConfidence } from './aggregate-confidence';
+
+// Deterministic candidate pipeline (pure, no I/O, no LLM)
+export { runEstimationPipeline } from './run-estimation-pipeline';
+export type { EstimationPipelineInput, EstimationPipelineResult } from './run-estimation-pipeline';

@@ -12,44 +12,16 @@
  */
 
 import { createAIHandler } from './lib/handler';
-import { getDefaultProvider } from './lib/ai/openai-client';
 import { CircuitOpenError } from './lib/ai/circuit-breaker';
-import { getPrompt } from './lib/ai/prompt-registry';
-import { searchSimilarActivities, isVectorSearchEnabled } from './lib/ai/vector-search';
-import { retrieveRAGContext, getRAGSystemPromptAddition } from './lib/ai/rag';
 import { runAgentPipeline, AgentInput } from './lib/ai/agent';
 import {
     fetchActivitiesServerSide,
     fetchProjectActivities,
-    formatActivitiesCatalog,
     type Activity,
     type InterviewAnswerRecord,
     type ProjectActivity,
 } from './lib/activities';
-import {
-    mapBlueprintToActivities,
-    isBlueprintMappable,
-    blueprintToNormalizedSignals,
-    type BlueprintMappingResult,
-    type ActivityProvenance,
-} from './lib/blueprint-activity-mapper';
-import {
-    extractImpactMapSignals,
-    impactMapToNormalizedSignals,
-} from './lib/impact-map-signal-extractor';
-import {
-    extractUnderstandingSignals,
-    understandingToNormalizedSignals,
-} from './lib/understanding-signal-extractor';
-import { keywordToNormalizedSignals } from './lib/domain/pipeline/keyword-signal-adapter';
-import { projectActivitiesToSignals } from './lib/domain/pipeline/project-activity-signal-adapter';
-import {
-    synthesizeCandidates,
-    computeCandidateLimit,
-    type SynthesizedCandidateSet,
-} from './lib/domain/pipeline/candidate-synthesizer';
-import type { SignalSet } from './lib/domain/pipeline/signal-types';
-import { buildProvenanceMap, attachProvenance, provenanceBreakdown } from './lib/provenance-map';
+import { attachProvenance, provenanceBreakdown } from './lib/provenance-map';
 import { formatProjectContextBlock } from './lib/ai/prompt-builder';
 import { evaluateProjectContextRules } from './lib/domain/estimation/project-context-rules';
 import { evaluateProjectTechnicalBlueprintRules } from './lib/domain/estimation/blueprint-rules';
@@ -59,8 +31,7 @@ import type { ProjectTechnicalBlueprint } from './lib/domain/project/project-tec
 import type { EstimationContext } from './lib/domain/types/estimation';
 import { formatProjectTechnicalBlueprintBlock } from './lib/ai/formatters/project-blueprint-formatter';
 import { formatProjectActivitiesBlock } from './lib/ai/formatters/project-activities-formatter';
-import { computeAggregateConfidence } from './lib/domain/estimation/aggregate-confidence';
-import { computePipelineConfig } from './lib/domain/pipeline/pipeline-config';
+import { runEstimationPipeline } from './lib/domain/estimation/run-estimation-pipeline';
 import { createPipelineLogger } from './lib/observability/pipeline-logger';
 import { runDecisionEngine } from './lib/domain/pipeline/decision-engine';
 
@@ -540,93 +511,43 @@ export const handler = createAIHandler<RequestBody>({
             console.log('[ai-estimate-from-interview] Merged context+blueprint rules:', mergedRules.notes);
         }
 
-        // ─── Candidate Generation: CandidateSynthesizer (multi-signal) ──
-        //
-        // Pipeline (deterministic):
-        //   1. Extract structured signals from artifacts
-        //   2. Normalize all signals to canonical NormalizedSignal format
-        //   3. Synthesize: weighted merge (blueprint=3.0, impact-map=2.0,
-        //      understanding=1.5, keyword=1.0, context=0.5)
-        //   4. Conflict + gap detection, provenance throughout
-        //
-
-        // Step 1: Run extractors
-        const blueprintMappingResult: BlueprintMappingResult | undefined =
-            body.estimationBlueprint && isBlueprintMappable(body.estimationBlueprint)
-                ? mapBlueprintToActivities(body.estimationBlueprint, fetchResult.activities, techCat)
-                : undefined;
-
-        const impactMapResult = body.impactMap && (body.impactMap as any).impacts?.length > 0
-            ? extractImpactMapSignals(body.impactMap as any, fetchResult.activities, techCat)
-            : undefined;
-
-        const understandingResult = body.requirementUnderstanding
-            ? extractUnderstandingSignals(body.requirementUnderstanding as any, fetchResult.activities, techCat)
-            : undefined;
-
-        // Step 2: Normalize to SignalSets
-        const signalSets: SignalSet[] = [];
-        if (blueprintMappingResult) signalSets.push(blueprintToNormalizedSignals(blueprintMappingResult));
-        if (impactMapResult) signalSets.push(impactMapToNormalizedSignals(impactMapResult));
-        if (understandingResult) signalSets.push(understandingToNormalizedSignals(understandingResult));
-
-        pipelineLog.log('signal-extraction', {
-            blueprint: !!blueprintMappingResult,
-            impactMap: !!impactMapResult,
-            understanding: !!understandingResult,
-            signalSetCount: signalSets.length + 1, // +1 for keyword (added below)
-        });
-
-        signalSets.push(keywordToNormalizedSignals({
-            activities: fetchResult.activities,
+        // ─── Deterministic candidate pipeline ──────────────────────────
+        const pipeline = runEstimationPipeline({
             description: sanitizedDescription,
             answers: body.answers,
-            topN: 30, // keyword adapter topN — independent of candidate limit
-            blueprint: body.estimationBlueprint,
+            techCategory: techCat,
+            activities: fetchResult.activities,
+            projectActivities,
+            estimationBlueprint: body.estimationBlueprint,
+            impactMap: body.impactMap as Record<string, unknown> | undefined,
+            requirementUnderstanding: body.requirementUnderstanding,
             activityBiases: mergedRules.activityBiases,
-        }));
+        });
 
-        // Step 2b: Project-scoped activity signals (highest weight: 4.0)
-        if (projectActivities.length > 0) {
-            signalSets.push(projectActivitiesToSignals(
-                projectActivities,
-                body.estimationBlueprint as Record<string, unknown> | undefined,
-            ));
-            console.log(`[ai-estimate-from-interview] Project activities injected: ${projectActivities.length} activities as signals`);
-        }
+        const {
+            candidateResult,
+            blueprintMappingResult,
+            provenanceMap,
+            isStale,
+            staleReasons: bodyStaleReasons,
+            aggregateConfidence,
+            candidateLimit,
+            pipelineConfig,
+        } = pipeline;
 
-        // Step 3: Synthesize candidates
-        // Body-level staleness: if understanding or impactMap was regenerated
-        // AFTER the blueprint, the estimation is based on inconsistent artifacts.
-        const bpGeneratedAt = (body.estimationBlueprint as any)?.metadata?.generatedAt as string | undefined;
-        const uGeneratedAt = (body.requirementUnderstanding as any)?.metadata?.generatedAt as string | undefined;
-        const imGeneratedAt = (body.impactMap as any)?.metadata?.generatedAt as string | undefined;
-        const bodyStaleReasons: string[] = [];
-        if (bpGeneratedAt) {
-            const bpTs = new Date(bpGeneratedAt).getTime();
-            if (uGeneratedAt && new Date(uGeneratedAt).getTime() > bpTs) {
-                bodyStaleReasons.push('UNDERSTANDING_UPDATED');
-            }
-            if (imGeneratedAt && new Date(imGeneratedAt).getTime() > bpTs) {
-                bodyStaleReasons.push('IMPACT_MAP_UPDATED');
-            }
-        }
-        const isStale = bodyStaleReasons.length > 0;
+        const rankedActivities: Activity[] = candidateResult.candidates.map(c => c.activity);
+
         if (isStale) {
             console.warn(`[ai-estimate-from-interview] Stale artifacts detected: ${bodyStaleReasons.join(', ')}`);
         }
-
-        const aggregateConfidence = computeAggregateConfidence(
-            body.requirementUnderstanding as Record<string, unknown> | null,
-            body.impactMap as Record<string, unknown> | null,
-            (body.estimationBlueprint ?? {}) as Record<string, unknown>,
-            isStale,
-        );
-        const candidateLimit = computeCandidateLimit(aggregateConfidence);
-        const pipelineConfig = computePipelineConfig(aggregateConfidence);
         console.log(`[ai-estimate-from-interview] Dynamic candidate sizing: confidence=${aggregateConfidence}, limit=${candidateLimit}, stale=${isStale}`);
         console.log(`[ai-estimate-from-interview] PipelineConfig: skipInterview=${pipelineConfig.skipInterview}, skipReflection=${pipelineConfig.skipReflection}`);
+        console.log(`[ai-estimate-from-interview] CandidateSynthesizer: strategy=${candidateResult.strategy} | blueprint=${candidateResult.diagnostics.fromBlueprint} | impactMap=${candidateResult.diagnostics.fromImpactMap} | understanding=${candidateResult.diagnostics.fromUnderstanding} | keyword=${candidateResult.diagnostics.fromKeyword} | overlaps=${candidateResult.diagnostics.mergedOverlaps}`);
 
+        pipelineLog.log('signal-extraction', {
+            blueprint: !!blueprintMappingResult,
+            signalSetCount: pipeline.signalSets.length,
+        });
         pipelineLog.log('candidate-sizing', {
             confidence: aggregateConfidence,
             candidateLimit,
@@ -635,17 +556,6 @@ export const handler = createAIHandler<RequestBody>({
             skipInterview: pipelineConfig.skipInterview,
             skipReflection: pipelineConfig.skipReflection,
         });
-
-        const candidateResult: SynthesizedCandidateSet = synthesizeCandidates({
-            signalSets,
-            catalog: fetchResult.activities,
-            projectCatalog: projectActivities.length > 0 ? projectActivities : undefined,
-            techCategory: techCat,
-            config: { maxCandidates: candidateLimit },
-        });
-
-        const rankedActivities: Activity[] = candidateResult.candidates.map(c => c.activity);
-
         pipelineLog.log('candidate-synthesis', {
             candidateCount: candidateResult.candidates.length,
             strategy: candidateResult.strategy,
@@ -653,6 +563,7 @@ export const handler = createAIHandler<RequestBody>({
 
         // Metrics from synthesizer
         metrics.candidateSource = candidateResult.strategy as any;
+        metrics.activitiesAfterRanking = rankedActivities.length;
         if (blueprintMappingResult) {
             metrics.blueprintCoverage = {
                 componentCoveragePercent: blueprintMappingResult.coverage.componentCoveragePercent,
@@ -664,16 +575,6 @@ export const handler = createAIHandler<RequestBody>({
                 metrics.blueprintWarnings = blueprintMappingResult.warnings;
             }
         }
-        console.log(`[ai-estimate-from-interview] CandidateSynthesizer: strategy=${candidateResult.strategy} | blueprint=${candidateResult.diagnostics.fromBlueprint} | impactMap=${candidateResult.diagnostics.fromImpactMap} | understanding=${candidateResult.diagnostics.fromUnderstanding} | keyword=${candidateResult.diagnostics.fromKeyword} | overlaps=${candidateResult.diagnostics.mergedOverlaps}`);
-
-        metrics.activitiesAfterRanking = rankedActivities.length;
-
-        // ─── Provenance Map: deterministic code → provenance lookup ────
-        // Built before agent execution.  Precedence (first wins):
-        //   blueprint-component > blueprint-integration > blueprint-data >
-        //   blueprint-testing > multi-crosscutting > keyword-fallback
-        // Codes discovered at runtime by agent tool-use get 'agent-discovered'.
-        const provenanceMap = buildProvenanceMap(blueprintMappingResult, rankedActivities);
 
         // ─── Agentic Pipeline ──────────────────────────────────────────
         console.log('[ai-estimate-from-interview] Using AGENTIC pipeline');
