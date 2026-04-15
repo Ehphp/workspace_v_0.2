@@ -31,8 +31,10 @@ export {
     detectConflicts,
     evaluateStaleReasons,
     inferStructuralType,
-    computeAggregateConfidence,
     buildCanonicalSearchText,
     formatConflictsBlock,
 } from './canonical-profile.service';
 export type { BuildCanonicalProfileOptions } from './canonical-profile.service';
+
+// Hot-path confidence computation (pure function, no I/O)
+export { computeAggregateConfidence } from './aggregate-confidence';

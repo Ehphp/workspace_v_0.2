@@ -59,7 +59,7 @@ import type { ProjectTechnicalBlueprint } from './lib/domain/project/project-tec
 import type { EstimationContext } from './lib/domain/types/estimation';
 import { formatProjectTechnicalBlueprintBlock } from './lib/ai/formatters/project-blueprint-formatter';
 import { formatProjectActivitiesBlock } from './lib/ai/formatters/project-activities-formatter';
-import { computeAggregateConfidence } from './lib/domain/estimation/canonical-profile.service';
+import { computeAggregateConfidence } from './lib/domain/estimation/aggregate-confidence';
 import { computePipelineConfig } from './lib/domain/pipeline/pipeline-config';
 import { createPipelineLogger } from './lib/observability/pipeline-logger';
 import { runDecisionEngine } from './lib/domain/pipeline/decision-engine';

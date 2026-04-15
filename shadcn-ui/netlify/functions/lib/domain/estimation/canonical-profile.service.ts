@@ -1,20 +1,20 @@
 /**
- * canonical-profile.service.ts — Canonical Profile Builder
+ * canonical-profile.service.ts — Post-save diagnostics and traceability
  *
- * Implements the runtime materialization of the CanonicalProfile from the
- * requirement_analyses hub and its pinned artifact triad.
+ * NOT on the hot path of estimation. Runs after the snapshot is saved,
+ * as a non-fatal step to materialise the CanonicalProfile, pin artifacts,
+ * and surface conflicts to the UI and ReflectionEngine.
  *
- * Entry point: buildCanonicalProfile()
+ * Hot-path confidence computation is in aggregate-confidence.ts.
  *
- * Consumer contracts (v1):
- *   - HistoricalRetrieval : stalePolicy=reject, requiredFields=[canonicalSearchText]
- *   - ReflectionEngine    : stalePolicy=warn, requiredFields=[conflicts]
- *   - RequirementDetailUI : stalePolicy=allow, informational
- *
- * NOT used by CandidateSynthesizer in v1.
+ * Consumers:
+ *   - save-orchestrator.ts   : buildCanonicalProfile, pinAnalysisToBlueprint, linkBlueprintToAnalysis
+ *   - reflection-engine.ts   : formatConflictsBlock (agent path only)
+ *   - RequirementDetailUI    : staleness warnings, conflict display
  */
 
 import { getDomainSupabase } from '../supabase';
+import { computeAggregateConfidence } from './aggregate-confidence';
 import type {
     RequirementAnalysisRow,
     CanonicalProfile,
@@ -379,43 +379,7 @@ export function inferStructuralType(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. computeAggregateConfidence — runtime only, never stored
-// ─────────────────────────────────────────────────────────────────────────────
-
-export function computeAggregateConfidence(
-    understanding: Record<string, unknown> | null,
-    impactMap: Record<string, unknown> | null,
-    blueprint: Record<string, unknown>,
-    isStale: boolean,
-): number {
-    // Weights reflect informational hierarchy toward estimation:
-    // blueprint describes WHAT to build (heaviest), impactMap WHERE it impacts,
-    // understanding WHY it's needed (lightest for estimation purposes).
-    const WEIGHTS = { blueprint: 0.45, impactMap: 0.35, understanding: 0.20 };
-
-    const bpConf = (blueprint['overallConfidence'] as number) ?? 0;
-    let score = bpConf * WEIGHTS.blueprint;
-    let weightUsed = WEIGHTS.blueprint;
-
-    const imConf = (impactMap?.['overallConfidence'] as number) ?? null;
-    if (imConf !== null) {
-        score += imConf * WEIGHTS.impactMap;
-        weightUsed += WEIGHTS.impactMap;
-    }
-
-    const uConf = (understanding?.['confidence'] as number) ?? null;
-    if (uConf !== null) {
-        score += uConf * WEIGHTS.understanding;
-        weightUsed += WEIGHTS.understanding;
-    }
-
-    const normalized = score / weightUsed;
-    // Stale penalty — informational only, not a gate
-    return isStale ? Math.round(normalized * 0.85 * 100) / 100 : Math.round(normalized * 100) / 100;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. buildCanonicalSearchText — format v1
+// 4. buildCanonicalSearchText — format v1
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
