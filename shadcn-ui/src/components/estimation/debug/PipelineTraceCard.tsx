@@ -13,13 +13,22 @@
 
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronUp, Activity, GitBranch, Zap, AlertTriangle } from 'lucide-react';
+import { ChevronDown, ChevronUp, Activity, GitBranch, Zap, AlertTriangle, ListTree } from 'lucide-react';
 import type { EstimationFromInterviewResponse } from '@/types/requirement-interview';
+import type { DebugDecisionTraceEntry } from '@/lib/pipeline-debug-api';
 
 type PipelineTrace = NonNullable<EstimationFromInterviewResponse['pipelineTrace']>;
 
+interface CandidateProvenanceLike {
+    primarySource: string;
+}
+
 interface PipelineTraceCardProps {
     trace: PipelineTrace;
+    /** Decision trace from DecisionEngine (deterministic path) */
+    decisionTrace?: DebugDecisionTraceEntry[];
+    /** Full candidate provenance — used to surface sources not in signalSets */
+    candidateProvenance?: CandidateProvenanceLike[];
     /** Open by default (e.g. when rendered in debug dashboard). Default: false */
     defaultOpen?: boolean;
 }
@@ -55,9 +64,46 @@ function ScoreBar({ value, max }: { value: number; max: number }) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function PipelineTraceCard({ trace, defaultOpen = false }: PipelineTraceCardProps) {
+const STEP_LABELS: Record<string, string> = {
+    'score-gate':             'Score gate',
+    'mandatory-keyword':      'Mandatory KW',
+    'coverage-enforcement':   'Coverage',
+    'redundancy-elimination': 'Redundancy',
+    'top-k-cap':              'Top-K cap',
+};
+
+const ACTION_COLORS: Record<string, string> = {
+    'select':        'text-green-700 bg-green-50',
+    'add-coverage':  'text-blue-700 bg-blue-50',
+    'add-mandatory': 'text-purple-700 bg-purple-50',
+    'exclude':       'text-slate-500 bg-slate-50',
+};
+
+export function PipelineTraceCard({ trace, decisionTrace, candidateProvenance, defaultOpen = false }: PipelineTraceCardProps) {
     const [open, setOpen] = useState(defaultOpen);
     const [ksOpen, setKsOpen] = useState(false);
+    const [dtOpen, setDtOpen] = useState(false);
+
+    // Compute full primary-source distribution from candidateProvenance.
+    // Sources that attributed candidates but have no signalSet are "silent" —
+    // they contribute to the gap between sum(signalSources%) and 100%.
+    const silentSources: { source: string; share: number }[] = [];
+    if (candidateProvenance && candidateProvenance.length > 0) {
+        const knownSources = new Set(trace.signalSources.map(s => s.source));
+        const countBySource = new Map<string, number>();
+        for (const p of candidateProvenance) {
+            if (p.primarySource && !knownSources.has(p.primarySource)) {
+                countBySource.set(p.primarySource, (countBySource.get(p.primarySource) ?? 0) + 1);
+            }
+        }
+        for (const [source, count] of countBySource) {
+            silentSources.push({
+                source,
+                share: Number((count / candidateProvenance.length).toFixed(3)),
+            });
+        }
+        silentSources.sort((a, b) => b.share - a.share);
+    }
 
     const modeColor = trace.pipelineMode === 'agentic'
         ? 'bg-indigo-100 text-indigo-800 border-indigo-200'
@@ -136,6 +182,21 @@ export function PipelineTraceCard({ trace, defaultOpen = false }: PipelineTraceC
                                     </span>
                                 </div>
                             ))}
+                            {silentSources.map(s => (
+                                <div key={s.source} className="flex items-center gap-2 opacity-60" title="Fonte senza signal set proprio — candidati attribuiti tramite provenance">
+                                    <Badge variant="outline" className={`text-[10px] w-28 justify-center shrink-0 border-dashed ${sourceColor(s.source)}`}>
+                                        {s.source}
+                                    </Badge>
+                                    <span className="text-xs text-slate-300 w-16 shrink-0 italic">
+                                        no signals
+                                    </span>
+                                    <ScoreBar value={s.share} max={maxShare} />
+                                    <span className="text-xs font-mono text-slate-400 w-10 text-right">
+                                        {Math.round(s.share * 100)}%
+                                    </span>
+                                    <span className="text-xs text-slate-300 w-12 text-right">—</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
 
@@ -177,6 +238,52 @@ export function PipelineTraceCard({ trace, defaultOpen = false }: PipelineTraceC
                                     <span className="text-xs text-slate-400 italic">agent selection identical to deterministic</span>
                                 )}
                             </div>
+                        </div>
+                    )}
+
+                    {/* ── Decision Trace ── */}
+                    {decisionTrace && decisionTrace.length > 0 && (
+                        <div>
+                            <button
+                                onClick={() => setDtOpen(o => !o)}
+                                className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <ListTree className="h-3 w-3" />
+                                <span>Decision Trace ({decisionTrace.length} steps)</span>
+                                {dtOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                            </button>
+                            {dtOpen && (
+                                <div className="mt-2 rounded-lg border border-slate-100 overflow-hidden">
+                                    <div className="grid grid-cols-[90px_80px_100px_1fr_50px] bg-slate-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 gap-2">
+                                        <span>Step</span>
+                                        <span>Action</span>
+                                        <span>Code</span>
+                                        <span>Reason</span>
+                                        <span className="text-right">Score</span>
+                                    </div>
+                                    <div className="divide-y divide-slate-50 max-h-72 overflow-y-auto">
+                                        {decisionTrace.map((entry, i) => (
+                                            <div key={i} className="grid grid-cols-[90px_80px_100px_1fr_50px] px-3 py-1.5 text-xs gap-2 items-start hover:bg-slate-50">
+                                                <span className="text-slate-400 text-[10px] pt-0.5">
+                                                    {STEP_LABELS[entry.step] ?? entry.step}
+                                                </span>
+                                                <span className={`text-[10px] font-medium rounded px-1 py-0.5 w-fit ${ACTION_COLORS[entry.action] ?? 'text-slate-500 bg-slate-50'}`}>
+                                                    {entry.action}
+                                                </span>
+                                                <span className="font-mono text-[10px] text-indigo-600 truncate">
+                                                    {entry.code || '—'}
+                                                </span>
+                                                <span className="text-slate-500 text-[10px] leading-relaxed">
+                                                    {entry.reason}
+                                                </span>
+                                                <span className="font-mono text-[10px] text-slate-400 text-right">
+                                                    {entry.score != null ? entry.score.toFixed(2) : ''}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

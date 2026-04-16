@@ -16,3 +16,6 @@ dist-ssr
 docs-obsidian/.obsidian/workspace.json
 docs-obsidian/.obsidian/workspace-mobile.json
 docs-obsidian/.obsidian/cache
+
+#claude
+.claude/*

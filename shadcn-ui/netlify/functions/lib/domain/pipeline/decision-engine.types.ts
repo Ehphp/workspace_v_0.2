@@ -51,20 +51,28 @@ export interface InterviewAnswerLike {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface DecisionEngineConfig {
-    /** Minimum score for a candidate to pass the score gate. Default: 0.3 */
+    /** Minimum score for a candidate to pass the score gate. Default: 0.5 */
     minScore: number;
-    /** Maximum number of selected activities. Default: 15 */
+    /** Maximum number of selected activities. Default: 10 */
     maxSelected: number;
     /** Layers where coverage is enforced (candidates force-included if uncovered) */
     coverageLayers: PipelineLayer[];
+    /**
+     * Minimum score a candidate must have to be force-promoted by coverage enforcement.
+     * If the best candidate for an uncovered layer scores below this threshold it is
+     * considered noise and the layer gap is left open rather than filled with a
+     * low-signal activity. Default: 0.25
+     */
+    minCoverageScore: number;
     /** Keyword-based mandatory inclusion rules */
     mandatoryKeywordRules: MandatoryKeywordRule[];
 }
 
 export const DEFAULT_CONFIG: DecisionEngineConfig = {
-    minScore: 0.3,
-    maxSelected: 15,
+    minScore: 0.5,
+    maxSelected: 10,
     coverageLayers: ['frontend', 'logic', 'data'],
+    minCoverageScore: 0.25,
     mandatoryKeywordRules: [], // populated from mandatory-rules.ts
 };
 

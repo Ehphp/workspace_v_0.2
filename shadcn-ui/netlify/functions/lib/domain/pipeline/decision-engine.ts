@@ -203,12 +203,22 @@ function mandatoryEnforcement(
 
 /**
  * Phase 3: Layer coverage enforcement.
+ *
+ * A layer is force-covered only when:
+ *   1. It has HIGH priority
+ *   2. No selected candidate covers it
+ *   3. The best excluded candidate for it has score >= minCoverageScore
+ *
+ * If the best excluded candidate scores below minCoverageScore the layer gap
+ * is left open — forcing a near-zero-signal activity inflates estimates more
+ * than it adds value.
  */
 function coverageEnforcement(
     selected: ScoredCandidate[],
     excluded: ScoredCandidate[],
     coverageLayers: PipelineLayer[],
     prefixMap: Map<string, PipelineLayer>,
+    minCoverageScore: number,
 ): { selected: ScoredCandidate[]; trace: DecisionTraceEntry[] } {
     const trace: DecisionTraceEntry[] = [];
 
@@ -225,19 +235,7 @@ function coverageEnforcement(
             .filter(e => resolveLayer(e.activity.code, prefixMap) === layer)
             .sort((a, b) => b.score - a.score);
 
-        if (candidates.length > 0) {
-            const best = candidates[0];
-            selected.push(best);
-            excluded.splice(excluded.indexOf(best), 1);
-            trace.push({
-                step: 'coverage-enforcement',
-                action: 'add-coverage',
-                code: best.activity.code,
-                reason: `Layer "${layer}" (priority HIGH) non coperto — aggiunto miglior candidato`,
-                score: best.score,
-                layer,
-            });
-        } else {
+        if (candidates.length === 0) {
             trace.push({
                 step: 'coverage-enforcement',
                 action: 'select',
@@ -245,7 +243,35 @@ function coverageEnforcement(
                 reason: `Layer "${layer}" (priority HIGH) non coperto — nessun candidato disponibile`,
                 layer,
             });
+            continue;
         }
+
+        const best = candidates[0];
+
+        // Skip enforcement if best candidate is below the minimum coverage threshold —
+        // it's noise, not a real signal for this layer.
+        if (best.score < minCoverageScore) {
+            trace.push({
+                step: 'coverage-enforcement',
+                action: 'exclude',
+                code: best.activity.code,
+                reason: `Layer "${layer}" gap ignorato — miglior candidato score ${best.score.toFixed(2)} < minCoverageScore ${minCoverageScore} (segnale assente)`,
+                score: best.score,
+                layer,
+            });
+            continue;
+        }
+
+        selected.push(best);
+        excluded.splice(excluded.indexOf(best), 1);
+        trace.push({
+            step: 'coverage-enforcement',
+            action: 'add-coverage',
+            code: best.activity.code,
+            reason: `Layer "${layer}" (priority HIGH) non coperto — aggiunto miglior candidato (score ${best.score.toFixed(2)} >= ${minCoverageScore})`,
+            score: best.score,
+            layer,
+        });
     }
 
     return { selected, trace };
@@ -343,9 +369,10 @@ function topKCap(
 
     for (const candidate of sorted) {
         const code = candidate.activity.code;
-        const isProtected = coverageCodes.has(code)
-            || mandatoryCodes.has(code)
-            || code.startsWith('PRJ_');
+        // PRJ_* activities are NOT protected here — their weight advantage (4.0)
+        // already gives them higher scores in the synthesizer. Protecting them from
+        // top-K would let irrelevant project activities monopolize all slots.
+        const isProtected = coverageCodes.has(code) || mandatoryCodes.has(code);
 
         if (removed < targetRemoval && !isProtected) {
             excluded.push(candidate);
@@ -472,6 +499,7 @@ export function runDecisionEngine(input: DecisionEngineInput): DecisionEngineRes
         selected, excluded,
         config.coverageLayers,
         prefixMap,
+        config.minCoverageScore,
     );
     selected = phase3.selected;
     allTrace.push(...phase3.trace);

@@ -713,19 +713,20 @@ export const handler = createAIHandler<RequestBody>({
                 });
             }
 
-            // ─── Agent delta (observability) ──────────────────────────────
-            // Run deterministic baseline (pure function, ~1ms) to measure
-            // how much the agent deviated from the deterministic selection.
+            // ─── Deterministic baseline (pure function, ~1ms) ─────────────
+            // Always run so decisionTrace is available for debug even when
+            // agentDeltaEnabled=false. Used both for agentDelta and decisionTrace.
+            const baselineResult = runDecisionEngine({
+                candidates: candidateResult.candidates,
+                answers: body.answers,
+                techCategory: techCat,
+                catalog: fetchResult.activities,
+                description: sanitizedDescription,
+                activityBiases: mergedRules.activityBiases,
+            });
+
             let agentDelta = undefined;
             if (ks.agentDeltaEnabled) {
-                const baselineResult = runDecisionEngine({
-                    candidates: candidateResult.candidates,
-                    answers: body.answers,
-                    techCategory: techCat,
-                    catalog: fetchResult.activities,
-                    description: sanitizedDescription,
-                    activityBiases: mergedRules.activityBiases,
-                });
                 const deterministicCodes = baselineResult.selectedCandidates.map(c => c.activity.code);
                 const agentCodes = enrichedActivities.map((a: any) => a.code);
                 agentDelta = computeAgentDelta(deterministicCodes, agentCodes);
@@ -808,6 +809,8 @@ export const handler = createAIHandler<RequestBody>({
                 suggestedDrivers: finalDrivers,
                 suggestedRisks: finalRisks.map(r => r.code),
                 candidateProvenance,
+                decisionTrace: baselineResult.decisionTrace,
+                coverageReport: baselineResult.coverageReport,
                 projectContextNotes: contextRules.notes.length > 0 ? contextRules.notes : undefined,
                 agentMetadata: {
                     executionId: agentResult.agentMetadata.executionId,
@@ -888,7 +891,13 @@ export const handler = createAIHandler<RequestBody>({
                 const topAvgScore = topN.length > 0
                     ? Number((topN.reduce((s, sig) => s + sig.score, 0) / topN.length).toFixed(3))
                     : 0;
-                return { source: ss.source, signalCount: ss.signals.length, topAvgScore, primarySourceShare: 0 };
+                const primaryCandidates = candidateResult.candidates.filter(
+                    c => c.primarySource === ss.source,
+                );
+                const primarySourceShare = candidateResult.candidates.length > 0
+                    ? Number((primaryCandidates.length / candidateResult.candidates.length).toFixed(3))
+                    : 0;
+                return { source: ss.source, signalCount: ss.signals.length, topAvgScore, primarySourceShare };
             });
 
             const pipelineTraceFallback: PipelineTrace = {

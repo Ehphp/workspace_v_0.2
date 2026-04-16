@@ -177,19 +177,29 @@ function collectAnswerTexts(answers: Record<string, InterviewAnswerLike>): strin
     return texts;
 }
 
+/**
+ * Build a word-boundary regex for a keyword.
+ * Escapes regex special chars so keywords like "go-live" or "ci/cd" work correctly.
+ * Uses \b boundaries so "ui" does NOT match inside "recruiting".
+ */
+function buildKeywordRegex(keyword: string): RegExp {
+    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`\\b${escaped}\\b`, 'i');
+}
+
 function findKeywordMatch(
     rule: MandatoryKeywordRule,
     descLower: string,
     answerTexts: string[],
 ): string | null {
     for (const kw of rule.keywords) {
-        const kwLower = kw.toLowerCase();
+        const regex = buildKeywordRegex(kw);
         if (rule.source === 'description' || rule.source === 'both') {
-            if (descLower.includes(kwLower)) return kw;
+            if (regex.test(descLower)) return kw;
         }
         if (rule.source === 'answers' || rule.source === 'both') {
             for (const text of answerTexts) {
-                if (text.includes(kwLower)) return kw;
+                if (regex.test(text)) return kw;
             }
         }
     }

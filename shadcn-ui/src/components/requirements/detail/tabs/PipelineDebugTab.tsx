@@ -32,6 +32,7 @@ import {
     FlaskConical,
 } from 'lucide-react';
 import { PipelineTraceCard } from '@/components/estimation/debug/PipelineTraceCard';
+import { ActivityTable } from '@/components/estimation/debug/ActivityTable';
 import {
     runDebugEstimation,
     DEFAULT_KS,
@@ -383,27 +384,16 @@ export function PipelineDebugTab({
                                         </div>
 
                                         {(activeRun.result.activities?.length ?? 0) > 0 && (
-                                            <div className="rounded-lg border border-slate-100 overflow-hidden">
-                                                <div className="bg-slate-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 flex justify-between">
-                                                    <span>Attività selezionate ({activeRun.result.activities.length})</span>
-                                                    <span>ore base</span>
-                                                </div>
-                                                <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
-                                                    {activeRun.result.activities.map(a => (
-                                                        <div key={a.code} className="flex items-center justify-between px-3 py-1.5 text-xs hover:bg-slate-50">
-                                                            <div className="flex items-center gap-2 min-w-0">
-                                                                <span className="font-mono text-[10px] text-indigo-600 shrink-0">{a.code}</span>
-                                                                <span className="text-slate-600 truncate">{a.name}</span>
-                                                            </div>
-                                                            <span className="font-mono text-slate-500 shrink-0 ml-3">{a.baseHours}h</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
+                                            <ActivityTable activities={activeRun.result.activities} />
                                         )}
 
                                         {activeRun.trace && (
-                                            <PipelineTraceCard trace={activeRun.trace} defaultOpen />
+                                            <PipelineTraceCard
+                                                trace={activeRun.trace}
+                                                decisionTrace={activeRun.decisionTrace}
+                                                candidateProvenance={activeRun.result.activities}
+                                                defaultOpen
+                                            />
                                         )}
                                     </>
                                 )}

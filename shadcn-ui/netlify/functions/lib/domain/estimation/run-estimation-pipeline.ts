@@ -161,12 +161,21 @@ export function runEstimationPipeline(
     if (impactMapResult)        signalSets.push(impactMapToNormalizedSignals(impactMapResult));
     if (understandingResult)    signalSets.push(understandingToNormalizedSignals(understandingResult));
 
-    // Keyword signals (always present — baseline cannot be disabled)
+    // Keyword signals (always present — baseline cannot be disabled).
+    // topN scales DOWN as richer artifact signals are available: keyword is
+    // supplemental when blueprint/impactMap/understanding are present, and
+    // primary only when no artifacts exist.
+    //   0 artifact signals → topN 15  (keyword is the only source)
+    //   1 artifact signal  → topN 12
+    //   2 artifact signals → topN 10
+    //   3 artifact signals → topN  8
+    const artifactSignalCount = signalSets.length; // signals added so far are all artifact-based
+    const keywordTopN = Math.max(8, 15 - artifactSignalCount * 2);
     signalSets.push(keywordToNormalizedSignals({
         activities,
         description,
         answers,
-        topN: 30,
+        topN: keywordTopN,
         blueprint: estimationBlueprint,
         activityBiases,
     }));

@@ -19,7 +19,6 @@ import { OrganizationSettings } from './pages/configuration/OrganizationSettings
 import EstimationAccuracy from './pages/analytics/EstimationAccuracy';
 import PromptManagement from './pages/admin/PromptManagement';
 import ProjectActivitiesPage from './pages/activities/ProjectActivitiesPage';
-import PipelineDebug from './pages/dev/PipelineDebug';
 
 const queryClient = new QueryClient();
 
@@ -131,7 +130,6 @@ const App = () => (
           <Route path="/admin/activities" element={<Navigate to="/configuration/activities" replace />} />
           <Route path="/presets" element={<Navigate to="/configuration/technologies" replace />} />
           <Route path="/configuration/presets" element={<Navigate to="/configuration/technologies" replace />} />
-          <Route path="/dev/pipeline-debug" element={<PipelineDebug />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

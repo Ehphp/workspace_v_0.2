@@ -55,10 +55,36 @@ export interface DebugRunConfig {
     forceMode: ForceMode;
 }
 
+export interface DebugActivityContributions {
+    blueprint: number;
+    impactMap: number;
+    understanding: number;
+    keyword: number;
+    projectContext: number;
+    projectActivity: number;
+}
+
 export interface DebugActivity {
     code: string;
     name: string;
     baseHours: number;
+    /** Candidate score from synthesizer (before DecisionEngine) */
+    score?: number;
+    /** Which source contributed most to this activity's score */
+    primarySource?: string;
+    /** Per-source score contributions */
+    contributions?: DebugActivityContributions;
+    /** LLM reason (agentic) or "Score X.XX (source)" (deterministic) */
+    reason?: string;
+}
+
+export interface DebugDecisionTraceEntry {
+    step: string;
+    action: string;
+    code: string;
+    reason: string;
+    score?: number;
+    layer?: string;
 }
 
 /** Which artifacts were found and sent with this run */
@@ -78,12 +104,14 @@ export interface DebugRun {
     result: {
         totalBaseDays: number;
         confidenceScore: number;
-        /** Full activity objects — preferred for display */
+        /** Full activity objects with provenance — preferred for display */
         activities: DebugActivity[];
         /** Kept for backwards-compat with old localStorage entries */
         activitiesSelected: string[];
         pipelineMode: string;
     };
+    /** Decision trace from DecisionEngine (deterministic path only) */
+    decisionTrace?: DebugDecisionTraceEntry[];
     trace: EstimationFromInterviewResponse['pipelineTrace'];
     error?: string;
     durationMs: number;
@@ -200,6 +228,31 @@ export async function runDebugEstimation(config: DebugRunConfig): Promise<DebugR
             };
         }
 
+        // Build a provenance lookup by code for fast join
+        const provByCode = new Map(
+            (data.candidateProvenance ?? []).map(p => [p.code, p])
+        );
+
+        const activities: DebugActivity[] = data.activities.map(a => {
+            const prov = provByCode.get(a.code);
+            return {
+                code: a.code,
+                name: a.name,
+                baseHours: a.baseHours,
+                score: prov?.score,
+                primarySource: prov?.primarySource,
+                contributions: prov ? {
+                    blueprint:       prov.contributions.blueprint ?? 0,
+                    impactMap:       prov.contributions.impactMap ?? 0,
+                    understanding:   prov.contributions.understanding ?? 0,
+                    keyword:         prov.contributions.keyword ?? 0,
+                    projectContext:  prov.contributions.projectContext ?? 0,
+                    projectActivity: prov.contributions.projectActivity ?? 0,
+                } : undefined,
+                reason: a.reason,
+            };
+        });
+
         return {
             id,
             timestamp: new Date().toISOString(),
@@ -208,10 +261,11 @@ export async function runDebugEstimation(config: DebugRunConfig): Promise<DebugR
             result: {
                 totalBaseDays: data.totalBaseDays,
                 confidenceScore: data.confidenceScore,
-                activities: data.activities.map(a => ({ code: a.code, name: a.name, baseHours: a.baseHours })),
+                activities,
                 activitiesSelected: data.activities.map(a => a.code),
                 pipelineMode: data.pipelineTrace?.pipelineMode ?? 'unknown',
             },
+            decisionTrace: data.decisionTrace,
             trace: data.pipelineTrace,
             durationMs,
         };
