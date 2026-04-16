@@ -145,6 +145,14 @@ interface RequestBody {
     estimationBlueprint?: Record<string, unknown>;
     /** Optional project technical blueprint — architectural baseline from project creation */
     projectTechnicalBlueprint?: Record<string, unknown>;
+    /**
+     * Dev-only: kill-switch overrides injected from the debug dashboard.
+     * Ignored in production (process.env.CONTEXT === 'production').
+     */
+    devConfig?: {
+        killSwitches?: Partial<import('./lib/domain/pipeline/kill-switches').KillSwitches>;
+        forceMode?: 'agentic' | 'deterministic';
+    };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -458,7 +466,15 @@ export const handler = createAIHandler<RequestBody>({
 
     handler: async (body, ctx) => {
         const pipelineStart = Date.now();
-        const ks = readKillSwitches();
+        const isProd = process.env.CONTEXT === 'production';
+        const baseKs = readKillSwitches();
+        const ks = (!isProd && body.devConfig?.killSwitches)
+            ? { ...baseKs, ...body.devConfig.killSwitches }
+            : baseKs;
+        // forceMode: 'deterministic' → disable agent entirely
+        if (!isProd && body.devConfig?.forceMode === 'deterministic') {
+            (ks as any).agenticEnabled = false;
+        }
         const metrics = createEmptyMetrics(ks.estimationModel);
         const pipelineLog = createPipelineLogger(ctx.requestId ?? `est-${Date.now()}`);
 
@@ -617,6 +633,11 @@ export const handler = createAIHandler<RequestBody>({
         };
 
         try {
+            // forceMode deterministic: skip agent, go straight to decision engine
+            if (!ks.agenticEnabled) {
+                throw Object.assign(new Error('agenticEnabled=false (dev override)'), { _forcedFallback: true });
+            }
+
             const agentResult = await runAgentPipeline(agentInput);
 
             console.log('[ai-estimate-from-interview] Agent pipeline result:', {

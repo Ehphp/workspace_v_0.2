@@ -37,7 +37,7 @@ export function CreateRequirementDialog({
                             name: project.name,
                             description: project.description,
                             owner: project.owner,
-                            defaultTechnologyId: project.technology_id || undefined,
+                            defaultTechnologyId: project.technology_id || project.tech_preset_id || undefined,
                             projectType: project.project_type || undefined,
                             domain: project.domain || undefined,
                             scope: project.scope || undefined,

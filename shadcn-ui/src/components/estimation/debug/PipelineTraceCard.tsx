@@ -20,6 +20,8 @@ type PipelineTrace = NonNullable<EstimationFromInterviewResponse['pipelineTrace'
 
 interface PipelineTraceCardProps {
     trace: PipelineTrace;
+    /** Open by default (e.g. when rendered in debug dashboard). Default: false */
+    defaultOpen?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -53,8 +55,8 @@ function ScoreBar({ value, max }: { value: number; max: number }) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function PipelineTraceCard({ trace }: PipelineTraceCardProps) {
-    const [open, setOpen] = useState(false);
+export function PipelineTraceCard({ trace, defaultOpen = false }: PipelineTraceCardProps) {
+    const [open, setOpen] = useState(defaultOpen);
     const [ksOpen, setKsOpen] = useState(false);
 
     const modeColor = trace.pipelineMode === 'agentic'

@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { FileText, Calculator, History, ClipboardCheck } from 'lucide-react';
+import { FileText, Calculator, History, ClipboardCheck, FlaskConical } from 'lucide-react';
 import { toast } from 'sonner';
 import { getConsultantAnalysis } from '@/lib/consultant-api';
 import { getLatestRequirementUnderstanding, saveRequirementUnderstanding, saveEstimationByIds } from '@/lib/api';
@@ -39,6 +39,7 @@ import { OverviewTab } from '@/components/requirements/detail/tabs/OverviewTab';
 import { EstimationTab } from '@/components/requirements/detail/tabs/EstimationTab';
 import { HistoryTab } from '@/components/requirements/detail/tabs/HistoryTab';
 import { ActualHoursTab } from '@/components/requirements/detail/tabs/ActualHoursTab';
+import { PipelineDebugTab } from '@/components/requirements/detail/tabs/PipelineDebugTab';
 
 const HISTORY_PAGE_SIZE = 50;
 
@@ -618,6 +619,15 @@ export default function RequirementDetail() {
                                     <ClipboardCheck className="w-4 h-4 mr-1.5" />
                                     Consuntivo
                                 </TabsTrigger>
+                                {import.meta.env.DEV && (
+                                    <TabsTrigger
+                                        value="pipeline-debug"
+                                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-700 px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors"
+                                    >
+                                        <FlaskConical className="w-4 h-4 mr-1.5" />
+                                        Pipeline Debug
+                                    </TabsTrigger>
+                                )}
                             </TabsList>
                         </div>
                     </div>
@@ -675,6 +685,17 @@ export default function RequirementDetail() {
                             onRefetch={refetchAll}
                         />
                     </TabsContent>
+
+                    {import.meta.env.DEV && (
+                        <TabsContent value="pipeline-debug" className="flex-1 min-h-0 m-0 focus-visible:outline-none h-full">
+                            <PipelineDebugTab
+                                requirementId={requirement.id}
+                                description={requirement.description || ''}
+                                projectId={project?.id}
+                                techCategory={activeTechnology?.code}
+                            />
+                        </TabsContent>
+                    )}
                 </Tabs>
             </div>
 

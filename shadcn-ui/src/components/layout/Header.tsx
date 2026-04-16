@@ -14,7 +14,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { User, LogOut, Settings, Command, Sparkles } from 'lucide-react';
+import { User, LogOut, Settings, Command, Sparkles, FlaskConical } from 'lucide-react';
 import { SynteroMark } from './SynteroMark';
 
 import { OrganizationSwitcher } from '@/components/shared/OrganizationSwitcher';
@@ -249,6 +249,18 @@ export function Header() {
                                         <User className="mr-2 h-3.5 w-3.5" />
                                         <span>Profile</span>
                                     </DropdownMenuItem>
+                                    {import.meta.env.DEV && (
+                                        <>
+                                            <DropdownMenuSeparator className="bg-slate-100" />
+                                            <DropdownMenuItem
+                                                onClick={() => navigate('/dev/pipeline-debug')}
+                                                className="rounded-lg cursor-pointer text-xs font-medium text-indigo-600 focus:text-indigo-600 focus:bg-indigo-50"
+                                            >
+                                                <FlaskConical className="mr-2 h-3.5 w-3.5" />
+                                                <span>Pipeline Debug</span>
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
                                     <DropdownMenuSeparator className="bg-slate-100" />
                                     <DropdownMenuItem
                                         onClick={handleSignOut}

@@ -243,6 +243,16 @@ export async function fetchActivitiesServerSide(
         }
 
         // ── Canonical path: technology_id FK ─────────────────────────
+        // If techPresetId is empty (e.g. debug dashboard, quick-estimate without preset),
+        // fall back to legacy category-based fetch instead of throwing.
+        if (!techPresetId) {
+            const activities = await fetchActivitiesLegacy(supabase, techCategory);
+            console.log(`[server-fetch] No techPresetId — legacy category fallback: ${activities.length} activities`, { techCategory });
+            if (activities.length === 0) {
+                throw new Error(`Empty candidate set — no activities found for tech_category="${techCategory}"`);
+            }
+            return { activities, source: 'server', fetchMs: Date.now() - start };
+        }
         const technology = await resolveTechnology(supabase, techPresetId);
         if (!technology) {
             console.error('[server-fetch] CRITICAL: Cannot resolve technology', { techPresetId, techCategory });
