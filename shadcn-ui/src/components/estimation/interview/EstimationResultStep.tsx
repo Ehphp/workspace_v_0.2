@@ -31,6 +31,7 @@ import type {
     SelectedActivityWithReason,
     SuggestedDriver
 } from '@/types/requirement-interview';
+import { PipelineTraceCard } from '@/components/estimation/debug/PipelineTraceCard';
 
 interface EstimationResultStepProps {
     result: EstimationFromInterviewResponse;
@@ -326,6 +327,17 @@ export function EstimationResultStep({
                             </Badge>
                         ))}
                     </div>
+                </motion.div>
+            )}
+
+            {/* Pipeline Trace (dev dashboard) */}
+            {result.pipelineTrace && (
+                <motion.div
+                    initial={{ y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.55 }}
+                >
+                    <PipelineTraceCard trace={result.pipelineTrace} />
                 </motion.div>
             )}
 

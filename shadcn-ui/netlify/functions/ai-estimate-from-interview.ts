@@ -34,11 +34,9 @@ import { formatProjectActivitiesBlock } from './lib/ai/formatters/project-activi
 import { runEstimationPipeline } from './lib/domain/estimation/run-estimation-pipeline';
 import { createPipelineLogger } from './lib/observability/pipeline-logger';
 import { runDecisionEngine } from './lib/domain/pipeline/decision-engine';
-
-// Model configuration - use env variable AI_ESTIMATION_MODEL or default to gpt-4o
-// NOTE: gpt-5 has limitations (no custom temperature, no json_schema response_format)
-// Use gpt-4o as default for reliable structured output
-const AI_MODEL = process.env.AI_ESTIMATION_MODEL || 'gpt-4o';
+import { readKillSwitches } from './lib/domain/pipeline/kill-switches';
+import { computeAgentDelta } from './lib/observability/pipeline-trace';
+import type { PipelineTrace, SignalSourceStat } from './lib/observability/pipeline-trace';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Metrics type for performance instrumentation
@@ -72,7 +70,7 @@ interface EstimationMetrics {
     blueprintWarnings?: Array<{ level: string; code: string; message: string }>;
 }
 
-function createEmptyMetrics(): EstimationMetrics {
+function createEmptyMetrics(model: string): EstimationMetrics {
     return {
         totalDurationMs: 0,
         activitiesFetchMs: 0,
@@ -82,7 +80,7 @@ function createEmptyMetrics(): EstimationMetrics {
         reflectionDurationMs: 0,
         refineDurationMs: 0,
         toolIterations: 0,
-        model: AI_MODEL,
+        model,
         promptTokensEstimate: 0,
         activitiesCatalogSize: 0,
         activitiesAfterRanking: 0,
@@ -460,7 +458,8 @@ export const handler = createAIHandler<RequestBody>({
 
     handler: async (body, ctx) => {
         const pipelineStart = Date.now();
-        const metrics = createEmptyMetrics();
+        const ks = readKillSwitches();
+        const metrics = createEmptyMetrics(ks.estimationModel);
         const pipelineLog = createPipelineLogger(ctx.requestId ?? `est-${Date.now()}`);
 
         // Sanitize description
@@ -522,6 +521,7 @@ export const handler = createAIHandler<RequestBody>({
             impactMap: body.impactMap as Record<string, unknown> | undefined,
             requirementUnderstanding: body.requirementUnderstanding,
             activityBiases: mergedRules.activityBiases,
+            killSwitches: ks,
         });
 
         const {
@@ -608,10 +608,10 @@ export const handler = createAIHandler<RequestBody>({
             projectScopedActivitiesBlock: formatProjectActivitiesBlock(projectActivities.length > 0 ? projectActivities : undefined),
             projectId: body.projectId,
             flags: {
-                reflectionEnabled: process.env.AI_REFLECTION !== 'false' && !pipelineConfig.skipReflection,
-                toolUseEnabled: process.env.AI_TOOL_USE !== 'false',
-                maxReflectionIterations: Number(process.env.AI_MAX_REFLECTIONS || 2),
-                reflectionConfidenceThreshold: Number(process.env.AI_REFLECTION_THRESHOLD || 75),
+                reflectionEnabled: ks.reflectionEnabled && !pipelineConfig.skipReflection,
+                toolUseEnabled: ks.toolUseEnabled,
+                maxReflectionIterations: ks.maxReflectionIterations,
+                reflectionConfidenceThreshold: ks.reflectionConfidenceThreshold,
                 autoApproveOnly: false,
             },
         };
@@ -692,7 +692,70 @@ export const handler = createAIHandler<RequestBody>({
                 });
             }
 
+            // ─── Agent delta (observability) ──────────────────────────────
+            // Run deterministic baseline (pure function, ~1ms) to measure
+            // how much the agent deviated from the deterministic selection.
+            let agentDelta = undefined;
+            if (ks.agentDeltaEnabled) {
+                const baselineResult = runDecisionEngine({
+                    candidates: candidateResult.candidates,
+                    answers: body.answers,
+                    techCategory: techCat,
+                    catalog: fetchResult.activities,
+                    description: sanitizedDescription,
+                    activityBiases: mergedRules.activityBiases,
+                });
+                const deterministicCodes = baselineResult.selectedCandidates.map(c => c.activity.code);
+                const agentCodes = enrichedActivities.map((a: any) => a.code);
+                agentDelta = computeAgentDelta(deterministicCodes, agentCodes);
+            }
+
+            // ─── Signal source stats ───────────────────────────────────────
+            const signalSources: SignalSourceStat[] = pipeline.signalSets.map(ss => {
+                const topN = ss.signals.slice(0, 5);
+                const topAvgScore = topN.length > 0
+                    ? Number((topN.reduce((s, sig) => s + sig.score, 0) / topN.length).toFixed(3))
+                    : 0;
+                const primaryCandidates = candidateResult.candidates.filter(
+                    c => c.primarySource === ss.source,
+                );
+                const primarySourceShare = candidateResult.candidates.length > 0
+                    ? Number((primaryCandidates.length / candidateResult.candidates.length).toFixed(3))
+                    : 0;
+                return {
+                    source: ss.source,
+                    signalCount: ss.signals.length,
+                    topAvgScore,
+                    primarySourceShare,
+                };
+            });
+
+            // ─── PipelineTrace ─────────────────────────────────────────────
+            const pipelineTrace: PipelineTrace = {
+                requestId: agentResult.agentMetadata.executionId ?? ctx.requestId ?? 'unknown',
+                timestamp: new Date().toISOString(),
+                durationMs: metrics.totalDurationMs,
+                aggregateConfidence,
+                candidateLimit,
+                isStale,
+                staleReasons: bodyStaleReasons,
+                signalSources,
+                candidateCount: candidateResult.candidates.length,
+                candidateSynthesisStrategy: candidateResult.strategy,
+                pipelineMode: 'agentic',
+                agentDelta,
+                killSwitches: ks,
+            };
+
             console.log('[ai-estimate-from-interview] METRICS:', JSON.stringify(metrics));
+            console.log('[ai-estimate-from-interview] TRACE:', JSON.stringify({
+                aggregateConfidence: pipelineTrace.aggregateConfidence,
+                pipelineMode: pipelineTrace.pipelineMode,
+                agentDelta: pipelineTrace.agentDelta
+                    ? { overlap: pipelineTrace.agentDelta.overlapScore, added: pipelineTrace.agentDelta.added.length, removed: pipelineTrace.agentDelta.removed.length }
+                    : undefined,
+                signalSources: pipelineTrace.signalSources.map(s => `${s.source}(${s.signalCount})`),
+            }));
 
             pipelineLog.log('agent-pipeline', {
                 success: true,
@@ -700,6 +763,7 @@ export const handler = createAIHandler<RequestBody>({
                 driverCount: finalDrivers.length,
                 riskCount: finalRisks.length,
                 durationMs: metrics.totalDurationMs,
+                agentDeltaOverlap: agentDelta?.overlapScore,
             });
             pipelineLog.flush();
 
@@ -735,6 +799,7 @@ export const handler = createAIHandler<RequestBody>({
                     engineValidation: agentResult.engineValidation,
                 },
                 metrics,
+                pipelineTrace,
                 staleReasons: bodyStaleReasons.length > 0 ? bodyStaleReasons : undefined,
             };
         } catch (agentError: any) {
@@ -793,6 +858,33 @@ export const handler = createAIHandler<RequestBody>({
             metrics.draftDurationMs = Date.now() - fallbackStart;
             metrics.totalDurationMs = Date.now() - pipelineStart;
 
+            metrics.draftDurationMs = Date.now() - fallbackStart;
+            metrics.totalDurationMs = Date.now() - pipelineStart;
+
+            // ─── Signal source stats (fallback path) ──────────────────────
+            const signalSourcesFallback: SignalSourceStat[] = pipeline.signalSets.map(ss => {
+                const topN = ss.signals.slice(0, 5);
+                const topAvgScore = topN.length > 0
+                    ? Number((topN.reduce((s, sig) => s + sig.score, 0) / topN.length).toFixed(3))
+                    : 0;
+                return { source: ss.source, signalCount: ss.signals.length, topAvgScore, primarySourceShare: 0 };
+            });
+
+            const pipelineTraceFallback: PipelineTrace = {
+                requestId: ctx.requestId ?? 'unknown',
+                timestamp: new Date().toISOString(),
+                durationMs: metrics.totalDurationMs,
+                aggregateConfidence,
+                candidateLimit,
+                isStale,
+                staleReasons: bodyStaleReasons,
+                signalSources: signalSourcesFallback,
+                candidateCount: candidateResult.candidates.length,
+                candidateSynthesisStrategy: candidateResult.strategy,
+                pipelineMode: 'deterministic-fallback',
+                killSwitches: ks,
+            };
+
             console.log('[ai-estimate-from-interview] METRICS (fallback):', JSON.stringify(metrics));
 
             pipelineLog.log('deterministic-fallback', {
@@ -827,6 +919,7 @@ export const handler = createAIHandler<RequestBody>({
                 decisionTrace: decisionResult.decisionTrace,
                 coverageReport: decisionResult.coverageReport,
                 metrics,
+                pipelineTrace: pipelineTraceFallback,
                 staleReasons: bodyStaleReasons.length > 0 ? bodyStaleReasons : undefined,
             };
         }

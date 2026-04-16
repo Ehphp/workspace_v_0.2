@@ -45,6 +45,7 @@ import type { ActivityProvenance } from '../../blueprint-activity-mapper';
 import { computeAggregateConfidence } from './aggregate-confidence';
 import { computePipelineConfig, type PipelineConfig } from '../pipeline/pipeline-config';
 import type { ActivityBiases } from './project-context-rules';
+import type { KillSwitches } from '../pipeline/kill-switches';
 
 // ─── Input ────────────────────────────────────────────────────────────────────
 
@@ -69,6 +70,16 @@ export interface EstimationPipelineInput {
     projectTechnicalBlueprint?: Record<string, unknown>;
     /** Activity bias hints from project/blueprint rules */
     activityBiases: ActivityBiases;
+    /**
+     * Signal-level kill switches. When omitted all signals are enabled.
+     * Pass `readKillSwitches()` from the handler for runtime control.
+     */
+    killSwitches?: Pick<KillSwitches,
+        | 'blueprintSignalEnabled'
+        | 'impactMapSignalEnabled'
+        | 'understandingSignalEnabled'
+        | 'projectActivitySignalEnabled'
+    >;
 }
 
 // ─── Output ───────────────────────────────────────────────────────────────────
@@ -115,23 +126,33 @@ export function runEstimationPipeline(
         impactMap,
         requirementUnderstanding,
         activityBiases,
+        killSwitches,
     } = input;
+
+    // Resolve signal-level enable flags (default: all enabled)
+    const sig = {
+        blueprint:       killSwitches?.blueprintSignalEnabled       ?? true,
+        impactMap:       killSwitches?.impactMapSignalEnabled        ?? true,
+        understanding:   killSwitches?.understandingSignalEnabled    ?? true,
+        projectActivity: killSwitches?.projectActivitySignalEnabled  ?? true,
+    };
 
     // ── Step 1: Run artifact extractors ──────────────────────────────────────
 
     const blueprintMappingResult: BlueprintMappingResult | undefined =
-        estimationBlueprint && isBlueprintMappable(estimationBlueprint)
+        sig.blueprint && estimationBlueprint && isBlueprintMappable(estimationBlueprint)
             ? mapBlueprintToActivities(estimationBlueprint, activities, techCategory)
             : undefined;
 
     const impactMapResult =
-        impactMap && (impactMap as any).impacts?.length > 0
+        sig.impactMap && impactMap && (impactMap as any).impacts?.length > 0
             ? extractImpactMapSignals(impactMap as any, activities, techCategory)
             : undefined;
 
-    const understandingResult = requirementUnderstanding
-        ? extractUnderstandingSignals(requirementUnderstanding as any, activities, techCategory)
-        : undefined;
+    const understandingResult =
+        sig.understanding && requirementUnderstanding
+            ? extractUnderstandingSignals(requirementUnderstanding as any, activities, techCategory)
+            : undefined;
 
     // ── Step 2: Normalize to SignalSets ───────────────────────────────────────
 
@@ -140,7 +161,7 @@ export function runEstimationPipeline(
     if (impactMapResult)        signalSets.push(impactMapToNormalizedSignals(impactMapResult));
     if (understandingResult)    signalSets.push(understandingToNormalizedSignals(understandingResult));
 
-    // Keyword signals (always present)
+    // Keyword signals (always present — baseline cannot be disabled)
     signalSets.push(keywordToNormalizedSignals({
         activities,
         description,
@@ -151,7 +172,7 @@ export function runEstimationPipeline(
     }));
 
     // Project-activity signals (highest weight: 4.0, conditional)
-    if (projectActivities.length > 0) {
+    if (sig.projectActivity && projectActivities.length > 0) {
         signalSets.push(projectActivitiesToSignals(
             projectActivities,
             estimationBlueprint,

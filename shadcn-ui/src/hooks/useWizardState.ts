@@ -6,6 +6,7 @@ import type {
   SuggestedDriver,
   PreEstimate,
   CandidateProvenanceEntry,
+  EstimationFromInterviewResponse,
 } from '@/types/requirement-interview';
 import type { RequirementUnderstanding } from '@/types/requirement-understanding';
 import type { ImpactMap } from '@/types/impact-map';
@@ -78,6 +79,8 @@ export interface WizardData {
   decisionTrace?: Array<{ step: string; action: string; code: string; reason: string; score?: number; layer?: string }>;
   // Coverage report from DecisionEngine
   coverageReport?: { byLayer: Record<string, { covered: boolean; activityCount: number; topScore: number; topCode: string }>; totalSelected: number; totalCandidates: number; gapLayers: string[] };
+  // Pipeline trace for observability dashboard
+  pipelineTrace?: EstimationFromInterviewResponse['pipelineTrace'];
 }
 
 const STORAGE_KEY = 'estimation_wizard_data';

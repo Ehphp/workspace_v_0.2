@@ -123,6 +123,7 @@ export function WizardStepInterview({
                 candidateProvenance: result.candidateProvenance,
                 decisionTrace: result.decisionTrace,
                 coverageReport: result.coverageReport,
+                pipelineTrace: result.pipelineTrace,
             });
             setPhase('result');
         } else {
@@ -173,6 +174,7 @@ export function WizardStepInterview({
                 candidateProvenance: result.candidateProvenance,
                 decisionTrace: result.decisionTrace,
                 coverageReport: result.coverageReport,
+                pipelineTrace: result.pipelineTrace,
             });
 
             setPhase('result');

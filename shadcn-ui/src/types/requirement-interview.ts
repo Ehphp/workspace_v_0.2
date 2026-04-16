@@ -348,6 +348,33 @@ export interface EstimationFromInterviewResponse {
         /** Non-blocking quality warnings from blueprint mapper */
         blueprintWarnings?: Array<{ level: string; code: string; message: string }>;
     };
+    /** Structured observability trace for this pipeline run */
+    pipelineTrace?: {
+        requestId: string;
+        timestamp: string;
+        durationMs: number;
+        aggregateConfidence: number;
+        candidateLimit: number;
+        isStale: boolean;
+        staleReasons: string[];
+        signalSources: Array<{
+            source: string;
+            signalCount: number;
+            topAvgScore: number;
+            primarySourceShare: number;
+        }>;
+        candidateCount: number;
+        candidateSynthesisStrategy: string;
+        pipelineMode: 'agentic' | 'deterministic-fallback';
+        agentDelta?: {
+            deterministicSelected: string[];
+            agentSelected: string[];
+            added: string[];
+            removed: string[];
+            overlapScore: number;
+        };
+        killSwitches?: Record<string, unknown>;
+    };
 }
 
 /**
