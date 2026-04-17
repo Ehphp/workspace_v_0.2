@@ -271,8 +271,10 @@ export interface CandidateProvenanceEntry {
     contributions: {
         blueprint: number;
         impactMap: number;
+        understanding: number;
         keyword: number;
         projectContext: number;
+        projectActivity: number;
     };
     /** Highest contributing source */
     primarySource: string;

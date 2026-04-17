@@ -842,6 +842,10 @@ export const handler = createAIHandler<RequestBody>({
                 '[ai-estimate-from-interview] Agentic pipeline failed, falling back to DecisionEngine:',
                 agentError?.message || agentError,
             );
+            
+            //AHHHHHHHHH non così brutale nel catch
+            //se fallisce per qualche motivo qua dentro!?!!?
+            //bad bad choice
 
             const fallbackStart = Date.now();
             const decisionResult = runDecisionEngine({

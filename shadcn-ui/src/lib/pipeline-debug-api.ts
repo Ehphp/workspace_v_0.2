@@ -15,6 +15,8 @@ import {
     getLatestRequirementUnderstanding,
     getLatestImpactMap,
     getLatestEstimationBlueprint,
+    fetchProject,
+    fetchRequirement,
 } from '@/lib/api';
 import { getLatestProjectTechnicalBlueprint } from '@/lib/project-technical-blueprint-repository';
 import type { EstimationFromInterviewResponse } from '@/types/requirement-interview';
@@ -148,12 +150,51 @@ async function loadArtifacts(requirementId: string, projectId?: string): Promise
     body: Record<string, unknown>;
     artifacts: DebugArtifacts;
 }> {
-    const [understandingRow, impactMapRow, blueprintRow, projectBlueprint] = await Promise.all([
+    // Requirement needs projectId; skip if missing (we still get artifacts by requirementId).
+    const requirementPromise = projectId
+        ? fetchRequirement(projectId, requirementId).catch(() => null)
+        : Promise.resolve(null);
+
+    const [
+        understandingRow,
+        impactMapRow,
+        blueprintRow,
+        projectBlueprint,
+        project,
+        requirement,
+    ] = await Promise.all([
         getLatestRequirementUnderstanding(requirementId).catch(() => null),
         getLatestImpactMap(requirementId).catch(() => null),
         getLatestEstimationBlueprint(requirementId).catch(() => null),
         projectId ? getLatestProjectTechnicalBlueprint(projectId).catch(() => null) : Promise.resolve(null),
+        projectId ? fetchProject(projectId).catch(() => null) : Promise.resolve(null),
+        requirementPromise,
     ]);
+
+    // Build projectContext with the exact shape the wizard sends (see
+    // ai-estimate-from-interview handler). Empty/nullish fields are omitted
+    // via the spread so the handler receives only present values.
+    const projectContext = project
+        ? {
+            name: project.name,
+            description: project.description || '',
+            ...(project.owner ? { owner: project.owner } : {}),
+            ...(project.project_type ? { projectType: project.project_type } : {}),
+            ...(project.domain ? { domain: project.domain } : {}),
+            ...(project.scope ? { scope: project.scope } : {}),
+            ...(project.team_size != null ? { teamSize: project.team_size } : {}),
+            ...(project.deadline_pressure ? { deadlinePressure: project.deadline_pressure } : {}),
+            ...(project.methodology ? { methodology: project.methodology } : {}),
+        }
+        : null;
+
+    // Requirement-scoped technology wins over project default.
+    const techPresetId =
+        requirement?.technology_id
+        ?? requirement?.tech_preset_id
+        ?? project?.technology_id
+        ?? project?.tech_preset_id
+        ?? null;
 
     const artifacts: DebugArtifacts = {
         hasUnderstanding: !!understandingRow?.understanding,
@@ -167,6 +208,8 @@ async function loadArtifacts(requirementId: string, projectId?: string): Promise
     if (impactMapRow?.impact_map)         body.impactMap = impactMapRow.impact_map;
     if (blueprintRow?.blueprint)          body.estimationBlueprint = blueprintRow.blueprint;
     if (projectBlueprint)                 body.projectTechnicalBlueprint = projectBlueprint;
+    if (projectContext)                   body.projectContext = projectContext;
+    if (techPresetId)                     body.techPresetId = techPresetId;
 
     return { body, artifacts };
 }
