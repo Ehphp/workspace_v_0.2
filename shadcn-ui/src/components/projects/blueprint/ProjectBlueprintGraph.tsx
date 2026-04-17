@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
     ReactFlow,
     Background,
@@ -25,7 +25,9 @@ import {
 } from '@/lib/projects/project-blueprint-graph';
 import type { ProjectTechnicalBlueprint } from '@/types/project-technical-blueprint';
 
-const nodeTypes = { blueprintNode: BlueprintNode };
+const nodeTypes = {
+    blueprintNode: BlueprintNode,
+};
 
 interface ProjectBlueprintGraphProps {
     blueprint: ProjectTechnicalBlueprint;
@@ -36,6 +38,8 @@ interface ProjectBlueprintGraphProps {
 
 function GraphCanvas({ blueprint, onNodeSelect, highlightedNodeIds }: ProjectBlueprintGraphProps) {
     const graphModel = useMemo(() => buildProjectBlueprintGraph(blueprint), [blueprint]);
+    const activeModelRef = useRef(graphModel);
+    activeModelRef.current = graphModel;
 
     // Apply search highlighting to nodes
     const initialNodes = useMemo(() => {
@@ -55,11 +59,11 @@ function GraphCanvas({ blueprint, onNodeSelect, highlightedNodeIds }: ProjectBlu
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const { fitView } = useReactFlow();
 
-    // ── FASE 6: Highlight relationships ─────────────────────────────
+    // ── Highlight relationships ──────────────────────────────────────
     const applyHighlight = useCallback(
         (nodeId: string | null, model: BlueprintGraphModel) => {
             if (!nodeId) {
-                // Reset all to normal
+                // Reset all to normal (skip decoration nodes)
                 setNodes((nds) =>
                     nds.map((n) => ({
                         ...n,
@@ -80,10 +84,14 @@ function GraphCanvas({ blueprint, onNodeSelect, highlightedNodeIds }: ProjectBlu
             const activeIds = new Set([nodeId, ...connected]);
 
             setNodes((nds) =>
-                nds.map((n) => ({
-                    ...n,
-                    data: { ...n.data, _dimmed: !activeIds.has(n.id) },
-                })),
+                nds.map((n) => {
+                    // Don't dim decoration nodes
+                    if (n.data._decoration) return n;
+                    return {
+                        ...n,
+                        data: { ...n.data, _dimmed: !activeIds.has(n.id) },
+                    };
+                }),
             );
             setEdges((eds) =>
                 eds.map((e) => {
@@ -101,20 +109,23 @@ function GraphCanvas({ blueprint, onNodeSelect, highlightedNodeIds }: ProjectBlu
 
     const handleNodeClick: NodeMouseHandler<Node<BlueprintGraphNodeData>> = useCallback(
         (_event, node) => {
+            // Ignore clicks on decoration nodes
+            if (node.data._decoration) return;
             setSelectedId(node.id);
-            applyHighlight(node.id, graphModel);
+            applyHighlight(node.id, activeModelRef.current);
             onNodeSelect?.(node.id, node.data);
         },
-        [onNodeSelect, graphModel, applyHighlight],
+        [onNodeSelect, applyHighlight],
     );
 
     const handlePaneClick = useCallback(() => {
         setSelectedId(null);
-        applyHighlight(null, graphModel);
+        applyHighlight(null, activeModelRef.current);
         onNodeSelect?.(null, null);
-    }, [onNodeSelect, graphModel, applyHighlight]);
+    }, [onNodeSelect, applyHighlight]);
 
     const miniMapNodeColor = useCallback((node: Node<BlueprintGraphNodeData>) => {
+        if (node.data._decoration) return 'transparent';
         return NODE_STYLES[node.data.kind]?.border ?? '#94a3b8';
     }, []);
 
@@ -150,7 +161,7 @@ function GraphCanvas({ blueprint, onNodeSelect, highlightedNodeIds }: ProjectBlu
                 zoomable
             />
 
-            {/* ── FASE 3: Column headers overlay ─── */}
+            {/* ── Column headers overlay ─── */}
             <Panel position="top-left" className="!m-0 !p-0 pointer-events-none">
                 <div className="flex gap-0" style={{ width: 1040 }}>
                     {COLUMN_HEADERS.map((col) => {
@@ -181,7 +192,7 @@ function GraphCanvas({ blueprint, onNodeSelect, highlightedNodeIds }: ProjectBlu
                 </div>
             </Panel>
 
-            {/* ── FASE 9: Reset view button ─── */}
+            {/* ── Reset view ─── */}
             <Panel position="top-right">
                 <button
                     onClick={handleResetView}

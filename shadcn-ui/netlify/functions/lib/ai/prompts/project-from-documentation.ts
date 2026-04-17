@@ -352,6 +352,29 @@ COVERAGE & QUALITY FLAGS
   - "too_many_generic_nodes" — troppi nodi con nomi generici
 
 ═══════════════════════════════════════════════════════════════════
+SEGNALI SEMANTICI PER LA STIMA
+═══════════════════════════════════════════════════════════════════
+
+Estrai SOLO informazioni semantiche che richiedono comprensione del documento.
+NON generare segnali derivabili dalla struttura del blueprint (fragilità,
+coupling, costo di modifica, riuso). Quelli verranno calcolati automaticamente.
+
+1. "constraints" — Vincoli che impattano la stima futura (max 5).
+   Ogni vincolo:
+   - "type": "technical" | "organizational" | "integration" | "compliance"
+   - "description": descrizione concisa (max 200 caratteri)
+   - "estimationImpact": "low" | "medium" | "high"
+   SOLO vincoli chiaramente deducibili dal digest. Se non ce ne sono, array VUOTO.
+
+2. "extensionPoints" — Aree dove è naturale aggiungere funzionalità (max 5).
+   Ogni punto:
+   - "area": nome di un componente o area del blueprint (DEVE corrispondere
+     al name di un nodo già prodotto in components, dataDomains o integrations)
+   - "description": perché è un punto di estensione (max 200 caratteri)
+   - "naturalFit": "add" (aggiungere nuovo) | "modify" (modificare esistente) | "replace"
+   SOLO se deducibili dal digest. Se non ce ne sono, array VUOTO.
+
+═══════════════════════════════════════════════════════════════════
 REGOLE OBBLIGATORIE
 ═══════════════════════════════════════════════════════════════════
 
@@ -538,11 +561,38 @@ export function createTechnicalBlueprintResponseSchema() {
                     assumptions: { type: 'array', items: { type: 'string' } },
                     missingInformation: { type: 'array', items: { type: 'string' } },
                     confidence: { type: 'number' },
+                    constraints: {
+                        type: 'array',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                type: { type: 'string', enum: ['technical', 'organizational', 'integration', 'compliance'] },
+                                description: { type: 'string' },
+                                estimationImpact: { type: 'string', enum: ['low', 'medium', 'high'] },
+                            },
+                            required: ['type', 'description', 'estimationImpact'],
+                            additionalProperties: false,
+                        },
+                    },
+                    extensionPoints: {
+                        type: 'array',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                area: { type: 'string' },
+                                description: { type: 'string' },
+                                naturalFit: { type: 'string', enum: ['add', 'modify', 'replace'] },
+                            },
+                            required: ['area', 'description', 'naturalFit'],
+                            additionalProperties: false,
+                        },
+                    },
                 },
                 required: [
                     'summary', 'components', 'dataDomains', 'integrations', 'workflows',
                     'relations', 'coverage', 'qualityFlags',
                     'architecturalNotes', 'assumptions', 'missingInformation', 'confidence',
+                    'constraints', 'extensionPoints',
                 ],
                 additionalProperties: false,
             },

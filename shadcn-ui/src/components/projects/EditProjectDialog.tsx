@@ -106,7 +106,7 @@ export function EditProjectDialog({ open, onOpenChange, project, onSuccess }: Ed
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[900px]">
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[1280px] w-[95vw]">
                 <DialogHeader>
                     <DialogTitle>Edit Project</DialogTitle>
                     <DialogDescription>

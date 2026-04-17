@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { NODE_STYLES, type BlueprintGraphNodeData, type BlueprintGraphModel } from '@/lib/projects/project-blueprint-graph';
-import type { ProjectTechnicalBlueprint, EvidenceRef, BlueprintRelation } from '@/types/project-technical-blueprint';
+import type { ProjectTechnicalBlueprint, EvidenceRef, BlueprintRelation, NodeStructuralSignals, NodeEstimationSignals } from '@/types/project-technical-blueprint';
 
 interface ProjectBlueprintInspectorProps {
     blueprint: ProjectTechnicalBlueprint;
@@ -142,6 +142,44 @@ function NodeDetail({ data, nodeId, graphModel }: {
                     </>
                 )}
 
+                {/* v3: Estimation Signals */}
+                {(data.structuralSignals || data.estimationSignals) && (
+                    <>
+                        <Separator />
+                        <div>
+                            <p className="text-[11px] font-semibold text-violet-600 uppercase tracking-wider mb-1.5">Estimation Signals</p>
+                            <div className="space-y-1">
+                                {data.structuralSignals && (
+                                    <>
+                                        <MetricRow label="Coupling" value={data.structuralSignals.couplingDegree} />
+                                        <MetricRow label="Documentation" value={data.structuralSignals.documentationLevel} />
+                                        <MetricRow label="Relations" value={String(data.structuralSignals.relationsCount)} />
+                                        <MetricRow label="Workflow Participation" value={String(data.structuralSignals.workflowParticipation)} />
+                                    </>
+                                )}
+                                {data.estimationSignals && (
+                                    <>
+                                        <MetricRow label="Modification Cost" value={data.estimationSignals.modificationCost} />
+                                        <MetricRow label="Change Surface" value={data.estimationSignals.changeSurface} />
+                                        {data.estimationSignals.fragile && (
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="text-slate-600">Fragile</span>
+                                                <span className="font-medium text-amber-600">⚠ yes</span>
+                                            </div>
+                                        )}
+                                        {data.estimationSignals.reusable && (
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="text-slate-600">Reusable</span>
+                                                <span className="font-medium text-emerald-600">♻ yes</span>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </>
+                )}
+
                 {/* v2: Typed Relations */}
                 {nodeRelations.length > 0 && (
                     <>
@@ -245,7 +283,20 @@ function NodeDetail({ data, nodeId, graphModel }: {
 // ── Metric display helper ───────────────────────────────────────────────────
 
 function MetricRow({ label, value }: { label: string; value: string }) {
-    const color = value === 'high' ? 'text-red-600' : value === 'medium' ? 'text-amber-600' : 'text-slate-500';
+    const colorMap: Record<string, string> = {
+        high: 'text-red-600',
+        tight: 'text-red-600',
+        missing: 'text-red-600',
+        medium: 'text-amber-600',
+        moderate: 'text-amber-600',
+        partial: 'text-amber-600',
+        broad: 'text-amber-600',
+        low: 'text-slate-500',
+        loose: 'text-emerald-600',
+        good: 'text-emerald-600',
+        narrow: 'text-emerald-600',
+    };
+    const color = colorMap[value] ?? 'text-slate-500';
     return (
         <div className="flex items-center justify-between text-xs">
             <span className="text-slate-600">{label}</span>
@@ -474,6 +525,124 @@ function BlueprintOverview({ blueprint }: { blueprint: ProjectTechnicalBlueprint
                                 ))}
                             </div>
                         </div>
+                    </>
+                )}
+
+                {/* v3: Estimation Context */}
+                {blueprint.estimationContext && (
+                    <>
+                        <Separator />
+                        <div>
+                            <p className="text-[11px] font-semibold text-violet-600 uppercase tracking-wider mb-2">Estimation Context</p>
+                            <div className="space-y-1.5">
+                                <MetricRow label="Coordination Cost" value={blueprint.estimationContext.coordinationCost} />
+                                <MetricRow label="Overall Fragility" value={blueprint.estimationContext.overallFragility} />
+                                <MetricRow label="Integration Density" value={blueprint.estimationContext.integrationDensity} />
+                            </div>
+
+                            {blueprint.estimationContext.highCostAreas.length > 0 && (
+                                <div className="mt-2">
+                                    <p className="text-[10px] font-semibold text-red-600 mb-1">High Cost Areas</p>
+                                    <div className="flex flex-wrap gap-1">
+                                        {blueprint.estimationContext.highCostAreas.map((area, i) => (
+                                            <Badge key={i} variant="secondary" className="text-[9px] bg-red-50 text-red-600 px-1.5 py-0 h-4">
+                                                {area}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {blueprint.estimationContext.fragileAreas.length > 0 && (
+                                <div className="mt-2">
+                                    <p className="text-[10px] font-semibold text-amber-600 mb-1">Fragile Areas</p>
+                                    <div className="flex flex-wrap gap-1">
+                                        {blueprint.estimationContext.fragileAreas.map((area, i) => (
+                                            <Badge key={i} variant="secondary" className="text-[9px] bg-amber-50 text-amber-600 px-1.5 py-0 h-4">
+                                                {area}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {blueprint.estimationContext.reusableCapabilities.length > 0 && (
+                                <div className="mt-2">
+                                    <p className="text-[10px] font-semibold text-emerald-600 mb-1">Reusable Capabilities</p>
+                                    <div className="flex flex-wrap gap-1">
+                                        {blueprint.estimationContext.reusableCapabilities.map((cap, i) => (
+                                            <Badge key={i} variant="secondary" className="text-[9px] bg-emerald-50 text-emerald-600 px-1.5 py-0 h-4">
+                                                {cap}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Constraints */}
+                        {blueprint.estimationContext.constraints && blueprint.estimationContext.constraints.length > 0 && (
+                            <>
+                                <Separator />
+                                <div>
+                                    <p className="text-[11px] font-semibold text-red-600 uppercase tracking-wider mb-1.5">Constraints ({blueprint.estimationContext.constraints.length})</p>
+                                    <ul className="space-y-1.5">
+                                        {blueprint.estimationContext.constraints.map((c, i) => (
+                                            <li key={i} className="text-xs text-slate-700">
+                                                <div className="flex items-center gap-1.5 mb-0.5">
+                                                    <span className="text-red-400">●</span>
+                                                    <span className="font-medium">{c.description}</span>
+                                                </div>
+                                                {c.affectedNodeIds.length > 0 && (
+                                                    <p className="text-[10px] text-slate-400 ml-4">Affects {c.affectedNodeIds.length} node(s)</p>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </>
+                        )}
+
+                        {/* Extension Points */}
+                        {blueprint.estimationContext.extensionPoints && blueprint.estimationContext.extensionPoints.length > 0 && (
+                            <>
+                                <Separator />
+                                <div>
+                                    <p className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider mb-1.5">Extension Points ({blueprint.estimationContext.extensionPoints.length})</p>
+                                    <ul className="space-y-1.5">
+                                        {blueprint.estimationContext.extensionPoints.map((ep, i) => (
+                                            <li key={i} className="text-xs text-slate-700">
+                                                <div className="flex items-center gap-1.5 mb-0.5">
+                                                    <span className="text-emerald-400">◆</span>
+                                                    <span className="font-medium">{ep.description}</span>
+                                                </div>
+                                                <p className="text-[10px] text-slate-400 ml-4 capitalize">Flexibility: {ep.flexibility}</p>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </>
+                        )}
+
+                        {/* Recurring Patterns */}
+                        {blueprint.estimationContext.recurringPatterns && blueprint.estimationContext.recurringPatterns.length > 0 && (
+                            <>
+                                <Separator />
+                                <div>
+                                    <p className="text-[11px] font-semibold text-indigo-600 uppercase tracking-wider mb-1.5">Recurring Patterns ({blueprint.estimationContext.recurringPatterns.length})</p>
+                                    <ul className="space-y-1.5">
+                                        {blueprint.estimationContext.recurringPatterns.map((p, i) => (
+                                            <li key={i} className="text-xs text-slate-700 bg-indigo-50/50 rounded px-2 py-1.5">
+                                                <span className="font-medium capitalize">{p.type.replace(/-/g, ' ')}</span>
+                                                <span className="text-slate-400 mx-1">—</span>
+                                                <span>{p.description}</span>
+                                                <span className="text-[10px] text-slate-400 ml-1">({p.nodeIds.length} nodes)</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </>
+                        )}
                     </>
                 )}
 
