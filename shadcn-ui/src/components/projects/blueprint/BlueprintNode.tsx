@@ -37,6 +37,10 @@ export const BlueprintNode = memo(function BlueprintNode({
     const reviewIndicator = REVIEW_INDICATOR[reviewStatus];
     const isHighCriticality = data.businessCriticality === 'high';
 
+    // v3: estimation signal indicators
+    const isHighCost = data.estimationSignals?.modificationCost === 'high';
+    const isFragile = data.estimationSignals?.fragile === true;
+    const isReusable = data.estimationSignals?.reusable === true;
     const sizeClass = isComponent
         ? 'min-w-[220px] max-w-[260px] px-4 py-3'
         : isIntegration
@@ -150,6 +154,27 @@ export const BlueprintNode = memo(function BlueprintNode({
                         </span>
                     )}
                 </>
+            )}
+
+            {/* v3: estimation signal indicators */}
+            {(isHighCost || isFragile || isReusable) && (
+                <div className="flex items-center gap-1 mt-1.5">
+                    {isHighCost && (
+                        <span className="text-[8px] bg-red-100 text-red-600 rounded px-1 py-0 font-medium" title="High modification cost">
+                            $$
+                        </span>
+                    )}
+                    {isFragile && (
+                        <span className="text-[8px] bg-amber-100 text-amber-600 rounded px-1 py-0 font-medium" title="Fragile area">
+                            ⚠
+                        </span>
+                    )}
+                    {isReusable && (
+                        <span className="text-[8px] bg-emerald-100 text-emerald-600 rounded px-1 py-0 font-medium" title="Reusable">
+                            ♻
+                        </span>
+                    )}
+                </div>
             )}
 
             <Handle type="source" position={Position.Right} className="!w-2 !h-2 !bg-slate-400" />

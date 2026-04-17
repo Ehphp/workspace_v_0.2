@@ -38,6 +38,9 @@ export interface FormatPTBOptions {
 const DEFAULT_INSTRUCTION =
     'ISTRUZIONE: Questa baseline descrive il progetto esistente. La stima deve riguardare solo il lavoro aggiuntivo del NUOVO requisito, non il progetto già in essere.';
 
+const ESTIMATION_INSTRUCTION =
+    'ISTRUZIONE: Questi segnali sono indicativi e derivati dalla struttura del blueprint. Usali come contesto per calibrare la stima, non come vincoli assoluti. La stima riguarda solo il lavoro aggiuntivo del NUOVO requisito.';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Formatter
 // ─────────────────────────────────────────────────────────────────────────────
@@ -63,58 +66,12 @@ export function formatProjectTechnicalBlueprintBlock(
 
     try {
         const instruction = options?.instruction ?? DEFAULT_INSTRUCTION;
+        const estimationContext = resolveEstimationContext(ptb);
 
-        // ── 1. Build structured block (always included) ─────────────
-        const lines: string[] = [];
-        lines.push('\nBASELINE ARCHITETTURA PROGETTO (dal blueprint tecnico del progetto — usa per contestualizzare il requisito rispetto ai componenti esistenti):');
-
-        if (ptb.summary && typeof ptb.summary === 'string') {
-            lines.push(`Sintesi progetto: ${ptb.summary}`);
-        }
-
-        if (Array.isArray(ptb.components) && ptb.components.length > 0) {
-            lines.push(
-                'Componenti progetto: ' +
-                ptb.components
-                    .map((c: any) => `${c?.name ?? '?'} (${c?.type ?? '?'})`)
-                    .join(', '),
-            );
-        }
-
-        if (Array.isArray(ptb.integrations) && ptb.integrations.length > 0) {
-            lines.push(
-                'Integrazioni progetto: ' +
-                ptb.integrations
-                    .map((i: any) => `${i?.systemName ?? i?.system ?? '?'} [${i?.direction ?? '?'}]`)
-                    .join(', '),
-            );
-        }
-
-        if (Array.isArray(ptb.dataDomains) && ptb.dataDomains.length > 0) {
-            lines.push(
-                'Domini dati: ' +
-                ptb.dataDomains.map((d: any) => d?.name ?? '?').join(', '),
-            );
-        }
-
-        if (Array.isArray(ptb.workflows) && ptb.workflows.length > 0) {
-            lines.push(
-                'Workflow operativi: ' +
-                ptb.workflows
-                    .map((w: any) => `${w?.name ?? '?'}: ${w?.trigger ?? '?'}`)
-                    .join(', '),
-            );
-        }
-
-        if (Array.isArray(ptb.architecturalNotes) && ptb.architecturalNotes.length > 0) {
-            lines.push(`Note architetturali: ${ptb.architecturalNotes.join('; ')}`);
-        } else if (ptb.architecturalNotes && typeof ptb.architecturalNotes === 'string') {
-            lines.push(`Note architetturali: ${ptb.architecturalNotes}`);
-        }
-
-        lines.push(instruction);
-
-        const structuredBlock = lines.length > 1 ? lines.join('\n') : '';
+        // ── 1. Build structured block ───────────────────────────────
+        const structuredBlock = estimationContext
+            ? buildEstimationOrientedBlock(ptb, estimationContext, options?.instruction)
+            : buildLegacyBlock(ptb, instruction);
         if (!structuredBlock) return '';
 
         // ── 2. Try SDD (Structured Document Digest) first ───────────
@@ -283,4 +240,185 @@ function formatSDDBlock(sdd: Record<string, unknown>): string {
     }
 
     return sections.join('\n\n');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Legacy vs estimation-oriented block builders
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Build the original structured block (backward-compatible).
+ * Used when no estimationContext is present.
+ */
+function buildLegacyBlock(ptb: Record<string, unknown>, instruction: string): string {
+    const lines: string[] = [];
+    lines.push('\nBASELINE ARCHITETTURA PROGETTO (dal blueprint tecnico del progetto — usa per contestualizzare il requisito rispetto ai componenti esistenti):');
+
+    if (ptb.summary && typeof ptb.summary === 'string') {
+        lines.push(`Sintesi progetto: ${ptb.summary}`);
+    }
+
+    if (Array.isArray(ptb.components) && ptb.components.length > 0) {
+        lines.push(
+            'Componenti progetto: ' +
+            ptb.components
+                .map((c: any) => `${c?.name ?? '?'} (${c?.type ?? '?'})`)
+                .join(', '),
+        );
+    }
+
+    if (Array.isArray(ptb.integrations) && ptb.integrations.length > 0) {
+        lines.push(
+            'Integrazioni progetto: ' +
+            ptb.integrations
+                .map((i: any) => `${i?.systemName ?? i?.system ?? '?'} [${i?.direction ?? '?'}]`)
+                .join(', '),
+        );
+    }
+
+    if (Array.isArray(ptb.dataDomains) && ptb.dataDomains.length > 0) {
+        lines.push(
+            'Domini dati: ' +
+            ptb.dataDomains.map((d: any) => d?.name ?? '?').join(', '),
+        );
+    }
+
+    if (Array.isArray(ptb.workflows) && ptb.workflows.length > 0) {
+        lines.push(
+            'Workflow operativi: ' +
+            ptb.workflows
+                .map((w: any) => `${w?.name ?? '?'}: ${w?.trigger ?? '?'}`)
+                .join(', '),
+        );
+    }
+
+    if (Array.isArray(ptb.architecturalNotes) && ptb.architecturalNotes.length > 0) {
+        lines.push(`Note architetturali: ${ptb.architecturalNotes.join('; ')}`);
+    } else if (ptb.architecturalNotes && typeof ptb.architecturalNotes === 'string') {
+        lines.push(`Note architetturali: ${ptb.architecturalNotes}`);
+    }
+
+    lines.push(instruction);
+
+    return lines.length > 1 ? lines.join('\n') : '';
+}
+
+/**
+ * Build the estimation-oriented structured block.
+ * Used when estimationContext is present.
+ */
+function buildEstimationOrientedBlock(
+    ptb: Record<string, unknown>,
+    ctx: Record<string, unknown>,
+    customInstruction?: string,
+): string {
+    const lines: string[] = [];
+    lines.push('\nCONTESTO PROGETTO PER LA STIMA:');
+
+    if (ptb.summary && typeof ptb.summary === 'string') {
+        lines.push(`\nSintesi: ${ptb.summary}`);
+    }
+
+    // ── Baseline architetturale ─────────────────────────────────────
+    lines.push('\n═ BASELINE ARCHITETTURALE');
+
+    if (Array.isArray(ptb.components) && ptb.components.length > 0) {
+        lines.push(
+            'Componenti: ' +
+            ptb.components
+                .map((c: any) => `${c?.name ?? '?'} (${c?.type ?? '?'})`)
+                .join(', '),
+        );
+    }
+
+    if (Array.isArray(ptb.dataDomains) && ptb.dataDomains.length > 0) {
+        lines.push(
+            'Domini dati: ' +
+            ptb.dataDomains.map((d: any) => d?.name ?? '?').join(', '),
+        );
+    }
+
+    if (Array.isArray(ptb.integrations) && ptb.integrations.length > 0) {
+        lines.push(
+            'Integrazioni: ' +
+            ptb.integrations
+                .map((i: any) => `${i?.systemName ?? i?.system ?? '?'} [${i?.direction ?? '?'}]`)
+                .join(', '),
+        );
+    }
+
+    if (Array.isArray(ptb.workflows) && ptb.workflows.length > 0) {
+        lines.push(
+            'Workflow: ' +
+            ptb.workflows
+                .map((w: any) => `${w?.name ?? '?'} (${w?.trigger ?? '?'})`)
+                .join(', '),
+        );
+    }
+
+    // ── Segnali per la stima ────────────────────────────────────────
+    const degraded = ctx.signalsDegraded === true;
+    const signalsHeader = degraded
+        ? '═ SEGNALI PER LA STIMA (affidabilità ridotta — poche relazioni disponibili)'
+        : '═ SEGNALI PER LA STIMA';
+    lines.push(`\n${signalsHeader}`);
+
+    const highCostAreas = Array.isArray(ctx.highCostAreas) ? ctx.highCostAreas : [];
+    lines.push(`Aree ad alto costo di modifica: ${highCostAreas.length > 0 ? highCostAreas.join(', ') : 'nessuna identificata'}`);
+
+    const fragileAreas = Array.isArray(ctx.fragileAreas) ? ctx.fragileAreas : [];
+    lines.push(`Aree fragili: ${fragileAreas.length > 0 ? fragileAreas.join(', ') : 'nessuna identificata'}`);
+
+    const reusable = Array.isArray(ctx.reusableCapabilities) ? ctx.reusableCapabilities : [];
+    lines.push(`Capability riusabili: ${reusable.length > 0 ? reusable.join(', ') : 'nessuna identificata'}`);
+
+    if (typeof ctx.coordinationCost === 'string') {
+        lines.push(`Costo coordinativo: ${ctx.coordinationCost}`);
+    }
+    if (typeof ctx.overallFragility === 'string') {
+        lines.push(`Fragilità complessiva: ${ctx.overallFragility}`);
+    }
+
+    // ── Vincoli ─────────────────────────────────────────────────────
+    const constraints = Array.isArray(ctx.constraints) ? ctx.constraints : [];
+    if (constraints.length > 0) {
+        lines.push('\n═ VINCOLI');
+        for (const c of constraints) {
+            lines.push(`- ${(c as any)?.type ?? '?'}: ${(c as any)?.description ?? '?'} [impatto: ${(c as any)?.estimationImpact ?? '?'}]`);
+        }
+    }
+
+    // ── Punti di estensione ─────────────────────────────────────────
+    const extensionPoints = Array.isArray(ctx.extensionPoints) ? ctx.extensionPoints : [];
+    if (extensionPoints.length > 0) {
+        lines.push('\n═ PUNTI DI ESTENSIONE');
+        for (const ep of extensionPoints) {
+            lines.push(`- ${(ep as any)?.area ?? '?'}: ${(ep as any)?.description ?? '?'} (${(ep as any)?.naturalFit ?? '?'})`);
+        }
+    }
+
+    // ── Pattern ricorrenti ──────────────────────────────────────────
+    const patterns = Array.isArray(ctx.recurringPatterns) ? ctx.recurringPatterns : [];
+    if (patterns.length > 0) {
+        lines.push('\n═ PATTERN RICORRENTI');
+        for (const p of patterns) {
+            lines.push(`- ${(p as any)?.name ?? '?'}: ${(p as any)?.description ?? '?'} — sforzo tipico: ${(p as any)?.typicalEffort ?? '?'}`);
+        }
+    }
+
+    lines.push(`\n${customInstruction ?? ESTIMATION_INSTRUCTION}`);
+
+    return lines.join('\n');
+}
+
+/**
+ * Resolve the estimation context from the PTB object.
+ * Handles both camelCase and snake_case field names.
+ */
+function resolveEstimationContext(ptb: Record<string, unknown>): Record<string, unknown> | null {
+    const ctx = ptb.estimationContext ?? ptb.estimation_context;
+    if (ctx && typeof ctx === 'object' && !Array.isArray(ctx)) {
+        return ctx as Record<string, unknown>;
+    }
+    return null;
 }

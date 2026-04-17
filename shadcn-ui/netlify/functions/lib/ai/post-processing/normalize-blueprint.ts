@@ -17,6 +17,8 @@ import type {
     BlueprintWorkflow,
     BlueprintComponentType,
     BlueprintRelation,
+    BlueprintConstraint,
+    BlueprintExtensionPoint,
     EvidenceRef,
 } from '../../domain/project/project-technical-blueprint.types';
 
@@ -37,6 +39,9 @@ export interface RawBlueprint {
     assumptions: string[];
     missingInformation: string[];
     confidence: number;
+    // ── Semantic signals from AI (v3) ──────────────────────────────
+    constraints?: BlueprintConstraint[];
+    extensionPoints?: BlueprintExtensionPoint[];
 }
 
 export interface NormalizationResult {
@@ -231,6 +236,21 @@ export function normalizeProjectTechnicalBlueprint(raw: RawBlueprint): Normaliza
         }),
     }));
 
+    // ── Step 5c: Validate extensionPoint references ─────────────────
+    let extensionPoints = [...(raw.extensionPoints ?? [])];
+    const originalEpCount = extensionPoints.length;
+    extensionPoints = extensionPoints.filter((ep) => {
+        const resolved = nameToIdMap.has(normalizeName(ep.area));
+        return resolved;
+    });
+    if (extensionPoints.length < originalEpCount) {
+        const removedCount = originalEpCount - extensionPoints.length;
+        warnings.push(`Removed ${removedCount} extensionPoint(s) referencing unknown nodes`);
+    }
+
+    // Pass constraints through unchanged (semantic content, no validation needed)
+    const constraints = [...(raw.constraints ?? [])];
+
     // ── Step 6: Validate & clean relations ──────────────────────────
     // 6a: Generate implicit workflow→component orchestrates relations
     for (const w of workflows) {
@@ -312,6 +332,8 @@ export function normalizeProjectTechnicalBlueprint(raw: RawBlueprint): Normaliza
             relations,
             coverage,
             qualityFlags,
+            constraints,
+            extensionPoints,
         },
         warnings,
     };

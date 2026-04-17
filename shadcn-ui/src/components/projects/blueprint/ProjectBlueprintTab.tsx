@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getLatestProjectTechnicalBlueprint } from '@/lib/project-technical-blueprint-repository';
 import { ProjectBlueprintGraph } from './ProjectBlueprintGraph';
 import { ProjectBlueprintInspector } from './ProjectBlueprintInspector';
+import { BlueprintTreeMap } from './BlueprintTreeMap';
 import { buildProjectBlueprintGraph } from '@/lib/projects/project-blueprint-graph';
 import { searchBlueprint, type BlueprintSearchResult } from '@/lib/projects/blueprint-search';
 import type { ProjectTechnicalBlueprint } from '@/types/project-technical-blueprint';
@@ -18,6 +19,7 @@ export function ProjectBlueprintTab({ projectId }: ProjectBlueprintTabProps) {
     const [selectedNode, setSelectedNode] = useState<BlueprintGraphNodeData | null>(null);
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [viewMode, setViewMode] = useState<'architecture' | 'risk'>('architecture');
 
     // Search results — recomputed on every query change
     const searchResults = useMemo<BlueprintSearchResult[]>(() => {
@@ -145,7 +147,7 @@ export function ProjectBlueprintTab({ projectId }: ProjectBlueprintTabProps) {
 
     // ── Graph + Inspector ───────────────────────────────────────────
     return (
-        <div className="flex flex-col h-[560px]">
+        <div className="flex flex-col h-[calc(90vh-180px)] min-h-[500px]">
             {/* Search bar */}
             <div className="flex items-center gap-2 px-3 py-2 border-b bg-white">
                 <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -170,6 +172,29 @@ export function ProjectBlueprintTab({ projectId }: ProjectBlueprintTabProps) {
                     <span className="text-[10px] text-slate-500 tabular-nums">
                         {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
                     </span>
+                )}
+                {/* View mode toggle (only if estimation signals exist) */}
+                {blueprint && (blueprint.estimationContext != null || blueprint.components.some((c) => c.estimationSignals != null)) && (
+                    <div className="flex bg-slate-100 border border-slate-200 rounded-lg overflow-hidden ml-2">
+                        <button
+                            onClick={() => setViewMode('architecture')}
+                            className={`px-3 py-1 text-xs transition-colors ${viewMode === 'architecture'
+                                    ? 'bg-white text-slate-900 font-medium shadow-sm'
+                                    : 'text-slate-500 hover:bg-slate-50'
+                                }`}
+                        >
+                            Architecture
+                        </button>
+                        <button
+                            onClick={() => setViewMode('risk')}
+                            className={`px-3 py-1 text-xs transition-colors ${viewMode === 'risk'
+                                    ? 'bg-red-50 text-red-700 font-medium shadow-sm'
+                                    : 'text-slate-500 hover:bg-slate-50'
+                                }`}
+                        >
+                            Estimation Risk
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -206,17 +231,24 @@ export function ProjectBlueprintTab({ projectId }: ProjectBlueprintTabProps) {
 
             {/* Graph + Inspector */}
             <div className="flex flex-1 min-h-0 border rounded-b-lg overflow-hidden bg-white">
-                {/* Graph canvas */}
+                {/* Graph / TreeMap canvas */}
                 <div className="flex-1 min-w-0">
-                    <ProjectBlueprintGraph
-                        blueprint={blueprint}
-                        onNodeSelect={handleNodeSelect}
-                        highlightedNodeIds={highlightedNodeIds}
-                    />
+                    {viewMode === 'architecture' ? (
+                        <ProjectBlueprintGraph
+                            blueprint={blueprint}
+                            onNodeSelect={handleNodeSelect}
+                            highlightedNodeIds={highlightedNodeIds}
+                        />
+                    ) : (
+                        <BlueprintTreeMap
+                            blueprint={blueprint}
+                            onNodeSelect={handleNodeSelect}
+                        />
+                    )}
                 </div>
 
                 {/* Inspector sidebar */}
-                <div className="w-[280px] border-l bg-slate-50/60 flex-shrink-0">
+                <div className="w-[320px] border-l bg-slate-50/60 flex-shrink-0">
                     <ProjectBlueprintInspector
                         blueprint={blueprint}
                         selectedNode={selectedNode}
