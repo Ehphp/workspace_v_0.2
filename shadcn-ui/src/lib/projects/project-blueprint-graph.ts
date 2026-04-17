@@ -16,8 +16,11 @@ import type {
     EvidenceRef,
     CriticalityLevel,
     ReviewStatus,
+    NodeStructuralSignals,
+    NodeEstimationSignals,
 } from '@/types/project-technical-blueprint';
 
+// ─────────────────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 // Graph Node Data
 // ─────────────────────────────────────────────────────────────────────────────
@@ -48,6 +51,10 @@ export interface BlueprintGraphNodeData {
     reviewStatus?: ReviewStatus;
     /** v2: whether the node has no evidence */
     hasNoEvidence?: boolean;
+    /** v3: structural signals (enrichment) */
+    structuralSignals?: NodeStructuralSignals;
+    /** v3: estimation signals (enrichment) */
+    estimationSignals?: NodeEstimationSignals;
     [key: string]: unknown;
 }
 
@@ -193,6 +200,8 @@ export function buildProjectBlueprintGraph(
                 changeLikelihood: comp.changeLikelihood,
                 reviewStatus: comp.reviewStatus,
                 hasNoEvidence: !comp.evidence || comp.evidence.length === 0,
+                structuralSignals: comp.structuralSignals,
+                estimationSignals: comp.estimationSignals,
             },
         });
         centerLeftY += dim.height + VERTICAL_GAP;
@@ -223,6 +232,8 @@ export function buildProjectBlueprintGraph(
                 changeLikelihood: dd.changeLikelihood,
                 reviewStatus: dd.reviewStatus,
                 hasNoEvidence: !dd.evidence || dd.evidence.length === 0,
+                structuralSignals: dd.structuralSignals,
+                estimationSignals: dd.estimationSignals,
             },
         });
         leftY += dim.height + VERTICAL_GAP;
@@ -253,6 +264,8 @@ export function buildProjectBlueprintGraph(
                 changeLikelihood: integ.changeLikelihood,
                 reviewStatus: integ.reviewStatus,
                 hasNoEvidence: !integ.evidence || integ.evidence.length === 0,
+                structuralSignals: integ.structuralSignals,
+                estimationSignals: integ.estimationSignals,
             },
         });
         rightY += dim.height + VERTICAL_GAP;
@@ -282,6 +295,8 @@ export function buildProjectBlueprintGraph(
                 businessCriticality: wf.complexity as CriticalityLevel | undefined,
                 reviewStatus: wf.reviewStatus,
                 hasNoEvidence: !wf.evidence || wf.evidence.length === 0,
+                structuralSignals: wf.structuralSignals,
+                estimationSignals: wf.estimationSignals,
             },
         });
         centerRightY += dim.height + VERTICAL_GAP;

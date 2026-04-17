@@ -26,12 +26,15 @@ import type { GeneratedProjectActivity } from '../../domain/project/project-acti
 import {
     normalizeProjectTechnicalBlueprint,
 } from '../post-processing/normalize-blueprint';
+import { enrichBlueprintSignals } from '../post-processing/enrich-blueprint-signals';
 import type {
     ProjectDraftBlueprint,
     BlueprintComponentType,
     IntegrationDirection,
     EvidenceRef,
     BlueprintRelation,
+    BlueprintConstraint,
+    BlueprintExtensionPoint,
     StructuredDocumentDigest,
 } from '../../domain/project/project-technical-blueprint.types';
 import { splitDocumentIntoChunks, CHUNKED_THRESHOLD } from '../chunking/document-chunker';
@@ -280,6 +283,16 @@ const TechnicalBlueprintSchema = z.object({
     assumptions: z.array(z.string()),
     missingInformation: z.array(z.string()),
     confidence: z.number().min(0).max(1),
+    constraints: z.array(z.object({
+        type: z.enum(['technical', 'organizational', 'integration', 'compliance']),
+        description: z.string().min(1).max(300),
+        estimationImpact: z.enum(['low', 'medium', 'high']),
+    })).max(5).optional().default([]),
+    extensionPoints: z.array(z.object({
+        area: z.string().min(1).max(200),
+        description: z.string().min(1).max(300),
+        naturalFit: z.enum(['add', 'modify', 'replace']),
+    })).max(5).optional().default([]),
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -512,7 +525,20 @@ export async function generateProjectFromDocumentation(
             assumptions: blueprintData.assumptions,
             missingInformation: blueprintData.missingInformation,
             confidence: blueprintData.confidence,
+            constraints: blueprintData.constraints ?? [],
+            extensionPoints: blueprintData.extensionPoints ?? [],
         });
+
+    // ── Enrichment: compute structural + estimation signals ─────────
+    const enriched = enrichBlueprintSignals({
+        components: normalizedBlueprint.components,
+        dataDomains: normalizedBlueprint.dataDomains,
+        integrations: normalizedBlueprint.integrations,
+        workflows: normalizedBlueprint.workflows ?? [],
+        relations: normalizedBlueprint.relations ?? [],
+        constraints: normalizedBlueprint.constraints ?? [],
+        extensionPoints: normalizedBlueprint.extensionPoints ?? [],
+    });
 
     // ── FASE 7: Debug validation logs ───────────────────────────────
     if (normWarnings.length > 0) {
@@ -646,10 +672,10 @@ export async function generateProjectFromDocumentation(
         technicalBlueprint: {
             sourceText,
             summary: normalizedBlueprint.summary ?? undefined,
-            components: normalizedBlueprint.components,
-            dataDomains: normalizedBlueprint.dataDomains,
-            integrations: normalizedBlueprint.integrations,
-            workflows: normalizedBlueprint.workflows ?? [],
+            components: enriched.components,
+            dataDomains: enriched.dataDomains,
+            integrations: enriched.integrations,
+            workflows: enriched.workflows,
             relations: normalizedBlueprint.relations ?? [],
             coverage: normalizedBlueprint.coverage,
             qualityFlags: normalizedBlueprint.qualityFlags ?? [],
@@ -657,6 +683,7 @@ export async function generateProjectFromDocumentation(
             assumptions: normalizedBlueprint.assumptions,
             missingInformation: normalizedBlueprint.missingInformation,
             confidence: normalizedBlueprint.confidence,
+            estimationContext: enriched.estimationContext,
         },
         structuredDigest: structuredDigest ?? undefined,
         projectActivities,
