@@ -13,7 +13,7 @@
  */
 
 import { createAIHandler } from './lib/handler';
-import { generateImpactMap } from './lib/ai/actions/generate-impact-map';
+import { generateImpactMap } from './lib/application/actions/generate-impact-map';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

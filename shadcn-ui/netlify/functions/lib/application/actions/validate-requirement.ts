@@ -9,13 +9,13 @@
  */
 
 import { z } from 'zod';
-import { getDefaultProvider } from '../openai-client';
+import { getDefaultProvider } from '../../infrastructure/llm/openai-client';
 import {
     buildCacheKey,
     getCachedResponse,
     setCachedResponse,
-} from '../ai-cache';
-import type { CacheConfig } from '../ai-cache';
+} from '../../infrastructure/cache/ai-cache';
+import type { CacheConfig } from '../../infrastructure/cache/ai-cache';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cache profile — 24 h (validation is deterministic, safe to cache longer)

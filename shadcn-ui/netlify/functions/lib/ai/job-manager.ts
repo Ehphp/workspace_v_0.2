@@ -1,4 +1,4 @@
-import { tryGetRedisClient } from '../security/redis-client';
+import { tryGetRedisClient } from '../infrastructure/cache/redis-client';
 
 export type JobStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 

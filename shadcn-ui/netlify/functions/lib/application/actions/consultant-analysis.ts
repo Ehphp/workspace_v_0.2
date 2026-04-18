@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { getDefaultProvider, LLM_PRESETS } from '../openai-client';
+import { getDefaultProvider, LLM_PRESETS } from '../../infrastructure/llm/openai-client';
 import { sanitizePromptInput } from '../../../../../src/types/ai-validation';
-import { formatProjectContextBlock } from '../prompt-builder';
+import { formatProjectContextBlock } from '../../ai/prompt-builder';
 
 /**
  * Activity information for consultant analysis

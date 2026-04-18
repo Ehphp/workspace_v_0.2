@@ -24,10 +24,10 @@
  */
 
 import { randomUUID } from 'crypto';
-import { ILLMProvider, LLM_PRESETS, getDefaultProvider } from '../openai-client';
-import { getPrompt } from '../prompt-registry';
-import { retrieveRAGContext, getRAGSystemPromptAddition } from '../rag';
-import { searchSimilarActivities, isVectorSearchEnabled } from '../vector-search';
+import { ILLMProvider, LLM_PRESETS, getDefaultProvider } from '../../infrastructure/llm/openai-client';
+import { getPrompt } from '../../ai/prompt-registry';
+import { retrieveRAGContext, getRAGSystemPromptAddition } from '../../infrastructure/llm/rag';
+import { searchSimilarActivities, isVectorSearchEnabled } from '../../infrastructure/llm/vector-search';
 import { sanitizePromptInput } from '../../../../../src/types/ai-validation';
 
 import type {
@@ -47,8 +47,8 @@ import type {
 import { DEFAULT_AGENT_FLAGS } from './agent-types';
 import { AGENT_TOOL_DEFINITIONS, executeTool, ToolExecutionContext } from './agent-tools';
 import { reflectOnDraft, buildRefinementPrompt } from './reflection-engine';
-import { formatProjectContextBlock } from '../prompt-builder';
-import { AGENT_ESTIMATION_SYSTEM_PROMPT } from '../prompts/agent-estimation';
+import { formatProjectContextBlock } from '../../ai/prompt-builder';
+import { AGENT_ESTIMATION_SYSTEM_PROMPT } from '../../ai/prompts/agent-estimation';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration

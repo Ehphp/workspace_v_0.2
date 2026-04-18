@@ -18,8 +18,8 @@ import {
     isBlueprintMappable,
     type BlueprintMappingResult,
     type CoverageWarning,
-} from '../../netlify/functions/lib/blueprint-activity-mapper';
-import type { Activity } from '../../netlify/functions/lib/activities';
+} from '../../netlify/functions/lib/domain/estimation/blueprint-activity-mapper';
+import type { Activity } from '../../netlify/functions/lib/infrastructure/db/activities';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 // ─────────────────────────────────────────────────────────────────────────────

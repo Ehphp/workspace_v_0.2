@@ -7,7 +7,7 @@
  */
 
 import { createAIHandler } from './lib/handler';
-import { analyzeEstimation, ConsultantAnalysisRequest } from './lib/ai/actions/consultant-analysis';
+import { analyzeEstimation, ConsultantAnalysisRequest } from './lib/application/actions/consultant-analysis';
 
 interface RequestBody {
     requirementTitle: string;

@@ -25,8 +25,8 @@ import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { sanitizePromptInput } from './lib/sanitize';
 import { validateAuthToken, logAuthDebugInfo } from './lib/auth/auth-validator';
 import { getCorsHeaders, isOriginAllowed } from './lib/security/cors';
-import { findDuplicateActivities, isVectorSearchEnabled } from './lib/ai/vector-search';
-import { createActivitySearchText } from './lib/ai/embeddings';
+import { findDuplicateActivities, isVectorSearchEnabled } from './lib/infrastructure/llm/vector-search';
+import { createActivitySearchText } from './lib/infrastructure/llm/embeddings';
 
 interface DuplicateCheckRequest {
     name: string;

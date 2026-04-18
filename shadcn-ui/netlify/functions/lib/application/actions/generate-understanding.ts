@@ -14,20 +14,20 @@
  */
 
 import { z } from 'zod';
-import { getDefaultProvider } from '../openai-client';
-import { getPrompt } from '../prompt-registry';
+import { getDefaultProvider } from '../../infrastructure/llm/openai-client';
+import { getPrompt } from '../../ai/prompt-registry';
 import {
     UNDERSTANDING_SYSTEM_PROMPT,
     createUnderstandingResponseSchema,
-} from '../prompts/understanding-generation';
+} from '../../ai/prompts/understanding-generation';
 import {
     buildCacheKey,
     getCachedResponse,
     setCachedResponse,
-} from '../ai-cache';
-import type { CacheConfig } from '../ai-cache';
-import { formatProjectContextBlock } from '../prompt-builder';
-import { formatProjectTechnicalBlueprintBlock } from '../formatters/project-blueprint-formatter';
+} from '../../infrastructure/cache/ai-cache';
+import type { CacheConfig } from '../../infrastructure/cache/ai-cache';
+import { formatProjectContextBlock } from '../../ai/prompt-builder';
+import { formatProjectTechnicalBlueprintBlock } from '../../ai/formatters/project-blueprint-formatter';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cache profile — 12 h (understanding may evolve with prompt changes)

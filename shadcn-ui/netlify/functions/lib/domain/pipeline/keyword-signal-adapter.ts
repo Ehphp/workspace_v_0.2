@@ -11,8 +11,8 @@
  * @module keyword-signal-adapter
  */
 
-import type { Activity, InterviewAnswerRecord } from '../../activities';
-import { selectTopActivities } from '../../activities';
+import type { Activity, InterviewAnswerRecord } from '../../infrastructure/db/activities';
+import { selectTopActivities } from '../../infrastructure/db/activities';
 import type { ActivityBiases } from '../estimation/project-context-rules';
 import type { NormalizedSignal, SignalSet } from './signal-types';
 

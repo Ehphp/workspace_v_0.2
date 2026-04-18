@@ -5,7 +5,7 @@
  * Reuses existing AI-generated understanding artifacts.
  */
 
-import { getDomainSupabase } from '../supabase';
+import { getDomainSupabase } from '../../infrastructure/db/supabase';
 import type {
     RequirementAnalysisRow,
     CreateRequirementAnalysisInput,

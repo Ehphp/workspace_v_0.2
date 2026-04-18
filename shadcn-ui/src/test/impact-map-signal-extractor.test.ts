@@ -19,8 +19,8 @@ import {
     extractImpactMapSignals,
     type ImpactMapSignal,
     type ImpactMapExtractionResult,
-} from '../../netlify/functions/lib/impact-map-signal-extractor';
-import type { Activity } from '../../netlify/functions/lib/activities';
+} from '../../netlify/functions/lib/domain/estimation/impact-map-signal-extractor';
+import type { Activity } from '../../netlify/functions/lib/infrastructure/db/activities';
 import type { ImpactMap, ImpactItem } from '../types/impact-map';
 import { describe, expect, it } from 'vitest';
 

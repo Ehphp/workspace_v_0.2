@@ -20,8 +20,8 @@
  */
 
 import type { ScoredCandidate } from './candidate.types';
-import type { Activity } from '../../activities';
-import { LAYER_TECH_PATTERNS } from '../../blueprint-activity-mapper';
+import type { Activity } from '../../infrastructure/db/activities';
+import { LAYER_TECH_PATTERNS } from '../estimation/blueprint-activity-mapper';
 import {
     type PipelineLayer,
     PIPELINE_LAYERS,

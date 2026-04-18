@@ -17,21 +17,21 @@
  * deterministic core that both the agentic path and the fallback path share.
  */
 
-import type { Activity, ProjectActivity, InterviewAnswerRecord } from '../../activities';
+import type { Activity, ProjectActivity, InterviewAnswerRecord } from '../../infrastructure/db/activities';
 import {
     mapBlueprintToActivities,
     isBlueprintMappable,
     blueprintToNormalizedSignals,
     type BlueprintMappingResult,
-} from '../../blueprint-activity-mapper';
+} from './blueprint-activity-mapper';
 import {
     extractImpactMapSignals,
     impactMapToNormalizedSignals,
-} from '../../impact-map-signal-extractor';
+} from './impact-map-signal-extractor';
 import {
     extractUnderstandingSignals,
     understandingToNormalizedSignals,
-} from '../../understanding-signal-extractor';
+} from './understanding-signal-extractor';
 import { keywordToNormalizedSignals } from '../pipeline/keyword-signal-adapter';
 import { projectActivitiesToSignals } from '../pipeline/project-activity-signal-adapter';
 import {
@@ -40,8 +40,8 @@ import {
     type SynthesizedCandidateSet,
 } from '../pipeline/candidate-synthesizer';
 import type { SignalSet } from '../pipeline/signal-types';
-import { buildProvenanceMap } from '../../provenance-map';
-import type { ActivityProvenance } from '../../blueprint-activity-mapper';
+import { buildProvenanceMap } from './provenance-map';
+import type { ActivityProvenance } from './blueprint-activity-mapper';
 import { computeAggregateConfidence } from './aggregate-confidence';
 import { computePipelineConfig, type PipelineConfig } from '../pipeline/pipeline-config';
 import type { ActivityBiases } from './project-context-rules';

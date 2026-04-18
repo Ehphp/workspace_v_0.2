@@ -16,7 +16,7 @@
  * @module candidate-synthesizer
  */
 
-import type { Activity } from '../../activities';
+import type { Activity } from '../../infrastructure/db/activities';
 import type { NormalizedSignal, SignalSet } from './signal-types';
 import type { ScoredCandidate, ScoreContributions, CandidateSource } from './candidate.types';
 import {

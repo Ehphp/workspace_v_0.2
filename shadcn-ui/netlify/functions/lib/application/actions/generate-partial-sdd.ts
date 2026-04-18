@@ -6,13 +6,13 @@
  * consolidated by consolidate-sdd.ts.
  */
 
-import type { DocumentChunk } from '../chunking/document-chunker';
+import type { DocumentChunk } from '../../ai/chunking/document-chunker';
 import {
     PARTIAL_SDD_SYSTEM_PROMPT,
     createPartialSDDResponseSchema,
     PartialSDDSchema,
     type PartialSDD,
-} from '../prompts/partial-sdd';
+} from '../../ai/prompts/partial-sdd';
 
 // Re-export PartialSDD type for consumers
 export type { PartialSDD };

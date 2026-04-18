@@ -15,7 +15,7 @@
  * @module mandatory-rules
  */
 
-import type { Activity } from '../../activities';
+import type { Activity } from '../../infrastructure/db/activities';
 import type { MandatoryKeywordRule, MandatoryInclusion, InterviewAnswerLike } from './decision-engine.types';
 
 // ─────────────────────────────────────────────────────────────────────────────

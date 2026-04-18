@@ -25,9 +25,9 @@
  *     → applied to ALL matched activities
  */
 
-import type { RequirementUnderstanding, ComplexityAssessment } from '../../../src/types/requirement-understanding';
-import type { Activity } from './activities';
-import type { ImpactLayer } from '../../../src/types/impact-map';
+import type { RequirementUnderstanding, ComplexityAssessment } from '../../../../../src/types/requirement-understanding';
+import type { Activity } from '../../infrastructure/db/activities';
+import type { ImpactLayer } from '../../../../../src/types/impact-map';
 import {
     LAYER_TECH_PATTERNS,
     UNSUPPORTED_LAYERS,
@@ -35,8 +35,8 @@ import {
     buildCatalogIndexes,
     type PatternEntry,
 } from './blueprint-activity-mapper';
-import type { PipelineLayer } from './domain/pipeline/pipeline-domain';
-import type { NormalizedSignal, SignalSet } from './domain/pipeline/signal-types';
+import type { PipelineLayer } from '../pipeline/pipeline-domain';
+import type { NormalizedSignal, SignalSet } from '../pipeline/signal-types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

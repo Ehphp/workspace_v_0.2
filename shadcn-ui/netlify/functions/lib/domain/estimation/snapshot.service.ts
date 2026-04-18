@@ -5,7 +5,7 @@
  * used for an estimation, enabling reproducibility and auditing.
  */
 
-import { getDomainSupabase } from '../supabase';
+import { getDomainSupabase } from '../../infrastructure/db/supabase';
 import { ENGINE_VERSION } from './estimation-engine';
 import type {
     EstimationSnapshotRow,

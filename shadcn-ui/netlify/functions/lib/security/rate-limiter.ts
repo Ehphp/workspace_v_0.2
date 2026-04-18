@@ -3,7 +3,7 @@
  * Uses Lua script for atomic operations
  */
 
-import { getRedisClient, closeRedisConnection } from './redis-client';
+import { getRedisClient, closeRedisConnection } from '../infrastructure/cache/redis-client';
 
 // Re-export for consumers that previously imported from here
 export { closeRedisConnection };

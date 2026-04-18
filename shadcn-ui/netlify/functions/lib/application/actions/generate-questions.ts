@@ -5,10 +5,10 @@
  * based on user's technology description.
  */
 
-import { ILLMProvider } from '../openai-client';
-import { QUESTION_GENERATION_SYSTEM_PROMPT, FALLBACK_QUESTIONS } from '../prompts/question-generation';
+import { ILLMProvider } from '../../infrastructure/llm/openai-client';
+import { QUESTION_GENERATION_SYSTEM_PROMPT, FALLBACK_QUESTIONS } from '../../ai/prompts/question-generation';
 import { sanitizePromptInput } from '../../../../../src/types/ai-validation';
-import { getPrompt } from '../prompt-registry';
+import { getPrompt } from '../../ai/prompt-registry';
 
 interface GenerateQuestionsInput {
     description: string;

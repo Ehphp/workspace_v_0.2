@@ -13,7 +13,7 @@ import type { PartialSDD } from './generate-partial-sdd';
 import {
     CONSOLIDATION_SYSTEM_PROMPT,
     createConsolidationResponseSchema,
-} from '../prompts/consolidation-sdd';
+} from '../../ai/prompts/consolidation-sdd';
 import type { StructuredDocumentDigest } from '../../domain/project/project-technical-blueprint.types';
 
 // Re-use the existing strict SDD schema for validation

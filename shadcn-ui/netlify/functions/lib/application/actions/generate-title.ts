@@ -1,10 +1,10 @@
-import { getDefaultProvider } from '../openai-client';
+import { getDefaultProvider } from '../../infrastructure/llm/openai-client';
 import {
     buildCacheKey,
     getCachedResponse,
     setCachedResponse,
     CACHE_TITLE,
-} from '../ai-cache';
+} from '../../infrastructure/cache/ai-cache';
 
 export interface GenerateTitleRequest {
     description: string;

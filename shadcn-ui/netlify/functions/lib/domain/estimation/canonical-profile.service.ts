@@ -13,7 +13,7 @@
  *   - RequirementDetailUI    : staleness warnings, conflict display
  */
 
-import { getDomainSupabase } from '../supabase';
+import { getDomainSupabase } from '../../infrastructure/db/supabase';
 import { computeAggregateConfidence } from './aggregate-confidence';
 import type {
     RequirementAnalysisRow,

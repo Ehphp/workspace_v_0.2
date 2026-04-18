@@ -14,7 +14,7 @@
  */
 
 import { createAIHandler } from './lib/handler';
-import { generateEstimationBlueprint } from './lib/ai/actions/generate-estimation-blueprint';
+import { generateEstimationBlueprint } from './lib/application/actions/generate-estimation-blueprint';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

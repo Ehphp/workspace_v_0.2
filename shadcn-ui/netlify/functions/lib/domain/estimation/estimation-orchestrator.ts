@@ -25,17 +25,17 @@
  *     No LLM call. Guaranteed 200 response.
  */
 
-import { CircuitOpenError } from '../../ai/circuit-breaker';
-import { runAgentPipeline } from '../../ai/agent';
-import type { AgentInput } from '../../ai/agent';
+import { CircuitOpenError } from '../../infrastructure/llm/circuit-breaker';
+import { runAgentPipeline } from '../../application/agent';
+import type { AgentInput } from '../../application/agent';
 import {
     fetchActivitiesServerSide,
     fetchProjectActivities,
     type Activity,
     type InterviewAnswerRecord,
     type ProjectActivity,
-} from '../../activities';
-import { attachProvenance, provenanceBreakdown } from '../../provenance-map';
+} from '../../infrastructure/db/activities';
+import { attachProvenance, provenanceBreakdown } from './provenance-map';
 import { evaluateProjectContextRules } from './project-context-rules';
 import { evaluateProjectTechnicalBlueprintRules } from './blueprint-rules';
 import { mergeProjectAndBlueprintRules } from './blueprint-context-integration';

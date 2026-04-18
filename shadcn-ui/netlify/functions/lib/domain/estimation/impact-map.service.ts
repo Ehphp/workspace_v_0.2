@@ -4,7 +4,7 @@
  * Creates domain-model impact maps linked to a RequirementAnalysis.
  */
 
-import { getDomainSupabase } from '../supabase';
+import { getDomainSupabase } from '../../infrastructure/db/supabase';
 import type {
     ImpactMapDomainRow,
     CreateImpactMapInput,

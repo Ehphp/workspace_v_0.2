@@ -18,11 +18,11 @@
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { getCorsHeaders, isOriginAllowed } from './lib/security/cors';
-import { getCircuitBreakerStats } from './lib/ai/openai-client';
-import { isVectorSearchEnabled } from './lib/ai/vector-search';
-import { getRAGMetrics, type RAGMetrics } from './lib/ai/rag-metrics';
-import { getRedisClient } from './lib/security/redis-client';
-import type { CircuitBreakerStats } from './lib/ai/circuit-breaker';
+import { getCircuitBreakerStats } from './lib/infrastructure/llm/openai-client';
+import { isVectorSearchEnabled } from './lib/infrastructure/llm/vector-search';
+import { getRAGMetrics, type RAGMetrics } from './lib/infrastructure/llm/rag-metrics';
+import { getRedisClient } from './lib/infrastructure/cache/redis-client';
+import type { CircuitBreakerStats } from './lib/infrastructure/llm/circuit-breaker';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 

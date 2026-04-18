@@ -8,8 +8,8 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-import type { ActivityBiases } from './domain/estimation/project-context-rules';
-import { applyActivityBiases } from './domain/estimation/project-context-integration';
+import type { ActivityBiases } from '../../domain/estimation/project-context-rules';
+import { applyActivityBiases } from '../../domain/estimation/project-context-integration';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

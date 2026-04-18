@@ -5,7 +5,7 @@
  * the LLM to prioritise them over generic catalog entries.
  */
 
-import type { ProjectActivity } from '../../activities';
+import type { ProjectActivity } from '../../infrastructure/db/activities';
 
 /**
  * Build a prompt block listing project-scoped activities.

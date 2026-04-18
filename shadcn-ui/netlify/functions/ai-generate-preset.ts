@@ -18,8 +18,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 import { createAIHandler } from './lib/handler';
-import { getDefaultProvider } from './lib/ai/openai-client';
-import { searchSimilarActivities, isVectorSearchEnabled } from './lib/ai/vector-search';
+import { getDefaultProvider } from './lib/infrastructure/llm/openai-client';
+import { searchSimilarActivities, isVectorSearchEnabled } from './lib/infrastructure/llm/vector-search';
 
 interface RequestBody {
     description: string;

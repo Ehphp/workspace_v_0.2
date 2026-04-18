@@ -12,7 +12,7 @@
  */
 
 import { createAIHandler } from './lib/handler';
-import { generateRequirementUnderstanding } from './lib/ai/actions/generate-understanding';
+import { generateRequirementUnderstanding } from './lib/application/actions/generate-understanding';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

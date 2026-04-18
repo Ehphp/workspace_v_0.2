@@ -7,7 +7,7 @@
  * @module decision-engine.types
  */
 
-import type { Activity } from '../../activities';
+import type { Activity } from '../../infrastructure/db/activities';
 import type { ActivityBiases } from '../estimation/project-context-rules';
 import type { ScoredCandidate } from './candidate.types';
 

@@ -11,22 +11,22 @@
  */
 
 import { z } from 'zod';
-import { getDefaultProvider } from '../openai-client';
+import { getDefaultProvider } from '../../infrastructure/llm/openai-client';
 import {
     PROJECT_DRAFT_SYSTEM_PROMPT,
     TECHNICAL_BLUEPRINT_SYSTEM_PROMPT,
     createProjectDraftResponseSchema,
     createTechnicalBlueprintResponseSchema,
-} from '../prompts/project-from-documentation';
+} from '../../ai/prompts/project-from-documentation';
 import {
     PROJECT_ACTIVITIES_SYSTEM_PROMPT,
     createProjectActivitiesResponseSchema,
-} from '../prompts/project-activities-generation';
+} from '../../ai/prompts/project-activities-generation';
 import type { GeneratedProjectActivity } from '../../domain/project/project-activity.types';
 import {
     normalizeProjectTechnicalBlueprint,
-} from '../post-processing/normalize-blueprint';
-import { enrichBlueprintSignals } from '../post-processing/enrich-blueprint-signals';
+} from '../../ai/post-processing/normalize-blueprint';
+import { enrichBlueprintSignals } from '../../ai/post-processing/enrich-blueprint-signals';
 import type {
     ProjectDraftBlueprint,
     BlueprintComponentType,
@@ -37,10 +37,10 @@ import type {
     BlueprintExtensionPoint,
     StructuredDocumentDigest,
 } from '../../domain/project/project-technical-blueprint.types';
-import { splitDocumentIntoChunks, CHUNKED_THRESHOLD } from '../chunking/document-chunker';
+import { splitDocumentIntoChunks, CHUNKED_THRESHOLD } from '../../ai/chunking/document-chunker';
 import { generatePartialSDD } from './generate-partial-sdd';
 import { consolidatePartialSDDs } from './consolidate-sdd';
-import { trimSDDForBudget, trimContextForBudget } from '../prompt-budget-guard';
+import { trimSDDForBudget, trimContextForBudget } from '../../ai/prompt-budget-guard';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Request / Response types
@@ -703,7 +703,7 @@ export async function generateProjectFromDocumentation(
 // Chunked pipeline helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { DocumentChunk } from '../chunking/document-chunker';
+import type { DocumentChunk } from '../../ai/chunking/document-chunker';
 import type { PartialSDD } from './generate-partial-sdd';
 
 /**

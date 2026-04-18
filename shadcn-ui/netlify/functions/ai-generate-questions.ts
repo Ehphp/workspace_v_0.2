@@ -8,8 +8,8 @@
  */
 
 import { createAIHandler } from './lib/handler';
-import { getDefaultProvider } from './lib/ai/openai-client';
-import { generateQuestions } from './lib/ai/actions/generate-questions';
+import { getDefaultProvider } from './lib/infrastructure/llm/openai-client';
+import { generateQuestions } from './lib/application/actions/generate-questions';
 
 interface RequestBody {
     description: string;

@@ -18,7 +18,7 @@ import {
     generateEmbeddingsBatch,
     createActivitySearchText,
     createRequirementSearchText
-} from './lib/ai/embeddings';
+} from './lib/infrastructure/llm/embeddings';
 import { validateAuthToken, logAuthDebugInfo } from './lib/auth/auth-validator';
 import { getCorsHeaders, isOriginAllowed } from './lib/security/cors';
 

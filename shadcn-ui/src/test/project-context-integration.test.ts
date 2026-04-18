@@ -15,7 +15,7 @@ import {
     mergeDriverSuggestions,
     mergeRiskSuggestions,
 } from '../../netlify/functions/lib/domain/estimation/project-context-integration';
-import type { Activity } from '../../netlify/functions/lib/activities';
+import type { Activity } from '../../netlify/functions/lib/infrastructure/db/activities';
 import type { ProjectContextRuleSuggestion } from '../../netlify/functions/lib/domain/estimation/project-context-rules';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

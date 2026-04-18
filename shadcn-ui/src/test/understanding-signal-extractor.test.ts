@@ -19,10 +19,10 @@ import {
     matchPerimeterTerm,
     PERIMETER_LAYER_MAP,
     type UnderstandingSignal,
-} from '../../netlify/functions/lib/understanding-signal-extractor';
+} from '../../netlify/functions/lib/domain/estimation/understanding-signal-extractor';
 
 import type { RequirementUnderstanding } from '../types/requirement-understanding';
-import type { Activity } from '../../netlify/functions/lib/activities';
+import type { Activity } from '../../netlify/functions/lib/infrastructure/db/activities';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test fixtures

@@ -5,14 +5,14 @@
  * using AI-generated custom activities (no catalog needed).
  */
 
-import { ILLMProvider } from '../openai-client';
+import { ILLMProvider } from '../../infrastructure/llm/openai-client';
 import {
     PRESET_GENERATION_SYSTEM_PROMPT,
     buildPresetGenerationPrompt,
     createPresetGenerationSchema
-} from '../prompts/preset-generation';
+} from '../../ai/prompts/preset-generation';
 import { sanitizePromptInput } from '../../../../../src/types/ai-validation';
-import { getPrompt } from '../prompt-registry';
+import { getPrompt } from '../../ai/prompt-registry';
 
 interface GeneratePresetInput {
     description: string;

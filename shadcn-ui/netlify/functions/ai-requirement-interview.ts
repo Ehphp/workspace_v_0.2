@@ -24,26 +24,26 @@
  */
 
 import { createAIHandler } from './lib/handler';
-import { getDefaultProvider } from './lib/ai/openai-client';
+import { getDefaultProvider } from './lib/infrastructure/llm/openai-client';
 import {
     fetchActivitiesServerSide,
     fetchProjectActivities,
     formatActivitiesSummary,
-} from './lib/activities';
+} from './lib/infrastructure/db/activities';
 import {
     mapBlueprintToActivities,
     isBlueprintMappable,
     blueprintToNormalizedSignals,
     type BlueprintMappingResult,
-} from './lib/blueprint-activity-mapper';
+} from './lib/domain/estimation/blueprint-activity-mapper';
 import {
     extractImpactMapSignals,
     impactMapToNormalizedSignals,
-} from './lib/impact-map-signal-extractor';
+} from './lib/domain/estimation/impact-map-signal-extractor';
 import {
     extractUnderstandingSignals,
     understandingToNormalizedSignals,
-} from './lib/understanding-signal-extractor';
+} from './lib/domain/estimation/understanding-signal-extractor';
 import { keywordToNormalizedSignals } from './lib/domain/pipeline/keyword-signal-adapter';
 import {
     synthesizeCandidates,
@@ -51,8 +51,8 @@ import {
     type SynthesizedCandidateSet,
 } from './lib/domain/pipeline/candidate-synthesizer';
 import type { SignalSet } from './lib/domain/pipeline/signal-types';
-import { retrieveRAGContext, getRAGSystemPromptAddition } from './lib/ai/rag';
-import { isVectorSearchEnabled } from './lib/ai/vector-search';
+import { retrieveRAGContext, getRAGSystemPromptAddition } from './lib/infrastructure/llm/rag';
+import { isVectorSearchEnabled } from './lib/infrastructure/llm/vector-search';
 import { formatProjectContextBlock } from './lib/ai/prompt-builder';
 import { evaluateProjectContextRules } from './lib/domain/estimation/project-context-rules';
 import { evaluateProjectTechnicalBlueprintRules } from './lib/domain/estimation/blueprint-rules';

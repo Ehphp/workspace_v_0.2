@@ -13,8 +13,8 @@
  */
 
 import { ToolDefinition, ToolCallRecord, AgentActivity } from './agent-types';
-import { searchSimilarActivities, isVectorSearchEnabled } from '../vector-search';
-import { retrieveRAGContext } from '../rag';
+import { searchSimilarActivities, isVectorSearchEnabled } from '../../infrastructure/llm/vector-search';
+import { retrieveRAGContext } from '../../infrastructure/llm/rag';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // ─────────────────────────────────────────────────────────────────────────────

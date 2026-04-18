@@ -14,7 +14,7 @@
  */
 
 import { createAIHandler } from './lib/handler';
-import { generateProjectFromDocumentation } from './lib/ai/actions/generate-project-from-documentation';
+import { generateProjectFromDocumentation } from './lib/application/actions/generate-project-from-documentation';
 import { createClient } from '@supabase/supabase-js';
 
 // ─────────────────────────────────────────────────────────────────────────────

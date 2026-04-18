@@ -5,7 +5,7 @@
  * and the rationale behind the estimation.
  */
 
-import { getDomainSupabase } from '../supabase';
+import { getDomainSupabase } from '../../infrastructure/db/supabase';
 import type {
     EstimationDecisionRow,
     CreateEstimationDecisionInput,

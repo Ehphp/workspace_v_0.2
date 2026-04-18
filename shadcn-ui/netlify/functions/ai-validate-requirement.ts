@@ -10,7 +10,7 @@
  */
 
 import { createAIHandler } from './lib/handler';
-import { validateRequirement } from './lib/ai/actions/validate-requirement';
+import { validateRequirement } from './lib/application/actions/validate-requirement';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

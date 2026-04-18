@@ -20,7 +20,7 @@ import {
     synthesizeCandidates,
 } from '../../../netlify/functions/lib/domain/pipeline/candidate-synthesizer';
 import { runDecisionEngine } from '../../../netlify/functions/lib/domain/pipeline/decision-engine';
-import type { Activity } from '../../../netlify/functions/lib/activities';
+import type { Activity } from '../../../netlify/functions/lib/infrastructure/db/activities';
 import type {
     NormalizedSignal,
     SignalSet,

@@ -16,7 +16,7 @@
  * The UI continues to send selected activities, drivers, risks unchanged.
  */
 
-import { getDomainSupabase } from '../supabase';
+import { getDomainSupabase } from '../../infrastructure/db/supabase';
 import {
     createRequirementAnalysis,
     getLatestAnalysis,

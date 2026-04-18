@@ -8,7 +8,7 @@
  * Pure functions. No side effects. No database calls.
  */
 
-import type { Activity } from '../../activities';
+import type { Activity } from '../../infrastructure/db/activities';
 import type { ActivityBiases, ProjectContextRuleResult, ProjectContextRuleSuggestion } from './project-context-rules';
 
 // ─── Activity bias application ──────────────────────────────────

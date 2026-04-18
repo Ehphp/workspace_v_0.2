@@ -17,9 +17,9 @@
  * (wizard UI, agent, consultant) know WHY it was selected.
  */
 
-import type { Activity } from './activities';
-import type { SignalKind, PipelineLayer } from './domain/pipeline/pipeline-domain';
-import type { NormalizedSignal, SignalSet } from './domain/pipeline/signal-types';
+import type { Activity } from '../../infrastructure/db/activities';
+import type { SignalKind, PipelineLayer } from '../pipeline/pipeline-domain';
+import type { NormalizedSignal, SignalSet } from '../pipeline/signal-types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

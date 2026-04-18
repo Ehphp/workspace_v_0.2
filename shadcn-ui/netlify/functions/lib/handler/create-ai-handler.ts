@@ -28,8 +28,8 @@ import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { validateAuthToken, logAuthDebugInfo } from '../auth/auth-validator';
 import { getCorsHeaders, isOriginAllowed } from '../security/cors';
 import { checkRateLimit } from '../security/rate-limiter';
-import { isLLMConfigured } from '../ai/openai-client';
-import { CircuitOpenError } from '../ai/circuit-breaker';
+import { isLLMConfigured } from '../infrastructure/llm/openai-client';
+import { CircuitOpenError } from '../infrastructure/llm/circuit-breaker';
 import { sanitizePromptInput, sanitizeDocumentInput } from '../sanitize';
 
 /**

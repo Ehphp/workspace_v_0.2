@@ -8,7 +8,7 @@
  */
 
 import { createAIHandler } from './lib/handler';
-import { generateTitle } from './lib/ai/actions/generate-title';
+import { generateTitle } from './lib/application/actions/generate-title';
 
 interface RequestBody {
     action: 'generate-title';

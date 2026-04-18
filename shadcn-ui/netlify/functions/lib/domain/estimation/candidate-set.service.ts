@@ -4,7 +4,7 @@
  * Builds and persists candidate activity sets from analysis + impact map + technology.
  */
 
-import { getDomainSupabase } from '../supabase';
+import { getDomainSupabase } from '../../infrastructure/db/supabase';
 import type {
     CandidateSetRow,
     CandidateActivity,

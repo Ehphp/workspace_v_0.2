@@ -12,7 +12,7 @@
  */
 
 import { createHash } from 'crypto';
-import { tryGetRedisClient } from '../security/redis-client';
+import { tryGetRedisClient } from './redis-client';
 
 // Feature flag — default enabled
 const AI_CACHE_ENABLED = () => process.env.AI_CACHE_ENABLED !== 'false';

@@ -197,7 +197,7 @@ export interface SelectedActivityResult {
     fromAnswer: string | null;
     fromQuestionId: string | null;
     /** Deterministic provenance — attached via backend post-processing, never LLM-generated */
-    provenance?: import('../../blueprint-activity-mapper').ActivityProvenance;
+    provenance?: import('../../domain/estimation/blueprint-activity-mapper').ActivityProvenance;
 }
 
 export interface SuggestedDriver {

@@ -265,7 +265,7 @@ import {
     CACHE_TITLE,
     CACHE_NORMALIZE,
     CACHE_SUGGEST,
-} from '../../netlify/functions/lib/ai/ai-cache';
+} from '../../netlify/functions/lib/infrastructure/cache/ai-cache';
 
 describe('ai-cache: buildCacheKey', () => {
     it('should produce deterministic hash for same inputs', () => {
@@ -345,7 +345,7 @@ describe('ai-cache: get/set round-trip', () => {
 describe('ai-cache: graceful degradation', () => {
     it('should return null when Redis throws', async () => {
         // Temporarily override getRedisClient to throw
-        const mod = await import('../../netlify/functions/lib/security/redis-client');
+        const mod = await import('../../netlify/functions/lib/infrastructure/cache/redis-client');
         const orig = mod.getRedisClient;
         (mod as any).getRedisClient = vi.fn(async () => {
             throw new Error('Redis down');

@@ -13,7 +13,7 @@
  */
 
 import { z } from 'zod';
-import { ILLMProvider, LLM_PRESETS } from '../openai-client';
+import { ILLMProvider, LLM_PRESETS } from '../../infrastructure/llm/openai-client';
 import { sanitizePromptInput } from '../../../../../src/types/ai-validation';
 import type {
     DraftEstimation,
@@ -22,7 +22,7 @@ import type {
     AgentInput,
     AgentFlags
 } from './agent-types';
-import { formatProjectContextBlock } from '../prompt-builder';
+import { formatProjectContextBlock } from '../../ai/prompt-builder';
 import { formatConflictsBlock } from '../../domain/estimation/canonical-profile.service';
 
 // ─────────────────────────────────────────────────────────────────────────────

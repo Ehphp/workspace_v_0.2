@@ -11,7 +11,7 @@
  *   - decision-engine.types.ts  (DecisionEngineInput/Output contracts)
  */
 
-import type { Activity } from '../../activities';
+import type { Activity } from '../../infrastructure/db/activities';
 import type { SignalKind } from './pipeline-domain';
 
 // ─────────────────────────────────────────────────────────────────────────────

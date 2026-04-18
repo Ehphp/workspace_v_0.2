@@ -10,7 +10,7 @@
 import { createAIHandler } from './lib/handler';
 import { readKillSwitches } from './lib/domain/pipeline/kill-switches';
 import { runEstimationOrchestrator } from './lib/domain/estimation/estimation-orchestrator';
-import type { Activity, InterviewAnswerRecord } from './lib/activities';
+import type { Activity, InterviewAnswerRecord } from './lib/infrastructure/db/activities';
 
 // ─── Request body ─────────────────────────────────────────────────────────────
 

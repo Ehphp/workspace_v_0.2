@@ -16,7 +16,7 @@
  * @module project-activity-signal-adapter
  */
 
-import type { ProjectActivity } from '../../activities';
+import type { ProjectActivity } from '../../infrastructure/db/activities';
 import type { NormalizedSignal, SignalSet } from './signal-types';
 import type { PipelineLayer } from './pipeline-domain';
 

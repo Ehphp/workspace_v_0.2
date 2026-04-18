@@ -16,8 +16,8 @@ import {
     buildProvenanceMap,
     attachProvenance,
     provenanceBreakdown,
-} from '../../netlify/functions/lib/provenance-map';
-import type { BlueprintMappingResult, MappedActivity, ActivityProvenance } from '../../netlify/functions/lib/blueprint-activity-mapper';
+} from '../../netlify/functions/lib/domain/estimation/provenance-map';
+import type { BlueprintMappingResult, MappedActivity, ActivityProvenance } from '../../netlify/functions/lib/domain/estimation/blueprint-activity-mapper';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 

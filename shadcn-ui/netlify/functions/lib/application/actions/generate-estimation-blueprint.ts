@@ -14,21 +14,21 @@
  */
 
 import { z } from 'zod';
-import { getDefaultProvider } from '../openai-client';
-import { getPrompt } from '../prompt-registry';
+import { getDefaultProvider } from '../../infrastructure/llm/openai-client';
+import { getPrompt } from '../../ai/prompt-registry';
 import {
     BLUEPRINT_SYSTEM_PROMPT,
     createBlueprintResponseSchema,
-} from '../prompts/blueprint-generation';
+} from '../../ai/prompts/blueprint-generation';
 import {
     buildCacheKey,
     getCachedResponse,
     setCachedResponse,
-} from '../ai-cache';
-import type { CacheConfig } from '../ai-cache';
-import { formatProjectContextBlock } from '../prompt-builder';
-import { formatProjectTechnicalBlueprintBlock } from '../formatters/project-blueprint-formatter';
-import { formatArtifactBlock } from '../formatters/artifact-formatter';
+} from '../../infrastructure/cache/ai-cache';
+import type { CacheConfig } from '../../infrastructure/cache/ai-cache';
+import { formatProjectContextBlock } from '../../ai/prompt-builder';
+import { formatProjectTechnicalBlueprintBlock } from '../../ai/formatters/project-blueprint-formatter';
+import { formatArtifactBlock } from '../../ai/formatters/artifact-formatter';
 import type { RequirementUnderstanding } from '../../../../../src/types/requirement-understanding';
 import type { ImpactMap } from '../../../../../src/types/impact-map';
 
