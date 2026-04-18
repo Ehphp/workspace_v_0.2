@@ -179,8 +179,8 @@ export function ProjectBlueprintTab({ projectId }: ProjectBlueprintTabProps) {
                         <button
                             onClick={() => setViewMode('architecture')}
                             className={`px-3 py-1 text-xs transition-colors ${viewMode === 'architecture'
-                                    ? 'bg-white text-slate-900 font-medium shadow-sm'
-                                    : 'text-slate-500 hover:bg-slate-50'
+                                ? 'bg-white text-slate-900 font-medium shadow-sm'
+                                : 'text-slate-500 hover:bg-slate-50'
                                 }`}
                         >
                             Architecture
@@ -188,8 +188,8 @@ export function ProjectBlueprintTab({ projectId }: ProjectBlueprintTabProps) {
                         <button
                             onClick={() => setViewMode('risk')}
                             className={`px-3 py-1 text-xs transition-colors ${viewMode === 'risk'
-                                    ? 'bg-red-50 text-red-700 font-medium shadow-sm'
-                                    : 'text-slate-500 hover:bg-slate-50'
+                                ? 'bg-red-50 text-red-700 font-medium shadow-sm'
+                                : 'text-slate-500 hover:bg-slate-50'
                                 }`}
                         >
                             Estimation Risk
