@@ -114,7 +114,7 @@ function buildIntegrationSearchText(integ: BlueprintIntegration): string {
         `Direction: ${integ.direction ?? 'unknown'}`,
     ];
     if (integ.description) parts.push(integ.description);
-    if (integ.protocol) parts.push(`Protocol: ${integ.protocol}`);
+    if ((integ as any).protocol) parts.push(`Protocol: ${(integ as any).protocol}`);
     if (integ.businessCriticality) parts.push(`Business criticality: ${integ.businessCriticality}`);
     if (integ.evidence?.length) {
         parts.push('Evidence: ' + integ.evidence.map((e) => e.snippet).join(' | '));

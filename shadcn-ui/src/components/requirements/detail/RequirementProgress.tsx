@@ -142,7 +142,7 @@ export function RequirementProgress({ estimation, activities, onUpdate }: Requir
                                         const isUpdating = updating === estAct.id;
                                         const aiReason = estAct.notes && estAct.notes.trim().length > 0
                                             ? estAct.notes
-                                            : activity!.description || null;
+                                            : ('description' in activity! ? activity.description : null) || null;
                                         const hasReason = estAct.is_ai_suggested && aiReason;
 
                                         const card = (

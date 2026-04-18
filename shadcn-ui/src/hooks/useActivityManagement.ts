@@ -126,11 +126,7 @@ export function useActivityManagement(userId: string | undefined) {
                     description: `${form.name} - ${baseHours.toFixed(2)} ore`,
                 });
             } else {
-                const code = generateActivityCode({
-                    name: form.name,
-                    techCategory: form.techCategory,
-                    group: form.group,
-                });
+                const code = generateActivityCode(form.name, form.techCategory, []);
 
                 const { error } = await supabase.from('activities').insert({
                     code,

@@ -3,11 +3,6 @@
  * Main export file for easy imports
  */
 
-// Main components
-export { RingParticlesBackground, presetConfigs, createRingConfig } from './RingParticlesBackground';
-export { RingParticlesCanvas } from './RingParticlesCanvas';
-export type { RingParticlesConfig } from './RingParticlesCanvas';
-
 // Configuration utilities
 export {
     buildRingConfig,

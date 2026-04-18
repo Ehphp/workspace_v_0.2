@@ -186,10 +186,15 @@ export function useBulkEstimation(): UseBulkEstimationReturn {
                             notes: '',
                         })),
                         drivers: finalized.appliedDrivers.length > 0
-                            ? finalized.appliedDrivers.map(d => ({ driver_id: d.id, selected_value: d.selectedValue }))
+                            ? finalized.appliedDrivers.map(d => ({
+                                driver_id: masterData.drivers.find(md => md.code === d.code)?.id || '',
+                                selected_value: d.value,
+                            }))
                             : null,
                         risks: finalized.appliedRisks.length > 0
-                            ? finalized.appliedRisks.map(r => ({ risk_id: r.id }))
+                            ? finalized.appliedRisks.map(r => ({
+                                risk_id: masterData.risks.find(mr => mr.code === r.code)?.id || '',
+                            }))
                             : null,
                         aiReasoning: eRes.reasoning || null,
                     });

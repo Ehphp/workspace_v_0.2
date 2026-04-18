@@ -7,8 +7,8 @@ import type { Activity, Driver, Risk } from '@/types/database';
 
 // Mock data
 const mockActivities: Activity[] = [
-    { id: '1', code: 'ACT1', name: 'Activity 1', base_hours: 10, description: '', created_at: '' },
-    { id: '2', code: 'ACT2', name: 'Activity 2', base_hours: 20, description: '', created_at: '' },
+    { id: '1', code: 'ACT1', name: 'Activity 1', base_hours: 10, description: '', created_at: '', technology_id: null, tech_category: 'FULLSTACK', group: 'DEV', active: true },
+    { id: '2', code: 'ACT2', name: 'Activity 2', base_hours: 20, description: '', created_at: '', technology_id: null, tech_category: 'FULLSTACK', group: 'DEV', active: true },
 ];
 
 const mockDrivers: Driver[] = [
@@ -26,8 +26,8 @@ const mockDrivers: Driver[] = [
 ];
 
 const mockRisks: Risk[] = [
-    { id: '1', code: 'RISK1', name: 'Risk 1', description: '', mitigation: '', created_at: '' },
-    { id: '2', code: 'RISK2', name: 'Risk 2', description: '', mitigation: '', created_at: '' },
+    { id: '1', code: 'RISK1', name: 'Risk 1', description: '', weight: 1, created_at: '' },
+    { id: '2', code: 'RISK2', name: 'Risk 2', description: '', weight: 1, created_at: '' },
 ];
 
 const mockTechCategories = ['FULLSTACK', 'BACKEND', 'FRONTEND'];
@@ -56,6 +56,7 @@ describe('TechnologyDialog', () => {
                 onOpenChange={mockOnOpenChange}
                 initialData={mockInitialData}
                 isEditing={false}
+                editingId={null}
                 saving={false}
                 onSave={mockOnSave}
                 allActivities={mockActivities}
@@ -76,6 +77,7 @@ describe('TechnologyDialog', () => {
                 onOpenChange={mockOnOpenChange}
                 initialData={mockInitialData}
                 isEditing={true}
+                editingId="1"
                 saving={false}
                 onSave={mockOnSave}
                 allActivities={mockActivities}
@@ -97,6 +99,7 @@ describe('TechnologyDialog', () => {
                 onOpenChange={mockOnOpenChange}
                 initialData={{ ...mockInitialData, name: '' }}
                 isEditing={false}
+                editingId={null}
                 saving={false}
                 onSave={mockOnSave}
                 allActivities={mockActivities}
@@ -132,6 +135,7 @@ describe('TechnologyDialog', () => {
                 onOpenChange={mockOnOpenChange}
                 initialData={mockInitialData}
                 isEditing={false}
+                editingId={null}
                 saving={false}
                 onSave={mockOnSave}
                 allActivities={mockActivities}
@@ -155,6 +159,7 @@ describe('TechnologyDialog', () => {
                 onOpenChange={mockOnOpenChange}
                 initialData={{ ...mockInitialData, name: '' }}
                 isEditing={false}
+                editingId={null}
                 saving={false}
                 onSave={mockOnSave}
                 allActivities={mockActivities}
@@ -187,6 +192,7 @@ describe('TechnologyDialog', () => {
                 onOpenChange={mockOnOpenChange}
                 initialData={mockInitialData}
                 isEditing={false}
+                editingId={null}
                 saving={true}
                 onSave={mockOnSave}
                 allActivities={mockActivities}
@@ -207,6 +213,7 @@ describe('TechnologyDialog', () => {
                 onOpenChange={mockOnOpenChange}
                 initialData={mockInitialData}
                 isEditing={false}
+                editingId={null}
                 saving={false}
                 onSave={mockOnSave}
                 allActivities={mockActivities}
@@ -224,6 +231,7 @@ describe('TechnologyDialog', () => {
                 onOpenChange={mockOnOpenChange}
                 initialData={newData}
                 isEditing={false}
+                editingId={null}
                 saving={false}
                 onSave={mockOnSave}
                 allActivities={mockActivities}

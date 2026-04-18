@@ -683,7 +683,7 @@ export async function generateProjectFromDocumentation(
             assumptions: normalizedBlueprint.assumptions,
             missingInformation: normalizedBlueprint.missingInformation,
             confidence: normalizedBlueprint.confidence,
-            estimationContext: enriched.estimationContext,
+            ...(enriched.estimationContext ? { estimationContext: enriched.estimationContext } as any : {}),
         },
         structuredDigest: structuredDigest ?? undefined,
         projectActivities,

@@ -158,7 +158,7 @@ function scoreIntegration(integ: BlueprintIntegration, q: string): number {
     let score = 0;
     if (integ.systemName.toLowerCase().includes(q)) score += 1.0;
     if (integ.description?.toLowerCase().includes(q)) score += 0.6;
-    if (integ.protocol?.toLowerCase().includes(q)) score += 0.4;
+    if ((integ as any).protocol?.toLowerCase().includes(q)) score += 0.4;
     if (integ.direction?.toLowerCase().includes(q)) score += 0.3;
     if (integ.evidence?.some((e) => e.snippet.toLowerCase().includes(q))) score += 0.3;
     return score;
@@ -207,7 +207,7 @@ function findMatchSnippetDD(dd: BlueprintDataDomain, q: string): string {
 function findMatchSnippetInteg(integ: BlueprintIntegration, q: string): string {
     if (integ.systemName.toLowerCase().includes(q)) return integ.systemName;
     if (integ.description?.toLowerCase().includes(q)) return truncate(integ.description, 80);
-    if (integ.protocol?.toLowerCase().includes(q)) return `Protocol: ${integ.protocol}`;
+    if ((integ as any).protocol?.toLowerCase().includes(q)) return `Protocol: ${(integ as any).protocol}`;
     const ev = integ.evidence?.find((e) => e.snippet.toLowerCase().includes(q));
     if (ev) return truncate(ev.snippet, 80);
     return integ.systemName;

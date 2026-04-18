@@ -28,6 +28,7 @@ import {
 import type { CacheConfig } from '../ai-cache';
 import { formatProjectContextBlock } from '../prompt-builder';
 import { formatProjectTechnicalBlueprintBlock } from '../formatters/project-blueprint-formatter';
+import { formatArtifactBlock } from '../formatters/artifact-formatter';
 import type { RequirementUnderstanding } from '../../../../../src/types/requirement-understanding';
 import type { ImpactMap } from '../../../../../src/types/impact-map';
 
@@ -157,77 +158,7 @@ const LLMOutputSchema = z.object({
     reasoning: z.string().max(2000).optional(),
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers — format upstream artifacts as prompt blocks
-// ─────────────────────────────────────────────────────────────────────────────
-
-function formatUnderstandingBlock(ru: RequirementUnderstanding | Record<string, unknown> | undefined): string {
-    if (!ru || typeof ru !== 'object') return '';
-    try {
-        const lines: string[] = [];
-        lines.push('\nCOMPRENSIONE STRUTTURATA DEL REQUISITO (validata dall\'utente):');
-        if (ru.businessObjective) lines.push(`- Obiettivo: ${ru.businessObjective}`);
-        if (ru.expectedOutput) lines.push(`- Output atteso: ${ru.expectedOutput}`);
-        if (Array.isArray(ru.functionalPerimeter) && ru.functionalPerimeter.length > 0) {
-            lines.push(`- Perimetro: ${ru.functionalPerimeter.join('; ')}`);
-        }
-        if (Array.isArray(ru.exclusions) && ru.exclusions.length > 0) {
-            lines.push(`- Esclusioni: ${ru.exclusions.join('; ')}`);
-        }
-        if (Array.isArray(ru.actors) && ru.actors.length > 0) {
-            const actorStr = ru.actors.map((a: any) => {
-                const tag = a.type === 'system' ? '[SYSTEM]' : '[HUMAN]';
-                const mode = a.interactionMode ? ` (${a.interactionMode})` : '';
-                return `${tag} ${a.role}${mode} — ${a.interaction}`;
-            }).join('; ');
-            lines.push(`- Attori: ${actorStr}`);
-        }
-        const st = ru.stateTransition as any;
-        if (st?.initialState && st?.finalState) {
-            lines.push(`- Transizione: da "${st.initialState}" a "${st.finalState}"`);
-        }
-        if (Array.isArray(ru.assumptions) && ru.assumptions.length > 0) {
-            lines.push(`- Assunzioni: ${ru.assumptions.join('; ')}`);
-        }
-        const ca = ru.complexityAssessment as any;
-        if (ca?.level) {
-            lines.push(`- Complessità stimata: ${ca.level}${ca.rationale ? ` — ${ca.rationale}` : ''}`);
-        }
-        if (typeof ru.confidence === 'number') {
-            lines.push(`- Confidenza comprensione: ${Math.round((ru.confidence as number) * 100)}%`);
-        }
-        return lines.length > 1 ? lines.join('\n') : '';
-    } catch {
-        return '';
-    }
-}
-
-function formatImpactMapBlock(im: ImpactMap | Record<string, unknown> | undefined): string {
-    if (!im || typeof im !== 'object') return '';
-    try {
-        const lines: string[] = [];
-        lines.push('\nMAPPA IMPATTO ARCHITETTURALE (validata dall\'utente):');
-        if (im.summary) lines.push(`Sintesi: ${im.summary}`);
-        if (typeof im.overallConfidence === 'number') {
-            lines.push(`Confidenza complessiva: ${Math.round((im.overallConfidence as number) * 100)}%`);
-        }
-        if (Array.isArray(im.impacts) && im.impacts.length > 0) {
-            lines.push('Impatti:');
-            for (const item of im.impacts) {
-                if (!item || typeof item !== 'object') continue;
-                const layer = item.layer || '?';
-                const action = item.action || '?';
-                const components = Array.isArray(item.components) ? item.components.join(', ') : '';
-                const reason = item.reason || '';
-                const conf = typeof item.confidence === 'number' ? ` (${Math.round(item.confidence * 100)}%)` : '';
-                lines.push(`- ${layer} [${action}]: ${components} — ${reason}${conf}`);
-            }
-        }
-        return lines.length > 1 ? lines.join('\n') : '';
-    } catch {
-        return '';
-    }
-}
+// formatUnderstandingBlock and formatImpactMapBlock → shared formatArtifactBlock from formatters/artifact-formatter
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public API
@@ -276,13 +207,19 @@ export async function generateEstimationBlueprint(
     ];
 
     // Inject understanding block (if available)
-    const understandingBlock = formatUnderstandingBlock(requirementUnderstanding);
+    const understandingBlock = formatArtifactBlock(
+        requirementUnderstanding as Record<string, unknown>,
+        'COMPRENSIONE STRUTTURATA DEL REQUISITO (validata dall\'utente)',
+    );
     if (understandingBlock) {
         userPromptParts.push(understandingBlock);
     }
 
     // Inject impact map block (if available)
-    const impactMapBlock = formatImpactMapBlock(impactMap);
+    const impactMapBlock = formatArtifactBlock(
+        impactMap as unknown as Record<string, unknown>,
+        'MAPPA IMPATTO ARCHITETTURALE (validata dall\'utente)',
+    );
     if (impactMapBlock) {
         userPromptParts.push(impactMapBlock);
     }

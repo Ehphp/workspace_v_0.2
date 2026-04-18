@@ -82,24 +82,25 @@ export default function RequirementDetail() {
             return;
         }
         setProjectActivitiesReady(false);
-        supabase
-            .from('project_activities')
-            .select('id, code, name, base_hours, "group", intervention_type')
-            .eq('project_id', pid)
-            .eq('is_enabled', true)
-            .then(({ data: paRows }) => {
-                console.log('[PRJ_ACT] fetched', paRows?.length ?? 0, 'rows:', paRows?.map(p => p.code));
-                if (paRows && paRows.length > 0) {
-                    setProjectActivities(paRows.map(pa => ({
-                        ...pa,
-                        tech_category: 'PROJECT',
-                    })) as unknown as Activity[]);
-                } else {
-                    setProjectActivities([]);
-                }
-            })
-            .catch((err) => { console.error('[PRJ_ACT] fetch error:', err); setProjectActivities([]); })
-            .finally(() => { console.log('[PRJ_ACT] marking ready'); setProjectActivitiesReady(true); });
+        Promise.resolve(
+            supabase
+                .from('project_activities')
+                .select('id, code, name, base_hours, "group", intervention_type')
+                .eq('project_id', pid)
+                .eq('is_enabled', true)
+        ).then(({ data: paRows }) => {
+            console.log('[PRJ_ACT] fetched', paRows?.length ?? 0, 'rows:', paRows?.map((p: any) => p.code));
+            if (paRows && paRows.length > 0) {
+                setProjectActivities(paRows.map((pa: any) => ({
+                    ...pa,
+                    tech_category: 'PROJECT',
+                })) as unknown as Activity[]);
+            } else {
+                setProjectActivities([]);
+            }
+        })
+        .catch((err) => { console.error('[PRJ_ACT] fetch error:', err); setProjectActivities([]); })
+        .finally(() => { console.log('[PRJ_ACT] marking ready'); setProjectActivitiesReady(true); });
     }, [requirementLoading, project?.id]);
 
     const activities = useMemo(
@@ -184,7 +185,7 @@ export default function RequirementDetail() {
                 requirementId: requirement.id,
                 understanding: updated as unknown as Record<string, unknown>,
                 inputDescription: requirement.description || '',
-                inputTechCategory: requirement.tech_category || undefined,
+                inputTechCategory: (requirement as any).tech_category || undefined,
             });
             setRequirementUnderstanding(updated);
             toast.success('Analisi AI aggiornata');
@@ -193,7 +194,7 @@ export default function RequirementDetail() {
             toast.error('Errore nel salvataggio dell\'analisi');
             throw err; // re-throw so OverviewTab keeps edit mode open
         }
-    }, [requirement?.id, requirement?.description, requirement?.tech_category]);
+    }, [requirement?.id, requirement?.description]);
 
     // Initialize consultantAnalysis from latest history record if available
     useEffect(() => {

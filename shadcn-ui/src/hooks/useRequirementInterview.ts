@@ -119,7 +119,7 @@ export function useRequirementInterview(): UseRequirementInterviewReturn {
     const [plannerDecision, setPlannerDecision] = useState<'ASK' | 'SKIP' | undefined>();
     const [preEstimate, setPreEstimate] = useState<PreEstimate | undefined>();
     // Ref keeps latest preEstimate accessible in closures without stale-state issues
-    const preEstimateRef = useRef<PreEstimate | undefined>();
+    const preEstimateRef = useRef<PreEstimate | undefined>(undefined);
 
     // Estimate result
     const [estimateResult, setEstimateResult] = useState<EstimationFromInterviewResponse | null>(null);

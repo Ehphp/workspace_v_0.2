@@ -94,6 +94,8 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
                 userId: user.id,
                 organizationId: currentOrganization.id,
                 ...parsed.data,
+                name: parsed.data.name!,
+                status: parsed.data.status!,
             });
 
             toast.success('Project created successfully');

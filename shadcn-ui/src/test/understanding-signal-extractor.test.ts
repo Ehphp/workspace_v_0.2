@@ -88,7 +88,7 @@ function makeUnderstanding(overrides: Partial<RequirementUnderstanding> = {}): R
         expectedOutput: 'Test output',
         functionalPerimeter: [],
         exclusions: [],
-        actors: [{ role: 'User', interaction: 'Uses the system' }],
+        actors: [{ type: 'human' as const, role: 'User', interaction: 'Uses the system' }],
         stateTransition: { initialState: 'Before', finalState: 'After' },
         preconditions: [],
         assumptions: [],

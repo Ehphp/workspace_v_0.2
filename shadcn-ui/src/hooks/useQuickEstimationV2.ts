@@ -454,7 +454,7 @@ export function useQuickEstimationV2() {
                     description,
                     techPresetId: technologyId,
                     techCategory,
-                    answers: interviewAnswers,
+                    answers: interviewAnswers as any,
                     projectContext,
                     preEstimate,
                     requirementUnderstanding: artifacts.understanding,

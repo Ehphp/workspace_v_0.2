@@ -35,7 +35,7 @@ export interface GenerateContentParams {
     temperature?: number;
     maxTokens?: number;
     responseFormat?: Record<string, any>;
-    options?: LLMClientOptions;
+    options?: LLMClientOptions | keyof typeof LLM_PRESETS;
     /** Reasoning effort for gpt-5/o-series models on Responses API */
     reasoningEffort?: 'high' | 'medium' | 'low' | 'minimal';
 }

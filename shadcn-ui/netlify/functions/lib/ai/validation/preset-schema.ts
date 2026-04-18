@@ -9,6 +9,7 @@
 import Ajv from 'ajv';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { PresetOutputSchema } from '../../../../../src/shared/validation/preset-output.schema';
+import type { PresetOutput } from '../../../../../src/shared/validation/preset-output.schema';
 
 // Re-export the Zod-inferred type for consumers
 export type { PresetOutput } from '../../../../../src/shared/validation/preset-output.schema';

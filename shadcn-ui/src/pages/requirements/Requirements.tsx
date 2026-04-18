@@ -527,6 +527,7 @@ export default function Requirements() {
                     open={!!deleteRequirement}
                     onOpenChange={(open) => !open && setDeleteRequirement(null)}
                     requirementId={deleteRequirement.id}
+                    requirementTitle={deleteRequirement.title}
                     onSuccess={loadData}
                 />
             )}

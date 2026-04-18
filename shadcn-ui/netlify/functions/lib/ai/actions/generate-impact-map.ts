@@ -28,6 +28,7 @@ import {
 import type { CacheConfig } from '../ai-cache';
 import { formatProjectContextBlock } from '../prompt-builder';
 import { formatProjectTechnicalBlueprintBlock } from '../formatters/project-blueprint-formatter';
+import { formatArtifactBlock } from '../formatters/artifact-formatter';
 import type { RequirementUnderstanding } from '../../../../../src/types/requirement-understanding';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -105,65 +106,7 @@ const LLMOutputSchema = z.object({
     overallConfidence: z.number().min(0).max(1),
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Format a Requirement Understanding object as a concise Italian-language
- * block suitable for prompt injection.
- *
- * Returns empty string if understanding is absent or malformed.
- */
-function formatUnderstandingBlock(ru: RequirementUnderstanding | Record<string, unknown> | undefined): string {
-    if (!ru) return '';
-
-    try {
-        const parts: string[] = [];
-        parts.push('\nCOMPRENSIONE STRUTTURATA DEL REQUISITO (validata dall\'utente):');
-
-        if (ru.businessObjective) {
-            parts.push(`- Obiettivo: ${ru.businessObjective}`);
-        }
-        if (ru.expectedOutput) {
-            parts.push(`- Output atteso: ${ru.expectedOutput}`);
-        }
-        if (Array.isArray(ru.functionalPerimeter) && ru.functionalPerimeter.length > 0) {
-            parts.push(`- Perimetro: ${ru.functionalPerimeter.join(', ')}`);
-        }
-        if (Array.isArray(ru.exclusions) && ru.exclusions.length > 0) {
-            parts.push(`- Esclusioni: ${ru.exclusions.join(', ')}`);
-        }
-        if (Array.isArray(ru.actors) && ru.actors.length > 0) {
-            const actorList = ru.actors
-                .map((a: any) => {
-                    const tag = a?.type === 'system' ? '[SYSTEM]' : '[HUMAN]';
-                    const mode = a?.interactionMode ? ` (${a.interactionMode})` : '';
-                    return `${tag} ${a?.role ?? '?'}${mode} — ${a?.interaction ?? '?'}`;
-                })
-                .join('; ');
-            parts.push(`- Attori: ${actorList}`);
-        }
-        if (ru.stateTransition && typeof ru.stateTransition === 'object') {
-            const st = ru.stateTransition as Record<string, unknown>;
-            parts.push(`- Transizione: ${st.initialState ?? '?'} → ${st.finalState ?? '?'}`);
-        }
-        if (ru.complexityAssessment && typeof ru.complexityAssessment === 'object') {
-            const ca = ru.complexityAssessment as Record<string, unknown>;
-            parts.push(`- Complessità stimata: ${ca.level ?? '?'}`);
-        }
-        if (typeof ru.confidence === 'number') {
-            parts.push(`- Confidenza comprensione: ${Math.round(ru.confidence * 100)}%`);
-        }
-
-        return parts.join('\n');
-    } catch {
-        console.warn('[generate-impact-map] Failed to format understanding block, skipping');
-        return '';
-    }
-}
-
-// formatProjectBlueprintBlock — replaced by shared formatProjectTechnicalBlueprintBlock from formatters/project-blueprint-formatter
+// formatUnderstandingBlock and formatProjectBlueprintBlock → shared formatArtifactBlock from formatters/artifact-formatter
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public API
@@ -211,7 +154,10 @@ export async function generateImpactMap(
     ];
 
     // Inject understanding block (if available) before tech context
-    const understandingBlock = formatUnderstandingBlock(requirementUnderstanding);
+    const understandingBlock = formatArtifactBlock(
+        requirementUnderstanding as Record<string, unknown>,
+        'COMPRENSIONE STRUTTURATA DEL REQUISITO (validata dall\'utente)',
+    );
     if (understandingBlock) {
         userPromptParts.push(understandingBlock);
     }

@@ -277,8 +277,8 @@ function EditableBulletList({
 // ── Actor type icon helper ──
 
 const ActorTypeIcon = ({ type }: { type?: ActorType }) => {
-    if (type === 'system') return <Server className="w-3 h-3 text-blue-500 shrink-0" title="Sistema" />;
-    return <User2 className="w-3 h-3 text-slate-500 shrink-0" title="Umano" />;
+    if (type === 'system') return <Server className="w-3 h-3 text-blue-500 shrink-0" aria-label="Sistema" />;
+    return <User2 className="w-3 h-3 text-slate-500 shrink-0" aria-label="Umano" />;
 };
 
 const interactionModeBadge = (mode?: string) => {

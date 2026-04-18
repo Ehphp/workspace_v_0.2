@@ -116,7 +116,7 @@ async function resolveMultiTechId(
         .select('id')
         .eq('code', 'MULTI')
         .limit(1);
-    _cachedMultiTechId = data?.[0]?.id ?? null;
+    _cachedMultiTechId = (data as Array<{ id: string }> | null)?.[0]?.id ?? null;
     return _cachedMultiTechId;
 }
 
@@ -210,7 +210,7 @@ async function fetchActivitiesLegacy(
  */
 export async function fetchActivitiesServerSide(
     techCategory: string,
-    techPresetId: string,
+    techPresetId: string | undefined,
     clientActivities?: Activity[]
 ): Promise<ActivityFetchResult> {
     const start = Date.now();

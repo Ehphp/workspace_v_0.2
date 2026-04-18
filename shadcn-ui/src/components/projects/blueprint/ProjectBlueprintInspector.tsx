@@ -152,7 +152,7 @@ function NodeDetail({ data, nodeId, graphModel }: {
                                 {data.structuralSignals && (
                                     <>
                                         <MetricRow label="Coupling" value={data.structuralSignals.couplingDegree} />
-                                        <MetricRow label="Documentation" value={data.structuralSignals.documentationLevel} />
+                                        <MetricRow label="Documentation" value={data.structuralSignals.documentationCoverage} />
                                         <MetricRow label="Relations" value={String(data.structuralSignals.relationsCount)} />
                                         <MetricRow label="Workflow Participation" value={String(data.structuralSignals.workflowParticipation)} />
                                     </>
@@ -160,7 +160,7 @@ function NodeDetail({ data, nodeId, graphModel }: {
                                 {data.estimationSignals && (
                                     <>
                                         <MetricRow label="Modification Cost" value={data.estimationSignals.modificationCost} />
-                                        <MetricRow label="Change Surface" value={data.estimationSignals.changeSurface} />
+                                        <MetricRow label="Change Surface" value={String(data.estimationSignals.changeSurface)} />
                                         {data.estimationSignals.fragile && (
                                             <div className="flex items-center justify-between text-xs">
                                                 <span className="text-slate-600">Fragile</span>
@@ -537,7 +537,7 @@ function BlueprintOverview({ blueprint }: { blueprint: ProjectTechnicalBlueprint
                             <div className="space-y-1.5">
                                 <MetricRow label="Coordination Cost" value={blueprint.estimationContext.coordinationCost} />
                                 <MetricRow label="Overall Fragility" value={blueprint.estimationContext.overallFragility} />
-                                <MetricRow label="Integration Density" value={blueprint.estimationContext.integrationDensity} />
+                                <MetricRow label="Integration Density" value={String(blueprint.estimationContext.integrationDensity)} />
                             </div>
 
                             {blueprint.estimationContext.highCostAreas.length > 0 && (
@@ -593,8 +593,8 @@ function BlueprintOverview({ blueprint }: { blueprint: ProjectTechnicalBlueprint
                                                     <span className="text-red-400">●</span>
                                                     <span className="font-medium">{c.description}</span>
                                                 </div>
-                                                {c.affectedNodeIds.length > 0 && (
-                                                    <p className="text-[10px] text-slate-400 ml-4">Affects {c.affectedNodeIds.length} node(s)</p>
+                                                {c.estimationImpact && (
+                                                    <p className="text-[10px] text-slate-400 ml-4">Impact: {c.estimationImpact}</p>
                                                 )}
                                             </li>
                                         ))}
@@ -616,7 +616,7 @@ function BlueprintOverview({ blueprint }: { blueprint: ProjectTechnicalBlueprint
                                                     <span className="text-emerald-400">◆</span>
                                                     <span className="font-medium">{ep.description}</span>
                                                 </div>
-                                                <p className="text-[10px] text-slate-400 ml-4 capitalize">Flexibility: {ep.flexibility}</p>
+                                                <p className="text-[10px] text-slate-400 ml-4 capitalize">Fit: {ep.naturalFit}</p>
                                             </li>
                                         ))}
                                     </ul>
@@ -633,10 +633,10 @@ function BlueprintOverview({ blueprint }: { blueprint: ProjectTechnicalBlueprint
                                     <ul className="space-y-1.5">
                                         {blueprint.estimationContext.recurringPatterns.map((p, i) => (
                                             <li key={i} className="text-xs text-slate-700 bg-indigo-50/50 rounded px-2 py-1.5">
-                                                <span className="font-medium capitalize">{p.type.replace(/-/g, ' ')}</span>
+                                                <span className="font-medium capitalize">{p.name}</span>
                                                 <span className="text-slate-400 mx-1">—</span>
                                                 <span>{p.description}</span>
-                                                <span className="text-[10px] text-slate-400 ml-1">({p.nodeIds.length} nodes)</span>
+                                                <span className="text-[10px] text-slate-400 ml-1">({p.involvedNodeIds.length} nodes)</span>
                                             </li>
                                         ))}
                                     </ul>
