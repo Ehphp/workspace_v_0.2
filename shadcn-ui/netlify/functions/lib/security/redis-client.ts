@@ -45,7 +45,7 @@ async function connectRedis(): Promise<RedisClientType> {
     });
 
     await client.connect();
-    return client;
+    return client as any;
 }
 
 /**

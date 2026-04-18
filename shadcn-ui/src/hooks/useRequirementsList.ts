@@ -48,6 +48,7 @@ interface UseRequirementsListReturn {
     // Actions
     loadData: (signal?: AbortSignal) => Promise<void>;
     updateRequirement: (id: string, updates: Partial<RequirementWithEstimation>) => void;
+    addRequirement: (req: RequirementWithEstimation) => void;
 }
 
 export function useRequirementsList({ projectId, userId }: UseRequirementsListProps): UseRequirementsListReturn {

@@ -52,5 +52,5 @@ export function useEstimationData(): UseEstimationDataReturn {
     const loading = query.isLoading || query.isFetching;
     const error = (query.error as Error) || null;
 
-    return { data, loading, error, refetch: query.refetch };
+    return { data, loading, error, refetch: () => query.refetch().then(() => void 0) };
 }

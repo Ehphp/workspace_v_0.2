@@ -18,6 +18,7 @@ export type BlueprintComponentType =
     | 'backend'
     | 'database'
     | 'integration'
+    | 'workflow'
     | 'reporting'
     | 'security'
     | 'infrastructure'

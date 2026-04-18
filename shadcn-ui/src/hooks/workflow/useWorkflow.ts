@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Requirement, RequirementState } from '@/types/database';
+import { Requirement } from '@/types/database';
+import { RequirementState } from '@/lib/workflow/types';
 import { WorkflowEngine } from '@/lib/workflow/Engine';
 import { PersonalWorkflow } from '@/lib/workflow/definitions/personal';
 import { TeamWorkflow } from '@/lib/workflow/definitions/team';

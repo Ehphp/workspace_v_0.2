@@ -1,6 +1,7 @@
+/// <reference types="vitest/globals" />
 /**
  * Test suite for Estimation History features
- * 
+ *
  * This file contains example tests for the estimation history functionality.
  * Uncomment and adapt when setting up your test framework (Vitest, Jest, etc.)
  */

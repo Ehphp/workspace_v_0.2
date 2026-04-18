@@ -78,7 +78,7 @@ export async function getCachedResponse<T>(
     try {
         const client = await tryGetRedisClient();
         if (!client) return null;
-        const raw = await client.get(key);
+        const raw = await client.get(key) as string | null;
         if (raw === null) {
             console.log(`[ai-cache] MISS ${config.prefix} key=${key.slice(-12)}`);
             return null;

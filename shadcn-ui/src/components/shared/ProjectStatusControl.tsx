@@ -45,7 +45,7 @@ export function ProjectStatusControl({ project, onStatusChange, canManage }: Pro
     if (!canManage) {
         return (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                {project.status === 'LOCKED' ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                {(project.status as string) === 'LOCKED' ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
                 <span className="capitalize">{project.status.toLowerCase()}</span>
             </div>
         );
@@ -60,7 +60,7 @@ export function ProjectStatusControl({ project, onStatusChange, canManage }: Pro
             >
                 <SelectTrigger className="w-[130px]">
                     <div className="flex items-center gap-2">
-                        {project.status === 'LOCKED' ? (
+                        {(project.status as string) === 'LOCKED' ? (
                             <Lock className="h-4 w-4 text-orange-500" />
                         ) : (
                             <Unlock className="h-4 w-4 text-green-500" />

@@ -5,8 +5,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
-import { MOCK_DRIVERS, MOCK_RISKS } from '@/lib/mockData';
 import type { Driver, Risk } from '@/types/database';
+
+const MOCK_DRIVERS: Driver[] = [];
+const MOCK_RISKS: Risk[] = [];
 import type { WizardData } from '@/hooks/useWizardState';
 
 interface WizardStep4Props {

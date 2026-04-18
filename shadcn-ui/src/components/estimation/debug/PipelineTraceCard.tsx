@@ -20,7 +20,7 @@ import type { DebugDecisionTraceEntry } from '@/lib/pipeline-debug-api';
 type PipelineTrace = NonNullable<EstimationFromInterviewResponse['pipelineTrace']>;
 
 interface CandidateProvenanceLike {
-    primarySource: string;
+    primarySource?: string;
 }
 
 interface PipelineTraceCardProps {

@@ -142,7 +142,7 @@ export function RequirementWizard({ projectId, projectContext, onSuccess, onCanc
                 try {
                     await saveRequirementUnderstanding({
                         requirementId: requirement.id,
-                        understanding: data.requirementUnderstanding as Record<string, unknown>,
+                        understanding: data.requirementUnderstanding as unknown as Record<string, unknown>,
                         inputDescription: data.description,
                         inputTechCategory: data.techCategory || undefined,
                     });
@@ -157,7 +157,7 @@ export function RequirementWizard({ projectId, projectContext, onSuccess, onCanc
                 try {
                     await saveImpactMap({
                         requirementId: requirement.id,
-                        impactMap: data.impactMap as Record<string, unknown>,
+                        impactMap: data.impactMap as unknown as Record<string, unknown>,
                         inputDescription: data.description,
                         inputTechCategory: data.techCategory || undefined,
                         hasRequirementUnderstanding: !!data.requirementUnderstandingConfirmed,
@@ -174,7 +174,7 @@ export function RequirementWizard({ projectId, projectContext, onSuccess, onCanc
                 try {
                     const savedBlueprint = await saveEstimationBlueprint({
                         requirementId: requirement.id,
-                        blueprint: data.estimationBlueprint as Record<string, unknown>,
+                        blueprint: data.estimationBlueprint as unknown as Record<string, unknown>,
                         inputDescription: data.description,
                         inputTechCategory: data.techCategory || undefined,
                         confidenceScore: data.estimationBlueprint.overallConfidence,
@@ -228,10 +228,10 @@ export function RequirementWizard({ projectId, projectContext, onSuccess, onCanc
                 technologyId: data.technologyId || null,
                 blueprintId: savedBlueprintId || null,
                 understanding: data.requirementUnderstanding
-                    ? (data.requirementUnderstanding as Record<string, unknown>)
+                    ? (data.requirementUnderstanding as unknown as Record<string, unknown>)
                     : null,
                 impactMapData: data.impactMap
-                    ? (data.impactMap as Record<string, unknown>)
+                    ? (data.impactMap as unknown as Record<string, unknown>)
                     : null,
                 activities: resolvedActivities,
                 drivers: resolvedDrivers,

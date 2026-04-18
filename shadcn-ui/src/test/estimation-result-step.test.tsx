@@ -158,7 +158,7 @@ describe('EstimationResultStep — blueprint coverage summary', () => {
         const result = baseResult({
             metrics: {
                 totalMs: 100,
-                pipeline: 'legacy',
+                pipeline: 'deterministic-fallback',
                 candidateSource: 'keyword-ranking',
             },
         });

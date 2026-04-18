@@ -413,7 +413,7 @@ TECHNOLOGY CATEGORY: ${input.category || 'MULTI'}
         // 3. Check cache (Redis)
         try {
             const redis = await getRedisClient();
-            const cached = await redis.get(cacheKey);
+            const cached = await redis.get(cacheKey) as string | null;
             if (cached) {
                 metrics.preset_cache_hits_total++;
                 metadata.cached = true;

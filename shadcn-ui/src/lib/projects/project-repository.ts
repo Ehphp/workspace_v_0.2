@@ -60,7 +60,7 @@ export async function fetchProjectByUser(
         .single();
 
     if (signal) {
-        query = query.abortSignal(signal);
+        query = (query as any).abortSignal(signal);
     }
 
     const { data, error } = await query;
@@ -94,7 +94,7 @@ export async function fetchProjects(opts: FetchProjectsOptions): Promise<Project
 
     const { data, error } = await query;
     if (error) throw new RepositoryError(error.message, error);
-    return (data || []) as Project[];
+    return (data || []) as unknown as Project[];
 }
 
 /** Fetch project IDs for an organization (lightweight query for aggregation). */

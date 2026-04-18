@@ -4,7 +4,7 @@
  * Tests to verify the validation logic works correctly
  */
 
-import { validateActivityGenericness, validateActivities } from '../netlify/functions/lib/validation/activity-genericness-validator';
+import { validateActivityGenericness, validateActivities } from '../../netlify/functions/lib/validation/activity-genericness-validator';
 
 console.log('=== Activity Genericness Validator Tests ===\n');
 

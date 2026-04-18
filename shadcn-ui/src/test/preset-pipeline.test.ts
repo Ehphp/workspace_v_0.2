@@ -13,13 +13,13 @@ import {
     splitTask,
     postProcessAndScore,
     PipelineActivity
-} from '../../../src/types/ai-validation';
+} from '../types/ai-validation';
 import {
     generatePresetPipeline,
     PipelineInput,
     getMetrics
-} from '../netlify/functions/lib/ai/pipeline/preset-pipeline';
-import { validatePreset, FALLBACK_PRESET } from '../netlify/functions/lib/ai/validation/preset-schema';
+} from '../../netlify/functions/lib/ai/pipeline/preset-pipeline';
+import { validatePreset, FALLBACK_PRESET } from '../../netlify/functions/lib/ai/validation/preset-schema';
 
 /**
  * Unit Tests: splitTask
