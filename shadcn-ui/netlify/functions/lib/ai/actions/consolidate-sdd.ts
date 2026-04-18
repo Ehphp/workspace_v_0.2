@@ -14,7 +14,7 @@ import {
     CONSOLIDATION_SYSTEM_PROMPT,
     createConsolidationResponseSchema,
 } from '../prompts/consolidation-sdd';
-import type { StructuredDocumentDigest } from '../../../domain/project/project-technical-blueprint.types';
+import type { StructuredDocumentDigest } from '../../domain/project/project-technical-blueprint.types';
 
 // Re-use the existing strict SDD schema for validation
 // (same schema used in generate-project-from-documentation.ts)

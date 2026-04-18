@@ -210,7 +210,7 @@ async function fetchActivitiesLegacy(
  */
 export async function fetchActivitiesServerSide(
     techCategory: string,
-    techPresetId: string,
+    techPresetId: string | undefined,
     clientActivities?: Activity[]
 ): Promise<ActivityFetchResult> {
     const start = Date.now();

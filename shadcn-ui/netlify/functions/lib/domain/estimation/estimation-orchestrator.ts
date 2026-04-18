@@ -116,9 +116,9 @@ export interface OrchestratorResult {
     confidenceScore: number;
     suggestedDrivers: Array<{
         code: string;
-        suggestedValue: string;
+        suggestedValue?: string;
         reason: string;
-        source: 'ai' | 'rule';
+        source: 'ai' | 'rule' | 'project_context_rule';
         fromQuestionId?: string | null;
     }>;
     suggestedRisks: string[];

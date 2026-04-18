@@ -149,7 +149,7 @@ export interface AgentInput {
      * does not re-discover known artifact inconsistencies from scratch.
      * Shape: ConflictEntry[] from canonical-profile.service.ts
      */
-    canonicalConflicts?: import('../../../../src/types/domain-model').ConflictEntry[];
+    canonicalConflicts?: import('../../../../../src/types/domain-model').ConflictEntry[];
 }
 
 export interface AgentActivity {

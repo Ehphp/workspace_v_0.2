@@ -68,7 +68,7 @@ export interface MergedDriver {
     code: string;
     suggestedValue?: string;
     reason: string;
-    source: string;
+    source: 'ai' | 'rule' | 'project_context_rule';
     rule?: string;
     fromQuestionId?: string | null;
 }
@@ -76,7 +76,7 @@ export interface MergedDriver {
 export interface MergedRisk {
     code: string;
     reason: string;
-    source: string;
+    source: 'ai' | 'rule' | 'project_context_rule';
     rule?: string;
 }
 

@@ -186,7 +186,7 @@ async function fallbackActivitySearch(
             .order('group')
             .order('base_hours')
             .limit(limit);
-        data = retry.data;
+        data = retry.data?.map(r => ({ ...r, technology_id: null })) ?? null;
         error = retry.error;
     }
 
