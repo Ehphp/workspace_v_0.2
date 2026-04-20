@@ -21,6 +21,38 @@ import {
 import { getLatestProjectTechnicalBlueprint } from '@/lib/project-technical-blueprint-repository';
 import type { EstimationFromInterviewResponse } from '@/types/requirement-interview';
 
+// ─── Full Pipeline Debug Types ────────────────────────────────────────────────
+
+export type DebugStepId =
+    | 'validate'
+    | 'understanding'
+    | 'impact-map'
+    | 'blueprint'
+    | 'interview'
+    | 'estimate';
+
+export type DebugStepStatus = 'pending' | 'running' | 'success' | 'error' | 'skipped';
+
+export interface DebugStep {
+    id: DebugStepId;
+    label: string;
+    endpoint: string;
+    status: DebugStepStatus;
+    request?: Record<string, unknown>;
+    response?: Record<string, unknown>;
+    durationMs?: number;
+    error?: string;
+    note?: string;
+}
+
+export interface FullDebugRun {
+    id: string;
+    timestamp: string;
+    config: DebugRunConfig;
+    steps: DebugStep[];
+    totalDurationMs: number;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface DebugKillSwitches {
@@ -324,4 +356,171 @@ export async function runDebugEstimation(config: DebugRunConfig): Promise<DebugR
             durationMs: Date.now() - start,
         };
     }
+}
+
+// ─── Full Pipeline Runner ─────────────────────────────────────────────────────
+
+const STEP_DEFS: Pick<DebugStep, 'id' | 'label' | 'endpoint'>[] = [
+    { id: 'validate',      label: 'Validate Requirement',      endpoint: 'ai-validate-requirement'      },
+    { id: 'understanding', label: 'Requirement Understanding', endpoint: 'ai-requirement-understanding' },
+    { id: 'impact-map',    label: 'Impact Map',                endpoint: 'ai-impact-map'                },
+    { id: 'blueprint',     label: 'Estimation Blueprint',      endpoint: 'ai-estimation-blueprint'      },
+    { id: 'interview',     label: 'Requirement Interview',     endpoint: 'ai-requirement-interview'     },
+    { id: 'estimate',      label: 'Estimate from Interview',   endpoint: 'ai-estimate-from-interview'   },
+];
+
+export async function runFullDebugPipeline(
+    config: DebugRunConfig,
+    onProgress: (steps: DebugStep[]) => void
+): Promise<FullDebugRun> {
+    const runId = crypto.randomUUID();
+    const globalStart = Date.now();
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const authHeader: Record<string, string> = session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {};
+
+    const steps: DebugStep[] = STEP_DEFS.map(def => ({ ...def, status: 'pending' as const }));
+    const emit = () => onProgress([...steps]);
+    emit();
+
+    let ctxFromDb: Record<string, unknown> = {};
+    if (config.requirementId) {
+        const loaded = await loadArtifacts(config.requirementId, config.projectId);
+        ctxFromDb = loaded.body;
+    }
+
+    const ctx: Record<string, unknown> = { ...ctxFromDb };
+
+    // Remove DB artifacts for disabled steps so they don't leak into downstream requests
+    if (!config.killSwitches.understandingSignalEnabled) delete ctx.requirementUnderstanding;
+    if (!config.killSwitches.impactMapSignalEnabled)     delete ctx.impactMap;
+    if (!config.killSwitches.blueprintSignalEnabled)     delete ctx.estimationBlueprint;
+
+    function skipStep(id: DebugStepId) {
+        const step = steps.find(s => s.id === id)!;
+        step.status = 'skipped';
+        emit();
+    }
+
+    async function runStep(id: DebugStepId, body: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+        const step = steps.find(s => s.id === id)!;
+        step.status = 'running';
+        step.request = body;
+        emit();
+
+        const t = Date.now();
+        try {
+            const res = await fetch(buildFunctionUrl(step.endpoint), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...authHeader },
+                body: JSON.stringify(body),
+            });
+            const data = await res.json();
+            step.durationMs = Date.now() - t;
+            step.response = data;
+
+            if (!res.ok || data.success === false) {
+                step.status = 'error';
+                step.error =
+                    data.error?.message ??
+                    data.message ??
+                    (typeof data.error === 'string' ? data.error : undefined) ??
+                    `HTTP ${res.status}`;
+                emit();
+                return null;
+            }
+
+            step.status = 'success';
+            emit();
+            return data;
+        } catch (err: any) {
+            step.durationMs = Date.now() - t;
+            step.status = 'error';
+            step.error = err?.message ?? 'Network error';
+            emit();
+            return null;
+        }
+    }
+
+    const base = {
+        description: config.description,
+        techCategory: config.techCategory,
+        ...(ctx.techPresetId              ? { techPresetId: ctx.techPresetId }                           : {}),
+        ...(ctx.projectContext            ? { projectContext: ctx.projectContext }                       : {}),
+        ...(ctx.projectTechnicalBlueprint ? { projectTechnicalBlueprint: ctx.projectTechnicalBlueprint } : {}),
+    };
+
+    // Step 1 — Validate
+    await runStep('validate', { description: config.description });
+
+    // Step 2 — Understanding
+    if (config.killSwitches.understandingSignalEnabled) {
+        const understandingData = await runStep('understanding', { ...base });
+        if (understandingData?.understanding) ctx.requirementUnderstanding = understandingData.understanding;
+    } else {
+        skipStep('understanding');
+    }
+
+    // Step 3 — Impact Map
+    if (config.killSwitches.impactMapSignalEnabled) {
+        const impactMapData = await runStep('impact-map', {
+            ...base,
+            ...(ctx.requirementUnderstanding ? { requirementUnderstanding: ctx.requirementUnderstanding } : {}),
+        });
+        if (impactMapData?.impactMap) ctx.impactMap = impactMapData.impactMap;
+    } else {
+        skipStep('impact-map');
+    }
+
+    // Step 4 — Estimation Blueprint
+    if (config.killSwitches.blueprintSignalEnabled) {
+        const blueprintData = await runStep('blueprint', {
+            ...base,
+            ...(ctx.requirementUnderstanding ? { requirementUnderstanding: ctx.requirementUnderstanding } : {}),
+            ...(ctx.impactMap                ? { impactMap: ctx.impactMap }                                : {}),
+        });
+        if (blueprintData?.blueprint) ctx.estimationBlueprint = blueprintData.blueprint;
+    } else {
+        skipStep('blueprint');
+    }
+
+    // Step 5 — Interview
+    const interviewData = await runStep('interview', {
+        ...base,
+        ...(ctx.requirementUnderstanding ? { requirementUnderstanding: ctx.requirementUnderstanding } : {}),
+        ...(ctx.impactMap                ? { impactMap: ctx.impactMap }                                : {}),
+        ...(ctx.estimationBlueprint      ? { estimationBlueprint: ctx.estimationBlueprint }            : {}),
+    });
+    if (interviewData?.decision === 'SKIP') {
+        const interviewStep = steps.find(s => s.id === 'interview')!;
+        interviewStep.note = `SKIP — ${interviewData.reasoning ?? 'intervista non necessaria'}`;
+        emit();
+    }
+
+    // Step 6 — Estimate
+    await runStep('estimate', {
+        description: config.description,
+        techCategory: config.techCategory,
+        ...(ctx.techPresetId              ? { techPresetId: ctx.techPresetId }                           : {}),
+        ...(ctx.projectContext            ? { projectContext: ctx.projectContext }                       : {}),
+        ...(ctx.requirementUnderstanding  ? { requirementUnderstanding: ctx.requirementUnderstanding }  : {}),
+        ...(ctx.impactMap                 ? { impactMap: ctx.impactMap }                                 : {}),
+        ...(ctx.estimationBlueprint       ? { estimationBlueprint: ctx.estimationBlueprint }             : {}),
+        ...(ctx.projectTechnicalBlueprint ? { projectTechnicalBlueprint: ctx.projectTechnicalBlueprint } : {}),
+        answers: {},
+        devConfig: {
+            killSwitches: config.killSwitches,
+            forceMode: config.forceMode === 'deterministic' ? 'deterministic' : undefined,
+        },
+    });
+
+    return {
+        id: runId,
+        timestamp: new Date().toISOString(),
+        config,
+        steps: [...steps],
+        totalDurationMs: Date.now() - globalStart,
+    };
 }
