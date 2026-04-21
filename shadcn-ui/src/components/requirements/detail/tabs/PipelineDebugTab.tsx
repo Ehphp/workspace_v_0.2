@@ -98,13 +98,13 @@ function clearFullHistory(reqId: string): void { localStorage.removeItem(lsKeyFu
 interface KsToggle { key: keyof DebugKillSwitches; label: string; group: string }
 
 const KS_TOGGLES: KsToggle[] = [
-    { key: 'blueprintSignalEnabled',       label: 'Blueprint signal',        group: 'Signals' },
-    { key: 'impactMapSignalEnabled',        label: 'Impact-map signal',       group: 'Signals' },
     { key: 'understandingSignalEnabled',    label: 'Understanding signal',    group: 'Signals' },
+    { key: 'impactMapSignalEnabled',        label: 'Impact-map signal',       group: 'Signals' },
+    { key: 'blueprintSignalEnabled',        label: 'Blueprint signal',        group: 'Signals' },
     { key: 'projectActivitySignalEnabled',  label: 'Project-activity signal', group: 'Signals' },
     { key: 'agenticEnabled',               label: 'Agentic pipeline',        group: 'Agent'   },
-    { key: 'reflectionEnabled',            label: 'Reflection loop',         group: 'Agent'   },
     { key: 'toolUseEnabled',               label: 'Tool use',                group: 'Agent'   },
+    { key: 'reflectionEnabled',            label: 'Reflection loop',         group: 'Agent'   },
     { key: 'agentDeltaEnabled',            label: 'Agent delta (Δ)',         group: 'Obs'     },
 ];
 

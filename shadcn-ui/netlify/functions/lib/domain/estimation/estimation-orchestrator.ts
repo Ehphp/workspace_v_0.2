@@ -181,7 +181,18 @@ function buildSignalSourceStats(
         const primarySourceShare = candidateResult.candidates.length > 0
             ? Number((primaryCandidates.length / candidateResult.candidates.length).toFixed(3))
             : 0;
-        return { source: ss.source, signalCount: ss.signals.length, topAvgScore, primarySourceShare };
+        return {
+            source: ss.source,
+            signalCount: ss.signals.length,
+            topAvgScore,
+            primarySourceShare,
+            rawSignals: ss.signals.slice(0, 50).map(sig => ({
+                activityCode: sig.activityCode,
+                score: sig.score,
+                confidence: sig.confidence,
+                provenance: sig.provenance,
+            })),
+        };
     });
 }
 

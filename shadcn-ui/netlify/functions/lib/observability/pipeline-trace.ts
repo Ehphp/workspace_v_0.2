@@ -32,6 +32,13 @@ export interface SignalSourceStat {
     topAvgScore: number;
     /** Fraction of final candidates that list this as their primarySource */
     primarySourceShare: number;
+    /** All raw signals extracted by this source (capped at 50 for payload size) */
+    rawSignals?: Array<{
+        activityCode: string;
+        score: number;
+        confidence: number;
+        provenance: string[];
+    }>;
 }
 
 // ─── Agent delta ──────────────────────────────────────────────────────────

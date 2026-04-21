@@ -363,6 +363,12 @@ export interface EstimationFromInterviewResponse {
             signalCount: number;
             topAvgScore: number;
             primarySourceShare: number;
+            rawSignals?: Array<{
+                activityCode: string;
+                score: number;
+                confidence: number;
+                provenance: string[];
+            }>;
         }>;
         candidateCount: number;
         candidateSynthesisStrategy: string;

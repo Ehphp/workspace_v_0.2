@@ -15,13 +15,26 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronUp, Activity, GitBranch, Zap, AlertTriangle, ListTree } from 'lucide-react';
 import type { EstimationFromInterviewResponse } from '@/types/requirement-interview';
-import type { DebugDecisionTraceEntry } from '@/lib/pipeline-debug-api';
+import type { DebugDecisionTraceEntry, DebugActivityContributions } from '@/lib/pipeline-debug-api';
 
 type PipelineTrace = NonNullable<EstimationFromInterviewResponse['pipelineTrace']>;
 
 interface CandidateProvenanceLike {
+    code?: string;
+    name?: string;
     primarySource?: string;
+    contributions?: DebugActivityContributions;
 }
+
+// Maps signalSource.source names → contributions key
+const SOURCE_TO_CONTRIBUTION_KEY: Record<string, keyof DebugActivityContributions> = {
+    'blueprint':          'blueprint',
+    'impact-map':         'impactMap',
+    'understanding':      'understanding',
+    'keyword':            'keyword',
+    'project-activity':   'projectActivity',
+    'project-context':    'projectContext',
+};
 
 interface PipelineTraceCardProps {
     trace: PipelineTrace;
@@ -83,6 +96,16 @@ export function PipelineTraceCard({ trace, decisionTrace, candidateProvenance, d
     const [open, setOpen] = useState(defaultOpen);
     const [ksOpen, setKsOpen] = useState(false);
     const [dtOpen, setDtOpen] = useState(false);
+    const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
+
+    const selectedCodes = new Set(candidateProvenance?.map(p => p.code).filter(Boolean) as string[]);
+
+    const toggleSource = (source: string) =>
+        setExpandedSources(prev => {
+            const next = new Set(prev);
+            next.has(source) ? next.delete(source) : next.add(source);
+            return next;
+        });
 
     // Compute full primary-source distribution from candidateProvenance.
     // Sources that attributed candidates but have no signalSet are "silent" —
@@ -109,7 +132,6 @@ export function PipelineTraceCard({ trace, decisionTrace, candidateProvenance, d
         ? 'bg-indigo-100 text-indigo-800 border-indigo-200'
         : 'bg-orange-100 text-orange-800 border-orange-200';
 
-    const maxShare = Math.max(...trace.signalSources.map(s => s.primarySourceShare), 0.001);
 
     return (
         <div className="border border-slate-200 rounded-lg bg-white text-sm">
@@ -164,33 +186,89 @@ export function PipelineTraceCard({ trace, decisionTrace, candidateProvenance, d
                     {/* ── Signal sources ── */}
                     <div>
                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Signal Sources</p>
-                        <div className="space-y-1.5">
-                            {trace.signalSources.map(s => (
-                                <div key={s.source} className="flex items-center gap-2">
-                                    <Badge variant="outline" className={`text-[10px] w-28 justify-center shrink-0 ${sourceColor(s.source)}`}>
-                                        {s.source}
-                                    </Badge>
-                                    <span className="text-xs text-slate-400 w-16 shrink-0">
-                                        {s.signalCount} signals
-                                    </span>
-                                    <ScoreBar value={s.primarySourceShare} max={maxShare} />
-                                    <span className="text-xs font-mono text-slate-500 w-10 text-right">
-                                        {Math.round(s.primarySourceShare * 100)}%
-                                    </span>
-                                    <span className="text-xs font-mono text-slate-400 w-12 text-right">
-                                        avg {s.topAvgScore.toFixed(2)}
-                                    </span>
-                                </div>
-                            ))}
+                        <div className="space-y-1">
+                            {trace.signalSources.map(s => {
+                                const signalActivities = s.rawSignals
+                                    ? [...s.rawSignals].sort((a, b) => b.score - a.score)
+                                    : [];
+                                const isExpanded = expandedSources.has(s.source);
+                                const maxScore = signalActivities[0]?.score ?? 1;
+                                const selectedHits = signalActivities.filter(sig => selectedCodes.has(sig.activityCode)).length;
+                                const totalSelected = selectedCodes.size;
+
+                                return (
+                                    <div key={s.source} className="rounded border border-slate-100 overflow-hidden">
+                                        <button
+                                            onClick={() => signalActivities.length > 0 && toggleSource(s.source)}
+                                            disabled={signalActivities.length === 0}
+                                            className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 transition-colors disabled:cursor-default"
+                                        >
+                                            <Badge variant="outline" className={`text-[10px] w-28 justify-center shrink-0 ${sourceColor(s.source)}`}>
+                                                {s.source}
+                                            </Badge>
+                                            <span className="text-xs text-slate-400 w-16 shrink-0">
+                                                {s.signalCount} estratti
+                                            </span>
+                                            <ScoreBar value={selectedHits} max={Math.max(totalSelected, 1)} />
+                                            <span
+                                                className="text-xs font-mono w-16 text-right shrink-0"
+                                                title={`${selectedHits} delle ${totalSelected} attività selezionate ricevono contributo da questa sorgente`}
+                                            >
+                                                <span className={selectedHits > 0 ? 'text-green-600 font-semibold' : 'text-slate-400'}>
+                                                    {selectedHits}
+                                                </span>
+                                                <span className="text-slate-300">/{totalSelected} sel</span>
+                                            </span>
+                                            <span className="text-xs font-mono text-slate-400 w-12 text-right">
+                                                avg {s.topAvgScore.toFixed(2)}
+                                            </span>
+                                            {signalActivities.length > 0 && (
+                                                isExpanded
+                                                    ? <ChevronUp className="h-3 w-3 text-slate-300 shrink-0 ml-1" />
+                                                    : <ChevronDown className="h-3 w-3 text-slate-300 shrink-0 ml-1" />
+                                            )}
+                                        </button>
+
+                                        {isExpanded && signalActivities.length > 0 && (
+                                            <div className="border-t border-slate-100 bg-slate-50 divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                                                {signalActivities.map(sig => {
+                                                    const isSelected = selectedCodes.has(sig.activityCode);
+                                                    return (
+                                                        <div key={sig.activityCode} className={`flex items-center gap-2 px-3 py-1.5 ${isSelected ? 'bg-green-50' : ''}`}>
+                                                            {isSelected
+                                                                ? <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" title="Selezionata" />
+                                                                : <span className="w-1.5 h-1.5 rounded-full bg-slate-200 shrink-0" />
+                                                            }
+                                                            <code className={`text-[10px] font-mono w-32 shrink-0 truncate ${isSelected ? 'text-green-700 font-semibold' : 'text-indigo-600'}`}>
+                                                                {sig.activityCode}
+                                                            </code>
+                                                            <div className="w-20 shrink-0">
+                                                                <ScoreBar value={sig.score} max={maxScore} />
+                                                            </div>
+                                                            <span className="text-[10px] font-mono text-slate-400 w-8 text-right shrink-0">
+                                                                {sig.score.toFixed(2)}
+                                                            </span>
+                                                            {sig.provenance.length > 0 && (
+                                                                <span className="text-[10px] text-slate-400 flex-1 truncate" title={sig.provenance.join(' → ')}>
+                                                                    {sig.provenance[0]}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+
                             {silentSources.map(s => (
-                                <div key={s.source} className="flex items-center gap-2 opacity-60" title="Fonte senza signal set proprio — candidati attribuiti tramite provenance">
+                                <div key={s.source} className="flex items-center gap-2 px-2 py-1.5 opacity-60" title="Fonte senza signal set proprio — candidati attribuiti tramite provenance">
                                     <Badge variant="outline" className={`text-[10px] w-28 justify-center shrink-0 border-dashed ${sourceColor(s.source)}`}>
                                         {s.source}
                                     </Badge>
-                                    <span className="text-xs text-slate-300 w-16 shrink-0 italic">
-                                        no signals
-                                    </span>
-                                    <ScoreBar value={s.share} max={maxShare} />
+                                    <span className="text-xs text-slate-300 w-16 shrink-0 italic">no signals</span>
+                                    <ScoreBar value={s.share} max={1} />
                                     <span className="text-xs font-mono text-slate-400 w-10 text-right">
                                         {Math.round(s.share * 100)}%
                                     </span>
