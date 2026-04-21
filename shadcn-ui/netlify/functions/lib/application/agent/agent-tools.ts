@@ -16,6 +16,7 @@ import { ToolDefinition, ToolCallRecord, AgentActivity } from './agent-types';
 import { searchSimilarActivities, isVectorSearchEnabled } from '../../infrastructure/llm/vector-search';
 import { retrieveRAGContext } from '../../infrastructure/llm/rag';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { getDomainSupabase } from '../../infrastructure/db/supabase';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tool Definitions (OpenAI function calling schema)
@@ -105,6 +106,45 @@ export const AGENT_TOOL_DEFINITIONS: ToolDefinition[] = [
     {
         type: 'function',
         function: {
+            name: 'create_project_activity',
+            description: 'Create a new project-scoped activity when no suitable match exists in the catalog (all search results have similarity < 0.5). The activity is saved to the project and immediately available for this estimation. Use ONLY as last resort after searching the catalog.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    name: {
+                        type: 'string',
+                        description: 'Activity name (concise, max 80 chars, same naming style as catalog)'
+                    },
+                    description: {
+                        type: 'string',
+                        description: 'What this activity covers technically'
+                    },
+                    group: {
+                        type: 'string',
+                        enum: ['ANALYSIS', 'DEV', 'TEST', 'OPS', 'GOVERNANCE'],
+                        description: 'Activity group'
+                    },
+                    baseHours: {
+                        type: 'number',
+                        description: 'Estimated base hours. Use catalog scale: 4h=half day, 8h=1 day, 16h=2 days, 24h=3 days, 40h=1 week'
+                    },
+                    interventionType: {
+                        type: 'string',
+                        enum: ['NEW', 'MODIFY', 'CONFIGURE', 'MIGRATE'],
+                        description: 'Type of intervention this activity represents'
+                    },
+                    rationale: {
+                        type: 'string',
+                        description: 'Why this activity is needed and why no catalog activity covers it (include what you searched for)'
+                    }
+                },
+                required: ['name', 'description', 'group', 'baseHours', 'interventionType', 'rationale']
+            }
+        }
+    },
+    {
+        type: 'function',
+        function: {
             name: 'get_activity_details',
             description: 'Get full details (description, group, hours, tech_category) for specific activity codes. Use this when you need more information about activities before selecting them.',
             parameters: {
@@ -130,12 +170,14 @@ export const AGENT_TOOL_DEFINITIONS: ToolDefinition[] = [
  * Runtime context for tool execution — holds references to shared resources
  */
 export interface ToolExecutionContext {
-    /** Full activity catalog (from input) */
+    /** Full activity catalog (from input) — mutable, new activities are pushed here */
     activitiesCatalog: AgentActivity[];
     /** User ID for personalized RAG */
     userId?: string;
-    /** Project ID for scoped vector search of project_activities */
+    /** Project ID for scoped vector search and activity creation */
     projectId?: string;
+    /** Codes of activities created via create_project_activity during this run */
+    createdActivityCodes: string[];
     /** Pre-fetched RAG context (avoids duplicate calls when agent uses query_history) */
     prefetchedRAG?: {
         hasExamples: boolean;
@@ -178,6 +220,9 @@ export async function executeTool(
                 break;
             case 'get_activity_details':
                 result = await executeGetActivityDetails(args, ctx);
+                break;
+            case 'create_project_activity':
+                result = await executeCreateProjectActivity(args, ctx);
                 break;
             default:
                 result = { error: `Unknown tool: ${toolName}` };
@@ -490,6 +535,91 @@ async function executeGetActivityDetails(
         found: found.length,
         notFound: notFound.length > 0 ? notFound : undefined
     };
+}
+
+/**
+ * create_project_activity — Create a project-scoped activity when catalog has no match
+ */
+async function executeCreateProjectActivity(
+    args: Record<string, any>,
+    ctx: ToolExecutionContext
+): Promise<any> {
+    if (!ctx.projectId) {
+        return { error: 'Cannot create project activity: no projectId in context. This requirement is not linked to a project.' };
+    }
+
+    const name         = (args.name as string).trim().slice(0, 80);
+    const description  = (args.description as string).trim();
+    const group        = args.group as string;
+    const baseHours    = Math.max(1, Math.round(Number(args.baseHours)));
+    const interventionType = args.interventionType as string;
+    const rationale    = (args.rationale as string).trim();
+
+    // Generate PRJ_ code: sanitize name + 4-char random suffix
+    const sanitized = name
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '')
+        .slice(0, 18);
+    const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const code = `PRJ_${sanitized}_${suffix}`;
+
+    console.log(`[tools]   create_project_activity: "${name}" → ${code} (${baseHours}h, ${group}, ${interventionType})`);
+
+    try {
+        const supabase = getDomainSupabase();
+        const { error } = await supabase.from('project_activities').insert({
+            project_id:        ctx.projectId,
+            code,
+            name,
+            description,
+            group,
+            base_hours:        baseHours,
+            sm_multiplier:     1.0,
+            lg_multiplier:     1.0,
+            intervention_type: interventionType,
+            effort_modifier:   1.0,
+            ai_rationale:      rationale,
+            confidence:        0.7,
+            is_enabled:        true,
+            position:          0,
+            source_activity_code:  null,
+            blueprint_node_name:   null,
+            blueprint_node_type:   null,
+        });
+
+        if (error) {
+            console.error(`[tools]   create_project_activity DB error:`, error.message);
+            return { error: `Failed to persist activity: ${error.message}` };
+        }
+
+        // Add to in-memory catalog so it's available for validate_estimation and final output
+        ctx.activitiesCatalog.push({
+            code,
+            name,
+            description,
+            base_hours: baseHours,
+            group,
+            tech_category: 'MULTI',
+        });
+        ctx.createdActivityCodes.push(code);
+
+        console.log(`[tools]   create_project_activity: creata e aggiunta al catalogo → ${code}`);
+
+        return {
+            created: true,
+            code,
+            name,
+            baseHours,
+            group,
+            interventionType,
+            note: 'Activity saved to project_activities and available for this estimation.'
+        };
+    } catch (err: any) {
+        console.error(`[tools]   create_project_activity EXCEPTION:`, err?.message);
+        return { error: `Exception during activity creation: ${err?.message ?? String(err)}` };
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -703,6 +703,7 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
             activitiesCatalog: input.activities,
             userId: input.userId,
             projectId: input.projectId,
+            createdActivityCodes: [],
             prefetchedRAG: prefetchedRAGCtx ? {
                 hasExamples: prefetchedRAGCtx.hasExamples,
                 examples: prefetchedRAGCtx.examples,
@@ -948,6 +949,7 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
             engineValidation,
             agentMetadata: metadata,
             expandedActivityCodes: discoveredCodes.length > 0 ? discoveredCodes : undefined,
+            createdActivityCodes: toolCtx.createdActivityCodes.length > 0 ? toolCtx.createdActivityCodes : undefined,
         };
 
     } catch (error) {

@@ -187,6 +187,8 @@ export interface AgentOutput {
     error?: string;
     /** Activity codes discovered via search_catalog during tool-use (B1 expansion) */
     expandedActivityCodes?: string[];
+    /** Activity codes created by the agent via create_project_activity */
+    createdActivityCodes?: string[];
 }
 
 export interface SelectedActivityResult {
