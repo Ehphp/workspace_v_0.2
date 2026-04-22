@@ -131,23 +131,6 @@ export const COLUMN_HEADERS: { key: BlueprintNodeKind; label: string; x: number 
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Risk band & pattern color constants (used by decoration nodes)
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const RISK_BAND_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-    high:   { bg: '#fef2f2', border: '#ef4444', text: '#b91c1c' },
-    medium: { bg: '#fffbeb', border: '#f59e0b', text: '#b45309' },
-    low:    { bg: '#f0fdf4', border: '#22c55e', text: '#15803d' },
-};
-
-export const PATTERN_COLORS: Record<string, { bg: string; border: string }> = {
-    'cross-component-cluster': { bg: 'rgba(99, 102, 241, 0.05)', border: '#6366f1' },
-    'shared-data-domain':      { bg: 'rgba(34, 197, 94, 0.05)',  border: '#22c55e' },
-    'integration-hub':         { bg: 'rgba(168, 85, 247, 0.05)', border: '#a855f7' },
-    'workflow-cluster':        { bg: 'rgba(245, 158, 11, 0.05)', border: '#f59e0b' },
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Relation edge style constants
 // ─────────────────────────────────────────────────────────────────────────────
 

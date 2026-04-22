@@ -164,8 +164,8 @@ export function BlueprintTreeMap({ blueprint, onNodeSelect }: BlueprintTreeMapPr
         const makeWeight = (data: BlueprintGraphNodeData) => {
             const relations = data.structuralSignals?.relationsCount ?? 0;
             const wfPart = data.structuralSignals?.workflowParticipation ?? 0;
-            const changeSurface = data.estimationSignals?.changeSurface ?? 0;
-            const surfaceBonus = changeSurface >= 6 ? 3 : changeSurface >= 3 ? 2 : 1;
+            const surfaceBonus = data.estimationSignals?.changeSurface === 'broad' ? 3
+                : data.estimationSignals?.changeSurface === 'moderate' ? 2 : 1;
             return Math.max(1, relations * 2 + wfPart + surfaceBonus);
         };
 
