@@ -107,7 +107,7 @@ export const AGENT_TOOL_DEFINITIONS: ToolDefinition[] = [
         type: 'function',
         function: {
             name: 'create_project_activity',
-            description: 'Create a new project-scoped activity when no suitable match exists in the catalog (all search results have similarity < 0.5). The activity is saved to the project and immediately available for this estimation. Use ONLY as last resort after searching the catalog.',
+            description: 'Create a new project-scoped activity when existing catalog matches are not technically adequate (for example: partial/forced coverage or only weak similarity matches). Use search_catalog first for discovery, then create when a real technical-functional gap remains. The activity is saved to the project and immediately available for this estimation.',
             parameters: {
                 type: 'object',
                 properties: {
@@ -259,6 +259,7 @@ async function executeSearchCatalog(
     args: Record<string, any>,
     ctx: ToolExecutionContext
 ): Promise<any> {
+    const BORDERLINE_SIMILARITY_THRESHOLD = 0.55;
     const query = args.query as string;
     const categories = (args.categories as string[]) || ['MULTI'];
     const limit = (args.limit as number) || 15;
@@ -274,12 +275,12 @@ async function executeSearchCatalog(
     }
 
     try {
-        console.log('[tools]   Invocazione pgvector similarity search (threshold=0.4)...');
+        console.log('[tools]   Invocazione pgvector similarity search (threshold=0.5)...');
         const { results, metrics } = await searchSimilarActivities(
             query,
             categories,
             limit,
-            0.4, // Lower threshold for broader discovery
+            0.5,
             ctx.projectId
         );
 
@@ -306,6 +307,15 @@ async function executeSearchCatalog(
         });
         if (results.length > 5) console.log(`[tools]     ... e altri ${results.length - 5} risultati`);
 
+        const maxSimilarity = results.length > 0
+            ? Math.max(...results.map(r => Number(r.similarity || 0)))
+            : 0;
+        const searchQuality = results.length === 0
+            ? 'none'
+            : maxSimilarity <= BORDERLINE_SIMILARITY_THRESHOLD
+                ? 'borderline'
+                : 'strong';
+
         return {
             activities: results.map(r => ({
                 code: r.code,
@@ -317,8 +327,12 @@ async function executeSearchCatalog(
                 similarity: r.similarity
             })),
             count: results.length,
+            searchQuality,
             method: metrics.method,
-            latencyMs: metrics.latencyMs
+            latencyMs: metrics.latencyMs,
+            note: searchQuality === 'borderline'
+                ? 'Search results are only borderline matches. Reuse only if they fully cover the real technical work; otherwise create a project activity.'
+                : undefined
         };
     } catch (err) {
         console.warn('[tools]   search_catalog pgvector FALLITO, fallback keyword:', err instanceof Error ? err.message : err);

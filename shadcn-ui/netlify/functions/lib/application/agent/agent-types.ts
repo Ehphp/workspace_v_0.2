@@ -227,8 +227,20 @@ export interface AgentMetadata {
     toolCalls: ToolCallRecord[];
     transitions: StateTransition[];
     reflectionResult?: ReflectionResult;
+    decisionSignals?: AgentDecisionSignals;
     model: string;
     flags: AgentFlags;
+}
+
+export interface AgentDecisionSignals {
+    searchCalls: number;
+    searchHitsLowSimilarity: number;
+    lowQualitySearches: number;
+    createCalls: number;
+    createSucceeded: number;
+    createSkippedAfterLowQualitySearch: number;
+    reflectionSuggestedExistingCode: number;
+    reflectionSuggestedCreatedCode: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

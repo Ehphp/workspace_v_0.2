@@ -43,6 +43,7 @@ import type {
     StateTransition,
     ToolCallRecord,
     EngineValidationResult,
+    AgentDecisionSignals,
 } from './agent-types';
 import { DEFAULT_AGENT_FLAGS } from './agent-types';
 import { AGENT_TOOL_DEFINITIONS, executeTool, ToolExecutionContext } from './agent-tools';
@@ -74,6 +75,7 @@ const REFINE_TIME_BUDGET_MS = 12000;
 /** Per-iteration time guard: if less than this remains, exit the tool loop
  *  and force a structured final answer to avoid timeout. */
 const TOOL_ITERATION_BUDGET_MS = 8000;
+const BORDERLINE_SEARCH_SIMILARITY = 0.55;
 
 /** Max tokens for LLM calls. 4096 is sufficient for the structured JSON output.
  *  Reasoning models (o-series, gpt-5) get higher budget for internal reasoning. */
@@ -83,6 +85,55 @@ function getMaxTokens(): number {
         return 8192;
     }
     return 4096;
+}
+
+function mergeDecisionSignals(
+    base: AgentDecisionSignals,
+    delta: Partial<AgentDecisionSignals>
+): AgentDecisionSignals {
+    return {
+        searchCalls: base.searchCalls + (delta.searchCalls || 0),
+        searchHitsLowSimilarity: base.searchHitsLowSimilarity + (delta.searchHitsLowSimilarity || 0),
+        lowQualitySearches: base.lowQualitySearches + (delta.lowQualitySearches || 0),
+        createCalls: base.createCalls + (delta.createCalls || 0),
+        createSucceeded: base.createSucceeded + (delta.createSucceeded || 0),
+        createSkippedAfterLowQualitySearch: base.createSkippedAfterLowQualitySearch + (delta.createSkippedAfterLowQualitySearch || 0),
+        reflectionSuggestedExistingCode: base.reflectionSuggestedExistingCode + (delta.reflectionSuggestedExistingCode || 0),
+        reflectionSuggestedCreatedCode: base.reflectionSuggestedCreatedCode + (delta.reflectionSuggestedCreatedCode || 0),
+    };
+}
+
+function extractSuggestedCodesFromReflection(
+    reflection: any,
+    knownCodes: Set<string>,
+    createdCodes: Set<string>
+): { reflectionSuggestedExistingCode: number; reflectionSuggestedCreatedCode: number } {
+    if (!reflection?.issues || !Array.isArray(reflection.issues)) {
+        return { reflectionSuggestedExistingCode: 0, reflectionSuggestedCreatedCode: 0 };
+    }
+
+    const seenExisting = new Set<string>();
+    const seenCreated = new Set<string>();
+    const codePattern = /\b[A-Z][A-Z0-9_]{2,}\b/g;
+
+    for (const issue of reflection.issues) {
+        const candidates = [issue?.description, issue?.suggestedAction]
+            .filter((v: any) => typeof v === 'string') as string[];
+
+        for (const text of candidates) {
+            const matches = text.match(codePattern) || [];
+            for (const m of matches) {
+                if (!knownCodes.has(m)) continue;
+                if (createdCodes.has(m)) seenCreated.add(m);
+                else seenExisting.add(m);
+            }
+        }
+    }
+
+    return {
+        reflectionSuggestedExistingCode: seenExisting.size,
+        reflectionSuggestedCreatedCode: seenCreated.size,
+    };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -276,7 +327,7 @@ async function llmWithTools(
     initialValidCodes: string[],
     toolCtx: ToolExecutionContext,
     ctx: AgentContext
-): Promise<{ draft: DraftEstimation; toolCalls: ToolCallRecord[]; expandedCodes: string[] }> {
+): Promise<{ draft: DraftEstimation; toolCalls: ToolCallRecord[]; expandedCodes: string[]; decisionSignals: Partial<AgentDecisionSignals> }> {
     const OpenAI = (await import('openai')).default;
     const client = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY,
@@ -335,6 +386,14 @@ async function llmWithTools(
     }
 
     const toolCallRecords: ToolCallRecord[] = [];
+    const decisionSignals: Partial<AgentDecisionSignals> = {
+        searchCalls: 0,
+        searchHitsLowSimilarity: 0,
+        lowQualitySearches: 0,
+        createCalls: 0,
+        createSucceeded: 0,
+        createSkippedAfterLowQualitySearch: 0,
+    };
 
     // Build messages array
     const messages: any[] = [
@@ -421,6 +480,31 @@ async function llmWithTools(
                 toolCallRecords.push(record);
                 ctx.toolCalls.push(record);
 
+                if (toolName === 'search_catalog') {
+                    decisionSignals.searchCalls = (decisionSignals.searchCalls || 0) + 1;
+                    const activities = Array.isArray(result?.activities) ? result.activities : [];
+                    const similarities = activities
+                        .map((a: any) => Number(a?.similarity))
+                        .filter((n: number) => Number.isFinite(n));
+                    const maxSimilarity = similarities.length > 0 ? Math.max(...similarities) : 0;
+                    const lowSimilarityHit = activities.length > 0 && maxSimilarity <= BORDERLINE_SEARCH_SIMILARITY;
+                    const lowQualitySearch = result?.method === 'no-match'
+                        || result?.method === 'keyword-fallback'
+                        || result?.searchQuality === 'borderline'
+                        || (activities.length > 0 && maxSimilarity <= BORDERLINE_SEARCH_SIMILARITY);
+
+                    if (lowSimilarityHit) {
+                        decisionSignals.searchHitsLowSimilarity = (decisionSignals.searchHitsLowSimilarity || 0) + 1;
+                    }
+                    if (lowQualitySearch) {
+                        decisionSignals.lowQualitySearches = (decisionSignals.lowQualitySearches || 0) + 1;
+                    }
+                }
+
+                if (toolName === 'create_project_activity') {
+                    decisionSignals.createCalls = (decisionSignals.createCalls || 0) + 1;
+                }
+
                 // Add tool result to messages
                 messages.push({
                     role: 'tool',
@@ -443,6 +527,7 @@ async function llmWithTools(
                 if (toolName === 'create_project_activity' && result?.created) {
                     const createdPayload = result.activity ?? result;
                     const syncResult = syncRuntimeActivity(createdPayload);
+                    decisionSignals.createSucceeded = (decisionSignals.createSucceeded || 0) + 1;
                     if (syncResult.synced) {
                         console.log(
                             `[agent] create_project_activity sync: code=${createdPayload.code}, addedCode=${syncResult.addedCode}, addedCatalog=${syncResult.addedCatalog}, validActivityCodes=${validActivityCodes.length}`
@@ -524,7 +609,11 @@ async function llmWithTools(
             suggestedRisks: parsed.suggestedRisks || [],
         };
 
-        return { draft, toolCalls: toolCallRecords, expandedCodes: validActivityCodes };
+        if ((decisionSignals.lowQualitySearches || 0) > 0 && (decisionSignals.createCalls || 0) === 0) {
+            decisionSignals.createSkippedAfterLowQualitySearch = (decisionSignals.createSkippedAfterLowQualitySearch || 0) + 1;
+        }
+
+        return { draft, toolCalls: toolCallRecords, expandedCodes: validActivityCodes, decisionSignals };
     }
 
     // If we exhausted tool iterations, do a final call without tools
@@ -555,7 +644,11 @@ async function llmWithTools(
         suggestedRisks: parsed.suggestedRisks || [],
     };
 
-    return { draft, toolCalls: toolCallRecords, expandedCodes: validActivityCodes };
+    if ((decisionSignals.lowQualitySearches || 0) > 0 && (decisionSignals.createCalls || 0) === 0) {
+        decisionSignals.createSkippedAfterLowQualitySearch = (decisionSignals.createSkippedAfterLowQualitySearch || 0) + 1;
+    }
+
+    return { draft, toolCalls: toolCallRecords, expandedCodes: validActivityCodes, decisionSignals };
 }
 
 /**
@@ -699,6 +792,16 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
     let draft: DraftEstimation | null = null;
     let reflectionResult: any = undefined;
     let engineValidation: EngineValidationResult | undefined;
+    let decisionSignals: AgentDecisionSignals = {
+        searchCalls: 0,
+        searchHitsLowSimilarity: 0,
+        lowQualitySearches: 0,
+        createCalls: 0,
+        createSucceeded: 0,
+        createSkippedAfterLowQualitySearch: 0,
+        reflectionSuggestedExistingCode: 0,
+        reflectionSuggestedCreatedCode: 0,
+    };
 
     try {
         // ── INIT ─────────────────────────────────────────────────────────
@@ -776,6 +879,7 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
             );
             draft = result.draft;
             expandedCodes = result.expandedCodes;
+            decisionSignals = mergeDecisionSignals(decisionSignals, result.decisionSignals);
         } else {
             draft = await llmDirect(provider, systemPrompt, userPrompt, input.validActivityCodes);
         }
@@ -826,9 +930,18 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
             console.log(`[agent] Tempo trascorso: ${Date.now() - ctx.startedAt}ms / ${ORCHESTRATION_TIMEOUT_MS}ms`);
             const reflectStartMs = Date.now();
 
-            reflectionResult = await reflectOnDraft(input, draft, provider, ctx.flags);
+            const reflectionInput: AgentInput = {
+                ...input,
+                validActivityCodes: expandedCodes,
+            };
+            reflectionResult = await reflectOnDraft(reflectionInput, draft, provider, ctx.flags);
             console.log(`[agent] Reflection completata in ${Date.now() - reflectStartMs}ms`);
             ctx.iteration++;
+
+            const knownCodesSet = new Set(expandedCodes);
+            const createdSet = new Set(toolCtx.createdActivityCodes);
+            const reflectionStats = extractSuggestedCodesFromReflection(reflectionResult, knownCodesSet, createdSet);
+            decisionSignals = mergeDecisionSignals(decisionSignals, reflectionStats);
 
             // ── REFINE (if needed) ───────────────────────────────────────
             // Gate: refine on HIGH severity issues OR ≥2 MEDIUM issues.
@@ -858,7 +971,10 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
                 console.log('─'.repeat(62));
                 transition(ctx, 'REFINE', `Reflection triggered refinement (assessment: ${reflectionResult.assessment})`);
 
-                const refinementPrompt = buildRefinementPrompt(reflectionResult, draft);
+                const refinementPrompt = buildRefinementPrompt(reflectionResult, draft, {
+                    expandedCodes,
+                    createdCodes: toolCtx.createdActivityCodes,
+                });
                 const refinedUserPrompt = buildUserPrompt(input, refinementPrompt);
 
                 if (ctx.flags.toolUseEnabled) {
@@ -872,6 +988,7 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
                     );
                     draft = result.draft;
                     expandedCodes = result.expandedCodes;
+                    decisionSignals = mergeDecisionSignals(decisionSignals, result.decisionSignals);
                 } else {
                     draft = await llmDirect(provider, systemPrompt, refinedUserPrompt, expandedCodes);
                 }
@@ -954,6 +1071,7 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
         if (reflectionResult) {
             console.log(`[agent] Reflection: assessment=${reflectionResult.assessment}, issues=${reflectionResult.issues?.length || 0}, refined=${reflectionResult.refinementTriggered}`);
         }
+        console.log(`[agent] Decision signals: ${JSON.stringify(decisionSignals)}`);
         console.log('═'.repeat(62));
 
         const metadata: AgentMetadata = {
@@ -970,6 +1088,7 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
                 durationMs: t.durationMs,
             })),
             reflectionResult: reflectionResult || undefined,
+            decisionSignals,
             model: ESTIMATION_MODEL,
             flags: ctx.flags,
         };
@@ -1033,6 +1152,7 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
                 toolCalls: ctx.toolCalls,
                 transitions: ctx.transitions,
                 reflectionResult,
+                decisionSignals,
                 model: ESTIMATION_MODEL,
                 flags: ctx.flags,
             },

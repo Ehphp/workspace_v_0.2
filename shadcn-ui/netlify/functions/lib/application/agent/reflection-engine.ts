@@ -343,12 +343,29 @@ export async function reflectOnDraft(
  */
 export function buildRefinementPrompt(
     reflection: ReflectionResult,
-    previousDraft: DraftEstimation
+    previousDraft: DraftEstimation,
+    runtimeCodes?: {
+        expandedCodes?: string[];
+        createdCodes?: string[];
+    }
 ): string {
     const issuesList = reflection.issues
         .filter(i => i.severity !== 'low')
         .map(i => `- [${i.severity.toUpperCase()}] ${i.type}: ${i.description} → ${i.suggestedAction}`)
         .join('\n');
+
+    const expandedCodes = (runtimeCodes?.expandedCodes || []).slice(0, 60);
+    const createdCodes = runtimeCodes?.createdCodes || [];
+
+    const runtimeCodesBlock = expandedCodes.length > 0
+        ? `
+CODICI VALIDI NEL CONTESTO CORRENTE (incluse espansioni runtime):
+${expandedCodes.join(', ')}${(runtimeCodes?.expandedCodes || []).length > expandedCodes.length ? ' ...' : ''}
+
+CODICI CREATI IN QUESTA RUN (PRJ_*):
+${createdCodes.length > 0 ? createdCodes.join(', ') : 'Nessuno'}
+`
+        : '';
 
     return `
 --- CORREZIONI RICHIESTE DAL SENIOR CONSULTANT ---
@@ -366,11 +383,12 @@ BOZZA PRECEDENTE (da correggere):
 - Attività: ${previousDraft.activities.map(a => `${a.code}(${a.baseHours}h)`).join(', ')}
 - Totale: ${previousDraft.totalBaseDays} base days
 - Confidence: ${previousDraft.confidenceScore}
+${runtimeCodesBlock}
 
 IMPORTANTE: 
 1. Correggi SOLO i problemi identificati, non stravolgere l'intera stima
 2. Mantieni le attività corrette dalla bozza precedente
-3. Usa ESCLUSIVAMENTE codici attività dal catalogo fornito
+3. Usa codici attività validi nel contesto corrente, inclusi codici scoperti via search_catalog e codici creati PRJ_* in questa run
 4. Ricalcola totalBaseDays dopo le modifiche
 
 --- FINE CORREZIONI ---
