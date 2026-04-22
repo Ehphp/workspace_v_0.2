@@ -41,9 +41,14 @@ import { evaluateProjectTechnicalBlueprintRules } from './blueprint-rules';
 import { mergeProjectAndBlueprintRules } from './blueprint-context-integration';
 import { mergeDriverSuggestions, mergeRiskSuggestions } from './project-context-integration';
 import type { ProjectTechnicalBlueprint } from '../project/project-technical-blueprint.types';
+import { deriveProjectKnowledgeContext } from '../project/project-knowledge-layer';
 import type { EstimationContext } from '../types/estimation';
 import { formatProjectTechnicalBlueprintBlock } from '../../ai/formatters/project-blueprint-formatter';
 import { formatProjectActivitiesBlock } from '../../ai/formatters/project-activities-formatter';
+import {
+    formatRelevantProjectKnowledgeBlock,
+    selectDeduplicationMode,
+} from '../../ai/formatters/project-knowledge-formatter';
 import { runEstimationPipeline } from './run-estimation-pipeline';
 import { createPipelineLogger } from '../../observability/pipeline-logger';
 import { runDecisionEngine } from '../pipeline/decision-engine';
@@ -322,6 +327,29 @@ export async function runEstimationOrchestrator(input: OrchestratorInput): Promi
 
     // ── Stage 4a: agentic-path ────────────────────────────────────────────────
 
+    const relevantProjectContext = deriveProjectKnowledgeContext({
+        requirementDescription: sanitizedDescription,
+        projectTechnicalBlueprint: input.projectTechnicalBlueprint,
+        requirementUnderstanding: input.requirementUnderstanding,
+        impactMap: input.impactMap,
+        estimationBlueprint: input.estimationBlueprint,
+    });
+    const relevantProjectContextBlock = formatRelevantProjectKnowledgeBlock(relevantProjectContext);
+    const previewDedup = selectDeduplicationMode({
+        relevantProjectContext,
+        relevantProjectContextBlock,
+        projectTechnicalBlueprintBlock: formatProjectTechnicalBlueprintBlock(input.projectTechnicalBlueprint),
+    });
+
+    pipelineLog.log('project-knowledge-dedup-preview', {
+        modeSelected: previewDedup.decision.modeSelected,
+        downgradeReason: previewDedup.decision.downgradeReason,
+        charUsage: previewDedup.decision.charUsage,
+        confidence: previewDedup.decision.confidence,
+        coverage: previewDedup.decision.coverage,
+        weakMatch: previewDedup.decision.weakMatch,
+    });
+
     const agentInput: AgentInput = {
         description: sanitizedDescription,
         answers: input.answers,
@@ -344,6 +372,8 @@ export async function runEstimationOrchestrator(input: OrchestratorInput): Promi
         userId: input.userId,
         projectTechnicalBlueprintBlock: formatProjectTechnicalBlueprintBlock(input.projectTechnicalBlueprint),
         projectScopedActivitiesBlock: formatProjectActivitiesBlock(projectActivities.length > 0 ? projectActivities : undefined),
+        relevantProjectContext,
+        relevantProjectContextBlock,
         projectId: input.projectId,
         flags: {
             reflectionEnabled: ks.reflectionEnabled && !pipelineConfig.skipReflection,

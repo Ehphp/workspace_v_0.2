@@ -7,6 +7,8 @@
  * and self-reflection.
  */
 
+import type { RelevantProjectContext } from '../../domain/project/project-knowledge-layer.types';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Agent State Machine
 // ─────────────────────────────────────────────────────────────────────────────
@@ -141,6 +143,15 @@ export interface AgentInput {
      * project-specific activities over generic catalog entries.
      */
     projectScopedActivitiesBlock?: string;
+    /**
+     * Deterministic requirement-specific retrieval from Project Knowledge Layer.
+     * Used to reduce PTB prompt bloat via replace/hybrid/fallback dedup policy.
+     */
+    relevantProjectContext?: RelevantProjectContext;
+    /**
+     * Pre-formatted relevant context block derived from `relevantProjectContext`.
+     */
+    relevantProjectContextBlock?: string;
     /** Project ID for scoped vector search of project_activities */
     projectId?: string;
     /**

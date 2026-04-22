@@ -50,6 +50,7 @@ import { AGENT_TOOL_DEFINITIONS, executeTool, ToolExecutionContext } from './age
 import { reflectOnDraft, buildRefinementPrompt } from './reflection-engine';
 import { formatProjectContextBlock } from '../../ai/prompt-builder';
 import { AGENT_ESTIMATION_SYSTEM_PROMPT } from '../../ai/prompts/agent-estimation';
+import { selectDeduplicationMode } from '../../ai/formatters/project-knowledge-formatter';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration
@@ -226,14 +227,31 @@ function buildUserPrompt(input: AgentInput, refinementPrompt?: string): string {
         ? `\n\nATTENZIONE: Il catalogo attivita iniziale e vuoto. Devi usare create_project_activity per proporre le attivita necessarie al requisito prima di finalizzare la stima.`
         : '';
 
+    const dedup = selectDeduplicationMode({
+        relevantProjectContext: input.relevantProjectContext,
+        relevantProjectContextBlock: input.relevantProjectContextBlock,
+        projectTechnicalBlueprintBlock: input.projectTechnicalBlueprintBlock,
+    });
+
+    console.log('[agent] project-context-dedup', {
+        modeSelected: dedup.decision.modeSelected,
+        downgradeReason: dedup.decision.downgradeReason,
+        charUsage: dedup.decision.charUsage,
+        confidence: dedup.decision.confidence,
+        coverage: dedup.decision.coverage,
+        weakMatch: dedup.decision.weakMatch,
+        includedSections: dedup.decision.includedSections,
+    });
+
+    const relevantBlock = dedup.blocks.relevantBlock;
     // Inject Project Technical Blueprint block (architecture context)
-    const ptbBlock = input.projectTechnicalBlueprintBlock || '';
+    const ptbBlock = dedup.blocks.ptbBlock;
     // Inject project-scoped activities block (highest-priority activities)
     const psaBlock = input.projectScopedActivitiesBlock || '';
 
     let prompt = `REQUISITO:
 ${input.description}
-${projectCtxStr}${ptbBlock ? '\n' + ptbBlock : ''}${psaBlock ? '\n' + psaBlock : ''}
+${projectCtxStr}${relevantBlock ? '\n' + relevantBlock : ''}${ptbBlock ? '\n' + ptbBlock : ''}${psaBlock ? '\n' + psaBlock : ''}
         TECNOLOGIA: ${input.technologyName || input.techCategory}
 
 RISPOSTE INTERVIEW TECNICA:
