@@ -893,6 +893,35 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
         const draftElapsedMs = Date.now() - draftStartMs;
         console.log(`[agent] Draft generata in ${draftElapsedMs}ms`);
 
+        // Auto-save PRJ_* codes generated directly by the model (skipped tool call).
+        // When the catalog is empty the model sometimes generates PRJ_* codes inline
+        // instead of calling create_project_activity. Persist them here so the
+        // subsequent filter doesn't discard them.
+        if (toolCtx.projectId) {
+            for (const a of draft.activities) {
+                if (a.code.startsWith('PRJ_') && !expandedCodes.includes(a.code)) {
+                    console.log(`[agent] Auto-save PRJ_* (skipped tool call): ${a.code}`);
+                    const { result } = await executeTool('create_project_activity', {
+                        name: a.name,
+                        description: a.reason || a.name,
+                        group: 'DEV',
+                        baseHours: a.baseHours,
+                        interventionType: 'NEW',
+                        rationale: `Auto-created: model generated code without tool call. Reason: ${a.reason}`,
+                    }, toolCtx);
+                    if (result?.created && result.code) {
+                        a.code = result.code;
+                        a.name = result.name || a.name;
+                        expandedCodes = [...expandedCodes, result.code];
+                        decisionSignals = mergeDecisionSignals(decisionSignals, { createCalls: 1, createSucceeded: 1 });
+                        console.log(`[agent] Auto-save OK: ${result.code}`);
+                    } else {
+                        console.warn(`[agent] Auto-save FAILED for ${a.code}: ${result?.error ?? 'unknown'}`);
+                    }
+                }
+            }
+        }
+
         // Validate activities are from catalog (B1: uses expanded set, not initial input)
         const validCodes = new Set(expandedCodes);
         const beforeFilterCount = draft.activities.length;
@@ -997,6 +1026,32 @@ export async function runAgentPipeline(input: AgentInput): Promise<AgentOutput> 
                     decisionSignals = mergeDecisionSignals(decisionSignals, result.decisionSignals);
                 } else {
                     draft = await llmDirect(provider, systemPrompt, refinedUserPrompt, expandedCodes);
+                }
+
+                // Auto-save PRJ_* codes generated directly by the model in refine pass.
+                if (toolCtx.projectId) {
+                    for (const a of draft.activities) {
+                        if (a.code.startsWith('PRJ_') && !expandedCodes.includes(a.code)) {
+                            console.log(`[agent] Auto-save PRJ_* refine (skipped tool call): ${a.code}`);
+                            const { result } = await executeTool('create_project_activity', {
+                                name: a.name,
+                                description: a.reason || a.name,
+                                group: 'DEV',
+                                baseHours: a.baseHours,
+                                interventionType: 'NEW',
+                                rationale: `Auto-created (refine): model generated code without tool call. Reason: ${a.reason}`,
+                            }, toolCtx);
+                            if (result?.created && result.code) {
+                                a.code = result.code;
+                                a.name = result.name || a.name;
+                                expandedCodes = [...expandedCodes, result.code];
+                                decisionSignals = mergeDecisionSignals(decisionSignals, { createCalls: 1, createSucceeded: 1 });
+                                console.log(`[agent] Auto-save refine OK: ${result.code}`);
+                            } else {
+                                console.warn(`[agent] Auto-save refine FAILED for ${a.code}: ${result?.error ?? 'unknown'}`);
+                            }
+                        }
+                    }
                 }
 
                 // Re-validate activities (B1: uses expanded set from refine pass)
