@@ -548,12 +548,12 @@ async function executeCreateProjectActivity(
         return { error: 'Cannot create project activity: no projectId in context. This requirement is not linked to a project.' };
     }
 
-    const name         = (args.name as string).trim().slice(0, 80);
-    const description  = (args.description as string).trim();
-    const group        = args.group as string;
-    const baseHours    = Math.max(1, Math.round(Number(args.baseHours)));
+    const name = (args.name as string).trim().slice(0, 80);
+    const description = (args.description as string).trim();
+    const group = args.group as string;
+    const baseHours = Math.max(1, Math.round(Number(args.baseHours)));
     const interventionType = args.interventionType as string;
-    const rationale    = (args.rationale as string).trim();
+    const rationale = (args.rationale as string).trim();
 
     // Generate PRJ_ code: sanitize name + 4-char random suffix
     const sanitized = name
@@ -569,51 +569,71 @@ async function executeCreateProjectActivity(
 
     try {
         const supabase = getDomainSupabase();
-        const { error } = await supabase.from('project_activities').insert({
-            project_id:        ctx.projectId,
+        const insertPayload = {
+            project_id: ctx.projectId,
             code,
             name,
             description,
             group,
-            base_hours:        baseHours,
-            sm_multiplier:     1.0,
-            lg_multiplier:     1.0,
+            base_hours: baseHours,
+            sm_multiplier: 1.0,
+            lg_multiplier: 1.0,
             intervention_type: interventionType,
-            effort_modifier:   1.0,
-            ai_rationale:      rationale,
-            confidence:        0.7,
-            is_enabled:        true,
-            position:          0,
-            source_activity_code:  null,
-            blueprint_node_name:   null,
-            blueprint_node_type:   null,
-        });
+            effort_modifier: 1.0,
+            ai_rationale: rationale,
+            confidence: 0.7,
+            is_enabled: true,
+            position: 0,
+            source_activity_code: null,
+            blueprint_node_name: null,
+            blueprint_node_type: null,
+        };
+
+        const { data: insertedRow, error } = await supabase
+            .from('project_activities')
+            .insert(insertPayload)
+            .select('id, project_id, code, name, description, base_hours, "group", intervention_type')
+            .single();
 
         if (error) {
             console.error(`[tools]   create_project_activity DB error:`, error.message);
             return { error: `Failed to persist activity: ${error.message}` };
         }
 
+        const created = {
+            id: insertedRow?.id,
+            projectId: insertedRow?.project_id ?? ctx.projectId,
+            code: insertedRow?.code ?? code,
+            name: insertedRow?.name ?? name,
+            description: insertedRow?.description ?? description,
+            baseHours: insertedRow?.base_hours ?? baseHours,
+            group: insertedRow?.group ?? group,
+            interventionType: insertedRow?.intervention_type ?? interventionType,
+            techCategory: 'PROJECT',
+        };
+
         // Add to in-memory catalog so it's available for validate_estimation and final output
         ctx.activitiesCatalog.push({
-            code,
-            name,
-            description,
-            base_hours: baseHours,
-            group,
-            tech_category: 'MULTI',
+            code: created.code,
+            name: created.name,
+            description: created.description,
+            base_hours: created.baseHours,
+            group: created.group,
+            tech_category: created.techCategory,
         });
-        ctx.createdActivityCodes.push(code);
+        ctx.createdActivityCodes.push(created.code);
 
-        console.log(`[tools]   create_project_activity: creata e aggiunta al catalogo → ${code}`);
+        console.log(`[tools]   create_project_activity: creata e aggiunta al catalogo → ${created.code}`);
 
         return {
             created: true,
-            code,
-            name,
-            baseHours,
-            group,
-            interventionType,
+            id: created.id,
+            code: created.code,
+            name: created.name,
+            baseHours: created.baseHours,
+            group: created.group,
+            interventionType: created.interventionType,
+            activity: created,
             note: 'Activity saved to project_activities and available for this estimation.'
         };
     } catch (err: any) {

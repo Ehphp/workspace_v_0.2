@@ -287,6 +287,53 @@ async function llmWithTools(
     // B1: mutable copy — search_catalog discoveries are merged here
     const validActivityCodes = [...initialValidCodes];
 
+    function syncRuntimeActivity(rawActivity: any): { synced: boolean; addedCode: boolean; addedCatalog: boolean } {
+        if (!rawActivity || !rawActivity.code) {
+            return { synced: false, addedCode: false, addedCatalog: false };
+        }
+
+        const code = String(rawActivity.code);
+        const name = String(rawActivity.name || code);
+        const description = String(rawActivity.description || '');
+        const baseHoursRaw = Number(rawActivity.baseHours ?? rawActivity.base_hours ?? 0);
+        const baseHours = Number.isFinite(baseHoursRaw) && baseHoursRaw > 0 ? baseHoursRaw : 8;
+        const group = String(rawActivity.group || 'UNKNOWN');
+        const techCategory = String(rawActivity.techCategory ?? rawActivity.tech_category ?? 'PROJECT');
+
+        const existingIndex = toolCtx.activitiesCatalog.findIndex(a => a.code === code);
+        let addedCatalog = false;
+
+        if (existingIndex >= 0) {
+            toolCtx.activitiesCatalog[existingIndex] = {
+                ...toolCtx.activitiesCatalog[existingIndex],
+                code,
+                name,
+                description,
+                base_hours: baseHours,
+                group,
+                tech_category: techCategory,
+            };
+        } else {
+            toolCtx.activitiesCatalog.push({
+                code,
+                name,
+                description,
+                base_hours: baseHours,
+                group,
+                tech_category: techCategory,
+            });
+            addedCatalog = true;
+        }
+
+        let addedCode = false;
+        if (!validActivityCodes.includes(code)) {
+            validActivityCodes.push(code);
+            addedCode = true;
+        }
+
+        return { synced: true, addedCode, addedCatalog };
+    }
+
     const toolCallRecords: ToolCallRecord[] = [];
 
     // Build messages array
@@ -383,28 +430,25 @@ async function llmWithTools(
 
                 // B1: merge discovered codes from search_catalog
                 if (toolName === 'search_catalog' && result?.activities && Array.isArray(result.activities)) {
-                    const existingCodes = new Set(validActivityCodes);
-                    const newActivities = result.activities.filter(
-                        (a: any) => a.code && !existingCodes.has(a.code)
-                    );
-                    if (newActivities.length > 0) {
-                        for (const a of newActivities) {
-                            validActivityCodes.push(a.code);
-                        }
-                        const catalogCodes = new Set(toolCtx.activitiesCatalog.map(x => x.code));
-                        for (const a of newActivities) {
-                            if (!catalogCodes.has(a.code)) {
-                                toolCtx.activitiesCatalog.push({
-                                    code: a.code,
-                                    name: a.name,
-                                    description: a.description || '',
-                                    base_hours: a.baseHours,
-                                    group: a.group || 'UNKNOWN',
-                                    tech_category: a.techCategory,
-                                });
-                            }
-                        }
-                        console.log(`[agent] search_catalog expansion: +${newActivities.length} codes → validActivityCodes now ${validActivityCodes.length}`);
+                    let addedCodes = 0;
+                    for (const a of result.activities) {
+                        const syncResult = syncRuntimeActivity(a);
+                        if (syncResult.addedCode) addedCodes++;
+                    }
+                    if (addedCodes > 0) {
+                        console.log(`[agent] search_catalog expansion: +${addedCodes} codes → validActivityCodes now ${validActivityCodes.length}`);
+                    }
+                }
+
+                if (toolName === 'create_project_activity' && result?.created) {
+                    const createdPayload = result.activity ?? result;
+                    const syncResult = syncRuntimeActivity(createdPayload);
+                    if (syncResult.synced) {
+                        console.log(
+                            `[agent] create_project_activity sync: code=${createdPayload.code}, addedCode=${syncResult.addedCode}, addedCatalog=${syncResult.addedCatalog}, validActivityCodes=${validActivityCodes.length}`
+                        );
+                    } else {
+                        console.warn('[agent] create_project_activity completed but runtime sync failed (missing code in tool result)');
                     }
                 }
             }
