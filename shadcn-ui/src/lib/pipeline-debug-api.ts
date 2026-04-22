@@ -236,12 +236,12 @@ async function loadArtifacts(requirementId: string, projectId?: string): Promise
     };
 
     const body: Record<string, unknown> = {};
-    if (understandingRow?.understanding)  body.requirementUnderstanding = understandingRow.understanding;
-    if (impactMapRow?.impact_map)         body.impactMap = impactMapRow.impact_map;
-    if (blueprintRow?.blueprint)          body.estimationBlueprint = blueprintRow.blueprint;
-    if (projectBlueprint)                 body.projectTechnicalBlueprint = projectBlueprint;
-    if (projectContext)                   body.projectContext = projectContext;
-    if (techPresetId)                     body.techPresetId = techPresetId;
+    if (understandingRow?.understanding) body.requirementUnderstanding = understandingRow.understanding;
+    if (impactMapRow?.impact_map) body.impactMap = impactMapRow.impact_map;
+    if (blueprintRow?.blueprint) body.estimationBlueprint = blueprintRow.blueprint;
+    if (projectBlueprint) body.projectTechnicalBlueprint = projectBlueprint;
+    if (projectContext) body.projectContext = projectContext;
+    if (techPresetId) body.techPresetId = techPresetId;
 
     return { body, artifacts };
 }
@@ -317,11 +317,11 @@ export async function runDebugEstimation(config: DebugRunConfig): Promise<DebugR
                 score: prov?.score,
                 primarySource: prov?.primarySource,
                 contributions: prov ? {
-                    blueprint:       prov.contributions.blueprint ?? 0,
-                    impactMap:       prov.contributions.impactMap ?? 0,
-                    understanding:   prov.contributions.understanding ?? 0,
-                    keyword:         prov.contributions.keyword ?? 0,
-                    projectContext:  prov.contributions.projectContext ?? 0,
+                    blueprint: prov.contributions.blueprint ?? 0,
+                    impactMap: prov.contributions.impactMap ?? 0,
+                    understanding: prov.contributions.understanding ?? 0,
+                    keyword: prov.contributions.keyword ?? 0,
+                    projectContext: prov.contributions.projectContext ?? 0,
                     projectActivity: prov.contributions.projectActivity ?? 0,
                 } : undefined,
                 reason: a.reason,
@@ -361,12 +361,12 @@ export async function runDebugEstimation(config: DebugRunConfig): Promise<DebugR
 // ─── Full Pipeline Runner ─────────────────────────────────────────────────────
 
 const STEP_DEFS: Pick<DebugStep, 'id' | 'label' | 'endpoint'>[] = [
-    { id: 'validate',      label: 'Validate Requirement',      endpoint: 'ai-validate-requirement'      },
+    { id: 'validate', label: 'Validate Requirement', endpoint: 'ai-validate-requirement' },
     { id: 'understanding', label: 'Requirement Understanding', endpoint: 'ai-requirement-understanding' },
-    { id: 'impact-map',    label: 'Impact Map',                endpoint: 'ai-impact-map'                },
-    { id: 'blueprint',     label: 'Estimation Blueprint',      endpoint: 'ai-estimation-blueprint'      },
-    { id: 'interview',     label: 'Requirement Interview',     endpoint: 'ai-requirement-interview'     },
-    { id: 'estimate',      label: 'Estimate from Interview',   endpoint: 'ai-estimate-from-interview'   },
+    { id: 'impact-map', label: 'Impact Map', endpoint: 'ai-impact-map' },
+    { id: 'blueprint', label: 'Estimation Blueprint', endpoint: 'ai-estimation-blueprint' },
+    { id: 'interview', label: 'Requirement Interview', endpoint: 'ai-requirement-interview' },
+    { id: 'estimate', label: 'Estimate from Interview', endpoint: 'ai-estimate-from-interview' },
 ];
 
 export async function runFullDebugPipeline(
@@ -395,8 +395,8 @@ export async function runFullDebugPipeline(
 
     // Remove DB artifacts for disabled steps so they don't leak into downstream requests
     if (!config.killSwitches.understandingSignalEnabled) delete ctx.requirementUnderstanding;
-    if (!config.killSwitches.impactMapSignalEnabled)     delete ctx.impactMap;
-    if (!config.killSwitches.blueprintSignalEnabled)     delete ctx.estimationBlueprint;
+    if (!config.killSwitches.impactMapSignalEnabled) delete ctx.impactMap;
+    if (!config.killSwitches.blueprintSignalEnabled) delete ctx.estimationBlueprint;
 
     function skipStep(id: DebugStepId) {
         const step = steps.find(s => s.id === id)!;
@@ -447,9 +447,9 @@ export async function runFullDebugPipeline(
     const base = {
         description: config.description,
         techCategory: config.techCategory,
-        ...(config.projectId              ? { projectId: config.projectId }                              : {}),
-        ...(ctx.techPresetId              ? { techPresetId: ctx.techPresetId }                           : {}),
-        ...(ctx.projectContext            ? { projectContext: ctx.projectContext }                       : {}),
+        ...(config.projectId ? { projectId: config.projectId } : {}),
+        ...(ctx.techPresetId ? { techPresetId: ctx.techPresetId } : {}),
+        ...(ctx.projectContext ? { projectContext: ctx.projectContext } : {}),
         ...(ctx.projectTechnicalBlueprint ? { projectTechnicalBlueprint: ctx.projectTechnicalBlueprint } : {}),
     };
 
@@ -480,7 +480,7 @@ export async function runFullDebugPipeline(
         const blueprintData = await runStep('blueprint', {
             ...base,
             ...(ctx.requirementUnderstanding ? { requirementUnderstanding: ctx.requirementUnderstanding } : {}),
-            ...(ctx.impactMap                ? { impactMap: ctx.impactMap }                                : {}),
+            ...(ctx.impactMap ? { impactMap: ctx.impactMap } : {}),
         });
         if (blueprintData?.blueprint) ctx.estimationBlueprint = blueprintData.blueprint;
     } else {
@@ -491,8 +491,8 @@ export async function runFullDebugPipeline(
     const interviewData = await runStep('interview', {
         ...base,
         ...(ctx.requirementUnderstanding ? { requirementUnderstanding: ctx.requirementUnderstanding } : {}),
-        ...(ctx.impactMap                ? { impactMap: ctx.impactMap }                                : {}),
-        ...(ctx.estimationBlueprint      ? { estimationBlueprint: ctx.estimationBlueprint }            : {}),
+        ...(ctx.impactMap ? { impactMap: ctx.impactMap } : {}),
+        ...(ctx.estimationBlueprint ? { estimationBlueprint: ctx.estimationBlueprint } : {}),
     });
     if (interviewData?.decision === 'SKIP') {
         const interviewStep = steps.find(s => s.id === 'interview')!;
@@ -504,12 +504,12 @@ export async function runFullDebugPipeline(
     await runStep('estimate', {
         description: config.description,
         techCategory: config.techCategory,
-        ...(config.projectId              ? { projectId: config.projectId }                              : {}),
-        ...(ctx.techPresetId              ? { techPresetId: ctx.techPresetId }                           : {}),
-        ...(ctx.projectContext            ? { projectContext: ctx.projectContext }                       : {}),
-        ...(ctx.requirementUnderstanding  ? { requirementUnderstanding: ctx.requirementUnderstanding }  : {}),
-        ...(ctx.impactMap                 ? { impactMap: ctx.impactMap }                                 : {}),
-        ...(ctx.estimationBlueprint       ? { estimationBlueprint: ctx.estimationBlueprint }             : {}),
+        ...(config.projectId ? { projectId: config.projectId } : {}),
+        ...(ctx.techPresetId ? { techPresetId: ctx.techPresetId } : {}),
+        ...(ctx.projectContext ? { projectContext: ctx.projectContext } : {}),
+        ...(ctx.requirementUnderstanding ? { requirementUnderstanding: ctx.requirementUnderstanding } : {}),
+        ...(ctx.impactMap ? { impactMap: ctx.impactMap } : {}),
+        ...(ctx.estimationBlueprint ? { estimationBlueprint: ctx.estimationBlueprint } : {}),
         ...(ctx.projectTechnicalBlueprint ? { projectTechnicalBlueprint: ctx.projectTechnicalBlueprint } : {}),
         answers: {},
         devConfig: {

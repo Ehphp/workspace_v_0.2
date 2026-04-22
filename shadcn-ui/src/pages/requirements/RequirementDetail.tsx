@@ -99,8 +99,8 @@ export default function RequirementDetail() {
                 setProjectActivities([]);
             }
         })
-        .catch((err) => { console.error('[PRJ_ACT] fetch error:', err); setProjectActivities([]); })
-        .finally(() => { console.log('[PRJ_ACT] marking ready'); setProjectActivitiesReady(true); });
+            .catch((err) => { console.error('[PRJ_ACT] fetch error:', err); setProjectActivities([]); })
+            .finally(() => { console.log('[PRJ_ACT] marking ready'); setProjectActivitiesReady(true); });
     }, [requirementLoading, project?.id]);
 
     const activities = useMemo(

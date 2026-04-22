@@ -64,24 +64,24 @@ export interface KillSwitches {
  */
 export function readKillSwitches(): KillSwitches {
     return {
-        agenticEnabled:                  env('AI_AGENTIC') !== 'false',
-        reflectionEnabled:               env('AI_REFLECTION') !== 'false',
-        toolUseEnabled:                  env('AI_TOOL_USE') !== 'false',
-        maxReflectionIterations:         num('AI_MAX_REFLECTIONS', 2),
-        reflectionConfidenceThreshold:   num('AI_REFLECTION_THRESHOLD', 75),
+        agenticEnabled: env('AI_AGENTIC') !== 'false',
+        reflectionEnabled: env('AI_REFLECTION') !== 'false',
+        toolUseEnabled: env('AI_TOOL_USE') !== 'false',
+        maxReflectionIterations: num('AI_MAX_REFLECTIONS', 2),
+        reflectionConfidenceThreshold: num('AI_REFLECTION_THRESHOLD', 75),
 
-        estimationModel:                 env('AI_ESTIMATION_MODEL') || 'gpt-4o',
+        estimationModel: env('AI_ESTIMATION_MODEL') || 'gpt-4o',
 
-        blueprintSignalEnabled:          env('SIGNAL_BLUEPRINT') !== 'false',
-        impactMapSignalEnabled:          env('SIGNAL_IMPACT_MAP') !== 'false',
-        understandingSignalEnabled:      env('SIGNAL_UNDERSTANDING') !== 'false',
-        projectActivitySignalEnabled:    env('SIGNAL_PROJECT_ACTIVITY') !== 'false',
+        blueprintSignalEnabled: env('SIGNAL_BLUEPRINT') !== 'false',
+        impactMapSignalEnabled: env('SIGNAL_IMPACT_MAP') !== 'false',
+        understandingSignalEnabled: env('SIGNAL_UNDERSTANDING') !== 'false',
+        projectActivitySignalEnabled: env('SIGNAL_PROJECT_ACTIVITY') !== 'false',
 
-        agentDeltaEnabled:               env('OBS_AGENT_DELTA') !== 'false',
+        agentDeltaEnabled: env('OBS_AGENT_DELTA') !== 'false',
 
         // Default ON to let the agent create project-scoped activities
         // when global catalog is empty.
-        allowEmptyCandidateSet:          env('ALLOW_EMPTY_CANDIDATE_SET') !== 'false',
+        allowEmptyCandidateSet: env('ALLOW_EMPTY_CANDIDATE_SET') !== 'false',
     };
 }
 
