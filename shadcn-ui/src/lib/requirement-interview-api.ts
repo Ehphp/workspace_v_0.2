@@ -217,8 +217,11 @@ export async function generateEstimateFromInterview(
                 ...(request.impactMap ? { impactMap: request.impactMap } : {}),
                 ...(request.estimationBlueprint ? { estimationBlueprint: request.estimationBlueprint } : {}),
                 ...(request.projectTechnicalBlueprint ? { projectTechnicalBlueprint: request.projectTechnicalBlueprint } : {}),
-            }),
+            } as unknown as Record<string, unknown>),
         });
+
+        // DEBUG: body sent to backend
+        console.log('[generateEstimateFromInterview] Body sent:', { hasProjectId: 'projectId' in request, projectId: request.projectId });
 
         // 5. Handle HTTP errors
         if (!response.ok) {

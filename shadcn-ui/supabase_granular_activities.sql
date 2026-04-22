@@ -1,6 +1,10 @@
 -- ============================================
 -- GRANULAR ACTIVITIES - Size-Based Variants
 -- ============================================
+-- LEGACY FILE.
+-- This script uses the old base_days column and the deprecated _SM/_LG activity variants.
+-- Do not use it to restore the current catalog.
+-- Use supabase_repopulate_activities.sql for the current unified activities repopulation.
 -- Questa migrazione aggiunge varianti Small/Medium/Large per le attività principali
 -- per consentire stime più precise e ridurre le sovrastime
 

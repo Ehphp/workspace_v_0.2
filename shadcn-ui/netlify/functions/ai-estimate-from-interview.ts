@@ -22,6 +22,8 @@ interface RequestBody {
     /** @deprecated Activities are now fetched server-side. Kept for backward compat. */
     activities?: Activity[];
     projectId?: string;
+    /** @deprecated Legacy alias accepted for backward compatibility. */
+    project_id?: string;
     projectContext?: {
         name: string;
         description: string;
@@ -67,6 +69,7 @@ export const handler = createAIHandler<RequestBody>({
     handler: async (body, ctx) => {
         const isProd = process.env.CONTEXT === 'production';
         const baseKs = readKillSwitches();
+        const normalizedProjectId = body.projectId ?? body.project_id;
 
         const ks = (!isProd && body.devConfig?.killSwitches)
             ? { ...baseKs, ...body.devConfig.killSwitches }
@@ -83,7 +86,7 @@ export const handler = createAIHandler<RequestBody>({
             techCategory: body.techCategory || 'MULTI',
             techPresetId: body.techPresetId,
             activities: body.activities,
-            projectId: body.projectId,
+            projectId: normalizedProjectId,
             projectContext: body.projectContext,
             requirementUnderstanding: body.requirementUnderstanding,
             impactMap: body.impactMap,

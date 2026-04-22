@@ -43,6 +43,14 @@ export interface ActivityFetchResult {
     fetchMs: number;
 }
 
+export interface FetchActivitiesOptions {
+    /**
+     * If true, do not throw when activity catalog resolves to empty.
+     * The caller can continue and rely on downstream fallback/agent creation.
+     */
+    allowEmptyCandidateSet?: boolean;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Project-scoped activity type
 // ─────────────────────────────────────────────────────────────────────────────
@@ -211,10 +219,13 @@ async function fetchActivitiesLegacy(
 export async function fetchActivitiesServerSide(
     techCategory: string,
     techPresetId: string | undefined,
-    clientActivities?: Activity[]
+    clientActivities?: Activity[],
+    options?: FetchActivitiesOptions,
 ): Promise<ActivityFetchResult> {
     const start = Date.now();
     const supabase = getServerSupabase();
+    const allowEmptyCandidateSet = options?.allowEmptyCandidateSet
+        ?? (process.env.ALLOW_EMPTY_CANDIDATE_SET !== 'false');
 
     if (!supabase) {
         // DB unavailable — client-provided fallback
@@ -237,7 +248,10 @@ export async function fetchActivitiesServerSide(
             });
             if (activities.length === 0) {
                 console.error('[server-fetch] CRITICAL: Empty candidate set from LEGACY path', { techCategory, techPresetId });
-                throw new Error(`Empty candidate set — no activities found for tech_category="${techCategory}"`);
+                if (!allowEmptyCandidateSet) {
+                    throw new Error(`Empty candidate set — no activities found for tech_category="${techCategory}"`);
+                }
+                console.warn('[server-fetch] allowEmptyCandidateSet=true: continuing with empty catalog (legacy path)');
             }
             return { activities, source: 'server', fetchMs: Date.now() - start };
         }
@@ -249,7 +263,10 @@ export async function fetchActivitiesServerSide(
             const activities = await fetchActivitiesLegacy(supabase, techCategory);
             console.log(`[server-fetch] No techPresetId — legacy category fallback: ${activities.length} activities`, { techCategory });
             if (activities.length === 0) {
-                throw new Error(`Empty candidate set — no activities found for tech_category="${techCategory}"`);
+                if (!allowEmptyCandidateSet) {
+                    throw new Error(`Empty candidate set — no activities found for tech_category="${techCategory}"`);
+                }
+                console.warn('[server-fetch] allowEmptyCandidateSet=true: continuing with empty catalog (no techPresetId)');
             }
             return { activities, source: 'server', fetchMs: Date.now() - start };
         }
@@ -278,14 +295,17 @@ export async function fetchActivitiesServerSide(
                 technologyCode: technology.code,
                 techPresetId,
             });
-            throw new Error(`Empty candidate set — no activities found for technology "${technology.code}" (id=${technology.id})`);
+            if (!allowEmptyCandidateSet) {
+                throw new Error(`Empty candidate set — no activities found for technology "${technology.code}" (id=${technology.id})`);
+            }
+            console.warn('[server-fetch] allowEmptyCandidateSet=true: continuing with empty catalog (canonical path)');
         }
 
         return { activities, source: 'server', fetchMs: Date.now() - start };
 
     } catch (err) {
         // Re-throw guardrail errors — they must surface to the caller
-        if (err instanceof Error && err.message.startsWith('Empty candidate set')) throw err;
+        if (!allowEmptyCandidateSet && err instanceof Error && err.message.startsWith('Empty candidate set')) throw err;
         if (err instanceof Error && err.message.startsWith('Cannot resolve techPresetId')) throw err;
 
         console.error('[server-fetch] Unexpected DB failure:', err);

@@ -692,7 +692,7 @@ export default function RequirementDetail() {
                             <PipelineDebugTab
                                 requirementId={requirement.id}
                                 description={requirement.description || ''}
-                                projectId={project?.id}
+                                projectId={projectId || project?.id}
                                 techCategory={activeTechnology?.code}
                             />
                         </TabsContent>

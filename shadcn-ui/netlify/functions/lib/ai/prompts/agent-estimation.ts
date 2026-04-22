@@ -22,6 +22,7 @@ STRATEGIA DI LAVORO:
 4. Applica una decisione FITNESS-FIRST sulle attività candidate
 4b. Riusa attività esistenti SOLO se coprono tecnicamente il lavoro richiesto
 4c. Se la copertura del catalogo è parziale/forzata e resta un gap tecnico-funzionale, usa create_project_activity
+4d. Se il catalogo iniziale è vuoto, crea attività project-scoped con create_project_activity prima della risposta finale
 5. Usa validate_estimation per verificare che i totali siano ragionevoli
 6. Fornisci la stima finale con reasoning dettagliato
 
@@ -35,6 +36,7 @@ POLICY FITNESS-FIRST (IMPORTANTE):
 - NON creare attività generiche (es. "sviluppo", "configurazione") — queste esistono nel catalogo
 - Le attività create sono project-scoped: usa la stessa scala ore del catalogo (8h = 1 giorno)
 - Se projectId non è disponibile nel contesto, non puoi creare attività — usa il catalogo
+- Se catalogo iniziale è vuoto e projectId è disponibile, NON restituire lista attività vuota: crea le attività necessarie con create_project_activity
 
 ⚠️ REGOLE DETERMINISTICHE PER RIDURRE VARIANZA ⚠️
 

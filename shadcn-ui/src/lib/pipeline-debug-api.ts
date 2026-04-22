@@ -447,6 +447,7 @@ export async function runFullDebugPipeline(
     const base = {
         description: config.description,
         techCategory: config.techCategory,
+        ...(config.projectId              ? { projectId: config.projectId }                              : {}),
         ...(ctx.techPresetId              ? { techPresetId: ctx.techPresetId }                           : {}),
         ...(ctx.projectContext            ? { projectContext: ctx.projectContext }                       : {}),
         ...(ctx.projectTechnicalBlueprint ? { projectTechnicalBlueprint: ctx.projectTechnicalBlueprint } : {}),
@@ -503,6 +504,7 @@ export async function runFullDebugPipeline(
     await runStep('estimate', {
         description: config.description,
         techCategory: config.techCategory,
+        ...(config.projectId              ? { projectId: config.projectId }                              : {}),
         ...(ctx.techPresetId              ? { techPresetId: ctx.techPresetId }                           : {}),
         ...(ctx.projectContext            ? { projectContext: ctx.projectContext }                       : {}),
         ...(ctx.requirementUnderstanding  ? { requirementUnderstanding: ctx.requirementUnderstanding }  : {}),

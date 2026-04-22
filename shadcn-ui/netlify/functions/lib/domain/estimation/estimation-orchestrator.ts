@@ -222,16 +222,22 @@ export async function runEstimationOrchestrator(input: OrchestratorInput): Promi
         input.techCategory,
         input.techPresetId,
         input.activities,
+        { allowEmptyCandidateSet: ks.allowEmptyCandidateSet },
     );
     metrics.activitiesFetchMs = fetchResult.fetchMs;
     metrics.activitiesCatalogSize = fetchResult.activities.length;
 
-    if (fetchResult.activities.length === 0) {
-        throw new Error('Nessuna attività disponibile per questa tecnologia.');
-    }
-
     const projectActivityResult = await fetchProjectActivities(input.projectId);
     const projectActivities: ProjectActivity[] = projectActivityResult.activities;
+
+    if (fetchResult.activities.length === 0) {
+        console.warn('[orchestrator] Global activities catalog is empty for selected technology', {
+            techCategory: input.techCategory,
+            techPresetId: input.techPresetId,
+            projectActivityCount: projectActivities.length,
+            allowEmptyCandidateSet: ks.allowEmptyCandidateSet,
+        });
+    }
 
     // ── Stage 2: evaluate-rules ───────────────────────────────────────────────
 

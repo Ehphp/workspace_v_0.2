@@ -222,6 +222,9 @@ function buildUserPrompt(input: AgentInput, refinementPrompt?: string): string {
         .slice(0, 40)
         .map(a => `- ${a.code}: ${a.name} (${a.base_hours}h)[${a.group} | ${a.tech_category}]`)
         .join('\n');
+    const emptyCatalogInstruction = input.activities.length === 0
+        ? `\n\nATTENZIONE: Il catalogo attivita iniziale e vuoto. Devi usare create_project_activity per proporre le attivita necessarie al requisito prima di finalizzare la stima.`
+        : '';
 
     // Inject Project Technical Blueprint block (architecture context)
     const ptbBlock = input.projectTechnicalBlueprintBlock || '';
@@ -239,6 +242,7 @@ ${answersStr}
 CATALOGO ATTIVITÀ DISPONIBILI(usa SOLO questi codici):
 ${catalogStr}
 ${input.activities.length > 40 ? `\n... e altre ${input.activities.length - 40} attività (usa search_catalog per cercare quelle specifiche)` : ''}
+${emptyCatalogInstruction}
 
         IMPORTANTE: Puoi usare ESCLUSIVAMENTE i codici attività elencati sopra o trovati tramite search_catalog.
 
@@ -271,7 +275,9 @@ function buildResponseSchema(validActivityCodes: string[]) {
                         items: {
                             type: 'object',
                             properties: {
-                                code: { type: 'string', enum: validActivityCodes },
+                                code: validActivityCodes.length > 0
+                                    ? { type: 'string' as const, enum: validActivityCodes }
+                                    : { type: 'string' as const },
                                 name: { type: 'string' },
                                 baseHours: { type: 'number' },
                                 reason: { type: 'string' },

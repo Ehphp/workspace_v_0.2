@@ -49,6 +49,13 @@ export interface KillSwitches {
     /** Compute and return agent delta (runs DecisionEngine on every agentic success).
      *  Set OBS_AGENT_DELTA=false to skip the comparison (reduces latency by ~5ms). */
     agentDeltaEnabled: boolean;
+
+    // ── Candidate-set guardrails ────────────────────────────────────────────
+    /**
+     * Allow pipeline continuation when activity catalog is empty.
+     * Set ALLOW_EMPTY_CANDIDATE_SET=false to restore hard-fail behavior.
+     */
+    allowEmptyCandidateSet: boolean;
 }
 
 /**
@@ -71,6 +78,10 @@ export function readKillSwitches(): KillSwitches {
         projectActivitySignalEnabled:    env('SIGNAL_PROJECT_ACTIVITY') !== 'false',
 
         agentDeltaEnabled:               env('OBS_AGENT_DELTA') !== 'false',
+
+        // Default ON to let the agent create project-scoped activities
+        // when global catalog is empty.
+        allowEmptyCandidateSet:          env('ALLOW_EMPTY_CANDIDATE_SET') !== 'false',
     };
 }
 
